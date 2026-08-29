@@ -1,13 +1,25 @@
 
 g_Name_ShipIndex = 1;
 
+-- UnitCreate 的初始化触发器可能晚于首轮出兵，先为超级要塞计数准备安全槽位。
+function GetGigaFortressCountSlot()
+    if g_UnitCount == nil then
+        g_UnitCount = {}
+    end
+    local instanceId = FastHash("JapanGigaFortressShipEgg")
+    if g_UnitCount[instanceId] == nil then
+        g_UnitCount[instanceId] = { 0, 0, 0, 0, 0, 0 }
+    end
+    return g_UnitCount[instanceId]
+end
+
 function SpawnGigaFortressAir()
     SpawnGigaFortressAir_left()
     SpawnGigaFortressAir_right()
 end
 
 function SpawnGigaFortressAir_left()
-    local countSlot = g_UnitCount[FastHash("JapanGigaFortressShipEgg")];
+    local countSlot = GetGigaFortressCountSlot();
     for i = 1, 3 do
         local spawnPosPrefix = "AIR1"
         if i >= 4 then
@@ -63,7 +75,7 @@ function SpawnGigaFortressAir_left()
 end
 
 function SpawnGigaFortressAir_right()
-    local countSlot = g_UnitCount[FastHash("JapanGigaFortressShipEgg")];
+    local countSlot = GetGigaFortressCountSlot();
     for i = 4, 6 do
         local spawnPosPrefix = "AIR1"
         if i >= 4 then

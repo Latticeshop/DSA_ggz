@@ -65,6 +65,19 @@ if not RoundLuaManager then
     end
 
     exSetPublicBoardColor(HexToUInt32("FFFF00"))
+    local rhinoMineFilter = CreateObjectFilter({
+        Rule="ANY",
+        IncludeThing = {
+            "SovietRhinoTankMine"
+        }
+    })
+    RoundLuaManager.CallOnEveryRoundBegin(function(filter)
+        local mines, mineCount = ObjectFindObjects(nil, nil, filter)
+        for i = 1, mineCount, 1 do
+            ExecuteAction("NAMED_DELETE", mines[i])
+        end
+    end, { rhinoMineFilter })
+
     local list = { "INFANT12", "INFANT15", "INFANT23", "INFANT24", "AIR14", "AIR16", "AIR24", "AIR26" }
     RoundLuaManager.CallOnEveryRoundBegin(function(list)
         for i = 1, getn(list), 1 do

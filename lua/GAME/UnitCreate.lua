@@ -159,33 +159,14 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
     end
 end
 
-g_UnitCount = {
-    [FastHash("JapanGigaFortressShipEgg")] = {
-        [1] = 0,
-        [2] = 0,
-        [3] = 0,
-        [4] = 0,
-        [5] = 0,
-        [6] = 0,
-    },
-    -- ACV 不需要特殊处理了，所以下面这两个应该是没用了？
-    [FastHash("AlliedAntiInfantryVehicle")] = {
-        [1] = 0,
-        [2] = 0,
-        [3] = 0,
-        [4] = 0,
-        [5] = 0,
-        [6] = 0,
-    },
-    [FastHash("AlliedAntiInfantryVehicle_Ground")] = {
-        [1] = 0,
-        [2] = 0,
-        [3] = 0,
-        [4] = 0,
-        [5] = 0,
-        [6] = 0,
-    },
-}
+g_UnitCount = g_UnitCount or {}
+g_UnitCount[FastHash("JapanGigaFortressShipEgg")] =
+    g_UnitCount[FastHash("JapanGigaFortressShipEgg")] or { 0, 0, 0, 0, 0, 0 }
+-- ACV 不需要特殊处理了，所以下面这两个应该是没用了？
+g_UnitCount[FastHash("AlliedAntiInfantryVehicle")] =
+    g_UnitCount[FastHash("AlliedAntiInfantryVehicle")] or { 0, 0, 0, 0, 0, 0 }
+g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")] =
+    g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")] or { 0, 0, 0, 0, 0, 0 }
 
 function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
     if g_PlayerNameToIndex[ownerPlayerName] == nil then
@@ -223,7 +204,7 @@ g_UnitCreateEventFunc[FastHash("JapanGigaFortressShipEgg")] = UnitCountFunc
 
 -- 谭雅只让造两个
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
--- 百合子有让防御塔不攻击的 bug，那还是不让造了（地图里面禁止了已经）
+-- 百合子允许生产；这里只保留原版单英雄数量限制，建筑索敌由微操脚本排除。
 g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 1)
 
 g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDroneBorn
@@ -250,7 +231,6 @@ exObjectRegisterCreateEvent("JapanGigaFortressShipEgg")
 
 exObjectRegisterCreateEvent("AlliedCommandoTech1")
 exObjectRegisterCreateEvent("JapanCommandoTech1")
-
 exObjectRegisterCreateEvent("JapanPointDefenseDrone")
 
 exObjectRegisterCreateEvent("JapanKamikazeInfantry")

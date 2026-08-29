@@ -1,6 +1,8 @@
 RescueBlockedProductions_UnitList = {
     'JapanPowerPlantEgg',
     'CelestialDF41',
+    'CelestialAdvanceAircraftTech4',
+    'CelestialAdvanceAircraftTech4_Enhanced',
     'AlliedAntiStructureShip',
     'AlliedAntiStructureShip_Enhanced',
     'CelestialAntiStructureShip',
@@ -68,6 +70,9 @@ function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
         else
             return false
         end
+    elseif unitType == 'CelestialAdvanceAircraftTech4'
+        or unitType == 'CelestialAdvanceAircraftTech4_Enhanced' then
+        return GetPlayerYaoguangCount(playerIndex) < YAOGUANG_LIMIT
     else -- 大船
         if exCounterGetByName("bigshiplimit"..playerIndex) < 2 then
             return true

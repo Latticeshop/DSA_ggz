@@ -6,6 +6,44 @@ end
 
 g_CachedPlayersPowerPlantLimit = {}
 
+YAOGUANG_LIMIT = 5
+FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
+
+function GetPlayerYaoguangCount(playindex)
+    local savedCount = 0
+    if g_UnitNameToUnitIndex ~= nil and UNITCOUNT ~= nil then
+        local unitIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
+        if unitIndex ~= nil and UNITCOUNT[playindex] ~= nil then
+            savedCount = tonumber(UNITCOUNT[playindex][unitIndex]) or 0
+        end
+    end
+    local units, pendingCount = ObjectFindObjects(P[playindex], nil, FilterPlayerYaoguang)
+    pendingCount = tonumber(pendingCount) or 0
+    return savedCount + pendingCount
+end
+
+function LIMITYAOGUANG()
+    for playindex = 1, 6, 1 do
+        local count = GetPlayerYaoguangCount(playindex)
+        local playerName = "Player_" .. playindex
+        if count >= YAOGUANG_LIMIT and FLAGENYAOGUANG[playindex] == 1 then
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4", 0)
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4_Enhanced", 0)
+            FLAGENYAOGUANG[playindex] = 0
+            if RescueBlockedProductions_DoRescue then
+                local blocked = {}
+                blocked[tostring(FastHash("CelestialAdvanceAircraftTech4"))] = true
+                blocked[tostring(FastHash("CelestialAdvanceAircraftTech4_Enhanced"))] = true
+                RescueBlockedProductions_DoRescue(playerName, blocked)
+            end
+        elseif count < YAOGUANG_LIMIT and FLAGENYAOGUANG[playindex] == 0 then
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4", 1)
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4_Enhanced", 1)
+            FLAGENYAOGUANG[playindex] = 1
+        end
+    end
+end
+
 function LIMITPOWER()
     
 
@@ -58,4 +96,5 @@ function LIMITPOWER()
             end
         end
     end
+    LIMITYAOGUANG()
 end

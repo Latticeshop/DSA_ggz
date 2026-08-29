@@ -331,6 +331,20 @@ for i = 1 , unitcountmax , 1 do
     g_UnitNameToUnitIndex[UNITLIST[i]] = i
     g_UnitNameToUnitIndex[FastHash(UNITLIST[i])] = i
 end
+-- 摇光普通/强化形态共享同一个自走棋计数槽。
+local yaoguangIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
+if yaoguangIndex ~= nil then
+    FilterLIST[yaoguangIndex] = CreateObjectFilter({
+        Rule="ANY",
+        Relationship="SAME_PLAYER",
+        IncludeThing = {
+            "CelestialAdvanceAircraftTech4",
+            "CelestialAdvanceAircraftTech4_Enhanced"
+        }
+    })
+    g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4_Enhanced"] = yaoguangIndex
+    g_UnitNameToUnitIndex[FastHash("CelestialAdvanceAircraftTech4_Enhanced")] = yaoguangIndex
+end
 --exMessageAppendToMessageArea("过滤器完毕")
 ----------------------------------------------------------------
 function unitgetcountanddelet (playindex)

@@ -2,6 +2,9 @@
 DEFAULTATTCKTEAM = {}
 DEFAULTATTCKTEAM[7] = "PlyrCivilian/ATTACK"
 DEFAULTATTCKTEAM[8] = "PlyrCreeps/ATTACK"
+DEFAULTIDLETEAM = {}
+DEFAULTIDLETEAM[7] = "PlyrCivilian/teamPlyrCivilian"
+DEFAULTIDLETEAM[8] = "PlyrCreeps/teamPlyrCreeps"
 
 
 FilterJapanAntiInfantryVehicle=CreateObjectFilter({
@@ -134,6 +137,158 @@ FilterALLENEMYUNIT=CreateObjectFilter({
     Relationship="ENEMIES",
     Include="INFANTRY VEHICLE STRUCTURE AIRCRAFT"
 })
+
+FilterLongRangeArtillery=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "PrismTank","AlliedPrismTank_Enhanced",
+        "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
+        "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
+        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced"
+    }
+})
+
+FilterLongRangeArtilleryEnemy=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE"
+})
+
+FilterJapanCommando=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = { "JapanCommandoTech1" }
+})
+
+FilterJapanCommandoEnemy=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT",
+    Exclude="STRUCTURE"
+})
+
+g_LongRangeArtilleryLastTarget = {}
+
+function IsJapanCommandoInAttackTeam(self, playindex)
+    local teamName = ObjectTeamName(self)
+    local playerName = "PlyrCivilian"
+    if playindex == 8 then
+        playerName = "PlyrCreeps"
+    end
+    if teamName == "ATTACK" or teamName == DEFAULTATTCKTEAM[playindex] then
+        return true
+    end
+    for i = 1, 6, 1 do
+        if teamName == "INFANTATTACK" .. i
+            or teamName == playerName .. "/INFANTATTACK" .. i then
+            return true
+        end
+    end
+    return false
+end
+
+function FindFarthestEnemyInRange(self, radius, filter)
+    local x, y, z = ObjectGetPosition(self)
+    local targets, count = ObjectFindObjects(self, {
+        X=x, Y=y, Z=z, Radius=radius, DistType="CENTER_2D"
+    }, filter)
+    local farthest = nil
+    local farthestDistance = -1
+    for i = 1, count, 1 do
+        if ObjectIsAlive(targets[i]) then
+            local distance = ObjectsDistance2D(self, targets[i])
+            if distance > farthestDistance then
+                farthest = targets[i]
+                farthestDistance = distance
+            end
+        end
+    end
+    return farthest
+end
+
+function FindNearestEnemyAnywhere(self, filter)
+    local targets, count = ObjectFindObjects(self, nil, filter)
+    local nearest = nil
+    local nearestDistance = nil
+    for i = 1, count, 1 do
+        if ObjectIsAlive(targets[i]) then
+            local distance = ObjectsDistance2D(self, targets[i])
+            if nearestDistance == nil or distance < nearestDistance then
+                nearest = targets[i]
+                nearestDistance = distance
+            end
+        end
+    end
+    return nearest
+end
+
+-- 首次接敌沿用单位原生索敌；当前目标死亡后，改打射程内最远目标。
+function LongRangeArtilleryMICROCONTROL ()
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterLongRangeArtillery)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local selfId = ObjectGetId(self)
+            local currentTarget = ObjectGetTarget(self)
+            local previousTargetId = g_LongRangeArtilleryLastTarget[selfId]
+            local previousTargetDied = previousTargetId ~= nil and not ObjectIsAlive(previousTargetId)
+
+            if previousTargetDied then
+                local farthest = FindFarthestEnemyInRange(self, 500, FilterLongRangeArtilleryEnemy)
+                if farthest ~= nil then
+                    ExecuteAction("NAMED_ATTACK_NAMED", self, farthest)
+                    g_LongRangeArtilleryLastTarget[selfId] = ObjectGetId(farthest)
+                else
+                    g_LongRangeArtilleryLastTarget[selfId] = nil
+                end
+            elseif currentTarget ~= nil and ObjectIsAlive(currentTarget) then
+                g_LongRangeArtilleryLastTarget[selfId] = ObjectGetId(currentTarget)
+            elseif previousTargetId ~= nil then
+                -- 目标还活着但已离开索敌状态时，交回原生 AI 继续前进。
+                g_LongRangeArtilleryLastTarget[selfId] = nil
+            end
+        end
+    end
+end
+
+-- 百合子的百分比伤害不能直接用于推塔：有敌方单位时追击最近单位，
+-- 全地图没有合法单位目标时把自身设为非法攻击目标，打断攻击前进并原地待命。
+function JapanCommandoNoStructureMICROCONTROL ()
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanCommando)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local selfId = ObjectGetId(self)
+            -- 只在当前确实被放回进攻编队时分离，待命状态下不会重复换队。
+            if IsJapanCommandoInAttackTeam(self, playindex) then
+                ExecuteAction("UNIT_SET_TEAM", self, DEFAULTIDLETEAM[playindex])
+            end
+            ObjectSetCustomTargetChooserData(self, {
+                CustomFilter = FilterJapanCommandoEnemy
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
+            local target = ObjectGetTarget(self)
+            local hasValidTarget = target ~= nil
+                and ObjectIsAlive(target)
+                and ObjectTestTargetObjectWithFilter(self, target, FilterJapanCommandoEnemy)
+            if not hasValidTarget then
+                local replacement = FindNearestEnemyAnywhere(self, FilterJapanCommandoEnemy)
+                if replacement ~= nil then
+                    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
+                    ObjectSetAssignedTarget(self, replacement)
+                    ExecuteAction("NAMED_ATTACK_NAMED", self, replacement)
+                else
+                    -- 引擎层禁用武器，ATTACK 编队即使再次刷新命令也无法攻击建筑。
+                    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 1)
+                    ObjectSetAssignedTarget(self, self)
+                end
+            else
+                ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
+            end
+        end
+    end
+end
 
 ----exMessageAppendToMessageArea("定义过滤器")
 

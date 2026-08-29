@@ -12,6 +12,15 @@ FilterAnyPowerPlantOrEgg=CreateObjectFilter({
         'CelestialPowerPlant','JapanPowerPlantEgg',"AlliedPowerPlant","JapanPowerPlant","SovietPowerPlant"
     }
 })
+
+FilterPlayerYaoguang=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "CelestialAdvanceAircraftTech4",
+        "CelestialAdvanceAircraftTech4_Enhanced"
+    }
+})
 FilterPower=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
