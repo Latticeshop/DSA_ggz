@@ -77,7 +77,7 @@ function PLANEREBORN (UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
                     elseif  playindex >= 8 then
                         --exMessageAppendToMessageArea("执行2")
                         local x, y, z = ObjectGetPosition(UNITSP[8][spindex]) ;
-                        ExecuteAction("CREATE_OBJECT",PLANELIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"0")
+                        ExecuteAction("CREATE_OBJECT",PLANELIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"180")
                         spindex = spindex + 1 ;
                     end
                 elseif  spindex >= 6 then
@@ -89,7 +89,7 @@ function PLANEREBORN (UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
                     elseif  playindex >= 8 then
                         --exMessageAppendToMessageArea("执行4")
                         local x, y, z = ObjectGetPosition(UNITSP[8][spindex]) ;
-                        ExecuteAction("CREATE_OBJECT",PLANELIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"0")
+                        ExecuteAction("CREATE_OBJECT",PLANELIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"180")
                         spindex =  1 ;
                     end
                 end

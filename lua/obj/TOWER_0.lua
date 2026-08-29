@@ -1,16 +1,16 @@
 FilterTOWER=CreateObjectFilter({
     Rule="ANY",
-    Include="SELECTABLE",
     IncludeThing = {
-        "SovietBaseDefenseGround'","celestialbasedefenseadvanced","celestialenergygatlingtower" ,"AlliedHeavyArtilleryDefenseBase", "SovietBaseDefenseAdvanced", "JapanBaseDefenseAdvanced"
+       "celestialbasedefenseadvanced","celestialenergygatlingtower" ,"AlliedHeavyArtilleryDefenseBase", "SovietBaseDefenseAdvanced", "JapanBaseDefenseAdvanced"
     }
 })
-
+TARTOWER, countTOWER = ObjectFindObjects(nil, nil,FilterTOWER)
+--exMessageAppendToMessageArea("countTOWER:"..countTOWER)
 function UNFROZEN()
-    local TAR, count = ObjectFindObjects(nil, nil,FilterTOWER)
-    for i = 1 , count , 1 do
-        objectId = ObjectGetId(TAR[i])
-        exObjectDealSecondaryDamage(objectId, -5000)
+    for i = 1 , countTOWER , 1 do
+        local objectId = ObjectGetId(TARTOWER[i])
+        exObjectDealSecondaryDamage(objectId, -50000)
+        --exMessageAppendToMessageArea("countTOWERp:"..countTOWER)
     end
 end
 

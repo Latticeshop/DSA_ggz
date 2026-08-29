@@ -1,3 +1,4 @@
+function onUnitTopBtnClickEvent(playerName, unitId)
   ----exMessageAppendToMessageArea("执行")
   local cutMCV = 3
   for i = 1 , 6 , 1 do

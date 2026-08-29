@@ -16,7 +16,7 @@ for i = 1, 6, 1 do
     local playerName = "Player_" .. i
     for j = 1, 4, 1 do
         if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName, playerBaseTech[j]) then
-            ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", "freeNavelYard"..tostring(i), freeNavalYard[j], playerName.."/team"..playerName, "navelYard" .. i);
+            ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", "freeNavelYard"..tostring(i), freeNavalYard[j], playerName.."/team"..playerName, "navelYard" .. i,-3.1415926/4);
         end
     end
 end
