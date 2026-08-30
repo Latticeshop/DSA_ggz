@@ -1,3 +1,7 @@
+-- 旧版保留脚本，当前地图中不生效。
+-- 本文件中的舰船哈希、计数和 spawnShips() 生成系统已不再由地图使用。
+-- 当前地图使用 SpawnSeaUnit 和现有回合生成体系；保留此文件仅供历史参考。
+
 g_ShipHashToNameIndex = {
  [1] = FastHash("JapanNavyScoutShip"),
  [2] = FastHash("JapanAntiVehicleVehicleTech1_Naval"),

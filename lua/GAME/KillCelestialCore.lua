@@ -1,3 +1,7 @@
+-- 旧版保留脚本，当前地图中不生效。
+-- 原用途：每 4 秒搜索并删除三个区域内的 CelestialCore。
+-- 当前地图已不存在 CelestialCore，也不存在对应过滤器逻辑；保留此文件仅供历史参考。
+
 g_CelestialCoreFilter = CreateObjectFilter({
     Rule = "ANY",
     IncludeThing = {

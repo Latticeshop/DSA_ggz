@@ -207,9 +207,42 @@ FilterLARGEENHANCE=CreateObjectFilter({
 
     IncludeThing = {
         "AlliedCryoLegionnaire","CelestialBomberAircraft","SovietHeavyAntiVehicleInfantry",
-        "AlliedGunshipAircraft","SovietInterceptorAircraft","CelestialAntiVehicleVehicleTech4"
+        "AlliedGunshipAircraft","CelestialAntiVehicleVehicleTech4"
     }
 })
+
+FilterSovietInterceptorAircraft=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietInterceptorAircraft"
+    }
+})
+
+FilterCelestialInterceptorAircraft=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "CelestialInterceptorAircraft"
+    }
+})
+
+FilterJapanInterceptorAircraft=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "JapanInterceptorAircraft",
+        "JapanInterceptorAircraft_Ground",
+        "JapanInterceptorAircraft_WarfactoryWater"
+    }
+})
+
+if not g_SukhoiHealthX2Modifier then
+    g_SukhoiHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
+end
+if not g_CelestialInterceptorRangeX075Modifier then
+    g_CelestialInterceptorRangeX075Modifier = exAttributeModifierCreate({ RANGE = 0.75 }, 1)
+end
+if not g_JapanInterceptorHealthX3Modifier then
+    g_JapanInterceptorHealthX3Modifier = exAttributeModifierCreate({ HEALTH_MULT = 3.0 }, 1)
+end
 
 
 function LARGEENHANCEBUFF ()
@@ -219,5 +252,25 @@ function LARGEENHANCEBUFF ()
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_GunshipBOSSAIUnitCheat",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_AlliedTeslaBoost",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
+    end
+
+    -- 苏霍伊：保留原有伤害、射程强化，将生命值从 1.5 倍改为精确 2 倍。
+    local Sukhoi , SukhoiCount = ObjectFindObjects(nil, nil, FilterSovietInterceptorAircraft)
+    for i = 1 , SukhoiCount ,1 do
+        ObjectLoadAttributeModifier(Sukhoi[i], g_SukhoiHealthX2Modifier)
+        ObjectLoadAttributeModifier(Sukhoi[i], "AttributeMod_AlliedTeslaBoost",9999)
+        ObjectLoadAttributeModifier(Sukhoi[i], "AttributeModifier_BoxRangeUp",9999)
+    end
+
+    -- 重明截击机：射程下调 25%，保留原射程的 0.75 倍。
+    local Chongming , ChongmingCount = ObjectFindObjects(nil, nil, FilterCelestialInterceptorAircraft)
+    for i = 1 , ChongmingCount ,1 do
+        ObjectLoadAttributeModifier(Chongming[i], g_CelestialInterceptorRangeX075Modifier)
+    end
+
+    -- 樱花回天雷：覆盖空中、地面和船厂水面三种形态，生命值提升为 3 倍。
+    local SakuraMine , SakuraMineCount = ObjectFindObjects(nil, nil, FilterJapanInterceptorAircraft)
+    for i = 1 , SakuraMineCount ,1 do
+        ObjectLoadAttributeModifier(SakuraMine[i], g_JapanInterceptorHealthX3Modifier)
     end
 end

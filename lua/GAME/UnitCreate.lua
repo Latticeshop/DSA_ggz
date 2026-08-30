@@ -159,6 +159,30 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
     end
 end
 
+g_JapanAIAirFormCommands = {
+    [FastHash("JapanAntiInfantryVehicle")] = "Command_JAIV_Transform",
+    [FastHash("JapanAntiInfantryVehicle_Enhanced")] = "Command_JAIV_Transform",
+    [FastHash("JapanAntiAirVehicleTech1")] = "Command_JAAVT1_Transform",
+    [FastHash("JapanAntiAirVehicleTech1_Enhanced")] = "Command_JAAVT1_Transform",
+    [FastHash("JapanMissileMechaAdvanced")] = "Command_JapanMissileMechaAdavanced_Transform",
+    [FastHash("JapanMissileMechaAdvanced_Enhanced")] = "Command_JapanMissileMechaAdavanced_Transform",
+}
+
+function JapanAIAirFormVehicleBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if ownerPlayerName ~= "PlyrCreeps" and ownerPlayerName ~= "PlyrCivilian" then
+        return
+    end
+    local commandName = g_JapanAIAirFormCommands[createdObjInstanceId]
+    SchedulerModule.delay_call(function(id, command)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            if not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit, "AIRBORNE_TARGET") then
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", unit, command)
+            end
+        end
+    end, 1, {createdObjId, commandName})
+end
+
 g_UnitCount = g_UnitCount or {}
 g_UnitCount[FastHash("JapanGigaFortressShipEgg")] =
     g_UnitCount[FastHash("JapanGigaFortressShipEgg")] or { 0, 0, 0, 0, 0, 0 }
@@ -211,6 +235,13 @@ g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDro
 
 g_UnitCreateEventFunc[FastHash("JapanKamikazeInfantry")] = JapanKamikazeInfantryBorn
 
+g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle_Enhanced")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1_Enhanced")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIAirFormVehicleBorn
+
 --exObjectRegisterCreateEvent("CelestialElectricitySale_ForCelestialPower")
 --exObjectRegisterCreateEvent("CelestialElectricitySale_ForCelestialAdvancedPower")
 --exObjectRegisterCreateEvent("CelestialAlliesElectricitySale_ForCelestialAdvancedPower")
@@ -234,6 +265,13 @@ exObjectRegisterCreateEvent("JapanCommandoTech1")
 exObjectRegisterCreateEvent("JapanPointDefenseDrone")
 
 exObjectRegisterCreateEvent("JapanKamikazeInfantry")
+
+exObjectRegisterCreateEvent("JapanAntiInfantryVehicle")
+exObjectRegisterCreateEvent("JapanAntiInfantryVehicle_Enhanced")
+exObjectRegisterCreateEvent("JapanAntiAirVehicleTech1")
+exObjectRegisterCreateEvent("JapanAntiAirVehicleTech1_Enhanced")
+exObjectRegisterCreateEvent("JapanMissileMechaAdvanced")
+exObjectRegisterCreateEvent("JapanMissileMechaAdvanced_Enhanced")
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     g_UnitCreateEventFunc[createdObjInstanceId](createdObjId, createdObjInstanceId, ownerPlayerName)
