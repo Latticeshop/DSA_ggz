@@ -72,6 +72,7 @@ if not RoundLuaManager then
         }
     })
     RoundLuaManager.CallOnEveryRoundBegin(function(filter)
+        _ALERT("回合开始，清除场上地雷")
         local mines, mineCount = ObjectFindObjects(nil, nil, filter)
         for i = 1, mineCount, 1 do
             ExecuteAction("NAMED_DELETE", mines[i])

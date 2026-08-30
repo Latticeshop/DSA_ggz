@@ -56,7 +56,6 @@ FilterSovietScoutVehicle=CreateObjectFilter({
     }
 })
 
-
 FilterCelestialAntiAirShip=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",

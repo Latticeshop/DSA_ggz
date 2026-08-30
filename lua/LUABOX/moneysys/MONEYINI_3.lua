@@ -6,7 +6,7 @@ end
 
 g_CachedPlayersPowerPlantLimit = {}
 
-YAOGUANG_LIMIT = 5
+YAOGUANG_LIMIT = 2
 FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
 
 function GetPlayerYaoguangCount(playindex)
