@@ -144,7 +144,8 @@ FilterLongRangeArtillery=CreateObjectFilter({
         "PrismTank","AlliedPrismTank_Enhanced",
         "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
         "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
-        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced"
+        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced",
+        "CelestialHeavyAntiAirVehicleTech3","CelestialAntiVehicleVehicleTech3_EMC"
     }
 })
 
@@ -152,6 +153,51 @@ FilterLongRangeArtilleryEnemy=CreateObjectFilter({
     Rule="ANY",
     Relationship="ENEMIES",
     Include="INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE"
+})
+
+-- 仅白虎、雅典娜和波能炮使用坦克 > 步兵 > 建筑的索敌优先级。
+FilterPrioritySiege=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "CelestialAntiStructureVehicle", "CelestialAntiStructureVehicle_Enhanced",
+        "AlliedAntiStructureVehicle", "AlliedAntiStructureVehicle_Enhanced",
+        "JapanAntiStructureVehicle", "JapanAntiStructureVehicle_Enhanced"
+    }
+})
+
+FilterPrioritySiegeEnemyTank=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="VEHICLE HUGE_VEHICLE",
+    Exclude="AIRCRAFT STRUCTURE INFANTRY"
+})
+
+FilterPrioritySiegeEnemyInfantry=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="INFANTRY",
+    Exclude="AIRCRAFT STRUCTURE"
+})
+
+FilterPrioritySiegeEnemyStructure=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="STRUCTURE"
+})
+
+-- 所有专职对空飞机；心神的空中形态也沿用同一套目标切换逻辑。
+FilterAntiAirAircraft=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "AlliedFighterAircraft", "AlliedFighterAircraft_Enhanced",
+        "AlliedInterceptorAircraft", "AlliedInterceptorAircraft_Enhanced",
+        "CelestialInterceptorAircraft", "CelestialInterceptorAircraft_Enhanced",
+        "JapanMissileMechaAdvanced", "JapanMissileMechaAdvanced_Enhanced",
+        "SovietFighterAircraft", "SovietFighterAircraft_Enhanced",
+        "SovietInterceptorAircraft", "SovietInterceptorAircraft_Enhanced"
+    }
 })
 
 FilterJapanCommando=CreateObjectFilter({
@@ -168,6 +214,7 @@ FilterJapanCommandoEnemy=CreateObjectFilter({
 })
 
 g_LongRangeArtilleryLastTarget = {}
+g_AntiAirAircraftLastTarget = {}
 
 function IsJapanCommandoInAttackTeam(self, playindex)
     local teamName = ObjectTeamName(self)
@@ -222,7 +269,18 @@ function FindNearestEnemyAnywhere(self, filter)
     return nearest
 end
 
--- 首次接敌沿用单位原生索敌；当前目标死亡后，改打射程内最远目标。
+function FindPrioritySiegeTargetInRange(self, radius)
+    local target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyTank)
+    if target == nil then
+        target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyInfantry)
+    end
+    if target == nil then
+        target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyStructure)
+    end
+    return target
+end
+
+-- 首次接敌沿用单位原生索敌；当前目标死亡后，改打 700 范围内最远目标。
 function LongRangeArtilleryMICROCONTROL ()
     for playindex = 7, 8, 1 do
         local units, count = ObjectFindObjects(P[playindex], nil, FilterLongRangeArtillery)
@@ -232,9 +290,27 @@ function LongRangeArtilleryMICROCONTROL ()
             local currentTarget = ObjectGetTarget(self)
             local previousTargetId = g_LongRangeArtilleryLastTarget[selfId]
             local previousTargetDied = previousTargetId ~= nil and not ObjectIsAlive(previousTargetId)
+            local useSiegePriority = ObjectTestTargetObjectWithFilter(self, self, FilterPrioritySiege)
+
+            if useSiegePriority then
+                ObjectSetCustomTargetChooserData(self, {
+                    CustomFilter = FilterLongRangeArtilleryEnemy,
+                    CompareFilterList = {
+                        FilterPrioritySiegeEnemyTank,
+                        FilterPrioritySiegeEnemyInfantry,
+                        FilterPrioritySiegeEnemyStructure
+                    }
+                })
+                ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
+            end
 
             if previousTargetDied then
-                local farthest = FindFarthestEnemyInRange(self, 500, FilterLongRangeArtilleryEnemy)
+                local farthest = nil
+                if useSiegePriority then
+                    farthest = FindPrioritySiegeTargetInRange(self, 700)
+                else
+                    farthest = FindFarthestEnemyInRange(self, 700, FilterLongRangeArtilleryEnemy)
+                end
                 if farthest ~= nil then
                     ExecuteAction("NAMED_ATTACK_NAMED", self, farthest)
                     g_LongRangeArtilleryLastTarget[selfId] = ObjectGetId(farthest)
@@ -246,6 +322,43 @@ function LongRangeArtilleryMICROCONTROL ()
             elseif previousTargetId ~= nil then
                 -- 目标还活着但已离开索敌状态时，交回原生 AI 继续前进。
                 g_LongRangeArtilleryLastTarget[selfId] = nil
+            end
+        end
+    end
+end
+
+-- 首次接敌沿用飞机原生索敌；之后目标死亡或脱离索敌时，
+-- 只要 500 范围内仍有敌机，就持续改打其中最远的目标。
+function AntiAirAircraftMICROCONTROL ()
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterAntiAirAircraft)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local selfId = ObjectGetId(self)
+            local currentTarget = ObjectGetTarget(self)
+            local previousTargetId = g_AntiAirAircraftLastTarget[selfId]
+            local currentTargetId = nil
+            if currentTarget ~= nil and ObjectIsAlive(currentTarget) then
+                currentTargetId = ObjectGetId(currentTarget)
+            end
+
+            if previousTargetId == nil then
+                -- 尚未接敌，只记录原生 AI 首次选中的目标。
+                if currentTargetId ~= nil then
+                    g_AntiAirAircraftLastTarget[selfId] = currentTargetId
+                end
+            elseif currentTargetId == previousTargetId then
+                -- 仍在攻击原目标，不干预。
+                g_AntiAirAircraftLastTarget[selfId] = currentTargetId
+            else
+                -- 原目标死亡、脱离锁定，或引擎已经自动换目标：统一重选最远敌机。
+                local farthest = FindFarthestEnemyInRange(self, 500, FilterAIR2)
+                if farthest ~= nil then
+                    ExecuteAction("NAMED_ATTACK_NAMED", self, farthest)
+                    g_AntiAirAircraftLastTarget[selfId] = ObjectGetId(farthest)
+                else
+                    g_AntiAirAircraftLastTarget[selfId] = nil
+                end
             end
         end
     end

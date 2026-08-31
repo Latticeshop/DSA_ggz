@@ -211,6 +211,32 @@ FilterLARGEENHANCE=CreateObjectFilter({
     }
 })
 
+FilterSovietBomberAircraft=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietBomberAircraft"
+    }
+})
+
+FilterSovietHeavyTankTech4=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietAntiVehicleVehicleTech4",
+        "SovietAntiVehicleVehicleTech4_Enhanced"
+    }
+})
+
+-- 先锋武装炮艇机的普通、强化、AC-130 和信标形态统一计算。
+FilterAlliedGunshipAircraftAll=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "AlliedGunshipAircraft",
+        "AlliedGunshipAircraft_Enhanced",
+        "AlliedAC130GunshipAircraft",
+        "AlliedChronoBeacon_Harbinger"
+    }
+})
+
 FilterSovietInterceptorAircraft=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
@@ -243,6 +269,9 @@ end
 if not g_JapanInterceptorHealthX3Modifier then
     g_JapanInterceptorHealthX3Modifier = exAttributeModifierCreate({ HEALTH_MULT = 3.0 }, 1)
 end
+if not g_AlliedGunshipHealthX2Modifier then
+    g_AlliedGunshipHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
+end
 
 
 function LARGEENHANCEBUFF ()
@@ -252,6 +281,24 @@ function LARGEENHANCEBUFF ()
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_GunshipBOSSAIUnitCheat",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_AlliedTeslaBoost",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
+    end
+
+    -- 基洛夫：永久加载纯 200% 移速 Buff。
+    local Kirov , KirovCount = ObjectFindObjects(nil, nil, FilterSovietBomberAircraft)
+    for i = 1 , KirovCount ,1 do
+        ObjectLoadAttributeModifier(Kirov[i], "AttributeModifier_JapanAntiVehicleVehicleTech3RushAttack",9999)
+    end
+
+    -- 联盟重型坦克：在现有属性基础上再叠加 1.25 倍生命。
+    local HeavyTank , HeavyTankCount = ObjectFindObjects(nil, nil, FilterSovietHeavyTankTech4)
+    for i = 1 , HeavyTankCount ,1 do
+        ObjectLoadAttributeModifier(HeavyTank[i], "AttributeMod_CenturionUpgradeLeaderLv1",9999)
+    end
+
+    -- 先锋全部形态加载 2 倍生命 Buff；标准型还会与上方原有 1.5 倍 Buff 叠加至 3 倍。
+    local Gunship , GunshipCount = ObjectFindObjects(nil, nil, FilterAlliedGunshipAircraftAll)
+    for i = 1 , GunshipCount ,1 do
+        ObjectLoadAttributeModifier(Gunship[i], g_AlliedGunshipHealthX2Modifier)
     end
 
     -- 苏霍伊：保留原有伤害、射程强化，将生命值从 1.5 倍改为精确 2 倍。

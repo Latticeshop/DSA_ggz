@@ -226,10 +226,11 @@ g_UnitCreateEventFunc[FastHash("JapanGigaFortressShipEgg")] = UnitCountFunc
 -- g_UnitCreateEventFunc[FastHash("AlliedAntiInfantryVehicle")] = UnitCountFunc
 -- g_UnitCreateEventFunc[FastHash("AlliedAntiInfantryVehicle_Ground")] = UnitCountFunc
 
--- 谭雅只让造两个
+-- 三阵营英雄统一限制为每位玩家两个。
+g_UnitCreateEventFunc[FastHash("SovietCommandoTech1")] = GetLimitCommandoUnitCreateFunc("SovietCommandoTech1", 2)
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
--- 百合子允许生产；这里只保留原版单英雄数量限制，建筑索敌由微操脚本排除。
-g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 1)
+-- 百合子的建筑索敌仍由微操脚本排除。
+g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
 
 g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDroneBorn
 
@@ -260,6 +261,7 @@ exObjectRegisterCreateEvent("JapanGigaFortressShipEgg")
 -- exObjectRegisterCreateEvent("AlliedAntiInfantryVehicle")
 -- exObjectRegisterCreateEvent("AlliedAntiInfantryVehicle_Ground")
 
+exObjectRegisterCreateEvent("SovietCommandoTech1")
 exObjectRegisterCreateEvent("AlliedCommandoTech1")
 exObjectRegisterCreateEvent("JapanCommandoTech1")
 exObjectRegisterCreateEvent("JapanPointDefenseDrone")

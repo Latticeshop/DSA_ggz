@@ -1,6 +1,27 @@
 
 g_Name_ShipIndex = 1;
 
+-- 超级要塞只在登场时随机一次形态：50% 飞行船只，50% 大头轰炸。
+-- 如需调整概率，只修改这个值（0.0 至 1.0）。
+g_GigaFortressBigHeadSpawnChance = 0.5
+
+function SpawnRandomGigaFortress(name, team, spawnPos)
+    local unitType = "JapanFortressShip"
+    local isBigHead = GetRandomNumber() < g_GigaFortressBigHeadSpawnChance
+    if isBigHead then
+        unitType = "JapanGigaFortress_Land"
+    end
+
+    ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, unitType, team, spawnPos)
+
+    if not isBigHead then
+        -- 保留现有飞行船只形态的登场初始化。
+        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", name, "Command_ToggleJapanFortressShipTransformMode")
+        ExecuteAction("UNIT_CLEAR_MODELCONDITION", name, "USER_1")
+        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", name, "TRANSFORMATION_TOGGLE_STATE", 0)
+    end
+end
+
 -- UnitCreate 的初始化触发器可能晚于首轮出兵，先为超级要塞计数准备安全槽位。
 function GetGigaFortressCountSlot()
     if g_UnitCount == nil then
@@ -52,11 +73,7 @@ function SpawnGigaFortressAir_left()
 
             local spawnPos = landSpawnPosPrefix .. tostring(suffix)
             local name = "AIShip_" .. tostring(g_Name_ShipIndex);
-            ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, "JapanFortressShip", AIRTEAM[teamIndex][suffix], spawnPos)
-            --local object = GetObjectByScriptName(name);
-            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", name, "Command_ToggleJapanFortressShipTransformMode");
-            ExecuteAction("UNIT_CLEAR_MODELCONDITION", name, "USER_1");
-            ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", name,"TRANSFORMATION_TOGGLE_STATE", 0)
+            SpawnRandomGigaFortress(name, AIRTEAM[teamIndex][suffix], spawnPos)
 
             g_Name_ShipIndex = g_Name_ShipIndex + 1;
 
@@ -108,11 +125,7 @@ function SpawnGigaFortressAir_right()
 
             local spawnPos = landSpawnPosPrefix .. tostring(suffix)
             local name = "AIShip_" .. tostring(g_Name_ShipIndex);
-            ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, "JapanFortressShip", AIRTEAM[teamIndex][suffix], spawnPos)
-            --local object = GetObjectByScriptName(name);
-            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", name, "Command_ToggleJapanFortressShipTransformMode");
-            ExecuteAction("UNIT_CLEAR_MODELCONDITION", name, "USER_1");
-            ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", name,"TRANSFORMATION_TOGGLE_STATE", 0)
+            SpawnRandomGigaFortress(name, AIRTEAM[teamIndex][suffix], spawnPos)
 
             g_Name_ShipIndex = g_Name_ShipIndex + 1;
 
