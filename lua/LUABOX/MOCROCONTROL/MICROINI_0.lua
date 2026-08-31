@@ -145,6 +145,7 @@ FilterLongRangeArtillery=CreateObjectFilter({
         "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
         "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
         "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced",
+        "SovietAntiStructureVehicle","SovietAntiStructureVehicle_Enhanced",
         "CelestialHeavyAntiAirVehicleTech3","CelestialAntiVehicleVehicleTech3_EMC"
     }
 })
@@ -155,14 +156,15 @@ FilterLongRangeArtilleryEnemy=CreateObjectFilter({
     Include="INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE"
 })
 
--- 仅白虎、雅典娜和波能炮使用坦克 > 步兵 > 建筑的索敌优先级。
+-- 仅白虎、雅典娜、波能炮和 V4 使用坦克 > 步兵 > 建筑的索敌优先级。
 FilterPrioritySiege=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
     IncludeThing = {
         "CelestialAntiStructureVehicle", "CelestialAntiStructureVehicle_Enhanced",
         "AlliedAntiStructureVehicle", "AlliedAntiStructureVehicle_Enhanced",
-        "JapanAntiStructureVehicle", "JapanAntiStructureVehicle_Enhanced"
+        "JapanAntiStructureVehicle", "JapanAntiStructureVehicle_Enhanced",
+        "SovietAntiStructureVehicle", "SovietAntiStructureVehicle_Enhanced"
     }
 })
 
