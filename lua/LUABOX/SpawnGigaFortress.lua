@@ -14,12 +14,22 @@ function SpawnRandomGigaFortress(name, team, spawnPos)
 
     ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, unitType, team, spawnPos)
 
-    if not isBigHead then
-        -- 保留现有飞行船只形态的登场初始化。
-        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", name, "Command_ToggleJapanFortressShipTransformMode")
-        ExecuteAction("UNIT_CLEAR_MODELCONDITION", name, "USER_1")
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", name, "TRANSFORMATION_TOGGLE_STATE", 0)
-    end
+    -- 两个随机模板都只在登场时校正为空中状态。
+    -- 创建同一帧调用变形技能会偶发丢失，因此延迟执行并在变形完成后复查一次。
+    SchedulerModule.delay_call(function(objectName)
+        local unit = GetObjectByScriptName(objectName)
+        if ObjectIsAlive(unit)
+            and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit, "AIRBORNE_TARGET") then
+            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", unit, "Command_ToggleJapanFortressShipTransformMode")
+        end
+    end, 1, {name})
+    SchedulerModule.delay_call(function(objectName)
+        local unit = GetObjectByScriptName(objectName)
+        if ObjectIsAlive(unit)
+            and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit, "AIRBORNE_TARGET") then
+            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", unit, "Command_ToggleJapanFortressShipTransformMode")
+        end
+    end, 30, {name})
 end
 
 -- UnitCreate 的初始化触发器可能晚于首轮出兵，先为超级要塞计数准备安全槽位。
@@ -46,11 +56,6 @@ function SpawnGigaFortressAir_left()
         if i >= 4 then
             spawnPosPrefix = "AIR2"
         end
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 4 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
-
         local angle = 0;
         if i >= 4 then
             angle = 180
@@ -71,7 +76,7 @@ function SpawnGigaFortressAir_left()
             --ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, "JapanFortressShip", SHIPTEAM[teamIndex], spawnPos)
             --g_Name_ShipIndex = g_Name_ShipIndex + 1;
 
-            local spawnPos = landSpawnPosPrefix .. tostring(suffix)
+            local spawnPos = spawnPosPrefix .. tostring(suffix)
             local name = "AIShip_" .. tostring(g_Name_ShipIndex);
             SpawnRandomGigaFortress(name, AIRTEAM[teamIndex][suffix], spawnPos)
 
@@ -98,11 +103,6 @@ function SpawnGigaFortressAir_right()
         if i >= 4 then
             spawnPosPrefix = "AIR2"
         end
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 4 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
-
         local angle = 0;
         if i >= 4 then
             angle = 180
@@ -123,7 +123,7 @@ function SpawnGigaFortressAir_right()
             --ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", name, "JapanFortressShip", SHIPTEAM[teamIndex], spawnPos)
             --g_Name_ShipIndex = g_Name_ShipIndex + 1;
 
-            local spawnPos = landSpawnPosPrefix .. tostring(suffix)
+            local spawnPos = spawnPosPrefix .. tostring(suffix)
             local name = "AIShip_" .. tostring(g_Name_ShipIndex);
             SpawnRandomGigaFortress(name, AIRTEAM[teamIndex][suffix], spawnPos)
 

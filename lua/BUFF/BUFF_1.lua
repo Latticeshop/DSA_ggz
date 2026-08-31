@@ -283,10 +283,11 @@ function LARGEENHANCEBUFF ()
         ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
     end
 
-    -- 基洛夫：永久加载纯 200% 移速 Buff。
+    -- 基洛夫：200% 移速 Buff 叠加蜻蜓的 50% 减速，最终为 150% 移速。
     local Kirov , KirovCount = ObjectFindObjects(nil, nil, FilterSovietBomberAircraft)
     for i = 1 , KirovCount ,1 do
         ObjectLoadAttributeModifier(Kirov[i], "AttributeModifier_JapanAntiVehicleVehicleTech3RushAttack",9999)
+        ObjectLoadAttributeModifier(Kirov[i], "AttributeMod_JapanScoutInfantrySlowAttached",9999)
     end
 
     -- 联盟重型坦克：在现有属性基础上再叠加 1.25 倍生命。
