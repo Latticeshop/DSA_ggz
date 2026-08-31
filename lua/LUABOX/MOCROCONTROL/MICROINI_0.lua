@@ -56,6 +56,17 @@ FilterSovietScoutVehicle=CreateObjectFilter({
     }
 })
 
+FilterPrioritySiegeVehicle=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
+        "SovietAntiStructureVehicle","SovietAntiStructureVehicle_Enhanced",
+        "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
+        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced"
+    }
+})
+
 FilterCelestialAntiAirShip=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
@@ -283,6 +294,45 @@ end
 
 function JapanMissileMechaAdvancedMICROCONTROL ()
     JapanIdleAirFormMICROCONTROL(FilterJapanMissileMechaAdvanced, "Command_JapanMissileMechaAdavanced_Transform", true)
+end
+
+-- 炮车只使用单体攻击前进：有坦克时忽略步兵继续追击；无坦克时恢复常规优先级。
+-- 任意状态下，700 范围内有建筑就停止前进并原地开火；建筑消失后恢复推进，新塔出现时再次停止。
+function PrioritySiegeAttackMoveMICROCONTROL ()
+    for playindex = 7, 8, 1 do
+        local enemyTanks, enemyTankCount = ObjectFindObjects(P[playindex], nil, g_FilterPrioritySiegeEnemyTank)
+        local enemyTankExists = enemyTankCount > 0
+        g_PrioritySiegeTankPursuitActive[playindex] = enemyTankExists
+
+        local siegeUnits, siegeUnitCount = ObjectFindObjects(P[playindex], nil, FilterPrioritySiegeVehicle)
+        for i = 1, siegeUnitCount, 1 do
+            local siegeUnit = siegeUnits[i]
+            local teamName = ObjectTeamName(siegeUnit)
+            local idleTeamName = g_PrioritySiegeIdleTeam[playindex]
+            local idleTeamShortName = "teamPlyrCivilian"
+            if playindex == 8 then
+                idleTeamShortName = "teamPlyrCreeps"
+            end
+            local wasReassigned = teamName ~= idleTeamName and teamName ~= idleTeamShortName
+            if wasReassigned then
+                ExecuteAction("UNIT_SET_TEAM", siegeUnit, idleTeamName)
+            end
+            local siegeUnitId = ObjectGetId(siegeUnit)
+            local desiredMode = GetPrioritySiegeUnitMode(siegeUnit, enemyTankExists)
+            local stateChanged = g_PrioritySiegeUnitMode[siegeUnitId] ~= desiredMode
+            if stateChanged or wasReassigned then
+                -- 同一条攻击前进指令可能沿用旧模式的内部攻击上下文；先停下并清空配置再重建。
+                ExecuteAction("NAMED_STOP", siegeUnit)
+                ObjectSetCustomTargetChooserData(siegeUnit, nil)
+                SetPrioritySiegeTargetChooserMode(siegeUnit, desiredMode == "TANK_PURSUIT")
+                g_PrioritySiegeUnitMode[siegeUnitId] = desiredMode
+                -- 建筑存在时驻停；建筑消失后恢复向敌方方向攻击前进。
+                if desiredMode ~= "STRUCTURE_HOLD" then
+                    ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", siegeUnit, g_PrioritySiegeAttackWaypoint[playindex])
+                end
+            end
+        end
+    end
 end
 
 function JapanAntiAirVehicleTech1MICROCONTROL ()

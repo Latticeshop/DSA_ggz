@@ -202,21 +202,84 @@ g_FilterPrioritySiegeEnemyTank = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "ENEMIES",
     Include = "VEHICLE HUGE_VEHICLE",
-    Exclude = "AIRCRAFT STRUCTURE INFANTRY"
+    Exclude = "AIRCRAFT STRUCTURE INFANTRY IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+g_FilterPrioritySiegeAllGroundEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE",
+    Exclude = "AIRCRAFT IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
 })
 
 g_FilterPrioritySiegeEnemyInfantry = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "ENEMIES",
     Include = "INFANTRY",
-    Exclude = "AIRCRAFT STRUCTURE"
+    Exclude = "AIRCRAFT STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
 })
 
 g_FilterPrioritySiegeEnemyStructure = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "ENEMIES",
-    Include = "STRUCTURE"
+    Include = "STRUCTURE",
+    Exclude = "IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
 })
+
+-- 四类炮车使用独立的单体攻击前进，不再接受 LIGHTVEHATTACK 的队伍级刷新。
+g_PrioritySiegeTankPursuitActive = g_PrioritySiegeTankPursuitActive or {
+    [7] = false,
+    [8] = false
+}
+g_PrioritySiegeUnitMode = g_PrioritySiegeUnitMode or {}
+g_PrioritySiegeStructureStopRange = 700
+g_PrioritySiegeIdleTeam = g_PrioritySiegeIdleTeam or {
+    [7] = "PlyrCivilian/teamPlyrCivilian",
+    [8] = "PlyrCreeps/teamPlyrCreeps"
+}
+g_PrioritySiegeAttackWaypoint = g_PrioritySiegeAttackWaypoint or {
+    [7] = "TD8",
+    [8] = "TD7"
+}
+
+function SetPrioritySiegeTargetChooserMode(unit, tankPursuitActive)
+    if tankPursuitActive then
+        ObjectSetCustomTargetChooserData(unit, {
+            -- 追击状态只认坦克，避免被前排步兵卡在最大射程。
+            CustomFilter = g_FilterPrioritySiegeEnemyTank,
+            ReverseRangeCompare = true,
+            PreferTargetInsideRange = true
+        })
+    else
+        ObjectSetCustomTargetChooserData(unit, {
+            CustomFilter = g_FilterPrioritySiegeAllGroundEnemy,
+            CompareFilterList = {
+                g_FilterPrioritySiegeEnemyTank,
+                g_FilterPrioritySiegeEnemyInfantry,
+                g_FilterPrioritySiegeEnemyStructure
+            },
+            ReverseRangeCompare = true,
+            PreferTargetInsideRange = true
+        })
+    end
+    ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+end
+
+function GetPrioritySiegeUnitMode(unit, enemyTankExists)
+    local x, y, z = ObjectGetPosition(unit)
+    local structures, structureCount = ObjectFindObjects(unit, {
+        X = x, Y = y, Z = z,
+        Radius = g_PrioritySiegeStructureStopRange,
+        DistType = "CENTER_2D"
+    }, g_FilterPrioritySiegeEnemyStructure)
+    if structureCount > 0 then
+        return "STRUCTURE_HOLD"
+    end
+    if enemyTankExists then
+        return "TANK_PURSUIT"
+    end
+    return "NORMAL_ADVANCE"
+end
 
 function IsAutoChessAIPlayer(ownerPlayerName)
     return ownerPlayerName == "PlyrCreeps" or ownerPlayerName == "PlyrCivilian"
@@ -243,22 +306,22 @@ function PrioritySiegeTargetChooserBorn(createdObjId, createdObjInstanceId, owne
     if not IsAutoChessAIPlayer(ownerPlayerName) then
         return
     end
-    SchedulerModule.delay_call(function(id)
+    local playindex = 7
+    if ownerPlayerName == "PlyrCreeps" then
+        playindex = 8
+    end
+    SchedulerModule.delay_call(function(id, sideIndex)
         if ObjectIsAlive(id) then
             local unit = GetObjectById(id)
-            ObjectSetCustomTargetChooserData(unit, {
-                CustomFilter = g_FilterOptimizedGroundEnemy,
-                CompareFilterList = {
-                    g_FilterPrioritySiegeEnemyTank,
-                    g_FilterPrioritySiegeEnemyInfantry,
-                    g_FilterPrioritySiegeEnemyStructure
-                },
-                ReverseRangeCompare = true,
-                PreferTargetInsideRange = true
-            })
-            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+            local mode = GetPrioritySiegeUnitMode(unit, g_PrioritySiegeTankPursuitActive[sideIndex])
+            ExecuteAction("UNIT_SET_TEAM", unit, g_PrioritySiegeIdleTeam[sideIndex])
+            SetPrioritySiegeTargetChooserMode(unit, mode == "TANK_PURSUIT")
+            g_PrioritySiegeUnitMode[id] = mode
+            if mode ~= "STRUCTURE_HOLD" then
+                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit, g_PrioritySiegeAttackWaypoint[sideIndex])
+            end
         end
-    end, 1, {createdObjId})
+    end, 1, {createdObjId, playindex})
 end
 
 function FarthestAirTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
