@@ -183,6 +183,106 @@ function JapanAIAirFormVehicleBorn(createdObjId, createdObjInstanceId, ownerPlay
     end, 1, {createdObjId, commandName})
 end
 
+-- 索敌优化全部交给引擎 TargetChooser：单位自身射程内优先选择最远目标。
+-- 只有白虎、V4、波能炮和雅典娜额外使用 坦克 > 步兵 > 建筑 的类别优先级。
+g_FilterOptimizedGroundEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE"
+})
+
+g_FilterOptimizedAirEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "SELECTABLE",
+    StatusBitFlags = "AIRBORNE_TARGET"
+})
+
+g_FilterPrioritySiegeEnemyTank = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "VEHICLE HUGE_VEHICLE",
+    Exclude = "AIRCRAFT STRUCTURE INFANTRY"
+})
+
+g_FilterPrioritySiegeEnemyInfantry = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "INFANTRY",
+    Exclude = "AIRCRAFT STRUCTURE"
+})
+
+g_FilterPrioritySiegeEnemyStructure = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "STRUCTURE"
+})
+
+function IsAutoChessAIPlayer(ownerPlayerName)
+    return ownerPlayerName == "PlyrCreeps" or ownerPlayerName == "PlyrCivilian"
+end
+
+function FarthestGroundTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterOptimizedGroundEnemy,
+                ReverseRangeCompare = true,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+        end
+    end, 1, {createdObjId})
+end
+
+function PrioritySiegeTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterOptimizedGroundEnemy,
+                CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterPrioritySiegeEnemyInfantry,
+                    g_FilterPrioritySiegeEnemyStructure
+                },
+                ReverseRangeCompare = true,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+        end
+    end, 1, {createdObjId})
+end
+
+function FarthestAirTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterOptimizedAirEnemy,
+                ReverseRangeCompare = true,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+        end
+    end, 1, {createdObjId})
+end
+
+function JapanAIAirFormVehicleAndTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    JapanAIAirFormVehicleBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    FarthestAirTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+end
+
 g_UnitCount = g_UnitCount or {}
 g_UnitCount[FastHash("JapanGigaFortressShipEgg")] =
     g_UnitCount[FastHash("JapanGigaFortressShipEgg")] or { 0, 0, 0, 0, 0, 0 }
@@ -240,8 +340,36 @@ g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle")] = JapanAIAirFormVehi
 g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle_Enhanced")] = JapanAIAirFormVehicleBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1")] = JapanAIAirFormVehicleBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1_Enhanced")] = JapanAIAirFormVehicleBorn
-g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced")] = JapanAIAirFormVehicleBorn
-g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIAirFormVehicleBorn
+g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced")] = JapanAIAirFormVehicleAndTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIAirFormVehicleAndTargetChooserBorn
+
+-- 已配置的远程坦克：使用自身射程内最远目标。
+g_UnitCreateEventFunc[FastHash("PrismTank")] = FarthestGroundTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = FarthestGroundTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = FarthestGroundTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = FarthestGroundTargetChooserBorn
+
+-- 仅四类 T3 攻城单位叠加 坦克 > 步兵 > 建筑 的优先级。
+g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+
+-- 所有已配置的专职对空飞机：使用自身射程内最远空中目标。
+g_UnitCreateEventFunc[FastHash("AlliedFighterAircraft")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedFighterAircraft_Enhanced")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedInterceptorAircraft")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedInterceptorAircraft_Enhanced")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialInterceptorAircraft")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialInterceptorAircraft_Enhanced")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietFighterAircraft")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietFighterAircraft_Enhanced")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietInterceptorAircraft")] = FarthestAirTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietInterceptorAircraft_Enhanced")] = FarthestAirTargetChooserBorn
 
 --exObjectRegisterCreateEvent("CelestialElectricitySale_ForCelestialPower")
 --exObjectRegisterCreateEvent("CelestialElectricitySale_ForCelestialAdvancedPower")
@@ -274,6 +402,31 @@ exObjectRegisterCreateEvent("JapanAntiAirVehicleTech1")
 exObjectRegisterCreateEvent("JapanAntiAirVehicleTech1_Enhanced")
 exObjectRegisterCreateEvent("JapanMissileMechaAdvanced")
 exObjectRegisterCreateEvent("JapanMissileMechaAdvanced_Enhanced")
+
+exObjectRegisterCreateEvent("PrismTank")
+exObjectRegisterCreateEvent("AlliedPrismTank_Enhanced")
+exObjectRegisterCreateEvent("CelestialHeavyAntiAirVehicleTech3")
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech3_EMC")
+
+exObjectRegisterCreateEvent("CelestialAntiStructureVehicle")
+exObjectRegisterCreateEvent("CelestialAntiStructureVehicle_Enhanced")
+exObjectRegisterCreateEvent("SovietAntiStructureVehicle")
+exObjectRegisterCreateEvent("SovietAntiStructureVehicle_Enhanced")
+exObjectRegisterCreateEvent("JapanAntiStructureVehicle")
+exObjectRegisterCreateEvent("JapanAntiStructureVehicle_Enhanced")
+exObjectRegisterCreateEvent("AlliedAntiStructureVehicle")
+exObjectRegisterCreateEvent("AlliedAntiStructureVehicle_Enhanced")
+
+exObjectRegisterCreateEvent("AlliedFighterAircraft")
+exObjectRegisterCreateEvent("AlliedFighterAircraft_Enhanced")
+exObjectRegisterCreateEvent("AlliedInterceptorAircraft")
+exObjectRegisterCreateEvent("AlliedInterceptorAircraft_Enhanced")
+exObjectRegisterCreateEvent("CelestialInterceptorAircraft")
+exObjectRegisterCreateEvent("CelestialInterceptorAircraft_Enhanced")
+exObjectRegisterCreateEvent("SovietFighterAircraft")
+exObjectRegisterCreateEvent("SovietFighterAircraft_Enhanced")
+exObjectRegisterCreateEvent("SovietInterceptorAircraft")
+exObjectRegisterCreateEvent("SovietInterceptorAircraft_Enhanced")
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     g_UnitCreateEventFunc[createdObjInstanceId](createdObjId, createdObjInstanceId, ownerPlayerName)

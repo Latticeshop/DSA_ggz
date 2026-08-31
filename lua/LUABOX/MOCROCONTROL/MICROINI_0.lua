@@ -137,71 +137,6 @@ FilterALLENEMYUNIT=CreateObjectFilter({
     Include="INFANTRY VEHICLE STRUCTURE AIRCRAFT"
 })
 
-FilterLongRangeArtillery=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    IncludeThing = {
-        "PrismTank","AlliedPrismTank_Enhanced",
-        "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
-        "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
-        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced",
-        "SovietAntiStructureVehicle","SovietAntiStructureVehicle_Enhanced",
-        "CelestialHeavyAntiAirVehicleTech3","CelestialAntiVehicleVehicleTech3_EMC"
-    }
-})
-
-FilterLongRangeArtilleryEnemy=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="ENEMIES",
-    Include="INFANTRY VEHICLE HUGE_VEHICLE STRUCTURE"
-})
-
--- 仅白虎、雅典娜、波能炮和 V4 使用坦克 > 步兵 > 建筑的索敌优先级。
-FilterPrioritySiege=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    IncludeThing = {
-        "CelestialAntiStructureVehicle", "CelestialAntiStructureVehicle_Enhanced",
-        "AlliedAntiStructureVehicle", "AlliedAntiStructureVehicle_Enhanced",
-        "JapanAntiStructureVehicle", "JapanAntiStructureVehicle_Enhanced",
-        "SovietAntiStructureVehicle", "SovietAntiStructureVehicle_Enhanced"
-    }
-})
-
-FilterPrioritySiegeEnemyTank=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="ENEMIES",
-    Include="VEHICLE HUGE_VEHICLE",
-    Exclude="AIRCRAFT STRUCTURE INFANTRY"
-})
-
-FilterPrioritySiegeEnemyInfantry=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="ENEMIES",
-    Include="INFANTRY",
-    Exclude="AIRCRAFT STRUCTURE"
-})
-
-FilterPrioritySiegeEnemyStructure=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="ENEMIES",
-    Include="STRUCTURE"
-})
-
--- 所有专职对空飞机；心神的空中形态也沿用同一套目标切换逻辑。
-FilterAntiAirAircraft=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    IncludeThing = {
-        "AlliedFighterAircraft", "AlliedFighterAircraft_Enhanced",
-        "AlliedInterceptorAircraft", "AlliedInterceptorAircraft_Enhanced",
-        "CelestialInterceptorAircraft", "CelestialInterceptorAircraft_Enhanced",
-        "JapanMissileMechaAdvanced", "JapanMissileMechaAdvanced_Enhanced",
-        "SovietFighterAircraft", "SovietFighterAircraft_Enhanced",
-        "SovietInterceptorAircraft", "SovietInterceptorAircraft_Enhanced"
-    }
-})
-
 FilterJapanCommando=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
@@ -214,9 +149,6 @@ FilterJapanCommandoEnemy=CreateObjectFilter({
     Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT",
     Exclude="STRUCTURE"
 })
-
-g_LongRangeArtilleryLastTarget = {}
-g_AntiAirAircraftLastTarget = {}
 
 function IsJapanCommandoInAttackTeam(self, playindex)
     local teamName = ObjectTeamName(self)
@@ -236,25 +168,6 @@ function IsJapanCommandoInAttackTeam(self, playindex)
     return false
 end
 
-function FindFarthestEnemyInRange(self, radius, filter)
-    local x, y, z = ObjectGetPosition(self)
-    local targets, count = ObjectFindObjects(self, {
-        X=x, Y=y, Z=z, Radius=radius, DistType="CENTER_2D"
-    }, filter)
-    local farthest = nil
-    local farthestDistance = -1
-    for i = 1, count, 1 do
-        if ObjectIsAlive(targets[i]) then
-            local distance = ObjectsDistance2D(self, targets[i])
-            if distance > farthestDistance then
-                farthest = targets[i]
-                farthestDistance = distance
-            end
-        end
-    end
-    return farthest
-end
-
 function FindNearestEnemyAnywhere(self, filter)
     local targets, count = ObjectFindObjects(self, nil, filter)
     local nearest = nil
@@ -269,101 +182,6 @@ function FindNearestEnemyAnywhere(self, filter)
         end
     end
     return nearest
-end
-
-function FindPrioritySiegeTargetInRange(self, radius)
-    local target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyTank)
-    if target == nil then
-        target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyInfantry)
-    end
-    if target == nil then
-        target = FindFarthestEnemyInRange(self, radius, FilterPrioritySiegeEnemyStructure)
-    end
-    return target
-end
-
--- 首次接敌沿用单位原生索敌；当前目标死亡后，改打 700 范围内最远目标。
-function LongRangeArtilleryMICROCONTROL ()
-    for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterLongRangeArtillery)
-        for i = 1, count, 1 do
-            local self = units[i]
-            local selfId = ObjectGetId(self)
-            local currentTarget = ObjectGetTarget(self)
-            local previousTargetId = g_LongRangeArtilleryLastTarget[selfId]
-            local previousTargetDied = previousTargetId ~= nil and not ObjectIsAlive(previousTargetId)
-            local useSiegePriority = ObjectTestTargetObjectWithFilter(self, self, FilterPrioritySiege)
-
-            if useSiegePriority then
-                ObjectSetCustomTargetChooserData(self, {
-                    CustomFilter = FilterLongRangeArtilleryEnemy,
-                    CompareFilterList = {
-                        FilterPrioritySiegeEnemyTank,
-                        FilterPrioritySiegeEnemyInfantry,
-                        FilterPrioritySiegeEnemyStructure
-                    }
-                })
-                ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
-            end
-
-            if previousTargetDied then
-                local farthest = nil
-                if useSiegePriority then
-                    farthest = FindPrioritySiegeTargetInRange(self, 700)
-                else
-                    farthest = FindFarthestEnemyInRange(self, 700, FilterLongRangeArtilleryEnemy)
-                end
-                if farthest ~= nil then
-                    ExecuteAction("NAMED_ATTACK_NAMED", self, farthest)
-                    g_LongRangeArtilleryLastTarget[selfId] = ObjectGetId(farthest)
-                else
-                    g_LongRangeArtilleryLastTarget[selfId] = nil
-                end
-            elseif currentTarget ~= nil and ObjectIsAlive(currentTarget) then
-                g_LongRangeArtilleryLastTarget[selfId] = ObjectGetId(currentTarget)
-            elseif previousTargetId ~= nil then
-                -- 目标还活着但已离开索敌状态时，交回原生 AI 继续前进。
-                g_LongRangeArtilleryLastTarget[selfId] = nil
-            end
-        end
-    end
-end
-
--- 首次接敌沿用飞机原生索敌；之后目标死亡或脱离索敌时，
--- 只要 500 范围内仍有敌机，就持续改打其中最远的目标。
-function AntiAirAircraftMICROCONTROL ()
-    for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterAntiAirAircraft)
-        for i = 1, count, 1 do
-            local self = units[i]
-            local selfId = ObjectGetId(self)
-            local currentTarget = ObjectGetTarget(self)
-            local previousTargetId = g_AntiAirAircraftLastTarget[selfId]
-            local currentTargetId = nil
-            if currentTarget ~= nil and ObjectIsAlive(currentTarget) then
-                currentTargetId = ObjectGetId(currentTarget)
-            end
-
-            if previousTargetId == nil then
-                -- 尚未接敌，只记录原生 AI 首次选中的目标。
-                if currentTargetId ~= nil then
-                    g_AntiAirAircraftLastTarget[selfId] = currentTargetId
-                end
-            elseif currentTargetId == previousTargetId then
-                -- 仍在攻击原目标，不干预。
-                g_AntiAirAircraftLastTarget[selfId] = currentTargetId
-            else
-                -- 原目标死亡、脱离锁定，或引擎已经自动换目标：统一重选最远敌机。
-                local farthest = FindFarthestEnemyInRange(self, 500, FilterAIR2)
-                if farthest ~= nil then
-                    ExecuteAction("NAMED_ATTACK_NAMED", self, farthest)
-                    g_AntiAirAircraftLastTarget[selfId] = ObjectGetId(farthest)
-                else
-                    g_AntiAirAircraftLastTarget[selfId] = nil
-                end
-            end
-        end
-    end
 end
 
 -- 百合子的百分比伤害不能直接用于推塔：有敌方单位时追击最近单位，
@@ -406,47 +224,65 @@ end
 
 ----exMessageAppendToMessageArea("定义过滤器")
 
-function JapanAntiInfantryVehicleMICROCONTROL ()
+-- 天狗和心神赶路/攻击空中目标时保持飞行形态；攻击地面目标时落地。
+-- 空军清理完且当前没有目标时，只在附近仍有地面敌人的情况下落地继续作战。
+function JapanIdleAirFormMICROCONTROL (unitFilter, transformCommand, updateTargetChooser)
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiInfantryVehicle)
-        ----exMessageAppendToMessageArea("count"..count)
+        local SELF, count = ObjectFindObjects(P[playindex], nil, unitFilter)
         for i = 1 , count , 1 do
-            local x0, y0, z0 = ObjectGetPosition(SELF[i]) ;
-            local TAR, TARcount = ObjectFindObjects(P[playindex], {
-                X=x0, Y=y0, Z=z0, Radius=500, DistType="CENTER_2D"
+            local self = SELF[i]
+            local target = ObjectGetTarget(self)
+            local hasTarget = target ~= nil and ObjectIsAlive(target)
+            local targetIsAir = hasTarget and ObjectTestTargetObjectWithFilter(self, target, FilterAIR2)
+            local x, y, z = ObjectGetPosition(self)
+            local airTargets, airCount = ObjectFindObjects(self, {
+                X=x, Y=y, Z=z, Radius=500, DistType="CENTER_2D"
             }, FilterAIR)
-            -- --exMessageAppendToMessageArea("TARcount"..TARcount)
-            if TARcount > 0 and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                --  --exMessageAppendToMessageArea("起飞")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JAIV_Transform" )
-            elseif  TARcount == 0  and EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                -- --exMessageAppendToMessageArea("降落")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JAIV_Transform" )
+            local hasAirEnemyNearby = airCount > 0
+            local hasGroundEnemyNearby = false
+            if not hasTarget then
+                local groundTargets, groundCount = ObjectFindObjects(self, {
+                    X=x, Y=y, Z=z, Radius=500, DistType="CENTER_2D"
+                }, FilterLAND)
+                hasGroundEnemyNearby = groundCount > 0
+            end
+            local isAirborne = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", self, "AIRBORNE_TARGET")
+            -- 空军优先：附近有空军时立即起飞；没有空军且空闲时，附近有地面敌人才落地。
+            local shouldBeAirborne = hasAirEnemyNearby
+                or targetIsAir
+                or (not hasTarget and not hasGroundEnemyNearby)
+
+            if shouldBeAirborne and not isAirborne then
+                if updateTargetChooser then
+                    ObjectSetCustomTargetChooserData(self, {
+                        CustomFilter = g_FilterOptimizedAirEnemy,
+                        ReverseRangeCompare = true,
+                        PreferTargetInsideRange = true
+                    })
+                    ObjectSetTargetChooserNextAutoAcquireDelay(self, 0)
+                end
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, transformCommand)
+            elseif not shouldBeAirborne and isAirborne then
+                if updateTargetChooser then
+                    ObjectSetCustomTargetChooserData(self, {
+                        CustomFilter = g_FilterOptimizedGroundEnemy,
+                        ReverseRangeCompare = true,
+                        PreferTargetInsideRange = true
+                    })
+                    ObjectSetTargetChooserNextAutoAcquireDelay(self, 0)
+                end
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, transformCommand)
             end
         end
     end
 end
 
+function JapanAntiInfantryVehicleMICROCONTROL ()
+    JapanIdleAirFormMICROCONTROL(FilterJapanAntiInfantryVehicle, "Command_JAIV_Transform")
+end
 
 function JapanMissileMechaAdvancedMICROCONTROL ()
-    for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanMissileMechaAdvanced)
-        ----exMessageAppendToMessageArea("count"..count)
-        for i = 1 , count , 1 do
-            local x0, y0, z0 = ObjectGetPosition(SELF[i]) ;
-            local TAR, TARcount = ObjectFindObjects(P[playindex], {
-                X=x0, Y=y0, Z=z0, Radius=500, DistType="CENTER_2D"
-            }, FilterAIR)
-            -- --exMessageAppendToMessageArea("TARcount"..TARcount)
-            if TARcount > 0 and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                ----exMessageAppendToMessageArea("起飞")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JapanMissileMechaAdavanced_Transform" )
-            elseif  TARcount == 0  and EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                ----exMessageAppendToMessageArea("降落")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JapanMissileMechaAdavanced_Transform" )
-            end
-        end
-    end
+    JapanIdleAirFormMICROCONTROL(FilterJapanMissileMechaAdvanced, "Command_JapanMissileMechaAdavanced_Transform", true)
 end
 
 function JapanAntiAirVehicleTech1MICROCONTROL ()
