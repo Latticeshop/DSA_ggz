@@ -197,26 +197,35 @@ function IsAirMarshalAircraft(unit)
 end
 
 g_TanyaTowerBombState = g_TanyaTowerBombState or {}
-g_TanyaBombTowerScriptNames = {
+g_TanyaBombTowerScriptNames = g_TanyaBombTowerScriptNames or {
     "T71", "T72", "T73", "T74",
     "T81", "T82", "T83", "T84"
 }
+-- 日冕使用 Lua 4；这里固定数量，不依赖 getn 或长度运算符。
+g_TanyaBombTowerScriptNameCount = 8
 
-function IsTanyaBombTower(container)
-    if container == nil then
-        return false
-    end
-    local containerId = ObjectGetId(container)
-    for i = 1, getn(g_TanyaBombTowerScriptNames), 1 do
-        local towerId = GetObjectByScriptName(g_TanyaBombTowerScriptNames[i])
-        if towerId ~= nil and towerId == containerId then
-            return true
+function IsTanyaAttachedToBombTower(id)
+    for i = 1, g_TanyaBombTowerScriptNameCount, 1 do
+        local towerName = g_TanyaBombTowerScriptNames[i]
+        local tower = GetObjectByScriptName(towerName)
+        if tower ~= nil and ObjectIsAlive(tower) then
+            local attachers, attacherCount = ObjectGetAttachers(tower)
+            if attachers ~= nil and attacherCount ~= nil then
+                for j = 1, attacherCount, 1 do
+                    local attacher = attachers[j]
+                    -- 当前循环只跟踪这个出生事件给出的谭雅 ID；ID 相同已经足以排除 C4 对象，
+                    -- 不再额外依赖 ObjectTemplateName 的返回格式。
+                    if attacher ~= nil and ObjectGetId(attacher) == id then
+                        return true
+                    end
+                end
+            end
         end
     end
     return false
 end
 
-function DeleteTanyaAfterTowerBomb(id)
+function KillTanyaAfterTowerBomb(id)
     if g_TanyaTowerBombState[id] == nil then
         return
     end
@@ -224,15 +233,6 @@ function DeleteTanyaAfterTowerBomb(id)
     if ObjectIsAlive(id) then
         ExecuteAction("NAMED_DELETE", GetObjectById(id))
     end
-end
-
-function CommitTanyaTowerBomb(id, state)
-    if state.bombCommitted then
-        return
-    end
-    state.bombCommitted = true
-    -- 确认进入 C4 流程后固定等待 2 秒退场，保证爆破先完成且不会再次进塔。
-    SchedulerModule.delay_call(DeleteTanyaAfterTowerBomb, 15 * 2, {id})
 end
 
 function TrackTanyaTowerBomb(id)
@@ -245,56 +245,19 @@ function TrackTanyaTowerBomb(id)
         return
     end
 
-    local tanya = GetObjectById(id)
-    local container = ObjectGetContainerObject(tanya)
-    local target = ObjectGetTarget(tanya)
-    local targetIsTower = IsTanyaBombTower(target)
-    local isSelectable = EvaluateCondition("UNIT_TEST_OBJECT_PANEL_FLAGS", tanya, "Selectable")
-    local isFiring = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", tanya, "IS_FIRING_WEAPON")
-
-    if targetIsTower then
-        local targetId = ObjectGetId(target)
-        state.targetTowerId = targetId
-
-        -- C4 会登记由谭雅本人造成的虚拟伤害。用攻击者 ID 确认本次爆破已经提交，
-        -- 避免同一座塔被其他单位打掉血时误删尚未爆破的谭雅。
-        local damages, damageCount = ObjectGetVirtualDamages(target)
-        if damages ~= nil then
-            for i = 1, damageCount, 1 do
-                if damages[i].AttackerId == id then
-                    CommitTanyaTowerBomb(id, state)
-                    break
-                end
-            end
-        end
-    elseif target ~= nil and isSelectable then
-        -- 已经明确切换到非塔目标，清除旧记录，避免普通双枪开火被误判为 C4。
-        state.targetTowerId = nil
-    end
-
-    -- RA3 的 C4 进塔不一定建立普通 Container 关系；进入动画期间单位会变为不可选择。
-    -- 容器、不可选择、对塔开火三种信号任意命中都视为已经开始本次爆破。
-    if IsTanyaBombTower(container)
-        or (state.targetTowerId ~= nil and not isSelectable)
-        or (targetIsTower and isFiring) then
-        CommitTanyaTowerBomb(id, state)
-    end
-
-    if state.bombCommitted then
+    -- 谭雅是 Attacher，塔是被附着对象。只认塔的 Attachers 中与当前出生 ID 匹配的对象。
+    if IsTanyaAttachedToBombTower(id) then
+        -- 进入爆破流程后等待 2 秒再清除，给原版 C4 留出完成时间，同时阻止再次进塔。
+        SchedulerModule.delay_call(KillTanyaAfterTowerBomb, 15 * 2, {id})
         return
     end
 
-    SchedulerModule.delay_call(TrackTanyaTowerBomb, 3, {id})
+    SchedulerModule.delay_call(TrackTanyaTowerBomb, 1, {id})
 end
 
 function TanyaTowerBombTrackerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    if not IsAutoChessAIPlayer(ownerPlayerName) then
-        return
-    end
-    g_TanyaTowerBombState[createdObjId] = {
-        bombCommitted = false,
-        targetTowerId = nil
-    }
+    -- 不按所有者过滤，避免单位转交或特殊生成方式导致检测根本没有启动。
+    g_TanyaTowerBombState[createdObjId] = true
     SchedulerModule.delay_call(TrackTanyaTowerBomb, 1, {createdObjId})
 end
 
