@@ -167,6 +167,128 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
     end
 end
 
+-- 空军元帅使用命名单位 angel1..8 / devil1..8 沿同名路径飞行。
+-- GetObjectByScriptName 只查询单位命名空间，不会与同名路径点冲突。
+function IsAirMarshalAircraft(unit)
+    if unit == nil then
+        return false
+    end
+    local unitId = ObjectGetId(unit)
+    for i = 1, 8, 1 do
+        local angelId = GetObjectByScriptName("angel" .. i)
+        if angelId ~= nil and angelId == unitId then
+            return true
+        end
+        local devilId = GetObjectByScriptName("devil" .. i)
+        if devilId ~= nil and devilId == unitId then
+            return true
+        end
+    end
+    return false
+end
+
+g_TanyaTowerBombState = g_TanyaTowerBombState or {}
+g_TanyaBombTowerScriptNames = {
+    "T71", "T72", "T73", "T74",
+    "T81", "T82", "T83", "T84"
+}
+
+function IsTanyaBombTower(container)
+    if container == nil then
+        return false
+    end
+    local containerId = ObjectGetId(container)
+    for i = 1, getn(g_TanyaBombTowerScriptNames), 1 do
+        local towerId = GetObjectByScriptName(g_TanyaBombTowerScriptNames[i])
+        if towerId ~= nil and towerId == containerId then
+            return true
+        end
+    end
+    return false
+end
+
+function DeleteTanyaAfterTowerBomb(id)
+    if g_TanyaTowerBombState[id] == nil then
+        return
+    end
+    g_TanyaTowerBombState[id] = nil
+    if ObjectIsAlive(id) then
+        ExecuteAction("NAMED_DELETE", GetObjectById(id))
+    end
+end
+
+function CommitTanyaTowerBomb(id, state)
+    if state.bombCommitted then
+        return
+    end
+    state.bombCommitted = true
+    -- 确认进入 C4 流程后固定等待 2 秒退场，保证爆破先完成且不会再次进塔。
+    SchedulerModule.delay_call(DeleteTanyaAfterTowerBomb, 15 * 2, {id})
+end
+
+function TrackTanyaTowerBomb(id)
+    local state = g_TanyaTowerBombState[id]
+    if state == nil then
+        return
+    end
+    if not ObjectIsAlive(id) then
+        g_TanyaTowerBombState[id] = nil
+        return
+    end
+
+    local tanya = GetObjectById(id)
+    local container = ObjectGetContainerObject(tanya)
+    local target = ObjectGetTarget(tanya)
+    local targetIsTower = IsTanyaBombTower(target)
+    local isSelectable = EvaluateCondition("UNIT_TEST_OBJECT_PANEL_FLAGS", tanya, "Selectable")
+    local isFiring = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", tanya, "IS_FIRING_WEAPON")
+
+    if targetIsTower then
+        local targetId = ObjectGetId(target)
+        state.targetTowerId = targetId
+
+        -- C4 会登记由谭雅本人造成的虚拟伤害。用攻击者 ID 确认本次爆破已经提交，
+        -- 避免同一座塔被其他单位打掉血时误删尚未爆破的谭雅。
+        local damages, damageCount = ObjectGetVirtualDamages(target)
+        if damages ~= nil then
+            for i = 1, damageCount, 1 do
+                if damages[i].AttackerId == id then
+                    CommitTanyaTowerBomb(id, state)
+                    break
+                end
+            end
+        end
+    elseif target ~= nil and isSelectable then
+        -- 已经明确切换到非塔目标，清除旧记录，避免普通双枪开火被误判为 C4。
+        state.targetTowerId = nil
+    end
+
+    -- RA3 的 C4 进塔不一定建立普通 Container 关系；进入动画期间单位会变为不可选择。
+    -- 容器、不可选择、对塔开火三种信号任意命中都视为已经开始本次爆破。
+    if IsTanyaBombTower(container)
+        or (state.targetTowerId ~= nil and not isSelectable)
+        or (targetIsTower and isFiring) then
+        CommitTanyaTowerBomb(id, state)
+    end
+
+    if state.bombCommitted then
+        return
+    end
+
+    SchedulerModule.delay_call(TrackTanyaTowerBomb, 3, {id})
+end
+
+function TanyaTowerBombTrackerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    g_TanyaTowerBombState[createdObjId] = {
+        bombCommitted = false,
+        targetTowerId = nil
+    }
+    SchedulerModule.delay_call(TrackTanyaTowerBomb, 1, {createdObjId})
+end
+
 function AlliedGuardianTankBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- 等技能组件初始化完成后，强制切换为激光指示器模式。
     SchedulerModule.delay_call(function(id)
@@ -442,6 +564,9 @@ function AntiAirHunterBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     SchedulerModule.delay_call(function(id, sideIndex)
         if ObjectIsAlive(id) then
             local unit = GetObjectById(id)
+            if IsAirMarshalAircraft(unit) then
+                return
+            end
             ExecuteAction("NAMED_STOP", unit)
             ExecuteAction("UNIT_SET_TEAM", unit, g_PrioritySiegeIdleTeam[sideIndex])
             ConfigureNearestNoChaseTargetChooser(unit, g_FilterOptimizedAirEnemy)
@@ -498,16 +623,46 @@ g_UnitCreateEventFunc[FastHash("JapanGigaFortressShipEgg")] = UnitCountFunc
 -- g_UnitCreateEventFunc[FastHash("AlliedAntiInfantryVehicle")] = UnitCountFunc
 -- g_UnitCreateEventFunc[FastHash("AlliedAntiInfantryVehicle_Ground")] = UnitCountFunc
 
--- 三阵营英雄统一限制为每位玩家两个。
-g_SovietCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("SovietCommandoTech1", 2)
+-- 三阵营英雄不再限造；保留原调用作为配置参考。
+-- g_SovietCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("SovietCommandoTech1", 2)
 function SovietCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    g_SovietCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- g_SovietCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     NatashaPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 g_UnitCreateEventFunc[FastHash("SovietCommandoTech1")] = SovietCommandoBorn
-g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
+-- g_AlliedCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
+if not g_TanyaRangeX125Modifier then
+    g_TanyaRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25 }, 1)
+end
+function AlliedCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- g_AlliedCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), g_TanyaRangeX125Modifier)
+        end
+    end, 1, {createdObjId})
+    TanyaTowerBombTrackerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+end
+g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = AlliedCommandoBorn
+-- g_JapanCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
+if not g_YurikoHealthX2Modifier then
+    g_YurikoHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
+end
+if not g_YurikoRangeX25Modifier then
+    g_YurikoRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
+end
+function JapanCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- g_JapanCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local yuriko = GetObjectById(id)
+            ObjectLoadAttributeModifier(yuriko, g_YurikoHealthX2Modifier)
+            ObjectLoadAttributeModifier(yuriko, g_YurikoRangeX25Modifier)
+        end
+    end, 1, {createdObjId})
+end
 -- 百合子的建筑索敌仍由微操脚本排除。
-g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
+g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = JapanCommandoBorn
 
 g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDroneBorn
 

@@ -175,7 +175,8 @@ FilterALLENEMYUNIT=CreateObjectFilter({
 FilterNoStructureCommando=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
-    IncludeThing = { "JapanCommandoTech1", "AlliedCommandoTech1" }
+    -- 百合子继续禁止攻击建筑；谭雅允许爆破一次，并由出生脚本在爆破后删除。
+    IncludeThing = { "JapanCommandoTech1" }
 })
 
 FilterCommandoEnemy=CreateObjectFilter({
@@ -265,6 +266,7 @@ function AntiAirAircraftHunterMICROCONTROL ()
         local units, count = ObjectFindObjects(P[playindex], nil, FilterAntiAirHunterAircraft)
         for i = 1, count, 1 do
             local self = units[i]
+            if not IsAirMarshalAircraft(self) then
             local selfId = ObjectGetId(self)
             local teamName = ObjectTeamName(self)
             local idleTeamName = DEFAULTIDLETEAM[playindex]
@@ -358,11 +360,12 @@ function AntiAirAircraftHunterMICROCONTROL ()
                     g_AirHunterTargetByUnitId[selfId] = ObjectGetId(target)
                 end
             end
+            end
         end
     end
 end
 
--- 百合子和谭雅禁止攻击建筑：有敌方单位时追击最近单位，
+-- 百合子禁止攻击建筑：有敌方单位时追击最近单位，
 -- 全地图没有合法单位目标时把自身设为非法攻击目标，打断攻击前进并原地待命。
 function CommandoNoStructureMICROCONTROL ()
     for playindex = 7, 8, 1 do
