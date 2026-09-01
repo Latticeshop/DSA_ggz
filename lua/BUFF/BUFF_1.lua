@@ -251,6 +251,13 @@ FilterCelestialInterceptorAircraft=CreateObjectFilter({
     }
 })
 
+FilterAlliedCryoLegionnaire=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "AlliedCryoLegionnaire"
+    }
+})
+
 FilterJapanInterceptorAircraft=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
@@ -265,6 +272,9 @@ if not g_SukhoiHealthX2Modifier then
 end
 if not g_CelestialInterceptorRangeX075Modifier then
     g_CelestialInterceptorRangeX075Modifier = exAttributeModifierCreate({ RANGE = 0.75 }, 1)
+end
+if not g_CryoLegionnaireRateOfFireX075Modifier then
+    g_CryoLegionnaireRateOfFireX075Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 0.75 }, 1)
 end
 if not g_JapanInterceptorHealthX3Modifier then
     g_JapanInterceptorHealthX3Modifier = exAttributeModifierCreate({ HEALTH_MULT = 3.0 }, 1)
@@ -314,6 +324,13 @@ function LARGEENHANCEBUFF ()
     local Chongming , ChongmingCount = ObjectFindObjects(nil, nil, FilterCelestialInterceptorAircraft)
     for i = 1 , ChongmingCount ,1 do
         ObjectLoadAttributeModifier(Chongming[i], g_CelestialInterceptorRangeX075Modifier)
+    end
+
+    -- 冷冻军团：叠加崇明同款 25% 射程削减，并额外降低 25% 攻速。
+    local CryoLegionnaire , CryoLegionnaireCount = ObjectFindObjects(nil, nil, FilterAlliedCryoLegionnaire)
+    for i = 1 , CryoLegionnaireCount ,1 do
+        ObjectLoadAttributeModifier(CryoLegionnaire[i], g_CelestialInterceptorRangeX075Modifier)
+        ObjectLoadAttributeModifier(CryoLegionnaire[i], g_CryoLegionnaireRateOfFireX075Modifier)
     end
 
     -- 樱花回天雷：覆盖空中、地面和船厂水面三种形态，生命值提升为 3 倍。

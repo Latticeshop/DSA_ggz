@@ -319,6 +319,28 @@ function IsAutoChessAIPlayer(ownerPlayerName)
     return ownerPlayerName == "PlyrCreeps" or ownerPlayerName == "PlyrCivilian"
 end
 
+function NatashaPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterPrioritySiegeAllGroundEnemy,
+                CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyInfantry,
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterPrioritySiegeEnemyStructure
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+        end
+    end, 1, {createdObjId})
+end
+
 function ConfigureNearestNoChaseTargetChooser(unit, targetFilter)
     ObjectSetCustomTargetChooserData(unit, {
         CustomFilter = targetFilter,
@@ -328,18 +350,19 @@ function ConfigureNearestNoChaseTargetChooser(unit, targetFilter)
     ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
 end
 
+function ConfigureFarthestNoChaseTargetChooser(unit, targetFilter)
+    ObjectSetCustomTargetChooserData(unit, {
+        CustomFilter = targetFilter,
+        ReverseRangeCompare = true,
+        PreferTargetInsideRange = true
+    })
+    ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+end
+
 g_NearestNoChaseFilterByInstanceId = {
-    [FastHash("PrismTank")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("AlliedPrismTank_Enhanced")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("CelestialHeavyAntiAirVehicleTech3")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("SovietSledgehammerSPG")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("SovietSledgehammerSPG_Enhanced")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("SovietSPG")] = g_FilterOptimizedGroundEnemy,
-    -- VX 飞行形态对地，青峰为专职对空单位。
+    -- VX 保留独立的最近目标与空地形态切换逻辑。
     [FastHash("JapanAntiAirVehicleTech1")] = g_FilterOptimizedGroundEnemy,
     [FastHash("JapanAntiAirVehicleTech1_Enhanced")] = g_FilterOptimizedGroundEnemy,
-    [FastHash("CelestialAntiAirVehicleTech3")] = g_FilterOptimizedAirEnemy,
 }
 
 function NearestNoChaseTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
@@ -351,6 +374,30 @@ function NearestNoChaseTargetChooserBorn(createdObjId, createdObjInstanceId, own
         if ObjectIsAlive(id) then
             local unit = GetObjectById(id)
             ConfigureNearestNoChaseTargetChooser(unit, filter)
+        end
+    end, 1, {createdObjId, targetFilter})
+end
+
+g_FarthestNoChaseFilterByInstanceId = {
+    [FastHash("PrismTank")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("AlliedPrismTank_Enhanced")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("CelestialHeavyAntiAirVehicleTech3")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = g_FilterOptimizedGroundEnemy,
+    -- 青锋导弹车的内部名虽然带 AntiAir，实际武器只能攻击地面单位。
+    [FastHash("CelestialAntiAirVehicleTech3")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("SovietSledgehammerSPG")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("SovietSledgehammerSPG_Enhanced")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("SovietSPG")] = g_FilterOptimizedGroundEnemy,
+}
+
+function FarthestTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    local targetFilter = g_FarthestNoChaseFilterByInstanceId[createdObjInstanceId]
+    SchedulerModule.delay_call(function(id, filter)
+        if ObjectIsAlive(id) then
+            ConfigureFarthestNoChaseTargetChooser(GetObjectById(id), filter)
         end
     end, 1, {createdObjId, targetFilter})
 end
@@ -452,7 +499,12 @@ g_UnitCreateEventFunc[FastHash("JapanGigaFortressShipEgg")] = UnitCountFunc
 -- g_UnitCreateEventFunc[FastHash("AlliedAntiInfantryVehicle_Ground")] = UnitCountFunc
 
 -- 三阵营英雄统一限制为每位玩家两个。
-g_UnitCreateEventFunc[FastHash("SovietCommandoTech1")] = GetLimitCommandoUnitCreateFunc("SovietCommandoTech1", 2)
+g_SovietCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("SovietCommandoTech1", 2)
+function SovietCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    g_SovietCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    NatashaPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+end
+g_UnitCreateEventFunc[FastHash("SovietCommandoTech1")] = SovietCommandoBorn
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
 -- 百合子的建筑索敌仍由微操脚本排除。
 g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
@@ -478,15 +530,15 @@ g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1_Enhanced")] = JapanAIAi
 g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced")] = JapanAIAirFormVehicleAndAirHunterBorn
 g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIAirFormVehicleAndAirHunterBorn
 
--- 射程内选最近目标；目标离开射程后不追击。
-g_UnitCreateEventFunc[FastHash("PrismTank")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("CelestialAntiAirVehicleTech3")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = NearestNoChaseTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("SovietSPG")] = NearestNoChaseTargetChooserBorn
+-- 配置坦克统一在射程内优先选择最远目标。
+g_UnitCreateEventFunc[FastHash("PrismTank")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiAirVehicleTech3")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietSPG")] = FarthestTargetChooserBorn
 
 -- 仅四类 T3 攻城单位叠加 坦克 > 步兵 > 建筑 的优先级。
 g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn

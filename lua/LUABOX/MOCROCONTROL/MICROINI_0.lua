@@ -172,20 +172,20 @@ FilterALLENEMYUNIT=CreateObjectFilter({
     Include="INFANTRY VEHICLE STRUCTURE AIRCRAFT"
 })
 
-FilterJapanCommando=CreateObjectFilter({
+FilterNoStructureCommando=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
-    IncludeThing = { "JapanCommandoTech1" }
+    IncludeThing = { "JapanCommandoTech1", "AlliedCommandoTech1" }
 })
 
-FilterJapanCommandoEnemy=CreateObjectFilter({
+FilterCommandoEnemy=CreateObjectFilter({
     Rule="ANY",
     Relationship="ENEMIES",
     Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT",
     Exclude="STRUCTURE"
 })
 
-function IsJapanCommandoInAttackTeam(self, playindex)
+function IsCommandoInAttackTeam(self, playindex)
     local teamName = ObjectTeamName(self)
     local playerName = "PlyrCivilian"
     if playindex == 8 then
@@ -362,28 +362,28 @@ function AntiAirAircraftHunterMICROCONTROL ()
     end
 end
 
--- 百合子的百分比伤害不能直接用于推塔：有敌方单位时追击最近单位，
+-- 百合子和谭雅禁止攻击建筑：有敌方单位时追击最近单位，
 -- 全地图没有合法单位目标时把自身设为非法攻击目标，打断攻击前进并原地待命。
-function JapanCommandoNoStructureMICROCONTROL ()
+function CommandoNoStructureMICROCONTROL ()
     for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanCommando)
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterNoStructureCommando)
         for i = 1, count, 1 do
             local self = units[i]
             local selfId = ObjectGetId(self)
             -- 只在当前确实被放回进攻编队时分离，待命状态下不会重复换队。
-            if IsJapanCommandoInAttackTeam(self, playindex) then
+            if IsCommandoInAttackTeam(self, playindex) then
                 ExecuteAction("UNIT_SET_TEAM", self, DEFAULTIDLETEAM[playindex])
             end
             ObjectSetCustomTargetChooserData(self, {
-                CustomFilter = FilterJapanCommandoEnemy
+                CustomFilter = FilterCommandoEnemy
             })
             ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
             local target = ObjectGetTarget(self)
             local hasValidTarget = target ~= nil
                 and ObjectIsAlive(target)
-                and ObjectTestTargetObjectWithFilter(self, target, FilterJapanCommandoEnemy)
+                and ObjectTestTargetObjectWithFilter(self, target, FilterCommandoEnemy)
             if not hasValidTarget then
-                local replacement = FindNearestEnemyAnywhere(self, FilterJapanCommandoEnemy)
+                local replacement = FindNearestEnemyAnywhere(self, FilterCommandoEnemy)
                 if replacement ~= nil then
                     ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
                     ObjectSetAssignedTarget(self, replacement)
