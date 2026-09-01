@@ -56,6 +56,29 @@ FilterSovietScoutVehicle=CreateObjectFilter({
     }
 })
 
+FilterJapanTsunamiTank=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "JapanAntiVehicleVehicleTech1","JapanAntiVehicleVehicleTech1_Naval"
+    }
+})
+
+FilterAntiAirHunterAircraft=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "JapanAntiInfantryVehicle","JapanAntiInfantryVehicle_Enhanced",
+        "JapanMissileMechaAdvanced","JapanMissileMechaAdvanced_Enhanced",
+        "AlliedFighterAircraft","AlliedFighterAircraft_Enhanced",
+        "AlliedInterceptorAircraft","AlliedInterceptorAircraft_Enhanced",
+        "CelestialFighterAircraft",
+        "CelestialInterceptorAircraft","CelestialInterceptorAircraft_Enhanced",
+        "SovietFighterAircraft","SovietFighterAircraft_Enhanced",
+        "SovietInterceptorAircraft","SovietInterceptorAircraft_Enhanced"
+    }
+})
+
 FilterPrioritySiegeVehicle=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
@@ -63,7 +86,8 @@ FilterPrioritySiegeVehicle=CreateObjectFilter({
         "CelestialAntiStructureVehicle","CelestialAntiStructureVehicle_Enhanced",
         "SovietAntiStructureVehicle","SovietAntiStructureVehicle_Enhanced",
         "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
-        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced"
+        "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced",
+        "JapanGigaFortress_Land"
     }
 })
 
@@ -193,6 +217,149 @@ function FindNearestEnemyAnywhere(self, filter)
         end
     end
     return nearest
+end
+
+g_TsunamiShieldEnemyRange = 300
+g_TsunamiShieldScanIntervalFrames = 15 * 5
+g_TsunamiShieldNextScanFrame = g_TsunamiShieldNextScanFrame or 0
+
+-- 海啸坦克每 5 秒统一检测一次，只在自身作战射程内有敌人时尝试开启纳米护盾。
+-- 技能本身的持续时间和冷却由单位模板控制。
+function JapanTsunamiTankShieldMICROCONTROL ()
+    local frame = GetFrame()
+    if frame < g_TsunamiShieldNextScanFrame then
+        return
+    end
+    g_TsunamiShieldNextScanFrame = frame + g_TsunamiShieldScanIntervalFrames
+
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanTsunamiTank)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local x, y, z = ObjectGetPosition(self)
+            local enemies, enemyCount = ObjectFindObjects(self, {
+                X=x, Y=y, Z=z,
+                Radius=g_TsunamiShieldEnemyRange,
+                DistType="CENTER_2D"
+            }, FilterLAND)
+            if enemyCount > 0 then
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, "Command_ToggleEnergizedArmorSpecialPower")
+            end
+        end
+    end
+end
+
+g_AirHunterReacquireRange = 500
+g_AirHunterTargetByUnitId = g_AirHunterTargetByUnitId or {}
+g_AirHunterTransformCommandByInstanceId = {
+    [FastHash("JapanAntiInfantryVehicle")] = "Command_JAIV_Transform",
+    [FastHash("JapanAntiInfantryVehicle_Enhanced")] = "Command_JAIV_Transform",
+    [FastHash("JapanMissileMechaAdvanced")] = "Command_JapanMissileMechaAdavanced_Transform",
+    [FastHash("JapanMissileMechaAdvanced_Enhanced")] = "Command_JapanMissileMechaAdavanced_Transform",
+}
+
+-- 对空飞机分离出公共 AIRATTACK 编队：锁定最近空中目标并持续追踪，
+-- 只在目标死亡、失效或超出作战射程时重新选择最近目标。
+function AntiAirAircraftHunterMICROCONTROL ()
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterAntiAirHunterAircraft)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local selfId = ObjectGetId(self)
+            local teamName = ObjectTeamName(self)
+            local idleTeamName = DEFAULTIDLETEAM[playindex]
+            local idleTeamShortName = "teamPlyrCivilian"
+            if playindex == 8 then
+                idleTeamShortName = "teamPlyrCreeps"
+            end
+            local wasReassigned = teamName ~= idleTeamName and teamName ~= idleTeamShortName
+            if wasReassigned then
+                ExecuteAction("NAMED_STOP", self)
+                ObjectSetAssignedTarget(self, nil)
+                ExecuteAction("UNIT_SET_TEAM", self, idleTeamName)
+            end
+
+            local transformCommand = g_AirHunterTransformCommandByInstanceId[ObjectGetInstanceId(selfId)]
+            local isAirborne = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", self, "AIRBORNE_TARGET")
+            if transformCommand ~= nil and not isAirborne then
+                -- 天狗、心神的地面形态：有空中目标时重新起飞，
+                -- 没有空中目标时留在地面并攻击最近地面单位。
+                local nearestAir = FindNearestEnemyAnywhere(self, g_FilterOptimizedAirEnemy)
+                if nearestAir ~= nil then
+                    ExecuteAction("NAMED_STOP", self)
+                    ObjectSetAssignedTarget(self, nil)
+                    ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedAirEnemy)
+                    ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, transformCommand)
+                    g_AirHunterTargetByUnitId[selfId] = nil
+                else
+                    ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedGroundEnemy)
+                    local target = ObjectGetTarget(self)
+                    local targetIsValid = target ~= nil
+                        and ObjectIsAlive(target)
+                        and ObjectTestTargetObjectWithFilter(self, target, g_FilterOptimizedGroundEnemy)
+                    if not targetIsValid then
+                        local replacement = FindNearestEnemyAnywhere(self, g_FilterOptimizedGroundEnemy)
+                        if replacement ~= nil then
+                            ExecuteAction("NAMED_STOP", self)
+                            ObjectSetAssignedTarget(self, replacement)
+                            ExecuteAction("NAMED_ATTACK_NAMED", self, replacement)
+                            g_AirHunterTargetByUnitId[selfId] = ObjectGetId(replacement)
+                        else
+                            if g_AirHunterTargetByUnitId[selfId] ~= nil then
+                                ExecuteAction("NAMED_STOP", self)
+                                ObjectSetAssignedTarget(self, nil)
+                            end
+                            g_AirHunterTargetByUnitId[selfId] = nil
+                        end
+                    else
+                        g_AirHunterTargetByUnitId[selfId] = ObjectGetId(target)
+                    end
+                end
+            else
+                ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedAirEnemy)
+                local target = ObjectGetTarget(self)
+                local targetIsValid = target ~= nil
+                    and ObjectIsAlive(target)
+                    and ObjectTestTargetObjectWithFilter(self, target, g_FilterOptimizedAirEnemy)
+                local targetIsOutOfRange = targetIsValid
+                    and ObjectsDistance2D(self, target) > g_AirHunterReacquireRange
+
+                if not targetIsValid or targetIsOutOfRange then
+                    local replacement = FindNearestEnemyAnywhere(self, g_FilterOptimizedAirEnemy)
+                    if replacement ~= nil then
+                        local replacementId = ObjectGetId(replacement)
+                        local currentTargetId = nil
+                        if targetIsValid then
+                            currentTargetId = ObjectGetId(target)
+                        end
+                        if currentTargetId ~= replacementId then
+                            ObjectSetAssignedTarget(self, replacement)
+                            ExecuteAction("NAMED_ATTACK_NAMED", self, replacement)
+                        end
+                        g_AirHunterTargetByUnitId[selfId] = replacementId
+                    else
+                        -- 天狗、心神清空空中目标后，改为寻找最近地面单位并落地。
+                        local groundReplacement = nil
+                        if transformCommand ~= nil then
+                            groundReplacement = FindNearestEnemyAnywhere(self, g_FilterOptimizedGroundEnemy)
+                        end
+                        if groundReplacement ~= nil then
+                            ExecuteAction("NAMED_STOP", self)
+                            ObjectSetAssignedTarget(self, nil)
+                            ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedGroundEnemy)
+                            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, transformCommand)
+                        elseif g_AirHunterTargetByUnitId[selfId] ~= nil then
+                            ExecuteAction("NAMED_STOP", self)
+                            ObjectSetAssignedTarget(self, nil)
+                        end
+                        g_AirHunterTargetByUnitId[selfId] = nil
+                    end
+                else
+                    g_AirHunterTargetByUnitId[selfId] = ObjectGetId(target)
+                end
+            end
+        end
+    end
 end
 
 -- 百合子的百分比伤害不能直接用于推塔：有敌方单位时追击最近单位，
@@ -335,25 +502,95 @@ function PrioritySiegeAttackMoveMICROCONTROL ()
     end
 end
 
+function FindNearestTargetFromList(self, targets, count)
+    local nearest = nil
+    local nearestDistance = nil
+    for i = 1, count, 1 do
+        if ObjectIsAlive(targets[i]) then
+            local distance = ObjectsDistance2D(self, targets[i])
+            if nearestDistance == nil or distance < nearestDistance then
+                nearest = targets[i]
+                nearestDistance = distance
+            end
+        end
+    end
+    return nearest
+end
+
+function ClearVXTarget(self)
+    ExecuteAction("NAMED_STOP", self)
+    ObjectSetAssignedTarget(self, nil)
+end
+
+function AssignVXNearestTarget(self, targets, count)
+    local replacement = FindNearestTargetFromList(self, targets, count)
+    if replacement ~= nil then
+        ObjectSetAssignedTarget(self, replacement)
+        ExecuteAction("NAMED_ATTACK_NAMED", self, replacement)
+    end
+end
+
 function JapanAntiAirVehicleTech1MICROCONTROL ()
     for playindex = 7 , 8 , 1 do
         local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiAirVehicleTech1)
-        ----exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
-            local x0, y0, z0 = ObjectGetPosition(SELF[i]) ;
-            local TAR, TARcount = ObjectFindObjects(P[playindex], {
+            local self = SELF[i]
+            local isAirborne = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", self, "AIRBORNE_TARGET")
+            local x0, y0, z0 = ObjectGetPosition(self)
+            local airTargets, airTargetCount = ObjectFindObjects(P[playindex], {
                 X=x0, Y=y0, Z=z0, Radius=500, DistType="CENTER_2D"
             }, FilterAIR2)
-            local TARLAND, TARcountLAND = ObjectFindObjects(P[playindex], {
+            local groundTargets, groundTargetCount = ObjectFindObjects(P[playindex], {
                 X=x0, Y=y0, Z=z0, Radius=400, DistType="CENTER_2D"
             }, FilterLAND)
-            -- --exMessageAppendToMessageArea("TARcount"..TARcount)
-            if  TARcountLAND > 0 and TARcount == 0 and not  EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                ----exMessageAppendToMessageArea("起飞")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JAAVT1_Transform" )
-            elseif  TARcount > 0  and EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "AIRBORNE_TARGET") then
-                ----exMessageAppendToMessageArea("降落")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i] , "Command_JAAVT1_Transform" )
+            local currentTarget = ObjectGetTarget(self)
+
+            if not isAirborne then
+                -- 地面形态优先对空；旧飞机目标离开 500 范围后立即清除，不再追出射程。
+                ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedAirEnemy)
+                local currentAirTargetIsValid = currentTarget ~= nil
+                    and ObjectIsAlive(currentTarget)
+                    and ObjectTestTargetObjectWithFilter(self, currentTarget, g_FilterOptimizedAirEnemy)
+                    and ObjectsDistance2D(self, currentTarget) <= 500
+
+                if airTargetCount > 0 then
+                    if not currentAirTargetIsValid then
+                        ClearVXTarget(self)
+                        AssignVXNearestTarget(self, airTargets, airTargetCount)
+                    end
+                elseif groundTargetCount > 0 then
+                    -- 附近无飞机时放弃旧对空目标，再切换为飞行形态对地。
+                    if currentTarget ~= nil then
+                        ClearVXTarget(self)
+                    end
+                    ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedGroundEnemy)
+                    ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, "Command_JAAVT1_Transform")
+                elseif currentTarget ~= nil then
+                    ClearVXTarget(self)
+                end
+            else
+                -- 飞行形态发现飞机时降落对空；否则只在 400 范围内重新选择最近地面目标。
+                if airTargetCount > 0 then
+                    if currentTarget ~= nil then
+                        ClearVXTarget(self)
+                    end
+                    ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedAirEnemy)
+                    ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self, "Command_JAAVT1_Transform")
+                else
+                    ConfigureNearestNoChaseTargetChooser(self, g_FilterOptimizedGroundEnemy)
+                    local currentGroundTargetIsValid = currentTarget ~= nil
+                        and ObjectIsAlive(currentTarget)
+                        and ObjectTestTargetObjectWithFilter(self, currentTarget, g_FilterOptimizedGroundEnemy)
+                        and ObjectsDistance2D(self, currentTarget) <= 400
+                    if groundTargetCount > 0 then
+                        if not currentGroundTargetIsValid then
+                            ClearVXTarget(self)
+                            AssignVXNearestTarget(self, groundTargets, groundTargetCount)
+                        end
+                    elseif currentTarget ~= nil then
+                        ClearVXTarget(self)
+                    end
+                end
             end
         end
     end

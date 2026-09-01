@@ -1,5 +1,5 @@
-JapanAntiInfantryVehicleMICROCONTROL ()
-JapanMissileMechaAdvancedMICROCONTROL ()
+JapanTsunamiTankShieldMICROCONTROL ()
+AntiAirAircraftHunterMICROCONTROL ()
 JapanAntiAirVehicleTech1MICROCONTROL ()
 PrioritySiegeAttackMoveMICROCONTROL ()
 -- 超级要塞形态只在登场时由 SpawnGigaFortress.lua 随机决定，不再周期切换。
