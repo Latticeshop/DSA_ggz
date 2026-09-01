@@ -513,30 +513,30 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         end
 
     end
+    dialogData.EnsureSideHasNonCopySkill = function(self, playerIndexStart, skillIndexOffset, copySkillIndex)
+        local humanPlayerIndices = {}
+        local allCopy = 1
+        for playerIndex = playerIndexStart, playerIndexStart + 2 do
+            local playerName = "Player_" .. playerIndex
+            if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human") then
+                tinsert(humanPlayerIndices, playerIndex)
+                if g_PreselectedSkillIndices[playerIndex + skillIndexOffset] ~= copySkillIndex then
+                    allCopy = nil
+                end
+            end
+        end
+        if getn(humanPlayerIndices) > 0 and allCopy then
+            local humanListIndex = self:RandomInteger(1, getn(humanPlayerIndices))
+            local playerIndex = humanPlayerIndices[humanListIndex]
+            g_PreselectedSkillIndices[playerIndex + skillIndexOffset] = self:RandomInteger(1, copySkillIndex - 1)
+        end
+    end
+
     dialogData.RandomSkill = function(self, isSymmetric)
         -- 复制技能需要队友先释放其他技能才有效。
         -- 因此每边至少要有一名真人玩家抽到非复制技能：
         -- 单人时不会抽到复制，多人时不会全是复制。
         local copySkillIndex = 5
-        local function ensureSideHasNonCopySkill(playerIndexStart, skillIndexOffset)
-            local humanPlayerIndices = {}
-            local allCopy = true
-            for playerIndex = playerIndexStart, playerIndexStart + 2 do
-                local playerName = "Player_" .. playerIndex
-                if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human") then
-                    tinsert(humanPlayerIndices, playerIndex)
-                    if g_PreselectedSkillIndices[playerIndex + skillIndexOffset] ~= copySkillIndex then
-                        allCopy = false
-                    end
-                end
-            end
-            if getn(humanPlayerIndices) > 0 and allCopy then
-                local humanListIndex = self:RandomInteger(1, getn(humanPlayerIndices))
-                local playerIndex = humanPlayerIndices[humanListIndex]
-                g_PreselectedSkillIndices[playerIndex + skillIndexOffset] = self:RandomInteger(1, copySkillIndex - 1)
-            end
-        end
-
         g_PreselectedSkillIndices = {}
         g_PreselectedSkillIndices.IsRandom = true
         local skillNamesCount = getn(g_SkillNames)
@@ -546,8 +546,8 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         if isSymmetric then
             g_PreselectedSkillIndices.IsSymmetric = true
             -- 两边都映射到前 3 个随机结果，修正后再复制以保持对称。
-            ensureSideHasNonCopySkill(1, 0)
-            ensureSideHasNonCopySkill(4, -3)
+            self:EnsureSideHasNonCopySkill(1, 0, copySkillIndex)
+            self:EnsureSideHasNonCopySkill(4, -3, copySkillIndex)
             -- 对称的随机技能组，复制前 3 个技能组
             tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[1])
             tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[2])
@@ -558,8 +558,8 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
             tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
             tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
             tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-            ensureSideHasNonCopySkill(1, 0)
-            ensureSideHasNonCopySkill(4, 0)
+            self:EnsureSideHasNonCopySkill(1, 0, copySkillIndex)
+            self:EnsureSideHasNonCopySkill(4, 0, copySkillIndex)
         end
     end
     dialogData.RandomInteger = function(self, min, max)
