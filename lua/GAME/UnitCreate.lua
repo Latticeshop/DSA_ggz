@@ -167,20 +167,29 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
     end
 end
 
--- 空军元帅使用命名单位 angel1..8 / devil1..8 沿同名路径飞行。
--- GetObjectByScriptName 只查询单位命名空间，不会与同名路径点冲突。
+-- 空军元帅使用双方现有的 BASE 编队作为专用飞行编队，避开普通 AIR/AIRATTACK 编队 AI。
+-- 命名检测作为后备；GetObjectByScriptName 查询单位命名空间，不会与同名路径点冲突。
+g_AirMarshalTeamNames = {
+    ["BASE"] = true,
+    ["PlyrCivilian/BASE"] = true,
+    ["PlyrCreeps/BASE"] = true,
+}
+
 function IsAirMarshalAircraft(unit)
     if unit == nil then
         return false
     end
+    if g_AirMarshalTeamNames[ObjectTeamName(unit)] then
+        return true
+    end
     local unitId = ObjectGetId(unit)
     for i = 1, 8, 1 do
-        local angelId = GetObjectByScriptName("angel" .. i)
-        if angelId ~= nil and angelId == unitId then
+        local angelUnit = GetObjectByScriptName("angel" .. i)
+        if angelUnit ~= nil and ObjectGetId(angelUnit) == unitId then
             return true
         end
-        local devilId = GetObjectByScriptName("devil" .. i)
-        if devilId ~= nil and devilId == unitId then
+        local devilUnit = GetObjectByScriptName("devil" .. i)
+        if devilUnit ~= nil and ObjectGetId(devilUnit) == unitId then
             return true
         end
     end
@@ -645,9 +654,6 @@ function AlliedCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = AlliedCommandoBorn
 -- g_JapanCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
-if not g_YurikoHealthX2Modifier then
-    g_YurikoHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
-end
 if not g_YurikoRangeX25Modifier then
     g_YurikoRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
 end
@@ -656,7 +662,6 @@ function JapanCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     SchedulerModule.delay_call(function(id)
         if ObjectIsAlive(id) then
             local yuriko = GetObjectById(id)
-            ObjectLoadAttributeModifier(yuriko, g_YurikoHealthX2Modifier)
             ObjectLoadAttributeModifier(yuriko, g_YurikoRangeX25Modifier)
         end
     end, 1, {createdObjId})
