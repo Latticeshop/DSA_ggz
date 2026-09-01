@@ -21,6 +21,14 @@ FilterPlayerYaoguang=CreateObjectFilter({
         "CelestialAdvanceAircraftTech4_Enhanced"
     }
 })
+FilterPlayerGuardianTank=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "AlliedAntiVehicleVehicleTech1",
+        "AlliedAntiVehicleVehicleTech1_Enhanced"
+    }
+})
 FilterPower=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",

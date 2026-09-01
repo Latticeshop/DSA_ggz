@@ -3,6 +3,9 @@ RescueBlockedProductions_UnitList = {
     'CelestialDF41',
     'CelestialAdvanceAircraftTech4',
     'CelestialAdvanceAircraftTech4_Enhanced',
+    -- 保留守护者坦克限造配套的生产队列解卡项，当前版本取消数量限制；恢复限造时取消注释。
+    -- 'AlliedAntiVehicleVehicleTech1',
+    -- 'AlliedAntiVehicleVehicleTech1_Enhanced',
     'AlliedAntiStructureShip',
     'AlliedAntiStructureShip_Enhanced',
     'CelestialAntiStructureShip',
@@ -73,6 +76,9 @@ function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
     elseif unitType == 'CelestialAdvanceAircraftTech4'
         or unitType == 'CelestialAdvanceAircraftTech4_Enhanced' then
         return GetPlayerYaoguangCount(playerIndex) < YAOGUANG_LIMIT
+    elseif unitType == 'AlliedAntiVehicleVehicleTech1'
+        or unitType == 'AlliedAntiVehicleVehicleTech1_Enhanced' then
+        return GetPlayerGuardianTankCount(playerIndex) < GUARDIAN_TANK_LIMIT
     else -- 大船
         if exCounterGetByName("bigshiplimit"..playerIndex) < 2 then
             return true

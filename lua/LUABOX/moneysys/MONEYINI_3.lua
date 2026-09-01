@@ -9,6 +9,9 @@ g_CachedPlayersPowerPlantLimit = {}
 YAOGUANG_LIMIT = 3
 FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
 
+GUARDIAN_TANK_LIMIT = 3
+FLAGENGUARDIANTANK = { 1, 1, 1, 1, 1, 1 }
+
 function GetPlayerYaoguangCount(playindex)
     local savedCount = 0
     if g_UnitNameToUnitIndex ~= nil and UNITCOUNT ~= nil then
@@ -40,6 +43,41 @@ function LIMITYAOGUANG()
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4", 1)
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4_Enhanced", 1)
             FLAGENYAOGUANG[playindex] = 1
+        end
+    end
+end
+
+function GetPlayerGuardianTankCount(playindex)
+    local savedCount = 0
+    if g_UnitNameToUnitIndex ~= nil and UNITCOUNT ~= nil then
+        local unitIndex = g_UnitNameToUnitIndex["AlliedAntiVehicleVehicleTech1"]
+        if unitIndex ~= nil and UNITCOUNT[playindex] ~= nil then
+            savedCount = tonumber(UNITCOUNT[playindex][unitIndex]) or 0
+        end
+    end
+    local units, pendingCount = ObjectFindObjects(P[playindex], nil, FilterPlayerGuardianTank)
+    pendingCount = tonumber(pendingCount) or 0
+    return savedCount + pendingCount
+end
+
+function LIMITGUARDIANTANK()
+    for playindex = 1, 6, 1 do
+        local count = GetPlayerGuardianTankCount(playindex)
+        local playerName = "Player_" .. playindex
+        if count >= GUARDIAN_TANK_LIMIT and FLAGENGUARDIANTANK[playindex] == 1 then
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedAntiVehicleVehicleTech1", 0)
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedAntiVehicleVehicleTech1_Enhanced", 0)
+            FLAGENGUARDIANTANK[playindex] = 0
+            if RescueBlockedProductions_DoRescue then
+                local blocked = {}
+                blocked[tostring(FastHash("AlliedAntiVehicleVehicleTech1"))] = true
+                blocked[tostring(FastHash("AlliedAntiVehicleVehicleTech1_Enhanced"))] = true
+                RescueBlockedProductions_DoRescue(playerName, blocked)
+            end
+        elseif count < GUARDIAN_TANK_LIMIT and FLAGENGUARDIANTANK[playindex] == 0 then
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedAntiVehicleVehicleTech1", 1)
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedAntiVehicleVehicleTech1_Enhanced", 1)
+            FLAGENGUARDIANTANK[playindex] = 1
         end
     end
 end
@@ -97,4 +135,6 @@ function LIMITPOWER()
         end
     end
     LIMITYAOGUANG()
+    -- 保留守护者坦克限造 3 个的完整实现，当前版本取消数量限制；需要恢复时取消下一行注释。
+    -- LIMITGUARDIANTANK()
 end

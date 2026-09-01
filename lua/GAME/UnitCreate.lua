@@ -1,5 +1,8 @@
 g_UnitCreateEventFunc = {}
 
+-- 守护者坦克只能使用激光指示器：禁用玩家和 AI 的模式切换，出生脚本仍可强制切换一次。
+ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_ToggleTargetPainter", "Disabled")
+
 function ShowTimedHelp(ownerPlayerName, name, localizedText, x, y, z)
     name = format("%s_%s", ownerPlayerName, name)
     ExecuteAction("NAMED_DELETE", name)
@@ -157,6 +160,31 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
             end
         end, 15 * 5, {createdObjId})
     end
+end
+
+function AlliedGuardianTankBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- 等技能组件初始化完成后，强制切换为激光指示器模式。
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_ToggleTargetPainter")
+        end
+    end, 1, {createdObjId})
+end
+
+function JapanTsunamiTankBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), "AttributeMod_SovietCompositeArmorForLargeUnit", 999999)
+        end
+    end, 1, {createdObjId})
+end
+
+function CelestialKylinTankBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), "AttributeMod_CenturionUpgradeLeaderLv1", 999999)
+        end
+    end, 1, {createdObjId})
 end
 
 g_JapanAIAirFormCommands = {
@@ -399,6 +427,16 @@ g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDro
 
 g_UnitCreateEventFunc[FastHash("JapanKamikazeInfantry")] = JapanKamikazeInfantryBorn
 
+g_UnitCreateEventFunc[FastHash("AlliedAntiVehicleVehicleTech1")] = AlliedGuardianTankBorn
+g_UnitCreateEventFunc[FastHash("AlliedAntiVehicleVehicleTech1_Enhanced")] = AlliedGuardianTankBorn
+
+g_UnitCreateEventFunc[FastHash("JapanAntiVehicleVehicleTech1")] = JapanTsunamiTankBorn
+g_UnitCreateEventFunc[FastHash("JapanAntiVehicleVehicleTech1_Naval")] = JapanTsunamiTankBorn
+
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech1")] = CelestialKylinTankBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech1_EMC")] = CelestialKylinTankBorn
+g_UnitCreateEventFunc[FastHash("qilintank")] = CelestialKylinTankBorn
+
 g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle")] = JapanAIAirFormVehicleBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiInfantryVehicle_Enhanced")] = JapanAIAirFormVehicleBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiAirVehicleTech1")] = JapanAIAirFormVehicleBorn
@@ -458,6 +496,16 @@ exObjectRegisterCreateEvent("JapanCommandoTech1")
 exObjectRegisterCreateEvent("JapanPointDefenseDrone")
 
 exObjectRegisterCreateEvent("JapanKamikazeInfantry")
+
+exObjectRegisterCreateEvent("AlliedAntiVehicleVehicleTech1")
+exObjectRegisterCreateEvent("AlliedAntiVehicleVehicleTech1_Enhanced")
+
+exObjectRegisterCreateEvent("JapanAntiVehicleVehicleTech1")
+exObjectRegisterCreateEvent("JapanAntiVehicleVehicleTech1_Naval")
+
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech1")
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech1_EMC")
+exObjectRegisterCreateEvent("qilintank")
 
 exObjectRegisterCreateEvent("JapanAntiInfantryVehicle")
 exObjectRegisterCreateEvent("JapanAntiInfantryVehicle_Enhanced")
