@@ -630,6 +630,10 @@ function JapanFortressShipMICROCONTROL ()
 end
 
 function JapanAntiAirShipMICROCONTROL ()
+    -- 启用海军时海翼保持潜艇形态并留在海军编队。
+    if g_DisableSeaArmy == 0 then
+        return
+    end
     for playindex = 7 , 8 , 1 do
         local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiAirShip)
         ----exMessageAppendToMessageArea("count"..count)

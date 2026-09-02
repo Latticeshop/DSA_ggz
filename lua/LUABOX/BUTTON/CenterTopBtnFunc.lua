@@ -946,6 +946,12 @@ function RequestSpawnArmyImmediately(playerIndex)
 
             UNITSPAIRST_left (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)
             UNITSPST_left (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
+            if g_DisableSeaArmy == 0 then
+                SpawnSeaWingFromSea_left()
+            else
+                SpawnNoNavyAmphibiousLand_left()
+                SpawnNoNavySeaWingAir_left()
+            end
             exEnableWBScript('PlyrCivilian/attackAIR__7')
             exEnableWBScript('BUFFACTONCE__AIR')
         end, 5)
@@ -967,6 +973,12 @@ function RequestSpawnArmyImmediately(playerIndex)
 
             UNITSPAIRST_right (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)
             UNITSPST_right (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
+            if g_DisableSeaArmy == 0 then
+                SpawnSeaWingFromSea_right()
+            else
+                SpawnNoNavyAmphibiousLand_right()
+                SpawnNoNavySeaWingAir_right()
+            end
             exEnableWBScript('PlyrCreeps/attackAIR__8')
             exEnableWBScript('BUFFACTONCE__AIR')
         end, 5)
