@@ -405,7 +405,21 @@ function unitgetcountanddelet (playindex)
 end
 --exMessageAppendToMessageArea("定义函数1完毕")
 -------------------------------------------------------------------------------
+function UpdateNoNavyTeslaBoatBuildability()
+    if g_DisableSeaArmy ~= 1 or g_NoNavyTeslaBoatUnlocked == 1 then
+        return
+    end
+    if exCounterGetByName("lvc") < 3 then
+        return
+    end
+    for playindex = 1, 6, 1 do
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietAntiNavyShipTech1", 1)
+    end
+    g_NoNavyTeslaBoatUnlocked = 1
+end
+
 function unitgenerate ()
+    UpdateNoNavyTeslaBoatBuildability()
     ----exMessageAppendToMessageArea("unitgenerate")
     for playindex = 1 , 6 , 1 do
         local units, unitsCount = CopyPlayerRegisteredObjectSet("Player_"..playindex, "UNITS")

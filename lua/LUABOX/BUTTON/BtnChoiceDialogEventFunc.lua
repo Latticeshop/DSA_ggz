@@ -420,6 +420,13 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             g_EnableDeathModeEffect = self:BooleanToNumber(deathGameOption.IsSelected)
             g_DisableSeaArmy = self:BooleanToNumber(banSeaGameOption.IsSelected)
             g_LuckyCrateMode = self:BooleanToNumber(luckyCrateGameOption.IsSelected)
+            if g_DisableSeaArmy == 1 then
+                -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
+                g_NoNavyTeslaBoatUnlocked = 0
+                for i = 1, 6 do
+                    ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. i, "SovietAntiNavyShipTech1", 0)
+                end
+            end
             if shrinkGameOption.IsSelected then
                 g_GameMode = 3
             elseif purchaseTechMode.IsSelected then
