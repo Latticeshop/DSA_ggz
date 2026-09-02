@@ -20,8 +20,16 @@ function GetPlayerYaoguangCount(playindex)
             savedCount = tonumber(UNITCOUNT[playindex][unitIndex]) or 0
         end
     end
-    local units, pendingCount = ObjectFindObjects(P[playindex], nil, FilterPlayerYaoguang)
-    pendingCount = tonumber(pendingCount) or 0
+    local units, foundCount = ObjectFindObjects(P[playindex], nil, FilterPlayerYaoguang)
+    local pendingCount = 0
+    foundCount = tonumber(foundCount) or 0
+    for i = 1, foundCount, 1 do
+        local unitId = ObjectGetId(units[i])
+        if ObjectIsAlive(unitId)
+            and (not g_YaoguangCountedObjectIds or not g_YaoguangCountedObjectIds[unitId]) then
+            pendingCount = pendingCount + 1
+        end
+    end
     return savedCount + pendingCount
 end
 

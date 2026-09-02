@@ -335,6 +335,7 @@ for i = 1 , unitcountmax , 1 do
 end
 -- 摇光普通/强化形态共享同一个自走棋计数槽。
 local yaoguangIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
+g_YaoguangCountedObjectIds = g_YaoguangCountedObjectIds or {}
 if yaoguangIndex ~= nil then
     FilterLIST[yaoguangIndex] = CreateObjectFilter({
         Rule="ANY",
@@ -346,6 +347,14 @@ if yaoguangIndex ~= nil then
     })
     g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4_Enhanced"] = yaoguangIndex
     g_UnitNameToUnitIndex[FastHash("CelestialAdvanceAircraftTech4_Enhanced")] = yaoguangIndex
+end
+
+function ClearYaoguangCountedObjectIdWhenGone(id)
+    if ObjectIsAlive(id) then
+        SchedulerModule.delay_call(ClearYaoguangCountedObjectIdWhenGone, 1, {id})
+        return
+    end
+    g_YaoguangCountedObjectIds[id] = nil
 end
 --exMessageAppendToMessageArea("过滤器完毕")
 ----------------------------------------------------------------
@@ -381,6 +390,13 @@ function unitgetcountanddelet (playindex)
                     end
                     ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
                     UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
+
+                    -- 摇光已经计入 UNITCOUNT，但 NAMED_DELETE 可能要到下一帧才从场上消失。
+                    -- 先标记该对象，避免限造逻辑把同一个摇光同时按“已记录”和“场上”计算两次。
+                    if actualUnitIndex == yaoguangIndex then
+                        g_YaoguangCountedObjectIds[unitId] = true
+                        SchedulerModule.delay_call(ClearYaoguangCountedObjectIdWhenGone, 1, {unitId})
+                    end
 
                     -- 每两个 JapanAntiInfantryInfantry 赠送一个 JapanKamikazeInfantry
                     if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry" then
