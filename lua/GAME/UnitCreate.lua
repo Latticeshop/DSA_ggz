@@ -354,6 +354,22 @@ g_FilterPrioritySiegeEnemyStructure = CreateObjectFilter({
     Exclude = "IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
 })
 
+-- 百合子只索敌单位，并按 坦克 > 飞机 > 步兵 排序。
+g_FilterYurikoEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT",
+    Exclude = "STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+g_FilterYurikoEnemyAircraft = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "SELECTABLE",
+    Exclude = "STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
+    StatusBitFlags = "AIRBORNE_TARGET"
+})
+
 -- 四类炮车使用独立的单体攻击前进，不再接受 LIGHTVEHATTACK 的队伍级刷新。
 g_PrioritySiegeTankPursuitActive = g_PrioritySiegeTankPursuitActive or {
     [7] = false,
@@ -426,6 +442,28 @@ function NatashaPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ow
                     g_FilterPrioritySiegeEnemyInfantry,
                     g_FilterPrioritySiegeEnemyTank,
                     g_FilterPrioritySiegeEnemyStructure
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+        end
+    end, 1, {createdObjId})
+end
+
+function YurikoPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterYurikoEnemy,
+                CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterYurikoEnemyAircraft,
+                    g_FilterPrioritySiegeEnemyInfantry
                 },
                 ReverseRangeCompare = false,
                 PreferTargetInsideRange = true
@@ -628,8 +666,9 @@ function JapanCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
             ObjectLoadAttributeModifier(yuriko, g_YurikoRangeX25Modifier)
         end
     end, 1, {createdObjId})
+    YurikoPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
--- 百合子的建筑索敌仍由微操脚本排除。
+-- 百合子的建筑索敌与类别优先级也由微操脚本持续保持。
 g_UnitCreateEventFunc[FastHash("JapanCommandoTech1")] = JapanCommandoBorn
 
 g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDroneBorn

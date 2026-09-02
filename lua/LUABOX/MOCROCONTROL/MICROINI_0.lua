@@ -378,15 +378,28 @@ function CommandoNoStructureMICROCONTROL ()
                 ExecuteAction("UNIT_SET_TEAM", self, DEFAULTIDLETEAM[playindex])
             end
             ObjectSetCustomTargetChooserData(self, {
-                CustomFilter = FilterCommandoEnemy
+                CustomFilter = g_FilterYurikoEnemy,
+                CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterYurikoEnemyAircraft,
+                    g_FilterPrioritySiegeEnemyInfantry
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
             })
             ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
             local target = ObjectGetTarget(self)
             local hasValidTarget = target ~= nil
                 and ObjectIsAlive(target)
-                and ObjectTestTargetObjectWithFilter(self, target, FilterCommandoEnemy)
+                and ObjectTestTargetObjectWithFilter(self, target, g_FilterYurikoEnemy)
             if not hasValidTarget then
-                local replacement = FindNearestEnemyAnywhere(self, FilterCommandoEnemy)
+                local replacement = FindNearestEnemyAnywhere(self, g_FilterPrioritySiegeEnemyTank)
+                if replacement == nil then
+                    replacement = FindNearestEnemyAnywhere(self, g_FilterYurikoEnemyAircraft)
+                end
+                if replacement == nil then
+                    replacement = FindNearestEnemyAnywhere(self, g_FilterPrioritySiegeEnemyInfantry)
+                end
                 if replacement ~= nil then
                     ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
                     ObjectSetAssignedTarget(self, replacement)

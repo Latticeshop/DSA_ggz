@@ -21,4 +21,10 @@ for i = 1, 6, 1 do
             g_PlayerSide[i] = j
         end
     end
+    -- 高强度机械变形由自走棋 AI 自带；真人帝国玩家不能从建造栏购买。
+    if g_PlayerSide[i] == 3 then
+        SchedulerModule.delay_call(function(targetPlayerName)
+            ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", targetPlayerName, "Upgrade_JapanNanoTransmissionStructure", 0)
+        end, 1, {playerName})
+    end
 end

@@ -20,7 +20,7 @@ end
 exAddTextToPublicBoard(Localization.get("mirrortower.unlock_t4_ship.devil"), 10)
 
 SchedulerModule.delay_call(function()
-    ExecuteAction("CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT", "Sea3ProtectShip8", "JapanFortressShip", "PlyrCreeps/teamPlyrCreeps", "seaTower8");
+    ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", "Sea3ProtectShip8", "JapanFortressShip", "PlyrCreeps/teamPlyrCreeps", "seaTower8");
     local Sea3ProtectShip8 = GetObjectByScriptName("Sea3ProtectShip8");
     ExecuteAction("UNIT_SET_HEALTH", "Sea3ProtectShip8", 10000);
 end, 15 * 16)
