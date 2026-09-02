@@ -20,17 +20,9 @@ function GetPlayerYaoguangCount(playindex)
             savedCount = tonumber(UNITCOUNT[playindex][unitIndex]) or 0
         end
     end
-    local units, foundCount = ObjectFindObjects(P[playindex], nil, FilterPlayerYaoguang)
-    local pendingCount = 0
-    foundCount = tonumber(foundCount) or 0
-    for i = 1, foundCount, 1 do
-        local unitId = ObjectGetId(units[i])
-        if ObjectIsAlive(unitId)
-            and (not g_YaoguangCountedObjectIds or not g_YaoguangCountedObjectIds[unitId]) then
-            pendingCount = pendingCount + 1
-        end
-    end
-    return savedCount + pendingCount
+    -- 只使用已经结算进 UNITCOUNT 的稳定数量。
+    -- 不叠加场上待删除的实体，避免同一个摇光在结算帧被重复计算。
+    return savedCount
 end
 
 function LIMITYAOGUANG()
@@ -91,7 +83,10 @@ function LIMITGUARDIANTANK()
 end
 
 function LIMITPOWER()
-    
+    -- MONEYINI/LIMITACT 的执行顺序早于 UNITCOUNTERINI 时，P 尚未初始化。
+    if P == nil then
+        return
+    end
 
     for playindex = 1, 6, 1 do
         g_CachedPlayersPowerPlantLimit[playindex] = 0
