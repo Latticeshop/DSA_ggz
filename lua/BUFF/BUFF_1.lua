@@ -60,12 +60,7 @@ function AlliedAntiStructureVehicleBUFF ()
         if instanceId ~= -234022367 then
             -- exMessageAppendToMessageArea("AlliedAntiStructureVehicleBUFF zhurong buff")
             ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_CelestialZhuRongRapidFire",9999)
-        else
-            -- exMessageAppendToMessageArea("AlliedAntiStructureVehicleBUFF normal buff")
-            ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_MAP_RATE_OF_FIRE_Up",9999)
-            ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_MAP_RATE_OF_FIRE_Up",9999)
         end
-        ObjectLoadAttributeModifier(TAR[i], "AttributeModifer_JapanEmperorsResolve_L1",9999)
         -- local rateOfFire = ObjectGetAttributeModifier(TAR[i], "RATE_OF_FIRE")
         -- exMessageAppendToMessageArea("AlliedAntiStructureVehicleBUFF rate of fire:"..rateOfFire)
     end
@@ -134,6 +129,13 @@ FilterMIDDLEENHANCE=CreateObjectFilter({
     }
 })
 
+FilterJapanAntiVehicleInfantryTech3=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "JapanAntiVehicleInfantryTech3"
+    }
+})
+
 --鬼王X
 
 
@@ -143,6 +145,12 @@ function MIDDLEENHANCEBUFF ()
     for i = 1 , COUNTX ,1 do
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_AlliedPrismAttackBoost",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
+    end
+
+    -- 岚影刺使用祝融射速/射程强化，不叠加上面的通用强化。
+    local LanYingCi , LanYingCiCount = ObjectFindObjects(nil, nil, FilterJapanAntiVehicleInfantryTech3)
+    for i = 1 , LanYingCiCount ,1 do
+        ObjectLoadAttributeModifier(LanYingCi[i], "AttributeModifier_CelestialZhuRongRapidFire",9999)
     end
 end
 
@@ -206,7 +214,7 @@ FilterLARGEENHANCE=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "AlliedCryoLegionnaire","CelestialBomberAircraft","SovietHeavyAntiVehicleInfantry",
+        "CelestialBomberAircraft","SovietHeavyAntiVehicleInfantry",
         "AlliedGunshipAircraft","CelestialAntiVehicleVehicleTech4"
     }
 })
@@ -326,10 +334,11 @@ function LARGEENHANCEBUFF ()
         ObjectLoadAttributeModifier(Chongming[i], g_CelestialInterceptorRangeX075Modifier)
     end
 
-    -- 冷冻军团：叠加崇明同款 25% 射程削减，并额外降低 25% 攻速。
+    -- 冷冻军团：保留生命、伤害和 25% 攻速削减，不再加载任何射程 Buff。
     local CryoLegionnaire , CryoLegionnaireCount = ObjectFindObjects(nil, nil, FilterAlliedCryoLegionnaire)
     for i = 1 , CryoLegionnaireCount ,1 do
-        ObjectLoadAttributeModifier(CryoLegionnaire[i], g_CelestialInterceptorRangeX075Modifier)
+        ObjectLoadAttributeModifier(CryoLegionnaire[i], "AttributeMod_GunshipBOSSAIUnitCheat",9999)
+        ObjectLoadAttributeModifier(CryoLegionnaire[i], "AttributeMod_AlliedTeslaBoost",9999)
         ObjectLoadAttributeModifier(CryoLegionnaire[i], g_CryoLegionnaireRateOfFireX075Modifier)
     end
 

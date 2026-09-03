@@ -156,15 +156,35 @@ function JapanPointDefenseDroneBorn(createdObjId, createdObjInstanceId, ownerPla
 end
 
 function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    -- 仅对于电脑的步兵：5 秒后自动启用技能
-    if ownerPlayerName == "PlyrCreeps"
-        or ownerPlayerName == "PlyrCivilian" then
-        SchedulerModule.delay_call(function(id)
-            if ObjectIsAlive(id) then
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_SpecialPowerJapanKamikazeBonzai")
-            end
-        end, 15 * 5, {createdObjId})
+    -- 已停用：电脑的狂热武士出生 5 秒后无条件开 F。
+    -- 改为出生时配置引擎索敌；Lua 只读取引擎选中的目标并触发 F。
+    -- if ownerPlayerName == "PlyrCreeps"
+    --     or ownerPlayerName == "PlyrCivilian" then
+    --     SchedulerModule.delay_call(function(id)
+    --         if ObjectIsAlive(id) then
+    --             ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_SpecialPowerJapanKamikazeBonzai")
+    --         end
+    --     end, 15 * 5, {createdObjId})
+    -- end
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
     end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterPrioritySiegeAllGroundEnemy,
+                CompareFilterList = {
+                    g_FilterKamikazeBonzaiEnemy,
+                    g_FilterPrioritySiegeEnemyInfantry
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+            TrackJapanKamikazeAutoBonzai(id)
+        end
+    end, 1, {createdObjId})
 end
 
 -- 空军元帅使用双方现有的 BASE 编队作为专用飞行编队，避开普通 AIR/AIRATTACK 编队 AI。
@@ -268,6 +288,7 @@ function AlliedGuardianTankBorn(createdObjId, createdObjInstanceId, ownerPlayerN
             ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_ToggleTargetPainter")
         end
     end, 1, {createdObjId})
+    FarthestTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 
 function JapanTsunamiTankBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
@@ -331,6 +352,14 @@ g_FilterPrioritySiegeEnemyTank = CreateObjectFilter({
     Relationship = "ENEMIES",
     Include = "VEHICLE HUGE_VEHICLE",
     Exclude = "AIRCRAFT STRUCTURE INFANTRY IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+g_FilterKamikazeBonzaiEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "VEHICLE HUGE_VEHICLE STRUCTURE",
+    Exclude = "AIRCRAFT IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
+    StatusBitFlagsExclude = "AIRBORNE_TARGET"
 })
 
 g_FilterPrioritySiegeAllGroundEnemy = CreateObjectFilter({
@@ -429,6 +458,78 @@ function IsAutoChessAIPlayer(ownerPlayerName)
     return ownerPlayerName == "PlyrCreeps" or ownerPlayerName == "PlyrCivilian"
 end
 
+g_KamikazeBonzaiEnemyRange = 150
+g_AutoAbilityTargetCheckInterval = 3
+
+-- TargetChooser 负责筛选、距离排序和目标死亡后的重选。
+-- 此处不再做范围搜索，只读取单位已有目标并尝试触发技能。
+function TrackJapanKamikazeAutoBonzai(id)
+    if not ObjectIsAlive(id) then
+        return
+    end
+    local unit = GetObjectById(id)
+    local target = ObjectGetTarget(unit)
+    if target ~= nil
+        and ObjectIsAlive(target)
+        and ObjectTestTargetObjectWithFilter(unit, target, g_FilterKamikazeBonzaiEnemy)
+        and ObjectsDistance2D(unit, target) <= g_KamikazeBonzaiEnemyRange then
+        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", unit, "Command_SpecialPowerJapanKamikazeBonzai")
+    end
+    SchedulerModule.delay_call(TrackJapanKamikazeAutoBonzai, g_AutoAbilityTargetCheckInterval, {id})
+end
+
+function TrackCelestialArmybreakerAutoCharge(id, unitReferenceName)
+    if not ObjectIsAlive(id) then
+        return
+    end
+    local unit = GetObjectById(id)
+    local target = ObjectGetTarget(unit)
+    if target ~= nil
+        and ObjectIsAlive(target)
+        and ObjectTestTargetObjectWithFilter(unit, target, g_FilterPrioritySiegeEnemyTank)
+        and EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit, "IS_FIRING_WEAPON") then
+        -- IS_FIRING_WEAPON 表示目标已经进入该实例当前的实际武器射程。
+        local targetReferenceName = "ArmybreakerAutoFTarget_" .. id
+        ExecuteAction("SET_UNIT_REFERENCE", targetReferenceName, target)
+        ExecuteAction(
+            "NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED",
+            unitReferenceName,
+            "Command_SpecialPowerCelestialArmybreakerCharge",
+            targetReferenceName
+        )
+    end
+    SchedulerModule.delay_call(
+        TrackCelestialArmybreakerAutoCharge,
+        g_AutoAbilityTargetCheckInterval,
+        {id, unitReferenceName}
+    )
+end
+
+function CelestialArmybreakerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if not IsAutoChessAIPlayer(ownerPlayerName) then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            local unit = GetObjectById(id)
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterPrioritySiegeAllGroundEnemy,
+                CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterPrioritySiegeEnemyInfantry,
+                    g_FilterPrioritySiegeEnemyStructure
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+            local unitReferenceName = "ArmybreakerAutoFUnit_" .. id
+            ExecuteAction("SET_UNIT_REFERENCE", unitReferenceName, unit)
+            TrackCelestialArmybreakerAutoCharge(id, unitReferenceName)
+        end
+    end, 1, {createdObjId})
+end
+
 function NatashaPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     if not IsAutoChessAIPlayer(ownerPlayerName) then
         return
@@ -513,6 +614,9 @@ end
 g_FarthestNoChaseFilterByInstanceId = {
     [FastHash("PrismTank")] = g_FilterOptimizedGroundEnemy,
     [FastHash("AlliedPrismTank_Enhanced")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("JapanMechaX")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("AlliedAntiVehicleVehicleTech1")] = g_FilterOptimizedGroundEnemy,
+    [FastHash("AlliedAntiVehicleVehicleTech1_Enhanced")] = g_FilterOptimizedGroundEnemy,
     [FastHash("CelestialHeavyAntiAirVehicleTech3")] = g_FilterOptimizedGroundEnemy,
     [FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = g_FilterOptimizedGroundEnemy,
     -- 青锋导弹车的内部名虽然带 AntiAir，实际武器只能攻击地面单位。
@@ -675,6 +779,10 @@ g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDro
 
 g_UnitCreateEventFunc[FastHash("JapanKamikazeInfantry")] = JapanKamikazeInfantryBorn
 
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4")] = CelestialArmybreakerBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4_Enhanced")] = CelestialArmybreakerBorn
+g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4_S01")] = CelestialArmybreakerBorn
+
 g_UnitCreateEventFunc[FastHash("AlliedAntiVehicleVehicleTech1")] = AlliedGuardianTankBorn
 g_UnitCreateEventFunc[FastHash("AlliedAntiVehicleVehicleTech1_Enhanced")] = AlliedGuardianTankBorn
 
@@ -695,6 +803,7 @@ g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIA
 -- 配置坦克统一在射程内优先选择最远目标。
 g_UnitCreateEventFunc[FastHash("PrismTank")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("JapanMechaX")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiAirVehicleTech3")] = FarthestTargetChooserBorn
@@ -749,6 +858,10 @@ exObjectRegisterCreateEvent("JapanPointDefenseDrone")
 
 exObjectRegisterCreateEvent("JapanKamikazeInfantry")
 
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech4")
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech4_Enhanced")
+exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech4_S01")
+
 exObjectRegisterCreateEvent("AlliedAntiVehicleVehicleTech1")
 exObjectRegisterCreateEvent("AlliedAntiVehicleVehicleTech1_Enhanced")
 
@@ -768,6 +881,7 @@ exObjectRegisterCreateEvent("JapanMissileMechaAdvanced_Enhanced")
 
 exObjectRegisterCreateEvent("PrismTank")
 exObjectRegisterCreateEvent("AlliedPrismTank_Enhanced")
+exObjectRegisterCreateEvent("JapanMechaX")
 exObjectRegisterCreateEvent("CelestialHeavyAntiAirVehicleTech3")
 exObjectRegisterCreateEvent("CelestialAntiVehicleVehicleTech3_EMC")
 exObjectRegisterCreateEvent("CelestialAntiAirVehicleTech3")
