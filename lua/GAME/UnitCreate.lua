@@ -458,8 +458,9 @@ function IsAutoChessAIPlayer(ownerPlayerName)
     return ownerPlayerName == "PlyrCreeps" or ownerPlayerName == "PlyrCivilian"
 end
 
-g_KamikazeBonzaiEnemyRange = 150
+g_KamikazeBonzaiEnemyRange = 300
 g_AutoAbilityTargetCheckInterval = 3
+g_ArmybreakerAutoAbilityInterval = 15 * 10
 
 -- TargetChooser 负责筛选、距离排序和目标死亡后的重选。
 -- 此处不再做范围搜索，只读取单位已有目标并尝试触发技能。
@@ -484,6 +485,7 @@ function TrackCelestialArmybreakerAutoCharge(id, unitReferenceName)
     end
     local unit = GetObjectById(id)
     local target = ObjectGetTarget(unit)
+    local nextCheckInterval = g_AutoAbilityTargetCheckInterval
     if target ~= nil
         and ObjectIsAlive(target)
         and ObjectTestTargetObjectWithFilter(unit, target, g_FilterPrioritySiegeEnemyTank)
@@ -497,10 +499,11 @@ function TrackCelestialArmybreakerAutoCharge(id, unitReferenceName)
             "Command_SpecialPowerCelestialArmybreakerCharge",
             targetReferenceName
         )
+        nextCheckInterval = g_ArmybreakerAutoAbilityInterval
     end
     SchedulerModule.delay_call(
         TrackCelestialArmybreakerAutoCharge,
-        g_AutoAbilityTargetCheckInterval,
+        nextCheckInterval,
         {id, unitReferenceName}
     )
 end
