@@ -475,6 +475,8 @@ function TrackJapanKamikazeAutoBonzai(id)
         and ObjectTestTargetObjectWithFilter(unit, target, g_FilterKamikazeBonzaiEnemy)
         and ObjectsDistance2D(unit, target) <= g_KamikazeBonzaiEnemyRange then
         ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", unit, "Command_SpecialPowerJapanKamikazeBonzai")
+        -- 狂热武士开 F 后会永久保持冲锋状态；成功触发一次后无需继续检测或重复下令。
+        return
     end
     SchedulerModule.delay_call(TrackJapanKamikazeAutoBonzai, g_AutoAbilityTargetCheckInterval, {id})
 end
