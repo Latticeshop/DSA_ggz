@@ -968,19 +968,13 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
 
             local playerIndex2 = g_PlayerNameToIndex[self.PlayerName]
 
-            local targetUnitIndex = g_UnitNameToUnitIndex[g_CurrentClickRecycleUnit[playerIndex2].Type] or -1
+            local recycleUnitInfo = g_CurrentClickRecycleUnit[playerIndex2]
+            local availableCount = GetRecycleUnitCount(playerIndex2, recycleUnitInfo)
 
-            if targetUnitIndex > 0 then
+            if availableCount > 0 then
                 local count = g_RecycleUnitCount[buttonIndex];
-                if UNITCOUNT[playerIndex2][targetUnitIndex] > count then
-                    UNITCOUNT[playerIndex2][targetUnitIndex] = UNITCOUNT[playerIndex2][targetUnitIndex] - count;
-                    ANYUNITCOUNT[playerIndex2] = ANYUNITCOUNT[playerIndex2] - count ;
-                else
-                    count = UNITCOUNT[playerIndex2][targetUnitIndex];
-                    ANYUNITCOUNT[playerIndex2] = ANYUNITCOUNT[playerIndex2] - count ;
-                    UNITCOUNT[playerIndex2][targetUnitIndex] = 0;
-                end
-                local leftCount = UNITCOUNT[playerIndex2][targetUnitIndex];
+                local leftCount = 0
+                count, leftCount = RemoveRecycleUnitCount(playerIndex2, recycleUnitInfo, count)
                 -- 苏联拿到大生产之后需要乘一个系数  可能会导致苏联后期回收亏钱，不过也很难管了
                 local getSovietBonus = g_ProductionBonus_SovietGet[playerIndex2];
                 -- 只给90%回收
@@ -988,9 +982,9 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 if getSovietBonus then
                     discount = 0.72;
                 end
-                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * g_CurrentClickRecycleUnit[playerIndex2].Money * discount) ;
+                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * discount) ;
                 -- 同时也要告诉盟友
-                local msg = Localization.get("recycle.message", tostring(playerIndex2), count, g_CurrentClickRecycleUnit[playerIndex2].Name, tostring(leftCount));
+                local msg = Localization.get("recycle.message", tostring(playerIndex2), count, recycleUnitInfo.Name, tostring(leftCount));
                 if playerIndex2 >= 4 then
                     exAddTextToPublicBoardForPlayer("Player_4", msg, 5);
                     exAddTextToPublicBoardForPlayer("Player_5", msg, 5);

@@ -1,5 +1,30 @@
 g_UnitCreateEventFunc = {}
 
+-- 东风虽然已有建造限制，这里仍每 10 秒按实际归属兜底检查一次。
+-- Player_1 至 Player_6 各自只保留找到的第一辆，多出的直接摧毁。
+g_CelestialDF41LimitFilter = CreateObjectFilter({
+    Rule = "ANY",
+    IncludeThing = { "CelestialDF41" },
+})
+
+function EnforceCelestialDF41PerPlayerLimit()
+    local units, count = ObjectFindObjects(nil, nil, g_CelestialDF41LimitFilter)
+    local playerHasDF41 = {}
+    for i = 1, count, 1 do
+        local unit = units[i]
+        local ownerPlayerName = ObjectPlayerScriptName(unit)
+        if g_PlayerNameToIndex[ownerPlayerName] ~= nil then
+            if playerHasDF41[ownerPlayerName] then
+                ExecuteAction("NAMED_KILL", unit)
+            else
+                playerHasDF41[ownerPlayerName] = true
+            end
+        end
+    end
+end
+
+SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, nil)
+
 -- 守护者坦克只能使用激光指示器：禁用玩家和 AI 的模式切换，出生脚本仍可强制切换一次。
 -- 地编动作不能在 Lua 块加载时立即执行，否则桥接层尚未注册当前的 Fname 函数。
 SchedulerModule.delay_call(function()

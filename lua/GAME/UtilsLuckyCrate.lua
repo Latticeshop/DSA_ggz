@@ -3,6 +3,38 @@
 if not g_SuperSpeedModifier then
     g_SuperSpeedModifier = exAttributeModifierCreate({ SPEED = 8.0 }, 1)
 end
+
+-- 工程师保留在玩家家中，不进入 UNITLIST/自走棋对战池；四阵营工程师统一获得抽卡工程师的加速。
+function PlayerEngineerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), g_SuperSpeedModifier)
+        end
+    end, 1, {createdObjId})
+end
+
+g_PlayerEngineerTypes = {
+    "AlliedEngineer",
+    "SovietEngineer",
+    "JapanEngineer",
+    "CelestialEngineer",
+}
+for i = 1, getn(g_PlayerEngineerTypes), 1 do
+    local engineerType = g_PlayerEngineerTypes[i]
+    exObjectRegisterCreateEvent(engineerType)
+    g_UnitCreateEventFunc[FastHash(engineerType)] = PlayerEngineerBorn
+end
+
+-- 覆盖地图旧版的全局封禁；延迟一帧可确保初始化动作已经执行完。
+SchedulerModule.delay_call(function()
+    for i = 1, 6, 1 do
+        local playerName = "Player_" .. i
+        for j = 1, getn(g_PlayerEngineerTypes), 1 do
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, g_PlayerEngineerTypes[j], 1)
+        end
+    end
+end, 1, {})
+
 function TryEnableLuckyCrateIfAllowed()
     local previous = SetWorldBuilderThisPlayer(1)
     local EnableLuckyCrateImplementation = function(enable)
@@ -31,8 +63,6 @@ function TryEnableLuckyCrateIfAllowed()
                     0
                 )
                 TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", GetObjectById(nextObjectId), "SCRIPT:CrateEnabled", 120, "")
-                -- 给工程师加速
-                ObjectLoadAttributeModifier(nextObjectId, g_SuperSpeedModifier)
             end
         end
     end

@@ -33,6 +33,8 @@ g_RecycleUnitCount = {
 }
 
 g_RecycleBtnsIndexStart = 30;
+-- 留足索引范围，确保玩家同时拥有多个阵营/抽卡来源的全部单位时也不会截断在第 49 个按钮。
+g_RecycleBtnsMaxCount = 200;
 
 --g_Infantry = {
 --    {Type = "AlliedScoutInfantry", Image = "Button_AlliedScoutInfantry_on", Name = Localization.recycle('unit.AlliedScoutInfantry'), Money = 200},
@@ -60,7 +62,9 @@ g_InfantryAllied = {
     {Type = "AlliedScoutInfantry", Image = "Button_AlliedScoutInfantry_on", Name = Localization.recycle('unit.AlliedScoutInfantry'), Money = 200},
     {Type = "AlliedAntiInfantryInfantry", Image = "Button_AlliedAntiInfantryInfantry_on", Name = Localization.recycle('unit.AlliedAntiInfantryInfantry'), Money = 200},
     {Type = "AlliedAntiVehicleInfantry", Image = "Button_AlliedAntiVehicleInfantry_on", Name = Localization.recycle('unit.AlliedAntiVehicleInfantry'), Money = 300},
+    {Type = "AlliedRangerInfantry", Image = "Button_AlliedRangerInfantry", Name = Localization.recycle('unit.AlliedRangerInfantry'), Money = 200},
     {Type = "AlliedCryoLegionnaire", Image = "Button_AlliedCryoLegionnaire", Name = Localization.recycle('unit.AlliedCryoLegionnaire'), Money = 1600},
+    {Type = "AlliedCommandoTech1", Image = "Button_AlliedCommandoTech1_on_02", Name = Localization.recycle('unit.AlliedCommandoTech1'), Money = 2000},
 }
 
 g_InfantrySoviet = {
@@ -69,6 +73,7 @@ g_InfantrySoviet = {
     {Type = "SovietAntiVehicleInfantry", Image = "Button_SovietAntiVehicleInfantry_small", Name = Localization.recycle('unit.SovietAntiVehicleInfantry'), Money = 400},
     {Type = "SovietMortarCycle", Image = "Button_SovietMortarCycle", Name = Localization.recycle('unit.SovietMortarCycle'), Money = 750},
     {Type = "SovietHeavyAntiVehicleInfantry", Image = "Button_SovietHeavyAntiVehicleInfantry_small", Name = Localization.recycle('unit.SovietHeavyAntiVehicleInfantry'), Money = 850},
+    {Type = "SovietCommandoTech1", Image = "Button_SovietCommando_small", Name = Localization.recycle('unit.SovietCommandoTech1'), Money = 2000},
 }
 
 g_InfantryJapan = {
@@ -78,6 +83,7 @@ g_InfantryJapan = {
     {Type = "JapanArcherInfantry", Image = "Button_JapanArcherMaiden", Name = Localization.recycle('unit.JapanArcherInfantry'), Money = 400},
     {Type = "JapanInfiltrationInfantry", Image = "Button_JapanInfiltrationInfantry", Name = Localization.recycle('unit.JapanInfiltrationInfantry'), Money = 850},
     {Type = "JapanAntiVehicleInfantryTech3", Image = "Button_JapanAntiVehicleInfantryTech3", Name = Localization.recycle('unit.JapanAntiVehicleInfantryTech3'), Money = 1000},
+    {Type = "JapanCommandoTech1", Image = "Button_JapanCommandoTech1", Name = Localization.recycle('unit.JapanCommandoTech1'), Money = 2000},
 }
 
 g_InfantryCelestial = {
@@ -131,6 +137,8 @@ g_VehicleAllied = {
     {Type = "AlliedAntiStructureVehicle", Image = "Button_AlliedAntiStructureVehicle_on", Name = Localization.recycle('unit.AlliedAntiStructureVehicle'), Money = 1800},
     {Type = "AlliedAntiVehicleVehicleTech3", Image = "Button_AlliedAntiVehicleVehicleTech3_B", Name = Localization.recycle('unit.AlliedAntiVehicleVehicleTech3'), Money = 1600},
     {Type = "AlliedFutureTank", Image = "Button_AlliedFutureTank", Name = Localization.recycle('unit.AlliedFutureTank'), Money = 3200},
+    {Type = "AlliedBattleFortress", Image = "Button_AlliedBattleFortress", Name = Localization.recycle('unit.AlliedBattleFortress'), Money = 4500},
+    {Type = "AlliedAirForceDispatchVehicle", Image = "Button_AlliedAirForceDispatchVehicle", Name = Localization.recycle('unit.AlliedAirForceDispatchVehicle'), Money = 3000},
 }
 
 g_VehicleSoviet = {
@@ -139,9 +147,13 @@ g_VehicleSoviet = {
     {Type = "SovietAntiAirShip", Image = "Button_SovietAntiAirShip_small", Name = Localization.recycle('unit.SovietAntiAirShip'), Money = 900},
     {Type = "SovietHeavyAntiVehicleVehicleTech2", Image = "Button_SovietRhinoTank", Name = Localization.recycle('unit.SovietHeavyAntiVehicleVehicleTech2'), Money = 1100},
     {Type = "SovietSledgehammerSPG", Image = "Button_SovietSledgehammerSPG", Name = Localization.recycle('unit.SovietSledgehammerSPG'), Money = 1500},
+    {Type = "SovietAntiVehicleVehicleTech2", Image = "Button_SovietTeslaTank_small", Name = Localization.recycle('unit.SovietAntiVehicleVehicleTech2'), Money = 1200},
     {Type = "SovietAntiStructureVehicle", Image = "Button_SovietAntiStructureVehicle_small", Name = Localization.recycle('unit.SovietAntiStructureVehicle'), Money = 1600},
     {Type = "SovietAntiVehicleVehicleTech3", Image = "Button_SovietAntiVehicleVehicleTech3", Name = Localization.recycle('unit.SovietAntiVehicleVehicleTech3'), Money = 2000},
     {Type = "SovietAntiVehicleVehicleTech4", Image = "Button_SovietAntiVehicleVehicleTech4", Name = Localization.recycle('unit.SovietAntiVehicleVehicleTech4'), Money = 4500},
+    {Type = "SovietGrinderVehicle", Image = "Button_SovietGrinder", Name = Localization.recycle('unit.SovietGrinderVehicle'), Money = 1600},
+    {Type = "Overlordtank", Image = "Button_Overlordtank", Name = Localization.recycle('unit.Overlordtank'), Money = 4500},
+    {Type = "SovietElectronicRadarTruck", Image = "Button_SovietElectronicRadarTruck", Name = Localization.recycle('unit.SovietElectronicRadarTruck'), Money = 1800},
 }
 
 g_VehicleJapan = {
@@ -154,17 +166,21 @@ g_VehicleJapan = {
     {Type = "JapanAntiStructureVehicle", Image = "Button_JapanAntiStructureVehicle", Name = Localization.recycle('unit.JapanAntiStructureVehicle'), Money = 1800},
     {Type = "JapanInterceptorAircraft", Image = "Button_JapanInterceptorAircraft_sea", Name = Localization.recycle('unit.JapanInterceptorAircraft'), Money = 850},
     {Type = "JapanMechaX", Image = "Button_RedKingOni", Name = Localization.recycle('unit.JapanMechaX'), Money = 4500},
+    {Type = "JapanAntiAirVehicleTech3", Image = "Button_JapanAntiAirVehicleTech3", Name = Localization.recycle('unit.JapanAntiAirVehicleTech3'), Money = 2000},
 }
 
 g_VehicleCelestial = {
     {Type = "CelestialAntiInfantryVehicle_B", Image = "Button_CelestialAntiInfantryVehicle_B", Name = Localization.recycle('unit.CelestialAntiInfantryVehicle_B'), Money = 850},
     {Type = "CelestialAntiAirShip", Image = "Button_CelestialAntiAirShip", Name = Localization.recycle('unit.CelestialAntiAirShip'), Money = 900},
     {Type = "CelestialAntiVehicleVehicleTech1", Image = "Button_CelestialKylinMBT", Name = Localization.recycle('unit.CelestialAntiVehicleVehicleTech1'), Money = 1000},
+    {Type = "CelestialAntiAirVehicle", Image = "Button_CelestialAntiAirVehicle", Name = Localization.recycle('unit.CelestialAntiAirVehicle'), Money = 900},
+    {Type = "CelestialLongRangeMissileVehicle", Image = "Button_CelestialHJ-10", Name = Localization.recycle('unit.CelestialLongRangeMissileVehicle'), Money = 1400},
     {Type = "CelestialLongRangeMissileVehicle_B", Image = "Button_CelestialLongRangeMissileVehicle_B", Name = Localization.recycle('unit.CelestialLongRangeMissileVehicle_B'), Money = 1400},
     {Type = "CelestialAntiVehicleVehicleTech3", Image = "Button_CelestialAntiVehicleVehicleTech3", Name = Localization.recycle('unit.CelestialAntiVehicleVehicleTech3'), Money = 2000},
     {Type = "CelestialHeavyAntiAirVehicleTech3", Image = "Button_CelestialHeavyAntiAirVehicleTech3", Name = Localization.recycle('unit.CelestialHeavyAntiAirVehicleTech3'), Money = 2000},
     {Type = "CelestialAntiStructureVehicle", Image = "Button_CelestialAntiStructureVehicle", Name = Localization.recycle('unit.CelestialAntiStructureVehicle'), Money = 1800},
     {Type = "CelestialAntiVehicleVehicleTech4", Image = "Button_CelestialAntiVehicleVehicleTech4", Name = Localization.recycle('unit.CelestialAntiVehicleVehicleTech4'), Money = 4500},
+    {Type = "CelestialAntiAirVehicleTech3", Image = "Button_CelestialAntiAirVehicleTech3", Name = Localization.recycle('unit.CelestialAntiAirVehicleTech3'), Money = 2500},
 }
 
 --g_AirCraft = {
@@ -195,6 +211,8 @@ g_AirCraftAllied = {
     {Type = "AlliedInterceptorAircraft", Image = "Button_AlliedInterceptorAircraftTech3", Name = Localization.recycle('unit.AlliedInterceptorAircraft'), Money = 1600},
     {Type = "AlliedAntiStructureBomberAircraft", Image = "Button_AlliedBomberAircraft_on", Name = Localization.recycle('unit.AlliedAntiStructureBomberAircraft'), Money = 2500},
     {Type = "AlliedGunshipAircraft", Image = "Button_AlliedHarbingerGunship", Name = Localization.recycle('unit.AlliedGunshipAircraft'), Money = 4000},
+    {Type = "AlliedAC130GunshipAircraft", Image = "Button_AlliedHarbingerGunship", Name = Localization.recycle('unit.AlliedAC130GunshipAircraft'), Money = 4000},
+    {Type = "AlliedBomberAircraft", Image = "Button_AlliedBomberAircraft_on", Name = Localization.recycle('unit.AlliedBomberAircraft'), Money = 2500},
 }
 
 g_AirCraftSoviet = {
@@ -207,6 +225,9 @@ g_AirCraftSoviet = {
 }
 
 g_AirCraftJapan = {
+    -- 超级要塞由独立计数槽管理；水面/大头形态都归到同一枚核心。
+    {Type = "JapanGigaFortressShipEgg", CountType = "JapanGigaFortressShipEgg", CountsTowardArmyTotal = false,
+        Image = "Button_JapanGigaFortressShip", Name = Localization.recycle('unit.JapanFortressShip'), Money = 6300},
 }
 
 g_AirCraftCelestial = {
@@ -215,7 +236,7 @@ g_AirCraftCelestial = {
     {Type = "CelestialAttackerAircraft", Image = "Button_CelestialAttackerAircraft", Name = Localization.recycle('unit.CelestialAttackerAircraft'), Money = 1400},
     {Type = "CelestialInterceptorAircraft", Image = "Button_CelestialInterceptorAircraft", Name = Localization.recycle('unit.CelestialInterceptorAircraft'), Money = 1600},
     {Type = "CelestialBomberAircraft", Image = "Button_CelestialBomberAircraft", Name = Localization.recycle('unit.CelestialBomberAircraft'), Money = 2500},
-    {Type = "CelestialAdvancedAircraftTech4", Image = "Button_CelestialAdvancedAircraftTech4", Name = Localization.recycle('unit.CelestialAdvancedAircraftTech4'), Money = 5000},
+    {Type = "CelestialAdvanceAircraftTech4", Image = "Button_CelestialAdvancedAircraftTech4", Name = Localization.recycle('unit.CelestialAdvanceAircraftTech4'), Money = 5000},
 }
 
 --g_Ship = {
@@ -245,14 +266,14 @@ g_ShipAllied = {
     {Type = "AlliedAntiAirShip", Image = "Button_AlliedAntiAirShip_on", Name = Localization.recycle('unit.AlliedAntiAirShip'), Money = 900},
     {Type = "AlliedAntiNavyShipTech1", Image = "Button_AlliedAntiNavyShipTech1_on", Name = Localization.recycle('unit.AlliedAntiNavyShipTech1'), Money = 1600},
     {Type = "AlliedAntiNavyShipTech3", Image = "Button_AlliedAntiNavyShipTech3", Name = Localization.recycle('unit.AlliedAntiNavyShipTech3'), Money = 4000},
-    --{Type = "AlliedAntiStructureShip", Image = "Button_AlliedAntiStructureShip_on", Name = Localization.recycle('unit.AlliedAntiStructureShip'), Money = 5500},
+    {Type = "AlliedAntiStructureShip", Image = "Button_AlliedAntiStructureShip_on", Name = Localization.recycle('unit.AlliedAntiStructureShip'), Money = 5500},
 }
 
 g_ShipSoviet = {
     {Type = "SovietAntiNavyShipTech1", Image = "Button_SovietAntiNavyShipTech1_small", Name = Localization.recycle('unit.SovietAntiNavyShipTech1'), Money = 1000},
     {Type = "SovietAntiNavyShipTech2", Image = "Button_SovietAntiNavyShipTech2_small", Name = Localization.recycle('unit.SovietAntiNavyShipTech2'), Money = 2000},
     {Type = "SovietAntiNavyShipTech3", Image = "Button_SovietAntiNavyShipTech3", Name = Localization.recycle('unit.SovietAntiNavyShipTech3'), Money = 4500},
-    --{Type = "SovietAntiStructureShip", Image = "Button_SovietAntiStructureShip_small", Name = Localization.recycle('unit.SovietAntiStructureShip'), Money = 5000},
+    {Type = "SovietAntiStructureShip", Image = "Button_SovietAntiStructureShip_small", Name = Localization.recycle('unit.SovietAntiStructureShip'), Money = 5000},
 }
 
 g_ShipJapan = {
@@ -260,14 +281,14 @@ g_ShipJapan = {
     {Type = "JapanAntiAirShip", Image = "Button_JapanAntiShipAircraft_air", Name = Localization.recycle('unit.JapanAntiAirShip'), Money = 1100},
     {Type = "JapanAntiVehicleShip", Image = "Button_JapanAntiNavyShipTech2", Name = Localization.recycle('unit.JapanAntiVehicleShip'), Money = 2000},
     {Type = "JapanAntiNavyShipTech3", Image = "Button_JapanAntiNavyShipTech3", Name = Localization.recycle('unit.JapanAntiNavyShipTech3'), Money = 4500},
-    --{Type = "JapanAntiStructureShip", Image = "Button_JapanAntiStructureShip", Name = Localization.recycle('unit.JapanAntiStructureShip'), Money = 6300},
+    {Type = "JapanAntiStructureShip", Image = "Button_JapanAntiStructureShip", Name = Localization.recycle('unit.JapanAntiStructureShip'), Money = 6300},
 }
 
 g_ShipCelestial = {
     {Type = "CelestialAntiNavyShipTech1", Image = "Button_CelestialAntiNavyShipTech1", Name = Localization.recycle('unit.CelestialAntiNavyShipTech1'), Money = 800},
     {Type = "CelestialAlmightlyShip", Image = "Button_CelestialAntiNavyShipTech2", Name = Localization.recycle('unit.CelestialAlmightlyShip'), Money = 2000},
     {Type = "CelestialAntiNavyShipTech3", Image = "Button_CelestialAntiNavyShipTech3B", Name = Localization.recycle('unit.CelestialAntiNavyShipTech3'), Money = 4500},
-    --{Type = "CelestialAntiStructureShip", Image = "Button_CelestialAntiStructureShipB", Name = Localization.recycle('unit.CelestialAntiStructureShip'), Money = 5000},
+    {Type = "CelestialAntiStructureShip", Image = "Button_CelestialAntiStructureShipB", Name = Localization.recycle('unit.CelestialAntiStructureShip'), Money = 5000},
 }
 
 g_CrateUnitsTemplate = {
@@ -416,6 +437,47 @@ g_RecycleBtnsMapByFaction = {
 }
 g_RecycleBtnsMapByPlayerIndex = {}
 
+-- 普通对战单位使用 UNITCOUNT；超级要塞等特殊单位可以在配置里指定独立计数槽。
+function GetRecycleUnitCount(playerIndex, unitInfo)
+    if unitInfo.CountType ~= nil then
+        if g_UnitCount == nil then
+            return 0
+        end
+        local countSlot = g_UnitCount[FastHash(unitInfo.CountType)]
+        if countSlot == nil then
+            return 0
+        end
+        return countSlot[playerIndex] or 0
+    end
+
+    local unitTypeIndex = g_UnitNameToUnitIndex[unitInfo.Type]
+    if unitTypeIndex == nil then
+        return 0
+    end
+    return UNITCOUNT[playerIndex][unitTypeIndex] or 0
+end
+
+function RemoveRecycleUnitCount(playerIndex, unitInfo, requestedCount)
+    local availableCount = GetRecycleUnitCount(playerIndex, unitInfo)
+    local removedCount = requestedCount
+    if removedCount > availableCount then
+        removedCount = availableCount
+    end
+
+    local leftCount = availableCount - removedCount
+    if unitInfo.CountType ~= nil then
+        g_UnitCount[FastHash(unitInfo.CountType)][playerIndex] = leftCount
+    else
+        local unitTypeIndex = g_UnitNameToUnitIndex[unitInfo.Type]
+        UNITCOUNT[playerIndex][unitTypeIndex] = leftCount
+    end
+
+    if unitInfo.CountsTowardArmyTotal ~= false then
+        ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] - removedCount
+    end
+    return removedCount, leftCount
+end
+
 function createRecycleBtns()
     -- TODO 挡住顶部技能栏的文字了
     exCreateCustomButton({
@@ -507,12 +569,9 @@ function updateRecycleBtnsForPlayerName(playerName)
                     -- shouldInsert = true -- 玩家本阵营的单位无条件显示
                 else
                     -- 其他阵营的单位不显示，只有当玩家拥有该单位时才显示
-                    local unitTypeIndex = g_UnitNameToUnitIndex[btns[k].Type]
-                    if unitTypeIndex ~= nil then
-                        local unitCount = UNITCOUNT[playerIndex][unitTypeIndex]
-                        if unitCount ~= nil and unitCount > 0 then
-                            shouldInsert = true
-                        end
+                    local unitCount = GetRecycleUnitCount(playerIndex, btns[k])
+                    if unitCount > 0 then
+                        shouldInsert = true
                     end
                 end
                 if shouldInsert then
@@ -537,7 +596,7 @@ function RecycleUnitBtnsClear(playerName)
     local playerIndex = g_PlayerNameToIndex[playerName]
     local playerButtons = g_RecycleBtnsShowed[playerIndex]
     if not playerButtons then
-        for i = 1, 50 do
+        for i = 1, g_RecycleBtnsMaxCount do
             local buttonIndex = g_RecycleBtnsIndexStart + i;
             exCustomBtnRemoveForPlayer(playerName, buttonIndex);
         end
@@ -615,7 +674,8 @@ ButtonManager:RegisterCustomButtonHandler(function(playerName, index)
         g_RecycleBtnHandlers[index](playerName, index);
         handled = true
     end
-    if index > 30 and index < 80 then
+    if index > g_RecycleBtnsIndexStart
+        and index <= g_RecycleBtnsIndexStart + g_RecycleBtnsMaxCount then
         RecycleUnitBtnsClick(playerName, index);
         handled = true
     end
