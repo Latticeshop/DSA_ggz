@@ -12,7 +12,7 @@ for i = 1 , 8 , 1 do
     ANYUNITCOUNT[i] = 0 ;
     g_PlayerGiftStates[i] = {
         GiftJapanKamikazeInfantry = 0,
-        GiftSovietAntiInfantryInfantry = 0,
+        -- GiftSovietAntiInfantryInfantry = 0, -- 暂停：动员兵造二送一
     }
 end
 UNITLIST [1] = "SovietCommandoTech1"
@@ -398,19 +398,19 @@ function unitgetcountanddelet (playindex)
                         playerGiftState.GiftJapanKamikazeInfantry = kamikazeState
                     end
 
-                    -- 与帝国武士相同：每生产两个苏联动员兵，额外记入一个动员兵。
-                    if UNITLIST[actualUnitIndex] == "SovietAntiInfantryInfantry" then
-                        local playerGiftState = g_PlayerGiftStates[playindex]
-                        local conscriptState = playerGiftState.GiftSovietAntiInfantryInfantry or 0
-                        conscriptState = conscriptState + 1
-                        if conscriptState >= 2 then
-                            conscriptState = 0
-                            ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
-                            local conscriptIndex = g_UnitNameToUnitIndex["SovietAntiInfantryInfantry"]
-                            UNITCOUNT[playindex][conscriptIndex] = UNITCOUNT[playindex][conscriptIndex] + 1
-                        end
-                        playerGiftState.GiftSovietAntiInfantryInfantry = conscriptState
-                    end
+                    -- 暂停：与帝国武士相同，每生产两个苏联动员兵，额外记入一个动员兵。
+                    -- if UNITLIST[actualUnitIndex] == "SovietAntiInfantryInfantry" then
+                    --     local playerGiftState = g_PlayerGiftStates[playindex]
+                    --     local conscriptState = playerGiftState.GiftSovietAntiInfantryInfantry or 0
+                    --     conscriptState = conscriptState + 1
+                    --     if conscriptState >= 2 then
+                    --         conscriptState = 0
+                    --         ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
+                    --         local conscriptIndex = g_UnitNameToUnitIndex["SovietAntiInfantryInfantry"]
+                    --         UNITCOUNT[playindex][conscriptIndex] = UNITCOUNT[playindex][conscriptIndex] + 1
+                    --     end
+                    --     playerGiftState.GiftSovietAntiInfantryInfantry = conscriptState
+                    -- end
                 end
                 ExecuteAction("NAMED_DELETE", TAR[i])
             end

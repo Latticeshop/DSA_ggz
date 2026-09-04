@@ -31,6 +31,8 @@ SchedulerModule.delay_call(function()
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_ToggleTargetPainter", "Disabled")
     -- 光荣级导弹巡洋舰禁用 F 技能（反潜机）。
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_ToggleAimLaser", "Disabled")
+    -- 神州工程师禁用 F 技能（放置维修天灯）。
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_CelestialEngineerRepairDrone_A", "Disabled")
 end, 1)
 
 function ShowTimedHelp(ownerPlayerName, name, localizedText, x, y, z)
