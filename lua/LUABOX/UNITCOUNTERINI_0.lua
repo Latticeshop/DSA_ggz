@@ -420,6 +420,22 @@ function unitgetcountanddelet (playindex)
 end
 --exMessageAppendToMessageArea("定义函数1完毕")
 -------------------------------------------------------------------------------
+g_SovietMortarCycleUnlocked = 0
+
+-- 第一回合起解除地图对火炮机车的禁造；单位自身的原生前置仍由游戏处理。
+function UpdateSovietMortarCycleBuildability()
+    if g_SovietMortarCycleUnlocked == 1 then
+        return
+    end
+    if exCounterGetByName("lvc") < 1 then
+        return
+    end
+    for playindex = 1, 6, 1 do
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietMortarCycle", 1)
+    end
+    g_SovietMortarCycleUnlocked = 1
+end
+
 function UpdateNoNavyTeslaBoatBuildability()
     if g_DisableSeaArmy ~= 1 or g_NoNavyTeslaBoatUnlocked == 1 then
         return
@@ -434,6 +450,7 @@ function UpdateNoNavyTeslaBoatBuildability()
 end
 
 function unitgenerate ()
+    UpdateSovietMortarCycleBuildability()
     UpdateNoNavyTeslaBoatBuildability()
     ----exMessageAppendToMessageArea("unitgenerate")
     for playindex = 1 , 6 , 1 do
