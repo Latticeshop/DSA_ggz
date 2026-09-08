@@ -275,6 +275,13 @@ FilterJapanInterceptorAircraft=CreateObjectFilter({
     }
 })
 
+FilterSovietTeslaBoat=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietAntiNavyShipTech1"
+    }
+})
+
 if not g_SukhoiHealthX2Modifier then
     g_SukhoiHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
 end
@@ -289,6 +296,10 @@ if not g_JapanInterceptorHealthX3Modifier then
 end
 if not g_AlliedGunshipHealthX2Modifier then
     g_AlliedGunshipHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
+end
+if not g_SovietTeslaBoatRateOfFireX125Modifier then
+    -- 磁爆快艇仅增加25%攻速，不混入现有组合式伤害/射程 Buff。
+    g_SovietTeslaBoatRateOfFireX125Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 1.25 }, 1)
 end
 
 
@@ -346,5 +357,11 @@ function LARGEENHANCEBUFF ()
     local SakuraMine , SakuraMineCount = ObjectFindObjects(nil, nil, FilterJapanInterceptorAircraft)
     for i = 1 , SakuraMineCount ,1 do
         ObjectLoadAttributeModifier(SakuraMine[i], g_JapanInterceptorHealthX3Modifier)
+    end
+
+    -- 磁爆快艇：纯25%攻速强化，水面与禁海模式下的陆地形态使用同一单位模板。
+    local TeslaBoat , TeslaBoatCount = ObjectFindObjects(nil, nil, FilterSovietTeslaBoat)
+    for i = 1 , TeslaBoatCount ,1 do
+        ObjectLoadAttributeModifier(TeslaBoat[i], g_SovietTeslaBoatRateOfFireX125Modifier)
     end
 end

@@ -65,8 +65,31 @@ g_BuyTowerId = {
     ["SovietHeavyAntiAirMissileTurret"] = {
         ["angel"] = 0,
         ["evil"] = 0,
+    },
+    ["JapanKamikazeCommandTower"] = {
+        ["angel"] = 0,
+        ["evil"] = 0,
+    },
+    ["AlliedAegisLargeDefenseBase"] = {
+        ["angel"] = { 0, 0 },
+        ["evil"] = { 0, 0 },
     }
 }
+
+-- 返回本方当前最前排的存活陆地防御塔；前排损失后自动依次后退到下一座塔。
+function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    local towerNames = { "T71", "T72", "T73", "T74" }
+    if playerIndex >= 4 then
+        towerNames = { "T81", "T82", "T83", "T84" }
+    end
+    for i = 1, 4, 1 do
+        local tower = GetObjectByScriptName(towerNames[i])
+        if ObjectIsAlive(tower) then
+            return tower
+        end
+    end
+    return nil
+end
 
 
 function onUserBtnChoiceDialogEvent(playerName, btnIndex, dialogId)
@@ -92,6 +115,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         PlayerName = "Player_" .. playerIndex,
         PlayerIndex = playerIndex,
         Title = Localization.get("market.title"),
+        Page = 1,
     }
     dialogData.RefreshData = function(self)
         local playerIndex = self.PlayerIndex
@@ -127,14 +151,23 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         end
         nextInvestmentText = nextInvestmentText .. Localization.get("market.next_investment.benefit")
 
-        self.Choices = {
-            Localization.get("market.transfer.choice", roles[transferToA_Index], playerA_Color), -- 1
-            Localization.get("market.transfer.choice", roles[transferToB_Index], playerB_Color), -- 2
-            Localization.get("market.back_to_battle"), -- 3
-            nextInvestmentText, -- 4
-            Localization.get("market.buy_shield_tower", 10000), -- 5
-            Localization.get("market.buy_poplar_tower", 12000), -- 6
-        }
+        if self.Page == 2 then
+            self.Choices = {
+                Localization.get("market.buy_shield_tower", 10000), -- 1
+                Localization.get("market.buy_sakura_well", 10000), -- 2
+                Localization.get("market.buy_poplar_tower", 12000), -- 3
+                Localization.get("market.buy_aegis_shield_generator", 15000), -- 4
+                Localization.get("market.back_to_main_page"), -- 5
+            }
+        else
+            self.Choices = {
+                Localization.get("market.transfer.choice", roles[transferToA_Index], playerA_Color), -- 1
+                Localization.get("market.transfer.choice", roles[transferToB_Index], playerB_Color), -- 2
+                nextInvestmentText, -- 3
+                Localization.get("market.back_to_battle"), -- 4
+                Localization.get("market.more_defense_buildings"), -- 5
+            }
+        end
         --if g_PlayerDebtCount[self.PlayerName] == 0 then
         --    local debtMoney = g_TowerDestroyProgress * 2600 + 4000;
         --    tinsert(self.Choices, format("向银行贷款 %d\n(将会3分钟无收入)", debtMoney)) -- 5
@@ -143,19 +176,35 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         --end
     end
     dialogData.OnChoice = function(self, buttonIndex)
+        if self.Page == 2 then
+            if buttonIndex == 1 then
+                self:BuyJapanPointShieldControlTower()
+                return
+            elseif buttonIndex == 2 then
+                self:BuyJapanKamikazeCommandTower()
+                return
+            elseif buttonIndex == 3 then
+                self:BuySovietHeavyAntiAirMissileTurret()
+                return
+            elseif buttonIndex == 4 then
+                self:BuyAlliedAegisLargeDefenseBase()
+                return
+            elseif buttonIndex == 5 then
+                self.Page = 1
+            end
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        end
         if buttonIndex == 1 or buttonIndex == 2 then
             self:TransferMoney(buttonIndex)
         elseif buttonIndex == 3 then
+            self:InvestMoney()
+        elseif buttonIndex == 4 then
             -- 回到战场（因此不再显示交易市场对话框）
             return
-        elseif buttonIndex == 4 then
-            self:InvestMoney()
         elseif buttonIndex == 5 then
-            self:BuyJapanPointShieldControlTower()
-            return
-        elseif buttonIndex == 6 then
-            self:BuySovietHeavyAntiAirMissileTurret()
-            return
+            self.Page = 2
         end
         -- 重新刷新数据并显示对话框
         self:RefreshData()
@@ -291,6 +340,103 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
 
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -12000);
 
+    end
+    dialogData.BuyJapanKamikazeCommandTower = function(self)
+        local sideName = "evil";
+        local playerOwn = "PlyrCivilian";
+        local behindDirection = -1;
+        local pos = {X = 2773.25, Y = 3102.5, Z = 210};
+        if self.PlayerIndex >= 4 then
+            sideName = "angel";
+            playerOwn = "PlyrCreeps";
+            behindDirection = 1;
+            pos = {X = 4276.75, Y = 3102.5, Z = 210};
+        end
+        local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(self.PlayerIndex)
+        if ObjectIsAlive(frontTower) then
+            local towerX, towerY, towerZ = ObjectGetPosition(frontTower);
+            -- 以当前最前排存活塔为中心：左侧向左、右侧向右是后方。
+            local behindDistance = 126.75;
+            pos = {X = towerX + behindDirection * behindDistance, Y = towerY, Z = towerZ};
+        end
+        local objectId = g_BuyTowerId["JapanKamikazeCommandTower"][sideName];
+        if ObjectIsAlive(objectId) then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
+            return;
+        end
+        local money = exPlayerGetCurrentMoney(self.PlayerName)
+        if money < 10000 then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
+            return;
+        end
+        local id = exCreateObject({
+            ObjectType = FastHash("JapanKamikazeCommandTower"),
+            TeamName = playerOwn.."/team"..playerOwn,
+            Position = {X = pos.X, Y = pos.Y, Z = pos.Z},
+            Angle = 0,
+            Health = 5500
+        });
+        -- 樱花井射程增加 150%，最终为基础射程的 2.5 倍。
+        if not g_JapanKamikazeCommandTowerRangeX25Modifier then
+            g_JapanKamikazeCommandTowerRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
+        end
+        ObjectLoadAttributeModifier(GetObjectById(id), g_JapanKamikazeCommandTowerRangeX25Modifier)
+        g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -10000);
+    end
+    dialogData.BuyAlliedAegisLargeDefenseBase = function(self)
+        local sideName = "evil";
+        local playerOwn = "PlyrCivilian";
+        local behindDirection = -1;
+        local towerPos = {X = 2900, Y = 3102.5, Z = 210};
+        if self.PlayerIndex >= 4 then
+            sideName = "angel";
+            playerOwn = "PlyrCreeps";
+            behindDirection = 1;
+            towerPos = {X = 4150, Y = 3102.5, Z = 210};
+        end
+        local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(self.PlayerIndex)
+        if ObjectIsAlive(frontTower) then
+            local towerX, towerY, towerZ = ObjectGetPosition(frontTower);
+            towerPos = {X = towerX + behindDirection * 126.75, Y = towerY, Z = towerZ};
+        end
+        local slots = g_BuyTowerId["AlliedAegisLargeDefenseBase"][sideName];
+        local slotIndex = nil;
+        for i = 1, 2, 1 do
+            if not ObjectIsAlive(slots[i]) then
+                slotIndex = i;
+                break;
+            end
+        end
+        if slotIndex == nil then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
+            return;
+        end
+        local money = exPlayerGetCurrentMoney(self.PlayerName)
+        if money < 15000 then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
+            return;
+        end
+        -- 先取当前最前排存活塔的后方，再在该中心点上下两侧对称填充两个槽位。
+        local lateralDistance = 126.75;
+        local lateralDirection = 1;
+        if slotIndex == 2 then
+            lateralDirection = -1;
+        end
+        local pos = {
+            X = towerPos.X,
+            Y = towerPos.Y + lateralDirection * lateralDistance,
+            Z = towerPos.Z
+        };
+        local id = exCreateObject({
+            ObjectType = FastHash("AlliedAegisLargeDefenseBase"),
+            TeamName = playerOwn.."/team"..playerOwn,
+            Position = {X = pos.X, Y = pos.Y, Z = pos.Z},
+            Angle = 0,
+            Health = 9000
+        });
+        slots[slotIndex] = id;
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -15000);
     end
 
     dialogData:RefreshData()

@@ -25,18 +25,23 @@ for i = 1, getn(g_PlayerEngineerTypes), 1 do
     g_UnitCreateEventFunc[FastHash(engineerType)] = PlayerEngineerBorn
 end
 
--- 覆盖地图旧版的全局封禁；延迟一帧可确保初始化动作已经执行完。
-SchedulerModule.delay_call(function()
+-- 只有抽卡模式允许玩家从生产栏建造工程师；其他模式保持按钮禁用。
+function SetPlayerEngineerProductionAvailability(enable)
+    local availability = 0
+    if enable and enable ~= 0 then
+        availability = 1
+    end
     for i = 1, 6, 1 do
         local playerName = "Player_" .. i
         for j = 1, getn(g_PlayerEngineerTypes), 1 do
-            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, g_PlayerEngineerTypes[j], 1)
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, g_PlayerEngineerTypes[j], availability)
         end
     end
-end, 1, {})
+end
 
 function TryEnableLuckyCrateIfAllowed()
     local previous = SetWorldBuilderThisPlayer(1)
+    SetPlayerEngineerProductionAvailability(g_LuckyCrateMode)
     local EnableLuckyCrateImplementation = function(enable)
         if not enable or enable == 0 then
             return

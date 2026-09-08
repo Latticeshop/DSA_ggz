@@ -83,4 +83,37 @@ function UNITSPSHIP (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     -- end
     -----------------------------------------------------------
 end
+
+-- 为“补充军队”按阵营单独生成海军，避免调用旧函数时把双方海军一起补出来。
+function UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, playerMin, playerMax, teamIndex, angle)
+    local spindex = 1
+    for unitindex = unitmin, unitmax, 1 do
+        for playindex = playerMin, playerMax, 1 do
+            local unitCount = UNITCOUNT[playindex][unitindex]
+            for i = 1, unitCount, 1 do
+                local x, y, z = ObjectGetPosition(UNITSP[teamIndex][spindex])
+                ExecuteAction("CREATE_OBJECT", UNITLIST[unitindex], UNITTEAM[teamIndex], {X=x,Y=y,Z=z}, angle)
+                spindex = spindex + 1
+                if spindex > 6 then
+                    spindex = 1
+                end
+            end
+        end
+    end
+
+    if EvaluateCondition("TEAM_HAS_UNITS", UNITTEAM[teamIndex]) then
+        for levelindex = 1, LEVELUP[teamIndex], 1 do
+            ExecuteAction("TEAM_GAIN_LEVEL", UNITTEAM[teamIndex], 1)
+        end
+        ExecuteAction("TEAM_MERGE_INTO_TEAM", UNITTEAM[teamIndex], UNITATTACKTEAM[teamIndex])
+    end
+end
+
+function UNITSPSHIP_left(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM)
+    UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, 1, 3, 7, 0)
+end
+
+function UNITSPSHIP_right(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM)
+    UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, 4, 6, 8, 180)
+end
 --exMessageAppendToMessageArea("函数定义")

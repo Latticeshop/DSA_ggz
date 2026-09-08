@@ -125,8 +125,13 @@ function CelestialCenturionUpgradeBorn(createdObjId, createdObjInstanceId, owner
 end
 
 function AlliedSuperWeaponBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    g_AlliedSuperWeaponBuilt[g_PlayerNameToIndex[ownerPlayerName]] = 1
-    CenterTopBtnFunc_UpdatePlayer3rdButton(g_PlayerNameToIndex[ownerPlayerName])
+    local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+    if CenterTopBtnFunc_UnlockChronosphere(playerIndex) then
+        -- 延迟再次刷新，避免建筑出生事件与顶部按钮初始化处于同一帧时被锁定按钮覆盖。
+        SchedulerModule.delay_call(function(index)
+            CenterTopBtnFunc_UnlockChronosphere(index)
+        end, 2, {playerIndex})
+    end
 
     SchedulerModule.delay_call(function(id, playerName)
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedSuperWeapon", 0)
@@ -425,6 +430,36 @@ g_FilterYurikoEnemyAircraft = CreateObjectFilter({
     Exclude = "STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
     StatusBitFlags = "AIRBORNE_TARGET"
 })
+
+-- 樱花井与鬼樱特攻机共用：飞机 > 坦克/舰船 > 步兵 > 建筑。
+g_FilterSakuraPriorityEnemy = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT SHIP STRUCTURE",
+    Exclude = "IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+g_FilterSakuraEnemyTankOrShip = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    Include = "VEHICLE HUGE_VEHICLE SHIP",
+    Exclude = "AIRCRAFT STRUCTURE INFANTRY IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+function ConfigureSakuraPriorityTargetChooser(unit)
+    ObjectSetCustomTargetChooserData(unit, {
+        CustomFilter = g_FilterSakuraPriorityEnemy,
+        CompareFilterList = {
+            g_FilterYurikoEnemyAircraft,
+            g_FilterSakuraEnemyTankOrShip,
+            g_FilterPrioritySiegeEnemyInfantry,
+            g_FilterPrioritySiegeEnemyStructure
+        },
+        ReverseRangeCompare = false,
+        PreferTargetInsideRange = true
+    })
+    ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+end
 
 -- 四类炮车使用独立的单体攻击前进，不再接受 LIGHTVEHATTACK 的队伍级刷新。
 g_PrioritySiegeTankPursuitActive = g_PrioritySiegeTankPursuitActive or {
@@ -811,6 +846,40 @@ g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDro
 
 g_UnitCreateEventFunc[FastHash("JapanKamikazeInfantry")] = JapanKamikazeInfantryBorn
 
+-- 鬼樱特攻机出生后永久获得 3 倍生命和 100% 移速加成。
+if not g_JapanInterceptorHealthX3Modifier then
+    g_JapanInterceptorHealthX3Modifier = exAttributeModifierCreate({ HEALTH_MULT = 3.0 }, 1)
+end
+if not g_JapanSakuraAttackRocketSpeedX2Modifier then
+    g_JapanSakuraAttackRocketSpeedX2Modifier = exAttributeModifierCreate({ SPEED = 2.0 }, 1)
+end
+function JapanSakuraAttackRocketBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id, playerName)
+        if ObjectIsAlive(id) then
+            local rocket = GetObjectById(id)
+            ObjectLoadAttributeModifier(rocket, g_JapanInterceptorHealthX3Modifier)
+            ObjectLoadAttributeModifier(rocket, g_JapanSakuraAttackRocketSpeedX2Modifier)
+            ConfigureSakuraPriorityTargetChooser(rocket)
+            -- 鬼樱脱离樱花井的默认待命队伍，加入对应阵营现有的 AI 进攻队列。
+            if playerName == "PlyrCivilian" then
+                ExecuteAction("UNIT_SET_TEAM", rocket, "PlyrCivilian/ATTACK")
+            elseif playerName == "PlyrCreeps" then
+                ExecuteAction("UNIT_SET_TEAM", rocket, "PlyrCreeps/ATTACK")
+            end
+        end
+    end, 1, {createdObjId, ownerPlayerName})
+end
+g_UnitCreateEventFunc[FastHash("JapanSakuraAttackRocket")] = JapanSakuraAttackRocketBorn
+
+function JapanKamikazeCommandTowerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ConfigureSakuraPriorityTargetChooser(GetObjectById(id))
+        end
+    end, 1, {createdObjId})
+end
+g_UnitCreateEventFunc[FastHash("JapanKamikazeCommandTower")] = JapanKamikazeCommandTowerBorn
+
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4")] = CelestialArmybreakerBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4_Enhanced")] = CelestialArmybreakerBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech4_S01")] = CelestialArmybreakerBorn
@@ -940,6 +1009,8 @@ exObjectRegisterCreateEvent("SovietFighterAircraft")
 exObjectRegisterCreateEvent("SovietFighterAircraft_Enhanced")
 exObjectRegisterCreateEvent("SovietInterceptorAircraft")
 exObjectRegisterCreateEvent("SovietInterceptorAircraft_Enhanced")
+exObjectRegisterCreateEvent("JapanSakuraAttackRocket")
+exObjectRegisterCreateEvent("JapanKamikazeCommandTower")
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     g_UnitCreateEventFunc[createdObjInstanceId](createdObjId, createdObjInstanceId, ownerPlayerName)
