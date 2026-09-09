@@ -482,6 +482,14 @@ end
 -- 炮车只使用单体攻击前进：有坦克时忽略步兵继续追击；无坦克时恢复常规优先级。
 -- 任意状态下，700 范围内有建筑就停止前进并原地开火；建筑消失后恢复推进，新塔出现时再次停止。
 function PrioritySiegeAttackMoveMICROCONTROL ()
+    -- UnitCreate 初始化若尚未完成，先跳过本帧，避免微操循环访问未创建的共享表。
+    if g_FilterPrioritySiegeEnemyTank == nil
+        or g_PrioritySiegeTankPursuitActive == nil
+        or g_PrioritySiegeUnitMode == nil
+        or g_PrioritySiegeIdleTeam == nil
+        or g_PrioritySiegeAttackWaypoint == nil then
+        return
+    end
     for playindex = 7, 8, 1 do
         local enemyTanks, enemyTankCount = ObjectFindObjects(P[playindex], nil, g_FilterPrioritySiegeEnemyTank)
         local enemyTankExists = enemyTankCount > 0

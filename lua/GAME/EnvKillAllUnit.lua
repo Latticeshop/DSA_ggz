@@ -3,8 +3,6 @@ unitallEnv = CreateObjectFilter({
     Relationship="SAME_PLAYER",
     IncludeThing={},
     ExcludeThing={
-        "JapanFortressShip",
-        "Overlordtank",
         "JapanLightTransportVehicle",
         "AlliedNightinaleHelicopter",
         "AlliedMCV",
@@ -12,6 +10,7 @@ unitallEnv = CreateObjectFilter({
     Include="SELECTABLE",
     Exclude="STRUCTURE",
 })
+
 -- 夜莺也需要被干掉
 killableNightinale = CreateObjectFilter({
     Relationship="SAME_PLAYER",
@@ -29,12 +28,16 @@ RoundLuaManager.CallOnEveryRoundBegin(function(list)
             exAddTextToPublicBoard(Localization.get("env_kill_all_unit.execute"), 10)
             local units, count = ObjectFindObjects(T74, nil, unitallEnv);
             for i = 1 , count , 1 do
-                ExecuteAction("NAMED_KILL", units[i]);
+                if not IsTowerGuardian(units[i]) then
+                    ExecuteAction("NAMED_KILL", units[i]);
+                end
             end
 
             local units2, count2 = ObjectFindObjects(T84, nil, unitallEnv);
             for i = 1 , count2 , 1 do
-                ExecuteAction("NAMED_KILL", units2[i]);
+                if not IsTowerGuardian(units2[i]) then
+                    ExecuteAction("NAMED_KILL", units2[i]);
+                end
             end
 
             local nightinaleUnits, nightinaleCount = ObjectFindObjects(T74, nil, killableNightinale)
