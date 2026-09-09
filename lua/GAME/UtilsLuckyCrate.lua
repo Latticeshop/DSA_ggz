@@ -131,7 +131,8 @@ g_PureDrawConfig = {
     RefreshRounds = 3,
     CustomDrawChance = 0.50,
     AirdropCheckFrames = 15 * 60,
-    AirdropChance = 0.05,
+    -- 测试阶段暂设为二分之一，功能稳定后再恢复正式概率。
+    AirdropChance = 0.50,
     TierWeights = { 37, 50, 10, 3 },
     DebugAlerts = true,
 }
@@ -297,10 +298,13 @@ g_PureDrawUnitInfoByHash = {}
 g_PureDrawQuota = { 0, 0, 0, 0, 0, 0 }
 g_PureDrawTrackedCrates = {}
 g_PureDrawAirdropCrateIds = {}
+g_PureDrawPendingCrateSeeds = {}
 g_PureDrawScriptCreatedUnitIds = {}
 g_PureDrawLastRound = -1
 g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
 g_PureDrawRegisteredProductionHashes = {}
+g_PureDrawAirdropSerial = 0
+g_PureDrawCustomSpawnSerial = 0
 
 for tier = 1, 4, 1 do
     local pool = g_PureDrawBuildableUnitPool[tier]
@@ -326,15 +330,26 @@ function PureDrawIsHumanPlayer(playerIndex)
     return EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", "Player_" .. playerIndex, "Human")
 end
 
+function PureDrawGetQuotaDisplayDirection(playerIndex)
+    local playerPosition = exWaypointGetPos(format("Player_%d_Start", playerIndex))
+    local startXTotal = 0
+    for i = 1, 6, 1 do
+        local startPosition = exWaypointGetPos(format("Player_%d_Start", i))
+        startXTotal = startXTotal + startPosition[1]
+    end
+    -- 左侧出生点的海岸在基地左边，因此余额展示统一放到基地右侧。
+    if playerPosition[1] < startXTotal / 6 then
+        return 1
+    end
+    return -1
+end
+
 function PureDrawSpawnQuotaWall(playerIndex, slot)
     if not PureDrawIsHumanPlayer(playerIndex) then
         return
     end
     local p = exWaypointGetPos(format("Player_%d_Start", playerIndex))
-    local direction = 1
-    if playerIndex >= 4 then
-        direction = -1
-    end
+    local direction = PureDrawGetQuotaDisplayDirection(playerIndex)
     local name = format("PureDrawQuota_%d_%d", playerIndex, slot)
     ExecuteAction("NAMED_DELETE", name)
     -- AlliedWallPiece 使用公告等待阶段已经验证过的生成通道：先在现有投票路径点创建，
@@ -365,10 +380,7 @@ function PureDrawCreateQuotaDisplay(playerIndex)
         return
     end
     local p = exWaypointGetPos(format("Player_%d_Start", playerIndex))
-    local direction = 1
-    if playerIndex >= 4 then
-        direction = -1
-    end
+    local direction = PureDrawGetQuotaDisplayDirection(playerIndex)
     local labelName = format("PureDrawQuotaLabel_%d", playerIndex)
     ExecuteAction("NAMED_DELETE", labelName)
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", labelName, "MultiplayerBeacon",
@@ -415,9 +427,9 @@ function PureDrawSetPlayerBuildability(playerIndex, enable)
         local pool = g_PureDrawBuildableUnitPool[tier]
         for i = 1, getn(pool), 1 do
             local info = pool[i]
-            local availability = 0
+            local availability = false
             if enable and PureDrawCanEnableUnit(playerIndex, info) then
-                availability = 1
+                availability = true
             end
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, info.Type, availability)
             local aliases = g_PureDrawProductionAliases[info.Type]
@@ -426,7 +438,7 @@ function PureDrawSetPlayerBuildability(playerIndex, enable)
                     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, aliases[aliasIndex], availability)
                 end
             end
-            if availability == 0 then
+            if not availability then
                 disallowedHashes[tostring(FastHash(info.Type))] = true
                 if aliases ~= nil then
                     for aliasIndex = 1, getn(aliases), 1 do
@@ -587,25 +599,38 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
     if info == nil then
         return
     end
+    g_PureDrawCustomSpawnSerial = g_PureDrawCustomSpawnSerial + 1
+    local unitName = format("PureDrawCustom_%d", g_PureDrawCustomSpawnSerial)
     local nextObjectId = GetNextObjectId()
     g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
-    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "", info.Type,
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", unitName, info.Type,
         format("%s/team%s", playerName, playerName), { X = x, Y = y, Z = z }, 0)
+    local unit = GetObjectByScriptName(unitName)
+    if not ObjectIsAlive(unit) then
+        g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
+        PureDrawDebug("ERROR custom draw unit failed to spawn: " .. info.Type)
+        return
+    end
+    local actualId = ObjectGetId(unit)
+    if actualId ~= nextObjectId then
+        g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
+        g_PureDrawScriptCreatedUnitIds[actualId] = true
+    end
     PureDrawDebug("custom draw spawned " .. info.Type .. " for " .. playerName
-        .. ", tier=" .. tostring(info.Tier))
+        .. ", tier=" .. tostring(info.Tier)
+        .. ", id=" .. tostring(actualId))
     exAddTextToPublicBoardForPlayer(playerName,
         Localization.get("pure_draw.custom_result", info.Tier), 5)
 end
 
 g_PureDrawCollectorFilter = CreateObjectFilter({
-    Rule = "ANY",
     Include = "SELECTABLE",
     Exclude = "STRUCTURE",
 })
 
-function PureDrawFindCollector(x, y, z)
+function PureDrawFindCollector(x, y, z, radius)
     local units, count = ObjectFindObjects(nil, {
-        X = x, Y = y, Z = z, Radius = 55, DistType = "CENTER_2D"
+        X = x, Y = y, Z = z, Radius = radius or 80, DistType = "CENTER_2D"
     }, g_PureDrawCollectorFilter)
     for i = 1, count, 1 do
         local playerName = ObjectPlayerScriptName(units[i])
@@ -616,6 +641,41 @@ function PureDrawFindCollector(x, y, z)
     return nil
 end
 
+function PureDrawDeleteNativeResultNear(x, y, z)
+    if g_PureDrawNativeResultFilter == nil then
+        local nativeTypes = {}
+        for crateType = 1, 4, 1 do
+            local source = g_CrateUnitsTemplate[crateType]
+            for i = 1, getn(source), 1 do
+                tinsert(nativeTypes, source[i].Type)
+            end
+        end
+        g_PureDrawNativeResultFilter = CreateObjectFilter({
+            Rule = "ANY",
+            IncludeThing = nativeTypes,
+        })
+    end
+    local units, count = ObjectFindObjects(nil, {
+        X = x, Y = y, Z = z, Radius = 180, DistType = "CENTER_2D"
+    }, g_PureDrawNativeResultFilter)
+    for i = 1, count, 1 do
+        ExecuteAction("NAMED_DELETE", units[i])
+    end
+    PureDrawDebug("removed " .. tostring(count)
+        .. " native result objects near consumed custom crate")
+end
+
+function PureDrawFinishCustomCrate(playerName, x, y, z, removeNativeResult)
+    if g_PlayerNameToIndex[playerName] == nil then
+        PureDrawDebug("ERROR custom crate has no valid player collector")
+        return
+    end
+    if removeNativeResult then
+        PureDrawDeleteNativeResultNear(x, y, z)
+    end
+    PureDrawSpawnCustomUnit(playerName, x, y, z)
+end
+
 function PureDrawTrackCustomCrate(id)
     local state = g_PureDrawTrackedCrates[id]
     if state == nil then
@@ -623,21 +683,114 @@ function PureDrawTrackCustomCrate(id)
     end
     if not ObjectIsAlive(id) then
         g_PureDrawTrackedCrates[id] = nil
+        local fallbackPlayer = state.LastCollector or state.Owner
+        PureDrawDebug("physical custom crate disappeared id=" .. tostring(id)
+            .. ", fallbackPlayer=" .. tostring(fallbackPlayer))
+        if g_PlayerNameToIndex[fallbackPlayer] == nil then
+            PureDrawDebug("ERROR custom crate disappeared before a player collector was identified")
+            return
+        end
+        SchedulerModule.delay_call(PureDrawFinishCustomCrate, 1, {
+            fallbackPlayer, state.X, state.Y, state.Z, true
+        })
         return
     end
     local crate = GetObjectById(id)
     local x, y, z = ObjectGetPosition(crate)
     state.X, state.Y, state.Z = x, y, z
-    local playerName = PureDrawFindCollector(x, y, z)
+    local nearbyPlayer = PureDrawFindCollector(x, y, z, 180)
+    if nearbyPlayer ~= nil then
+        state.LastCollector = nearbyPlayer
+    end
+    local playerName = PureDrawFindCollector(x, y, z, 90)
     if playerName ~= nil then
+        state.LastCollector = playerName
         g_PureDrawTrackedCrates[id] = nil
         ExecuteAction("NAMED_DELETE", crate)
         PureDrawDebug("custom crate collected id=" .. tostring(id)
             .. ", collector=" .. tostring(playerName))
-        PureDrawSpawnCustomUnit(playerName, x, y, z)
+        PureDrawFinishCustomCrate(playerName, x, y, z, false)
         return
     end
     SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
+end
+
+function PureDrawTakePendingSeed(x, y, z)
+    local now = GetFrame()
+    local bestIndex = nil
+    local bestDistance = nil
+    for i = getn(g_PureDrawPendingCrateSeeds), 1, -1 do
+        local state = g_PureDrawPendingCrateSeeds[i]
+        if now - state.Frame > 45 then
+            tremove(g_PureDrawPendingCrateSeeds, i)
+        else
+            local dx = x - state.X
+            local dy = y - state.Y
+            local distance = dx * dx + dy * dy
+            if distance <= 250 * 250
+                and (bestDistance == nil or distance < bestDistance) then
+                bestIndex = i
+                bestDistance = distance
+            end
+        end
+    end
+    if bestIndex == nil then
+        return nil
+    end
+    local result = g_PureDrawPendingCrateSeeds[bestIndex]
+    tremove(g_PureDrawPendingCrateSeeds, bestIndex)
+    return result
+end
+
+function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    local x, y, z = ObjectGetPosition(createdObjId)
+    local roll = GetRandomNumber()
+    local useCustomDraw = g_DrawMode == 2
+        and roll < g_PureDrawConfig.CustomDrawChance
+    tinsert(g_PureDrawPendingCrateSeeds, {
+        X = x,
+        Y = y,
+        Z = z,
+        Owner = ownerPlayerName,
+        UseCustom = useCustomDraw,
+        Frame = GetFrame(),
+    })
+    PureDrawDebug("crate seed created id=" .. tostring(createdObjId)
+        .. ", owner=" .. tostring(ownerPlayerName)
+        .. ", customRoll=" .. tostring(roll)
+        .. ", useCustom=" .. tostring(useCustomDraw))
+end
+
+function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    local x, y, z = ObjectGetPosition(createdObjId)
+    local pending = PureDrawTakePendingSeed(x, y, z)
+    local useCustomDraw = false
+    local intendedOwner = ownerPlayerName
+    if pending ~= nil then
+        useCustomDraw = pending.UseCustom
+        intendedOwner = pending.Owner
+    elseif g_DrawMode == 2 then
+        local roll = GetRandomNumber()
+        useCustomDraw = roll < g_PureDrawConfig.CustomDrawChance
+        PureDrawDebug("physical crate had no seed; customRoll=" .. tostring(roll))
+    end
+    local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
+    PureDrawDebug("physical crate created id=" .. tostring(createdObjId)
+        .. ", owner=" .. tostring(ownerPlayerName)
+        .. ", intendedOwner=" .. tostring(intendedOwner)
+        .. ", airdrop=" .. tostring(isAirdrop)
+        .. ", useCustom=" .. tostring(useCustomDraw))
+    if useCustomDraw then
+        g_PureDrawTrackedCrates[createdObjId] = {
+            X = x,
+            Y = y,
+            Z = z,
+            Owner = intendedOwner,
+        }
+        PureDrawTrackCustomCrate(createdObjId)
+    elseif not isAirdrop then
+        SchedulerModule.delay_call(NoCreatesInCenter, 1, { createdObjId })
+    end
 end
 
 function PureDrawChooseNativeNonSeaUnit()
@@ -691,22 +844,35 @@ function PureDrawSpawnAirdrop()
     local centerX = (lx + rx) / 2
     local centerY = (ly + ry) / 2
     local centerZ = (lz + rz) / 2
+    g_PureDrawAirdropSerial = g_PureDrawAirdropSerial + 1
+    local spawnedCount = 0
     for i = 1, 10, 1 do
         local column = mod(i - 1, 5) - 2
         local row = floor((i - 1) / 5) - 0.5
         local nextObjectId = GetNextObjectId()
         g_PureDrawAirdropCrateIds[nextObjectId] = true
-        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "", "LuckyUnitCrateSeed",
+        local crateName = format("PureDrawAirdrop_%d_%d", g_PureDrawAirdropSerial, i)
+        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", crateName, "UnitCrateNew",
             "PlyrNeutral/teamPlyrNeutral", {
-                X = centerX + column * 55,
-                Y = centerY + row * 65,
+                X = centerX + column * 80,
+                Y = centerY + row * 90,
                 Z = centerZ,
             }, 0)
-        ExecuteAction("OBJECT_CREATE_RADAR_EVENT", GetObjectById(nextObjectId), "Information")
+        local crate = GetObjectByScriptName(crateName)
+        if ObjectIsAlive(crate) then
+            local actualId = ObjectGetId(crate)
+            g_PureDrawAirdropCrateIds[actualId] = true
+            spawnedCount = spawnedCount + 1
+            ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
+        else
+            PureDrawDebug("ERROR airdrop crate failed to spawn: " .. crateName)
+        end
     end
-    PureDrawDebug("airdrop spawned 10 crates at x=" .. tostring(centerX)
+    PureDrawDebug("airdrop spawned " .. tostring(spawnedCount) .. " crates at x=" .. tostring(centerX)
         .. ", y=" .. tostring(centerY))
-    exAddTextToPublicBoard(Localization.get("pure_draw.airdrop"), 12)
+    if spawnedCount > 0 then
+        exAddTextToPublicBoard(Localization.get("pure_draw.airdrop"), 12)
+    end
 end
 
 function PureDrawAirdropCheck()
@@ -755,6 +921,8 @@ function PureLuckyCrateMode_Setting()
     end
     g_PureDrawInitialized = true
     PureDrawDebug("pure draw mode initializing")
+    DisableCelestialDragonShipUpgradesForAllPlayers()
+    SchedulerModule.delay_call(DisableCelestialDragonShipUpgradesForAllPlayers, 15, {})
     TryEnableLuckyCrateIfAllowed()
     for playerIndex = 1, 6, 1 do
         PureDrawRefreshQuota(playerIndex)
@@ -847,29 +1015,6 @@ function NoCreatesInCenter(id)
         exMessageAppendToMessageArea(Localization.get("error.crate_in_battlefield"))
     end
 end
-exObjectRegisterCreateEvent("LuckyUnitCrateSeed")
-g_UnitCreateEventFunc[FastHash("LuckyUnitCrateSeed")] = function(createdObjId, createdObjInstanceId, ownerPlayerName)
-    local useCustomDraw = false
-    if g_DrawMode == 2 then
-        local roll = GetRandomNumber()
-        useCustomDraw = roll < g_PureDrawConfig.CustomDrawChance
-        PureDrawDebug("crate created id=" .. tostring(createdObjId)
-            .. ", customRoll=" .. tostring(roll)
-            .. ", useCustom=" .. tostring(useCustomDraw))
-        if useCustomDraw then
-            local x, y, z = ObjectGetPosition(createdObjId)
-            g_PureDrawTrackedCrates[createdObjId] = { X = x, Y = y, Z = z }
-        end
-    end
-    if g_PureDrawAirdropCrateIds[createdObjId] then
-        if useCustomDraw then
-            PureDrawTrackCustomCrate(createdObjId)
-        end
-    else
-        -- 先执行中央战场禁投检查，再开始接触检测，避免自定义分支绕过原规则。
-        SchedulerModule.delay_call(NoCreatesInCenter, 1, {createdObjId})
-        if useCustomDraw then
-            SchedulerModule.delay_call(PureDrawTrackCustomCrate, 2, {createdObjId})
-        end
-    end
-end
+RegisterUnitCreateCallback("LuckyUnitCrateSeed", PureDrawOnCrateSeedBorn)
+RegisterUnitCreateCallback("UnitCrateNew", PureDrawOnPhysicalCrateBorn)
+RegisterUnitCreateCallback("UnitCrate", PureDrawOnPhysicalCrateBorn)
