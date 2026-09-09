@@ -280,3 +280,9 @@ end
 SCRIPT:CrateEnabled_EN
 "Lucky Crate Enabled"
 end
+SCRIPT:PureDrawQuota
+"剩余生产余额（每段围墙代表1点，每3回合补满）"
+end
+SCRIPT:PureDrawQuota_EN
+"Pure Draw production quota (each wall is 1 point; refilled every 3 rounds)"
+end

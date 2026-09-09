@@ -70,28 +70,42 @@ Localization._text_sources = {
     ["upgrade.Upgrade_SovietAdvancedTeslaCoil"] = { zh = "获得过载线圈!", en = "Unlocked SovietAdvancedTeslaCoil!" },
 
     -- === 游戏模式 ===
-    ["game_mode.name.1"] = { zh = "正常模式", en = "Normal Mode" },
+    ["game_mode.name.1"] = { zh = "标准模式", en = "Standard Mode" },
     ["game_mode.name.2"] = { zh = "死亡模式", en = "Death Mode" },
-    ["game_mode.name.3"] = { zh = "缩小模式", en = "Shrink Mode" },
-    ["game_mode.option.1.name"] = { zh = "正常模式", en = "Normal Mode" },
+    ["game_mode.name.4"] = { zh = "升本模式", en = "Level-Up Mode" },
+    ["game_mode.option.1.name"] = { zh = "标准模式", en = "Standard Mode" },
     ["game_mode.option.2.name"] = { zh = "死亡模式", en = "Death Mode" },
-    ["game_mode.option.3.name"] = { zh = "缩小模式", en = "Shrink Mode" },
-    ["game_mode.option.4.name"] = { zh = "升本模式", en = "Level-Up Mode" },
+    ["game_mode.option.3.name"] = { zh = "升本模式", en = "Level-Up Mode" },
+    ["game_mode.option.4.name"] = { zh = "缩小模式", en = "Shrink Mode" },
     ["game_mode.option.5.name"] = { zh = "禁止海军", en = "No Navy" },
-    ["game_mode.option.6.name"] = { zh = "抽卡模式", en = "Lucky Crate" },
+    ["game_mode.option.6.name"] = { zh = "抽卡模式选择", en = "Draw Mode Selection" },
     ["game_mode.dialog.title"] = { zh = "请选择游戏模式", en = "Please choose a game mode" },
     ["game_mode.confirm"] = { zh = ">>确认<<", en = ">>Confirm<<" },
     ["game_mode.selected_suffix"] = { zh = "(已选择)", en = "(Selected)" },
     ["game_mode.error.invalid_button"] = { zh = "错误：玩家 %s 点击了非法按钮 %d", en = "Error: player %s clicked invalid button %d" },
     ["game_mode.host.selected"] = { zh = "房主已选择%s", en = "Host selected %s" },
     ["game_mode.host.canceled"] = { zh = "房主已取消选择%s", en = "Host canceled selection of %s" },
-    ["game_mode.normal"] = { zh = "正常模式", en = "Normal Mode" },
+    ["game_mode.standard"] = { zh = "标准模式", en = "Standard Mode" },
+    ["game_mode.normal"] = { zh = "标准模式", en = "Standard Mode" },
     ["game_mode.death"] = { zh = "死亡模式", en = "Death Mode" },
     ["game_mode.shrink"] = { zh = "缩小模式", en = "Shrink Mode" },
     ["game_mode.shrink_with_effect"] = { zh = "缩小模式(启用死亡模式效果)", en = "Shrink Mode (Death Mode effect enabled)" },
     ["game_mode.level_up"] = { zh = "升本模式", en = "Level-Up Mode" },
+    ["game_mode.shrink_suffix"] = { zh = " (缩小)", en = " (Shrink)" },
     ["game_mode.no_navy_suffix"] = { zh = " (禁止海军)", en = " (No Navy)" },
     ["game_mode.lucky_crate_suffix"] = { zh = " 已启用抽卡模式", en = " Lucky Crate Enabled" },
+    ["game_mode.pure_draw_suffix"] = { zh = " 已启用纯抽卡模式", en = " Pure Draw Enabled" },
+    ["draw_mode.dialog.title"] = { zh = "请选择抽卡模式", en = "Choose a draw mode" },
+    ["draw_mode.open"] = { zh = "抽卡模式选择：%s", en = "Draw Mode: %s" },
+    ["draw_mode.disabled"] = { zh = "不启用抽卡", en = "Draw Disabled" },
+    ["draw_mode.original"] = { zh = "抽卡功能", en = "Lucky Crate" },
+    ["draw_mode.pure"] = { zh = "抽卡模式", en = "Pure Draw" },
+    ["draw_mode.back"] = { zh = "返回上一页", en = "Back" },
+    ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled: %d" },
+    ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining: %d" },
+    ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消并返还%d资金", en = "No production quota remained; the extra unit was cancelled and %d refunded" },
+    ["pure_draw.custom_result"] = { zh = "本次获得自定义抽卡单位（T%d）", en = "Custom draw unit received (T%d)" },
+    ["pure_draw.airdrop"] = { zh = "中央战场出现了一次十连空投！", en = "A ten-crate airdrop has landed in the center!" },
 
     -- === 技能系统 ===
     ["skill.name.1"] = { zh = "炸弹+达摩克利斯之剑", en = "Bomb＆DamoclesSword" },
@@ -376,17 +390,19 @@ Localization._text_sources = {
 1. 玩家造出的单位会被记录，每个回合开始时，战场上都会重新刷出玩家造过的所有单位，由电脑控制
 2. 上方玩家（天使）单位出现在战场右侧，下方玩家（恶魔）单位出现在战场左侧
 3. 电厂提供收入，请尽快造满电厂以避免卡钱；苏联超级反应堆和神州导流尖塔不提供收入（仅解锁科技）；建造T4高科附赠精兵学院
-正常模式：前期收入有限，请摧毁敌方防御塔来解锁更多的电厂和科技
+标准模式：前期收入有限，请摧毁敌方防御塔来解锁更多的电厂和科技
 死亡模式：双方开局就只剩最后一座塔
 抽卡模式：可以使用抽卡技能获得额外单位。禁止在战场中央抽卡！
+纯抽卡模式：开局开放抽卡；每名玩家每3回合补满5点生产余额，抽卡结果有一半替换为全阵营加权生产单位
 可点击下方"更新日志"按钮查看更新内容]],
         en = [[DSA Game Rules:
 1. Units you build are recorded. At the start of each round, all units you've built are respawned on the battlefield under AI control.
 2. Upper-side players (Angel) units appear on the right side of the battlefield. Lower-side players (Devil) units appear on the left side.
 3. Power plants provide income. Build power plants ASAP to avoid running out of money. Soviet Super Reactors and Celestial Diversion Spire do not provide income (tech unlock only). Building T4 high-tech grants a free Veteran Academy.
-Normal Mode: Limited income in early stages. Destroy enemy defense towers to unlock more power plants and technology.
+Standard Mode: Limited income in early stages. Destroy enemy defense towers to unlock more power plants and technology.
 Death Mode: Both sides start with only the last tower remaining.
 Lucky Crate Mode: Use the Lucky Crate Boxes to gain extra units. Do not use Lucky Crate in the central battlefield!
+Pure Draw Mode: Crates are available at game start. Each player refills 5 production points every 3 rounds; half of all draws become weighted buildable units from all factions.
 Click the "Update Log" button below to view update details.]]
     },
     ["game.qq_group"] = { 

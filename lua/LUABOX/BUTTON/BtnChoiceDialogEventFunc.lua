@@ -3,12 +3,15 @@ angel_max = 200
 
 g_GameMode = 1;
 g_EnableDeathModeEffect = 0;
+g_EnableShrinkMode = 0;
 g_DisableSeaArmy = 0;
+g_DrawMode = 0; -- 0: disabled, 1: original lucky crate, 2: pure draw
+g_LuckyCrateMode = 0; -- compatibility flag used by the existing lucky-crate implementation
 
 g_GameModeName = {
     [1] = Localization.get("game_mode.name.1"),
     [2] = Localization.get("game_mode.name.2"),
-    [3] = Localization.get("game_mode.name.3"),
+    [4] = Localization.get("game_mode.name.4"),
 }
 
 g_GameModeOptions = {
@@ -23,6 +26,7 @@ g_GameModeOptions = {
 MARKET_DIALOG_ID_OFFSET = 100
 
 GAMEMODE_DIALOG_ID = 201
+DRAW_MODE_DIALOG_ID = 202
 
 SKILL_DIALOG_ID_OFFSET = 1000
 SKILL_DIALOG_ID_OFFSET2 = 2000
@@ -39,7 +43,7 @@ Localization.on_language_changed(function()
     g_GameModeName = {
         [1] = Localization.get("game_mode.name.1"),
         [2] = Localization.get("game_mode.name.2"),
-        [3] = Localization.get("game_mode.name.3"),
+        [4] = Localization.get("game_mode.name.4"),
     }
     g_GameModeOptions[1].Name = Localization.get("game_mode.option.1.name")
     g_GameModeOptions[2].Name = Localization.get("game_mode.option.2.name")
@@ -535,13 +539,15 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
         local hasSelected = false
         for i = 1, getn(g_GameModeOptions) do
             local option = g_GameModeOptions[i]
-            if i == 6 and not self._initialized then
-                -- 假如随机宝箱模式已经开启，则默认选中抽卡模式
-                if g_LuckyCrateMode and g_LuckyCrateMode ~= 0 then
-                    option.IsSelected = true
+            if i == 6 then
+                local drawModeName = Localization.get("draw_mode.disabled")
+                if g_DrawMode == 1 then
+                    drawModeName = Localization.get("draw_mode.original")
+                elseif g_DrawMode == 2 then
+                    drawModeName = Localization.get("draw_mode.pure")
                 end
-            end
-            if option.IsSelected then
+                tinsert(self.Choices, Localization.get("draw_mode.open", drawModeName))
+            elseif option.IsSelected then
                 tinsert(self.Choices, option.Name .. Localization.get("game_mode.selected_suffix"))
                 hasSelected = true
             else
@@ -556,16 +562,19 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
     dialogData.OnChoice = function(self, buttonIndex)
         local normalGameOption = g_GameModeOptions[1]
         local deathGameOption = g_GameModeOptions[2]
-        local shrinkGameOption = g_GameModeOptions[3]
-        local purchaseTechMode = g_GameModeOptions[4]
+        local purchaseTechMode = g_GameModeOptions[3]
+        local shrinkGameOption = g_GameModeOptions[4]
         local banSeaGameOption = g_GameModeOptions[5]
-        local luckyCrateGameOption = g_GameModeOptions[6]
         -- 是否选择了确认按钮
         if buttonIndex == getn(g_GameModeOptions) + 1 then
             -- 假如选择了确认按钮，设置游戏模式
             g_EnableDeathModeEffect = self:BooleanToNumber(deathGameOption.IsSelected)
+            g_EnableShrinkMode = self:BooleanToNumber(shrinkGameOption.IsSelected)
             g_DisableSeaArmy = self:BooleanToNumber(banSeaGameOption.IsSelected)
-            g_LuckyCrateMode = self:BooleanToNumber(luckyCrateGameOption.IsSelected)
+            g_LuckyCrateMode = 0
+            if g_DrawMode == 1 or g_DrawMode == 2 then
+                g_LuckyCrateMode = 1
+            end
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
                 g_NoNavyTeslaBoatUnlocked = 0
@@ -573,14 +582,12 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
                     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. i, "SovietAntiNavyShipTech1", 0)
                 end
             end
-            if shrinkGameOption.IsSelected then
-                g_GameMode = 3
-            elseif purchaseTechMode.IsSelected then
+            if purchaseTechMode.IsSelected then
                 g_GameMode = 4
             elseif g_EnableDeathModeEffect == 1 then
                 g_GameMode = 2
             else
-                g_GameMode = 1 -- 默认正常模式
+                g_GameMode = 1 -- 默认标准模式
             end
             BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(self.PlayerName)
             return
@@ -588,6 +595,10 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
         local option = g_GameModeOptions[buttonIndex]
         if not option then
             exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
+            return
+        end
+        if buttonIndex == 6 then
+            BtnChoiceDialogEventFunc_ShowDrawModeDialog(self.PlayerName)
             return
         end
         if not option.IsSelected then
@@ -598,12 +609,15 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             exMessageAppendToMessageArea(Localization.get("game_mode.host.canceled", option.Name))
         end
         if option == normalGameOption then
-            -- 假如选择了正常模式，取消选择死亡模式和缩小模式
+            -- 标准、死亡、升本是互斥的基础模式。
             deathGameOption.IsSelected = nil
-            shrinkGameOption.IsSelected = nil
-        elseif option == deathGameOption or option == shrinkGameOption then
-            -- 假如选择了死亡模式或缩小模式，取消选择正常模式
+            purchaseTechMode.IsSelected = nil
+        elseif option == deathGameOption then
             normalGameOption.IsSelected = nil
+            purchaseTechMode.IsSelected = nil
+        elseif option == purchaseTechMode then
+            normalGameOption.IsSelected = nil
+            deathGameOption.IsSelected = nil
         end
         -- 重新刷新数据并显示对话框
         self:RefreshData()
@@ -615,6 +629,53 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
         else
             return 0
         end
+    end
+    dialogData:RefreshData()
+    ButtonChoiceDialogManager:ShowDialog(dialogData)
+end
+
+function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
+    local dialogData = {
+        DialogId = DRAW_MODE_DIALOG_ID,
+        PlayerName = playerName,
+        Title = Localization.get("draw_mode.dialog.title"),
+        Choices = {},
+    }
+    dialogData.RefreshData = function(self)
+        self.Choices = {
+            Localization.get("draw_mode.disabled"),
+            Localization.get("draw_mode.original"),
+            Localization.get("draw_mode.pure"),
+            Localization.get("draw_mode.back"),
+        }
+        if g_DrawMode >= 0 and g_DrawMode <= 2 then
+            self.Choices[g_DrawMode + 1] = self.Choices[g_DrawMode + 1]
+                .. Localization.get("game_mode.selected_suffix")
+        end
+    end
+    dialogData.OnChoice = function(self, buttonIndex)
+        if buttonIndex >= 1 and buttonIndex <= 3 then
+            g_DrawMode = buttonIndex - 1
+            g_LuckyCrateMode = 0
+            if g_DrawMode ~= 0 then
+                g_LuckyCrateMode = 1
+            end
+            local selectedDrawModeName = Localization.get("draw_mode.disabled")
+            if g_DrawMode == 1 then
+                selectedDrawModeName = Localization.get("draw_mode.original")
+            elseif g_DrawMode == 2 then
+                selectedDrawModeName = Localization.get("draw_mode.pure")
+            end
+            exMessageAppendToMessageArea(
+                Localization.get("game_mode.host.selected", selectedDrawModeName))
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        elseif buttonIndex == 4 then
+            BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
+            return
+        end
+        exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
     end
     dialogData:RefreshData()
     ButtonChoiceDialogManager:ShowDialog(dialogData)
@@ -823,23 +884,22 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
     local gameModeText = ''
     local skillText = ''
     if g_GameMode == 1 then
-        gameModeText = Localization.get("game_mode.normal")
+        gameModeText = Localization.get("game_mode.standard")
     elseif g_GameMode == 2 then
         gameModeText = Localization.get("game_mode.death")
-    elseif g_GameMode == 3 then
-        if g_EnableDeathModeEffect == 1 then
-            gameModeText = Localization.get("game_mode.shrink_with_effect")
-        else
-            gameModeText = Localization.get("game_mode.shrink")
-        end
     elseif g_GameMode == 4 then
         gameModeText = Localization.get("game_mode.level_up")
+    end
+    if g_EnableShrinkMode == 1 then
+        gameModeText = gameModeText .. Localization.get("game_mode.shrink_suffix")
     end
     if g_DisableSeaArmy == 1 then
         gameModeText = gameModeText .. Localization.get("game_mode.no_navy_suffix")
     end
-    if g_LuckyCrateMode == 1 then
+    if g_DrawMode == 1 then
         gameModeText = gameModeText .. Localization.get("game_mode.lucky_crate_suffix")
+    elseif g_DrawMode == 2 then
+        gameModeText = gameModeText .. Localization.get("game_mode.pure_draw_suffix")
     end
     local preselectedSkillCount = getn(g_PreselectedSkillIndices)
     if preselectedSkillCount == 6 then
@@ -1084,6 +1144,15 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                 exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", celestialPowerNum))
             end
 
+        end
+        if PureDrawReapplyPlayerQuota ~= nil then
+            local firstPlayer = 1
+            if pIndex >= 4 then
+                firstPlayer = 4
+            end
+            for i = firstPlayer, firstPlayer + 2, 1 do
+                PureDrawReapplyPlayerQuota(i)
+            end
         end
     end
 
