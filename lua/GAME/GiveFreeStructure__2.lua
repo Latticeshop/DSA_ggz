@@ -20,12 +20,15 @@ local freeAirField = {
 }
 
 
-for i = 1, 6, 1 do
-    local playerName = "Player_" .. i
-    for j = 1, 4, 1 do
-        if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName, playerBaseTech[j]) then
-           -- ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", "freeNavelYard"..tostring(i), freeNavalYard[j], playerName.."/team"..playerName, "navelYard" .. i,-3.1415926/4);
-            ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", "freeAirField"..tostring(i), freeAirField[j], playerName.."/team"..playerName, "AirField" .. i,-3.1415926/4);
+-- 抽卡模式不赠送重工或机场，避免赠送建筑的特殊生产序列绕过生产余额。
+if g_DrawMode ~= 2 then
+    for i = 1, 6, 1 do
+        local playerName = "Player_" .. i
+        for j = 1, 4, 1 do
+            if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName, playerBaseTech[j]) then
+               -- ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", "freeNavelYard"..tostring(i), freeNavalYard[j], playerName.."/team"..playerName, "navelYard" .. i,-3.1415926/4);
+                ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", "freeAirField"..tostring(i), freeAirField[j], playerName.."/team"..playerName, "AirField" .. i,-3.1415926/4);
+            end
         end
     end
 end

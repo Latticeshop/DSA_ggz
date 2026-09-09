@@ -57,7 +57,7 @@ function DisableCelestialDragonShipUpgradesForPlayer(playerName)
     local previous = SetWorldBuilderThisPlayer(1)
     for i = 1, getn(g_DisabledCelestialDragonShipUpgrades), 1 do
         ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", playerName,
-            g_DisabledCelestialDragonShipUpgrades[i], 0)
+            g_DisabledCelestialDragonShipUpgrades[i], false)
     end
     SetWorldBuilderThisPlayer(previous)
 end
