@@ -1,5 +1,23 @@
 g_UnitCreateEventFunc = {}
 
+-- A unit template may participate in several independent systems. Keep every callback
+-- instead of letting the last registration silently replace earlier behaviour.
+function RegisterUnitCreateCallback(unitType, callback)
+    local unitHash = unitType
+    if type(unitType) == "string" then
+        exObjectRegisterCreateEvent(unitType)
+        unitHash = FastHash(unitType)
+    end
+    local registered = g_UnitCreateEventFunc[unitHash]
+    if registered == nil then
+        g_UnitCreateEventFunc[unitHash] = callback
+    elseif type(registered) == "function" then
+        g_UnitCreateEventFunc[unitHash] = { registered, callback }
+    else
+        tinsert(registered, callback)
+    end
+end
+
 -- 东风虽然已有建造限制，这里仍每 10 秒按实际归属兜底检查一次。
 -- Player_1 至 Player_6 各自只保留找到的第一辆，多出的直接摧毁。
 g_CelestialDF41LimitFilter = CreateObjectFilter({
@@ -25,6 +43,35 @@ end
 
 SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, nil)
 
+g_DisabledCelestialDragonShipUpgrades = {
+    "CelestialDragonShipUpgrade01",
+    "CelestialDragonShipUpgrade02",
+    "CelestialDragonShipUpgrade02_B",
+    "CelestialDragonShipUpgrade03",
+    "CelestialDragonShipUpgrade03_B",
+    "CelestialDragonShipUpgrade03_C",
+    "CelestialDragonShipUpgrade04",
+}
+
+function DisableCelestialDragonShipUpgradesForPlayer(playerName)
+    local previous = SetWorldBuilderThisPlayer(1)
+    for i = 1, getn(g_DisabledCelestialDragonShipUpgrades), 1 do
+        ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", playerName,
+            g_DisabledCelestialDragonShipUpgrades[i], 0)
+    end
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function DisableCelestialDragonShipUpgradesForAllPlayers()
+    for i = 1, 6, 1 do
+        DisableCelestialDragonShipUpgradesForPlayer("Player_" .. i)
+    end
+    -- 技能召唤的青龙核心舰实际属于双方电脑玩家，升级权限也必须封锁其所有者。
+    DisableCelestialDragonShipUpgradesForPlayer("PlyrCivilian")
+    DisableCelestialDragonShipUpgradesForPlayer("PlyrCreeps")
+    _ALERT("[PureDraw] disabled all 7 Celestial Dragon Ship upgrades for 8 players")
+end
+
 -- 守护者坦克只能使用激光指示器：禁用玩家和 AI 的模式切换，出生脚本仍可强制切换一次。
 -- 地编动作不能在 Lua 块加载时立即执行，否则桥接层尚未注册当前的 Fname 函数。
 SchedulerModule.delay_call(function()
@@ -33,6 +80,7 @@ SchedulerModule.delay_call(function()
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_ToggleAimLaser", "Disabled")
     -- 神州工程师禁用 F 技能（放置维修天灯）。
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_CelestialEngineerRepairDrone_A", "Disabled")
+    DisableCelestialDragonShipUpgradesForAllPlayers()
 end, 1)
 
 function ShowTimedHelp(ownerPlayerName, name, localizedText, x, y, z)
@@ -1013,5 +1061,12 @@ exObjectRegisterCreateEvent("JapanSakuraAttackRocket")
 exObjectRegisterCreateEvent("JapanKamikazeCommandTower")
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
-    g_UnitCreateEventFunc[createdObjInstanceId](createdObjId, createdObjInstanceId, ownerPlayerName)
+    local registered = g_UnitCreateEventFunc[createdObjInstanceId]
+    if type(registered) == "function" then
+        registered(createdObjId, createdObjInstanceId, ownerPlayerName)
+    elseif registered ~= nil then
+        for i = 1, getn(registered), 1 do
+            registered[i](createdObjId, createdObjInstanceId, ownerPlayerName)
+        end
+    end
 end

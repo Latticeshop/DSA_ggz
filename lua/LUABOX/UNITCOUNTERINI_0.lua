@@ -432,6 +432,9 @@ function UpdateSovietMortarCycleBuildability()
     end
     for playindex = 1, 6, 1 do
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietMortarCycle", 1)
+        if PureDrawReapplyPlayerQuota ~= nil then
+            PureDrawReapplyPlayerQuota(playindex)
+        end
     end
     g_SovietMortarCycleUnlocked = 1
 end
@@ -445,6 +448,9 @@ function UpdateNoNavyTeslaBoatBuildability()
     end
     for playindex = 1, 6, 1 do
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietAntiNavyShipTech1", 1)
+        if PureDrawReapplyPlayerQuota ~= nil then
+            PureDrawReapplyPlayerQuota(playindex)
+        end
     end
     g_NoNavyTeslaBoatUnlocked = 1
 end
