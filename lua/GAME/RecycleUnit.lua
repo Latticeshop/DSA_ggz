@@ -138,7 +138,7 @@ g_VehicleAllied = {
     {Type = "AlliedAntiVehicleVehicleTech3", Image = "Button_AlliedAntiVehicleVehicleTech3_B", Name = Localization.recycle('unit.AlliedAntiVehicleVehicleTech3'), Money = 1600},
     {Type = "AlliedFutureTank", Image = "Button_AlliedFutureTank", Name = Localization.recycle('unit.AlliedFutureTank'), Money = 3200},
     {Type = "AlliedBattleFortress", Image = "Button_AlliedBattleFortress", Name = Localization.recycle('unit.AlliedBattleFortress'), Money = 4500},
-    {Type = "AlliedAirForceDispatchVehicle", Image = "Button_AlliedAirForceDispatchVehicle", Name = Localization.recycle('unit.AlliedAirForceDispatchVehicle'), Money = 3000},
+    {Type = "AlliedAirForceDispatchVehicle", Image = "Button_AlliedAirForceDispatchVehicle", Name = Localization.recycle('unit.AlliedAirForceDispatchVehicle'), Money = 2500},
 }
 
 g_VehicleSoviet = {
@@ -151,9 +151,7 @@ g_VehicleSoviet = {
     {Type = "SovietAntiStructureVehicle", Image = "Button_SovietAntiStructureVehicle_small", Name = Localization.recycle('unit.SovietAntiStructureVehicle'), Money = 1600},
     {Type = "SovietAntiVehicleVehicleTech3", Image = "Button_SovietAntiVehicleVehicleTech3", Name = Localization.recycle('unit.SovietAntiVehicleVehicleTech3'), Money = 2000},
     {Type = "SovietAntiVehicleVehicleTech4", Image = "Button_SovietAntiVehicleVehicleTech4", Name = Localization.recycle('unit.SovietAntiVehicleVehicleTech4'), Money = 4500},
-    {Type = "SovietGrinderVehicle", Image = "Button_SovietGrinder", Name = "粉碎者", Money = 1600},
-    {Type = "Overlordtank", Image = "Button_Overlordtank", Name = "联盟重型坦克", Money = 4500},
-    {Type = "SovietElectronicRadarTruck", Image = "Button_SovietElectronicRadarTruck", Name = Localization.recycle('unit.SovietElectronicRadarTruck'), Money = 1800},
+    {Type = "SovietPineElectronicRadarTruck", Image = "Button_SovietPineElectronicRadarTruck", Name = Localization.recycle('unit.SovietPineElectronicRadarTruck'), Money = 2500},
 }
 
 g_VehicleJapan = {
@@ -166,7 +164,7 @@ g_VehicleJapan = {
     {Type = "JapanAntiStructureVehicle", Image = "Button_JapanAntiStructureVehicle", Name = Localization.recycle('unit.JapanAntiStructureVehicle'), Money = 1800},
     {Type = "JapanInterceptorAircraft", Image = "Button_JapanInterceptorAircraft_sea", Name = Localization.recycle('unit.JapanInterceptorAircraft'), Money = 850},
     {Type = "JapanMechaX", Image = "Button_RedKingOni", Name = Localization.recycle('unit.JapanMechaX'), Money = 4500},
-    {Type = "JapanAntiAirVehicleTech3", Image = "Button_JapanAntiAirVehicleTech3", Name = "帝国高级防空载具", Money = 2000},
+    {Type = "JapanAntiAirVehicleTech3", Image = "Button_JapanAntiAirVehicleTech3", Name = Localization.recycle('unit.JapanAntiAirVehicleTech3'), Money = 2500},
 }
 
 g_VehicleCelestial = {
@@ -174,7 +172,7 @@ g_VehicleCelestial = {
     {Type = "CelestialAntiAirShip", Image = "Button_CelestialAntiAirShip", Name = Localization.recycle('unit.CelestialAntiAirShip'), Money = 900},
     {Type = "CelestialAntiVehicleVehicleTech1", Image = "Button_CelestialKylinMBT", Name = Localization.recycle('unit.CelestialAntiVehicleVehicleTech1'), Money = 1000},
     {Type = "CelestialAntiAirVehicle", Image = "Button_CelestialAntiAirVehicle", Name = Localization.recycle('unit.CelestialAntiAirVehicle'), Money = 900},
-    {Type = "CelestialLongRangeMissileVehicle", Image = "Button_CelestialHJ-10", Name = "青锋导弹车", Money = 1400},
+    {Type = "CelestialLongRangeMissileVehicle", Image = "Button_CelestialHJ-10", Name = Localization.recycle('unit.CelestialHJ-10'), Money = 1400},
     {Type = "CelestialLongRangeMissileVehicle_B", Image = "Button_CelestialLongRangeMissileVehicle_B", Name = Localization.recycle('unit.CelestialLongRangeMissileVehicle_B'), Money = 1400},
     {Type = "CelestialAntiVehicleVehicleTech3", Image = "Button_CelestialAntiVehicleVehicleTech3", Name = Localization.recycle('unit.CelestialAntiVehicleVehicleTech3'), Money = 2000},
     {Type = "CelestialHeavyAntiAirVehicleTech3", Image = "Button_CelestialHeavyAntiAirVehicleTech3", Name = Localization.recycle('unit.CelestialHeavyAntiAirVehicleTech3'), Money = 2000},
@@ -211,7 +209,7 @@ g_AirCraftAllied = {
     {Type = "AlliedInterceptorAircraft", Image = "Button_AlliedInterceptorAircraftTech3", Name = Localization.recycle('unit.AlliedInterceptorAircraft'), Money = 1600},
     {Type = "AlliedAntiStructureBomberAircraft", Image = "Button_AlliedBomberAircraft_on", Name = Localization.recycle('unit.AlliedAntiStructureBomberAircraft'), Money = 2500},
     {Type = "AlliedGunshipAircraft", Image = "Button_AlliedHarbingerGunship", Name = Localization.recycle('unit.AlliedGunshipAircraft'), Money = 4000},
-    {Type = "AlliedAC130GunshipAircraft", Image = "Button_AlliedHarbingerGunship", Name = "先锋武装炮艇机", Money = 4000},
+    {Type = "AlliedAC130GunshipAircraft", Image = "Button_AlliedHarbingerGunship", Name = Localization.recycle('unit.AlliedGunshipAircraft'), Money = 4000},
     {Type = "AlliedBomberAircraft", Image = "Button_AlliedBomberAircraft_on", Name = Localization.recycle('unit.AlliedBomberAircraft'), Money = 2500},
 }
 
@@ -336,6 +334,13 @@ g_CrateUnitsTemplate = {
             Image = "Button_VDVBmptVehicle" },
 
         { Type = "WinterArmyReaperHeavyMecha", Count = 2 },
+        
+        { Type = "SovietGrinderVehicle", Count = 1,
+            Name = Localization.recycle('unit.SovietGrinderVehicle'),
+            Image = "Button_SovietGrinder" },
+        { Type = "Overlordtank", Count = 1,
+            Name = Localization.recycle('unit.Overlordtank'),
+            Image = "Button_Overlordtank" },
         
     },
     [3] = {

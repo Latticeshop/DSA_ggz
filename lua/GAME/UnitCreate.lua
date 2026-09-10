@@ -500,6 +500,8 @@ function SetPrioritySiegeTargetChooserMode(unit, tankPursuitActive)
     ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
 end
 
+-- 注意：ObjectFindObjects 采用大范围搜索（例如：范围 700）时会有显著的性能消耗，需要谨慎使用。
+-- 此函数使用 g_PrioritySiegeStructureStopRange 作为搜索半径，请确保该值设置合理。
 function GetPrioritySiegeUnitMode(unit, enemyTankExists)
     local x, y, z = ObjectGetPosition(unit)
     local structures, structureCount = ObjectFindObjects(unit, {

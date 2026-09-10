@@ -824,32 +824,6 @@ function RequestNanoMaintainHive(playerIndex)
     end
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName))
-    -- 给海塔回血 15%
-    local seaSupportPosition = nil
-    for i = 1, getn(seaTowers), 1 do
-        local seaTower = GetObjectByScriptName(seaTowers[i])
-        if ObjectIsAlive(seaTower) then
-            if seaSupportPosition == nil then
-                local seaTowerX, seaTowerY, seaTowerZ = ObjectGetPosition(seaTower)
-                seaSupportPosition = { X = seaTowerX + seaSupportDirection * 120, Y = seaTowerY, Z = seaTowerZ }
-            end
-            local currentHp = ObjectGetCurrentHealth(seaTower)
-            -- 塔的血量被改过因此不适用 ObjectGetInitialHealth
-            local maxHp = exObjectGetMaxHealth(ObjectGetId(seaTower))
-            local healAmount = maxHp * 0.15
-            ExecuteAction("NAMED_DAMAGE", seaTower, -healAmount)
-        end
-    end
-
-    -- 海塔全部损失时仍在本方海军生成区提供支援。
-    if seaSupportPosition == nil then
-        local seaSpawnIndex = 7
-        if playerIndex >= 4 then
-            seaSpawnIndex = 8
-        end
-        local seaSpawnX, seaSpawnY, seaSpawnZ = ObjectGetPosition(AIRSP[seaSpawnIndex][1])
-        seaSupportPosition = { X = seaSpawnX, Y = seaSpawnY, Z = seaSpawnZ }
-    end
 
     ExecuteAction("CREATE_OBJECT", 'JapanNanoMaintainHive', sideAIPlayer .. "/team" .. sideAIPlayer, positions, 0)
     for j = 1, 4, 1 do
@@ -861,28 +835,6 @@ function RequestNanoMaintainHive(playerIndex)
         SchedulerModule.delay_call(function(objectId)
             ExecuteAction("NAMED_DELETE", GetObjectById(objectId))
         end, 450, {ObjectGetId(object)})
-    end
-
-    -- 海上额外生成1个维修场和2个并排的维修天灯。
-    ExecuteAction("CREATE_OBJECT", 'JapanNanoMaintainHive', sideAIPlayer .. "/team" .. sideAIPlayer, seaSupportPosition, 0)
-    for j = 1, 2, 1 do
-        g_CelestialEngineerRepairDroneIndex = g_CelestialEngineerRepairDroneIndex + 1;
-        local seaDroneName = "CelestialEngineerRepairDroneLv3" .. tostring(g_CelestialEngineerRepairDroneIndex)
-        local lateralOffset = -60
-        if j == 2 then
-            lateralOffset = 60
-        end
-        local seaDronePosition = {
-            X = seaSupportPosition.X + seaSupportDirection * 80,
-            Y = seaSupportPosition.Y + lateralOffset,
-            Z = seaSupportPosition.Z
-        }
-        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", seaDroneName, "CelestialEngineerRepairDroneLv3",
-                sideAIPlayer .. "/team" .. sideAIPlayer, seaDronePosition, 0)
-        local seaDrone = GetObjectByScriptName(seaDroneName)
-        SchedulerModule.delay_call(function(objectId)
-            ExecuteAction("NAMED_DELETE", GetObjectById(objectId))
-        end, 450, {ObjectGetId(seaDrone)})
     end
 
     if playerIndex <= 3 then
@@ -997,14 +949,7 @@ function RequestSpawnArmyImmediately(playerIndex)
 
             UNITSPAIRST_left (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)
             UNITSPST_left (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
-            if g_DisableSeaArmy == 0 then
-                UNITSPSHIP_left(step35+1,step4,AIRSP,SHIPTEAM,SHIPTEAMATTACK)
-            else
-                SpawnNoNavyAmphibiousLand_left()
-                SpawnNoNavySeaWingAir_left()
-            end
             exEnableWBScript('PlyrCivilian/attackAIR__7')
-            exEnableWBScript('PlyrCivilian/ATTACKSHIP__7')
             exEnableWBScript('BUFFACTONCE__AIR')
         end, 5)
     else
@@ -1025,14 +970,7 @@ function RequestSpawnArmyImmediately(playerIndex)
 
             UNITSPAIRST_right (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)
             UNITSPST_right (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
-            if g_DisableSeaArmy == 0 then
-                UNITSPSHIP_right(step35+1,step4,AIRSP,SHIPTEAM,SHIPTEAMATTACK)
-            else
-                SpawnNoNavyAmphibiousLand_right()
-                SpawnNoNavySeaWingAir_right()
-            end
             exEnableWBScript('PlyrCreeps/attackAIR__8')
-            exEnableWBScript('PlyrCreeps/ATTACKSHIP__8')
             exEnableWBScript('BUFFACTONCE__AIR')
         end, 5)
     end
