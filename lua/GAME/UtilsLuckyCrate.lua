@@ -263,40 +263,74 @@ g_PureDrawBuildableUnitPool = {
 -- 这些模板是同一生产按钮产生的强化/环境形态。它们不重复进入抽取池，
 -- 但必须共用生产额度，防止协议强化或水陆形态绕过限制。
 g_PureDrawProductionAliases = {
+    ["AlliedAntiAirShip"] = { "AlliedAntiAirShip_Enhanced" },
+    ["AlliedAntiInfantryVehicle"] = { "AlliedAntiInfantryVehicle_Ground", "AlliedAntiInfantryVehicle_Transport" },
     ["AlliedAntiInfantryVehicle_Ground"] = { "AlliedAntiInfantryVehicle" },
-    ["CelestialAntiInfantryVehicle_B"] = { "CelestialAntiInfantryVehicle" },
-    ["CelestialLongRangeMissileVehicle_B"] = { "CelestialLongRangeMissileVehicle" },
-    ["AlliedGunshipAircraft"] = { "AlliedGunshipAircraft_Enhanced", "AlliedAC130GunshipAircraft" },
-    ["AlliedAntiVehicleVehicleTech1"] = { "AlliedAntiVehicleVehicleTech1_Enhanced" },
-    ["prismtank"] = { "AlliedPrismTank_Enhanced" },
-    ["AlliedAntiStructureVehicle"] = { "AlliedAntiStructureVehicle_Enhanced" },
-    ["AlliedFighterAircraft"] = { "AlliedFighterAircraft_Enhanced" },
-    ["AlliedInterceptorAircraft"] = { "AlliedInterceptorAircraft_Enhanced" },
-    ["SovietSledgehammerSPG"] = { "SovietSledgehammerSPG_Enhanced" },
-    ["SovietAntiStructureVehicle"] = { "SovietAntiStructureVehicle_Enhanced" },
-    ["SovietAntiVehicleVehicleTech4"] = { "SovietAntiVehicleVehicleTech4_Enhanced" },
-    ["SovietFighterAircraft"] = { "SovietFighterAircraft_Enhanced" },
-    ["SovietInterceptorAircraft"] = { "SovietInterceptorAircraft_Enhanced" },
-    ["JapanAntiInfantryVehicle"] = { "JapanAntiInfantryVehicle_Enhanced" },
-    ["JapanAntiAirVehicleTech1"] = { "JapanAntiAirVehicleTech1_Enhanced" },
-    ["JapanMissileMechaAdvanced"] = { "JapanMissileMechaAdvanced_Enhanced" },
-    ["JapanAntiStructureVehicle"] = { "JapanAntiStructureVehicle_Enhanced" },
-    ["JapanAntiAirShip"] = { "JapanAntiAirShip_Enhanced" },
-    ["CelestialAntiStructureVehicle"] = { "CelestialAntiStructureVehicle_Enhanced" },
-    ["CelestialAntiVehicleVehicleTech4"] = { "CelestialAntiVehicleVehicleTech4_Enhanced" },
-    ["CelestialInterceptorAircraft"] = { "CelestialInterceptorAircraft_Enhanced" },
-    ["CelestialBomberAircraft"] = { "CelestialBomberAircraft_Enhanced" },
-    ["CelestialAdvanceAircraftTech4"] = { "CelestialAdvanceAircraftTech4_Enhanced" },
+    ["AlliedAntiNavyShipTech1"] = { "AlliedAntiNavyShipTech1_Enhanced" },
+    ["AlliedAntiNavyShipTech3"] = { "AlliedAntiNavyShipTech3_Enhanced" },
+    ["AlliedAntiStructureBomberAircraft"] = { "AlliedAntiStructureBomberAircraft_Enhanced" },
     ["AlliedAntiStructureShip"] = { "AlliedAntiStructureShip_Enhanced" },
-    ["SovietAntiStructureShip"] = { "SovietAntiStructureShip_Enhanced" },
+    ["AlliedAntiStructureVehicle"] = { "AlliedAntiStructureVehicle_Enhanced" },
+    ["AlliedAntiVehicleVehicleTech1"] = { "AlliedAntiVehicleVehicleTech1_Enhanced" },
+    ["AlliedAntiVehicleVehicleTech3"] = { "AlliedAntiVehicleVehicleTech3_Enhanced" },
+    ["AlliedFighterAircraft"] = { "AlliedFighterAircraft_Enhanced", "AlliedFighterAircraft_WithTrailSomke" },
+    ["AlliedGunshipAircraft"] = { "AlliedAC130GunshipAircraft", "AlliedGunshipAircraft_Enhanced" },
+    ["AlliedInterceptorAircraft"] = { "AlliedInterceptorAircraft_Enhanced" },
+    ["AlliedRangerInfantry"] = { "AlliedRangerInfantry_AirAssault" },
+    ["AlliedSupportAircraft"] = { "AlliedSupportAircraft_Enhanced" },
+    ["CelestialAdvanceAircraftTech4"] = { "CelestialAdvanceAircraftTech4_Enhanced" },
+    ["CelestialAlmightlyShip"] = { "CelestialAlmightlyShip_AA", "CelestialAlmightlyShip_Enhanced", "CelestialAlmightlyShip_FireWork", "CelestialAlmightlyShip_Old" },
+    ["CelestialAntiAirShip"] = { "CelestialAntiAirShip_Enhanced", "CelestialAntiAirShip_Enhanced_Water", "CelestialAntiAirShip_Water" },
+    ["CelestialAntiInfantryVehicle_B"] = { "CelestialAntiInfantryVehicle" },
+    ["CelestialAntiNavyShipTech3"] = { "CelestialAntiNavyShipTech3_EMC", "CelestialAntiNavyShipTech3_Enhanced", "CelestialAntiNavyShipTech3_Firework", "CelestialAntiNavyShipTech3_Old" },
+    ["CelestialAntiStructureShip"] = { "CelestialAntiStructureShip_Enhanced", "CelestialAntiStructureShip_Firework", "CelestialAntiStructureShip_Firework_2024A", "CelestialAntiStructureShip_Firework_2024B", "CelestialAntiStructureShip_Firework_2024C", "CelestialAntiStructureShip_Firework_2024D", "CelestialAntiStructureShip_Old" },
+    ["CelestialAntiStructureVehicle"] = { "CelestialAntiStructureVehicle_Enhanced" },
+    ["CelestialAntiVehicleInfantry"] = { "CelestialAntiVehicleInfantry_EMC" },
+    ["CelestialAntiVehicleVehicleTech1"] = { "CelestialAntiVehicleVehicleTech1_EMC" },
+    ["CelestialAntiVehicleVehicleTech3"] = { "CelestialAntiVehicleVehicleTech3_EMC" },
+    ["CelestialAntiVehicleVehicleTech4"] = { "CelestialAntiVehicleVehicleTech4_Enhanced", "CelestialAntiVehicleVehicleTech4_S01" },
+    ["CelestialBomberAircraft"] = { "CelestialBomberAircraft_Enhanced" },
+    ["CelestialFighterAircraft"] = { "CelestialFighterAircraft_WithBlueTrailSomke", "CelestialFighterAircraft_WithRedTrailSomke", "CelestialFighterAircraft_WithTrailSomke", "CelestialFighterAircraft_WithWhiteTrailSomke" },
+    ["CelestialInfiltrationInfantry"] = { "CelestialInfiltrationInfantry_02", "CelestialInfiltrationInfantry_03", "CelestialInfiltrationInfantry_EMC" },
+    ["CelestialInterceptorAircraft"] = { "CelestialInterceptorAircraft_Enhanced" },
+    ["CelestialLongRangeMissileVehicle_B"] = { "CelestialLongRangeMissileVehicle" },
+    ["JapanAntiAirShip"] = { "JapanAntiAirShip_Enhanced" },
+    ["JapanAntiAirVehicleTech1"] = { "JapanAntiAirVehicleTech1_Enhanced", "JapanAntiAirVehicleTech1_Enhanced_Water" },
+    ["JapanAntiInfantryVehicle"] = { "JapanAntiInfantryVehicle_Enhanced", "JapanAntiInfantryVehicle_Enhanced_Water" },
+    ["JapanAntiNavyShipTech3"] = { "JapanAntiNavyShipTech3_Enhanced" },
     ["JapanAntiStructureShip"] = { "JapanAntiStructureShip_Enhanced" },
-    ["CelestialAntiStructureShip"] = { "CelestialAntiStructureShip_Enhanced" },
+    ["JapanAntiStructureVehicle"] = { "JapanAntiStructureVehicle_Enhanced" },
+    ["JapanAntiVehicleInfantry"] = { "JapanAntiVehicleInfantry_Ambush" },
+    ["JapanAntiVehicleShip"] = { "JapanAntiVehicleShip_Enhanced" },
+    ["JapanAntiVehicleVehicleTech1"] = { "JapanAntiVehicleVehicleTech1_Naval" },
+    ["JapanAntiVehicleVehicleTech3"] = { "JapanAntiVehicleVehicleTech3_Movie" },
+    ["JapanInterceptorAircraft"] = { "JapanInterceptorAircraft_Ground", "JapanInterceptorAircraft_WarfactoryWater" },
+    ["JapanMissileMechaAdvanced"] = { "JapanMissileMechaAdvanced_Enhanced", "JapanMissileMechaAdvanced_Enhanced_Water" },
+    ["SovietAntiAirShip"] = { "SovietAntiAirShip_Ground" },
+    ["SovietAntiGroundAircraft"] = { "SovietAntiGroundAircraft_Enhanced" },
+    ["SovietAntiGroundAttacker"] = { "SovietAntiGroundAttacker_Enhanced" },
+    ["SovietAntiNavyShipTech1"] = { "SovietAntiNavyShipTech1_AirAssault", "SovietAntiNavyShipTech1_Enhanced" },
+    ["SovietAntiNavyShipTech2"] = { "SovietAntiNavyShipTech2_Enhanced" },
+    ["SovietAntiStructureShip"] = { "SovietAntiStructureShip_Enhanced" },
+    ["SovietAntiStructureVehicle"] = { "SovietAntiStructureVehicle_Enhanced" },
+    ["SovietAntiVehicleVehicleTech2"] = { "SovietAntiVehicleVehicleTech2_AirAssault", "SovietAntiVehicleVehicleTech2_Enhanced" },
+    ["SovietAntiVehicleVehicleTech3"] = { "SovietAntiVehicleVehicleTech3_Enhanced", "SovietAntiVehicleVehicleTech3_WOT" },
+    ["SovietAntiVehicleVehicleTech4"] = { "SovietAntiVehicleVehicleTech4_Enhanced" },
+    ["SovietBomberAircraft"] = { "SovietBomberAircraft_Movie" },
+    ["SovietFighterAircraft"] = { "SovietFighterAircraft_Enhanced" },
+    ["SovietHeavyAntiVehicleInfantry"] = { "SovietHeavyAntiVehicleInfantry_Enhanced" },
+    ["SovietHeavyAntiVehicleVehicleTech2"] = { "SovietHeavyAntiVehicleVehicleTech2_Enhanced" },
+    ["SovietInterceptorAircraft"] = { "SovietInterceptorAircraft_Enhanced" },
+    ["SovietSledgehammerSPG"] = { "SovietSledgehammerSPG_Enhanced" },
+    ["SovietTransportAircraft"] = { "SovietTransportAircraft_HeavyCannon" },
+    ["prismtank"] = { "AlliedPrismTank_Enhanced" },
 }
 
 g_PureDrawBuildableUnitSet = {}
 g_PureDrawUnitInfoByHash = {}
 g_PureDrawQuota = { 0, 0, 0, 0, 0, 0 }
 g_PureDrawTrackedCrates = {}
+g_PureDrawTrackedCrateList = {}
 g_PureDrawAirdropCrateIds = {}
 g_PureDrawScriptCreatedUnitIds = {}
 g_PureDrawLastRound = -1
@@ -304,6 +338,21 @@ g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
 g_PureDrawRegisteredProductionHashes = {}
 g_PureDrawAirdropSerial = 0
 g_PureDrawCustomSpawnSerial = 0
+
+-- 空投十连的圆形布局：i=1 在圆心，其余 9 个均匀分布在圆周上。
+-- RA3LuaBridge 方言不保证提供 cos/sin，因此这里直接用预计算的圆上点坐标。
+-- 每个元素是 {cos(角度), sin(角度)}，角度从 0 度起每 40 度一个，共 9 个点。
+g_PureDrawAirdropCircle = {
+    { 1.0, 0.0 },
+    { 0.766, 0.6428 },
+    { 0.1736, 0.9848 },
+    { -0.5, 0.866 },
+    { -0.9397, 0.342 },
+    { -0.9397, -0.342 },
+    { -0.5, -0.866 },
+    { 0.1736, -0.9848 },
+    { 0.766, -0.6428 },
+}
 
 for tier = 1, 4, 1 do
     local pool = g_PureDrawBuildableUnitPool[tier]
@@ -490,21 +539,17 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
     end
     local producer = ObjectGetProducerObject(createdObjId)
     if producer == nil then
+        -- 无生产者的单位（箱子结果/赠送/凭空出现）不消耗生产余额。
         if retriesLeft > 0 then
             SchedulerModule.delay_call(PureDrawTryConsumeProductionQuota, 1, {
                 createdObjId, createdObjInstanceId, playerIndex, ownerPlayerName, retriesLeft - 1
             })
             return
-        else
-            -- LuaBridge 对部分生产序列（实测包括赠送船厂的海军序列）不会返回
-            -- ProducerObject。出生事件已经仅注册到显式的玩家可生产单位池，并且
-            -- 抽卡脚本生成物会在进入本函数前由白名单排除，因此这里按玩家生产
-            -- 结果兜底计费，确保赠送船厂、后续重工和机场使用同一套余额规则。
-            PureDrawDebug("producer unavailable; treating player-owned buildable unit as produced id="
-                .. tostring(createdObjId)
-                .. ", typeHash=" .. tostring(createdObjInstanceId)
-                .. ", owner=" .. tostring(ownerPlayerName))
         end
+        PureDrawDebug("orphan unit skip quota id=" .. tostring(createdObjId)
+            .. ", typeHash=" .. tostring(createdObjInstanceId)
+            .. ", owner=" .. tostring(ownerPlayerName))
+        return
     end
     local oldQuota = g_PureDrawQuota[playerIndex] or 0
     PureDrawDebug("produced unit detected id=" .. tostring(createdObjId)
@@ -530,6 +575,11 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
     end
 end
 
+-- 玩家碰箱子后引擎生成的原生单位没有生产者（ObjectGetProducerObject 返回 nil），
+-- 而正常从生产建筑序列产出的单位一定有生产者。因此：
+-- 有生产者 -> 玩家生产 -> 消耗生产余额；
+-- 无生产者（凭空出现：箱子结果、赠送单位）-> 不消耗余额；
+-- 若该凭空单位匹配到“刚消失的被跟踪箱子”，则拦截并换成自定义抽卡单位。
 function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
     if g_DrawMode ~= 2 or playerIndex == nil then
@@ -540,11 +590,55 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
         PureDrawDebug("script-created draw unit bypassed quota id=" .. tostring(createdObjId))
         return
     end
+    local producer = ObjectGetProducerObject(createdObjId)
+    if producer == nil then
+        -- 凭空出现的玩家单位：不消耗余额。若匹配到刚消失的被跟踪箱子，则拦截。
+        PureDrawDebug("orphan player unit id=" .. tostring(createdObjId)
+            .. ", typeHash=" .. tostring(createdObjInstanceId)
+            .. ", owner=" .. tostring(ownerPlayerName))
+        local consumedCrateId = PureDrawFindConsumedTrackedCrate()
+        if consumedCrateId ~= nil then
+            local x, y, z = ObjectGetPosition(createdObjId)
+            PureDrawRemoveTrackedCrate(consumedCrateId)
+            g_PureDrawScriptCreatedUnitIds[createdObjId] = true
+            PureDrawDebug("custom draw intercepted: player=" .. tostring(ownerPlayerName))
+            SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
+                { createdObjId, ownerPlayerName, x, y, z })
+        end
+        return
+    end
     PureDrawDebug("buildable unit birth event id=" .. tostring(createdObjId)
         .. ", typeHash=" .. tostring(createdObjInstanceId)
         .. ", owner=" .. tostring(ownerPlayerName))
     PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
         playerIndex, ownerPlayerName, 3)
+end
+
+-- 查找该玩家“刚消失（被碰/消耗）”的跟踪箱子。只按箱子是否已死匹配，
+-- 不依赖生成位置（引擎可能在玩家基地等位置生成箱子结果单位）。
+-- DiedFrame 尚未记录时（原生结果单位先于下一帧的跟踪回调创建）按“刚消失”处理，
+-- 优先返回。超过 60 帧未清理的过期箱子会由 CleanupTrackedCrate 移除，因此
+-- 列表里“已死”的箱子都是近期消失的。
+function PureDrawFindConsumedTrackedCrate()
+    local now = GetFrame()
+    local bestId, bestAge = nil, 1e9
+    for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
+        local tid = g_PureDrawTrackedCrateList[i]
+        local state = g_PureDrawTrackedCrates[tid]
+        if state ~= nil and not ObjectIsAlive(tid) then
+            local age
+            if state.DiedFrame ~= nil then
+                age = now - state.DiedFrame
+            else
+                age = 0
+            end
+            if age < bestAge then
+                bestAge = age
+                bestId = tid
+            end
+        end
+    end
+    return bestId
 end
 
 for tier = 1, 4, 1 do
@@ -681,43 +775,122 @@ function PureDrawFinishCustomCrate(playerName, x, y, z, removeNativeResult)
     PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
+function PureDrawRemoveTrackedCrate(id)
+    local state = g_PureDrawTrackedCrates[id]
+    if state == nil then
+        return
+    end
+    g_PureDrawTrackedCrates[id] = nil
+    local listIndex = state.ListIndex
+    if listIndex ~= nil and listIndex >= 1
+        and listIndex <= getn(g_PureDrawTrackedCrateList) then
+        local lastId = g_PureDrawTrackedCrateList[getn(g_PureDrawTrackedCrateList)]
+        g_PureDrawTrackedCrateList[listIndex] = lastId
+        g_PureDrawTrackedCrateList[getn(g_PureDrawTrackedCrateList)] = nil
+        if lastId ~= id and g_PureDrawTrackedCrates[lastId] ~= nil then
+            g_PureDrawTrackedCrates[lastId].ListIndex = listIndex
+        end
+    end
+end
+
+-- 判断某个单位是否位于任一被跟踪箱子附近（即它是玩家碰该箱子生成的原生抽卡单位，
+-- 会被 PureDrawOnNativeCrateResultBorn 拦截）。生产余额监听用它跳过这些单位。
+function PureDrawIsNearTrackedCrate(unitId)
+    if getn(g_PureDrawTrackedCrateList) <= 0 then
+        return false
+    end
+    local x, y, z = ObjectGetPosition(unitId)
+    for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
+        local tid = g_PureDrawTrackedCrateList[i]
+        local state = g_PureDrawTrackedCrates[tid]
+        if state ~= nil then
+            local dx = x - state.X
+            local dy = y - state.Y
+            if dx * dx + dy * dy < 160 * 160 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- 轻量跟踪：箱子活着时持续刷新位置（NoCreatesInCenter 可能移动箱子）。
+-- 箱子消失后保留 30 帧，等待“碰箱子生成的原生单位”创建回调来拦截；
+-- 若超时无人拦截（例如箱子过期消失），则清理跟踪记录。
 function PureDrawTrackCustomCrate(id)
     local state = g_PureDrawTrackedCrates[id]
     if state == nil then
         return
     end
-    if not ObjectIsAlive(id) then
-        g_PureDrawTrackedCrates[id] = nil
-        local fallbackPlayer = state.LastCollector or state.Owner
-        PureDrawDebug("custom crate disappeared id=" .. tostring(id)
-            .. ", fallbackPlayer=" .. tostring(fallbackPlayer))
-        if g_PlayerNameToIndex[fallbackPlayer] == nil then
-            PureDrawDebug("ERROR custom crate disappeared before a player collector was identified")
-            return
-        end
-        SchedulerModule.delay_call(PureDrawFinishCustomCrate, 1, {
-            fallbackPlayer, state.X, state.Y, state.Z, true
-        })
+    if ObjectIsAlive(id) then
+        local x, y, z = ObjectGetPosition(GetObjectById(id))
+        state.X, state.Y, state.Z = x, y, z
+        SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
         return
     end
-    local crate = GetObjectById(id)
-    local x, y, z = ObjectGetPosition(crate)
-    state.X, state.Y, state.Z = x, y, z
-    local nearbyPlayer = PureDrawFindCollector(x, y, z, 180)
-    if nearbyPlayer ~= nil then
-        state.LastCollector = nearbyPlayer
+    -- 箱子已消失（被碰或过期）：记录消失帧，供拦截逻辑匹配；稍后清理。
+    if state.DiedFrame == nil then
+        state.DiedFrame = GetFrame()
     end
-    local playerName = PureDrawFindCollector(x, y, z, 90)
-    if playerName ~= nil then
-        state.LastCollector = playerName
-        g_PureDrawTrackedCrates[id] = nil
-        ExecuteAction("NAMED_DELETE", crate)
-        PureDrawDebug("custom crate collected id=" .. tostring(id)
-            .. ", collector=" .. tostring(playerName))
-        PureDrawFinishCustomCrate(playerName, x, y, z, false)
+    SchedulerModule.delay_call(PureDrawCleanupTrackedCrate, 60, { id })
+end
+
+function PureDrawCleanupTrackedCrate(id)
+    if g_PureDrawTrackedCrates[id] ~= nil then
+        PureDrawRemoveTrackedCrate(id)
+    end
+end
+
+-- 玩家碰箱子后，引擎会立即删除箱子并在玩家阵营生成一个原生抽卡单位。
+-- 拦截：既监听原生单位创建（本回调），也在 PureDrawOnBuildableUnitBorn 里
+-- 用生产者判定处理。匹配一律基于“该玩家刚消失的被跟踪箱子”，不依赖位置。
+function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if g_DrawMode ~= 2 then
         return
     end
-    SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
+    -- 已被 buildable 回调拦截处理（它先注册先执行），跳过避免重复。
+    if g_PureDrawScriptCreatedUnitIds[createdObjId] then
+        return
+    end
+    -- AI 碰箱子（空投等）：保留单位，但把 AI 单位加入对应阵营的攻击队列。
+    if ownerPlayerName == "PlyrCivilian" or ownerPlayerName == "PlyrCreeps" then
+        SchedulerModule.delay_call(PureDrawJoinAIAttackTeam, 1,
+            { createdObjId, ownerPlayerName })
+        return
+    end
+    -- 只有玩家碰箱子生成的原生单位才拦截
+    if g_PlayerNameToIndex[ownerPlayerName] == nil then
+        return
+    end
+    local consumedCrateId = PureDrawFindConsumedTrackedCrate()
+    if consumedCrateId ~= nil then
+        local x, y, z = ObjectGetPosition(createdObjId)
+        PureDrawRemoveTrackedCrate(consumedCrateId)
+        g_PureDrawScriptCreatedUnitIds[createdObjId] = true
+        PureDrawDebug("native crate intercepted: player=" .. tostring(ownerPlayerName))
+        SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
+            { createdObjId, ownerPlayerName, x, y, z })
+    end
+end
+
+function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z)
+    if ObjectIsAlive(createdObjId) then
+        ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
+    end
+    PureDrawSpawnCustomUnit(playerName, x, y, z)
+end
+
+-- 问题3：把 AI 阵营的空投/箱子单位加入对应攻击队列，让它们主动进攻。
+function PureDrawJoinAIAttackTeam(unitId, ownerPlayerName)
+    if not ObjectIsAlive(unitId) then
+        return
+    end
+    local unit = GetObjectById(unitId)
+    if ownerPlayerName == "PlyrCivilian" then
+        ExecuteAction("UNIT_SET_TEAM", unit, "PlyrCivilian/ATTACK")
+    elseif ownerPlayerName == "PlyrCreeps" then
+        ExecuteAction("UNIT_SET_TEAM", unit, "PlyrCreeps/ATTACK")
+    end
 end
 
 -- 日冕引擎的“幸运单位箱子”技能直接创建可拾取的 LuckyUnitCrateSeed 对象，
@@ -730,17 +903,15 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
     local useCustomDraw = g_DrawMode == 2
         and roll < g_PureDrawConfig.CustomDrawChance
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
-    PureDrawDebug("crate created id=" .. tostring(createdObjId)
-        .. ", owner=" .. tostring(ownerPlayerName)
-        .. ", airdrop=" .. tostring(isAirdrop)
-        .. ", customRoll=" .. tostring(roll)
-        .. ", useCustom=" .. tostring(useCustomDraw))
     if useCustomDraw then
+        local listIndex = getn(g_PureDrawTrackedCrateList) + 1
+        g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
             X = x,
             Y = y,
             Z = z,
             Owner = ownerPlayerName,
+            ListIndex = listIndex,
         }
     end
     if not isAirdrop then
@@ -759,17 +930,15 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
     local useCustomDraw = g_DrawMode == 2
         and roll < g_PureDrawConfig.CustomDrawChance
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
-    PureDrawDebug("physical crate created id=" .. tostring(createdObjId)
-        .. ", owner=" .. tostring(ownerPlayerName)
-        .. ", airdrop=" .. tostring(isAirdrop)
-        .. ", customRoll=" .. tostring(roll)
-        .. ", useCustom=" .. tostring(useCustomDraw))
     if useCustomDraw then
+        local listIndex = getn(g_PureDrawTrackedCrateList) + 1
+        g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
             X = x,
             Y = y,
             Z = z,
             Owner = ownerPlayerName,
+            ListIndex = listIndex,
         }
         PureDrawTrackCustomCrate(createdObjId)
     elseif not isAirdrop then
@@ -822,14 +991,22 @@ end
 -- 序列号、中心坐标等全部通过参数显式传入，函数体内不使用任何外层局部变量。
 function PureDrawSpawnAirdropCrate(serial, i, team, centerX, centerY, centerZ)
     local crateName = format("PureDrawAirdrop_%d_%d", serial, i)
-    local column = mod(i - 1, 5) - 2
-    local row = floor((i - 1) / 5) - 0.5
+    -- 圆形布局：i=1 在圆心，i=2..10 均匀分布在圆周上（半径 140）。
+    local column, row
+    if i == 1 then
+        column = 0
+        row = 0
+    else
+        local dir = g_PureDrawAirdropCircle[mod(i - 2, 9) + 1]
+        column = dir[1] * 140
+        row = dir[2] * 140
+    end
     local nextObjectId = GetNextObjectId()
     g_PureDrawAirdropCrateIds[nextObjectId] = true
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", crateName, "LuckyUnitCrateSeed",
         team, {
-            X = centerX + column * 80,
-            Y = centerY + row * 90,
+            X = centerX + column,
+            Y = centerY + row,
             Z = centerZ,
         }, 0)
     local crate = GetObjectByScriptName(crateName)
@@ -839,7 +1016,6 @@ function PureDrawSpawnAirdropCrate(serial, i, team, centerX, centerY, centerZ)
         ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
         return true
     end
-    PureDrawDebug("ERROR airdrop crate failed to spawn: " .. crateName)
     return false
 end
 
@@ -847,13 +1023,15 @@ function PureDrawSpawnAirdrop()
     local leftTower = GetObjectByScriptName("T74")
     local rightTower = GetObjectByScriptName("T84")
     if not ObjectIsAlive(leftTower) or not ObjectIsAlive(rightTower) then
-        PureDrawDebug("airdrop cancelled because T74 or T84 is missing")
         return
     end
+    -- 空投圆心固定为战场中心（玩家从地图编辑器校准：3547.06, 3055.49）。
+    -- 不再依赖 T74/T84 中点，避免塔的位置波动导致圆心漂移（曾出现极端偏右的落点）。
+    -- Z 仍取两塔平均（地面高度）。
     local lx, ly, lz = ObjectGetPosition(leftTower)
     local rx, ry, rz = ObjectGetPosition(rightTower)
-    local centerX = (lx + rx) / 2
-    local centerY = (ly + ry) / 2
+    local centerX = 3547.06
+    local centerY = 3055.49
     local centerZ = (lz + rz) / 2
     g_PureDrawAirdropSerial = g_PureDrawAirdropSerial + 1
 
@@ -870,7 +1048,6 @@ function PureDrawSpawnAirdrop()
             end
         end
     else
-        PureDrawDebug("airdrop neutral team unavailable; splitting crates between both AI sides")
         for i = 1, 10, 1 do
             local team = "PlyrCivilian/teamPlyrCivilian"
             if i > 5 then
@@ -882,9 +1059,6 @@ function PureDrawSpawnAirdrop()
             end
         end
     end
-
-    PureDrawDebug("airdrop spawned " .. tostring(spawnedCount) .. " crates at x=" .. tostring(centerX)
-        .. ", y=" .. tostring(centerY))
     if spawnedCount > 0 then
         exAddTextToPublicBoard(Localization.get("pure_draw.airdrop"), 12)
     end
@@ -893,13 +1067,8 @@ end
 function PureDrawAirdropCheck()
     if g_DrawMode == 2 then
         local roll = GetRandomNumber()
-        PureDrawDebug("one-minute airdrop check roll=" .. tostring(roll)
-            .. ", threshold=" .. tostring(g_PureDrawConfig.AirdropChance))
         if roll < g_PureDrawConfig.AirdropChance then
-            PureDrawDebug("airdrop check succeeded")
             PureDrawSpawnAirdrop()
-        else
-            PureDrawDebug("airdrop check did not trigger")
         end
     end
     SchedulerModule.delay_call(PureDrawAirdropCheck, g_PureDrawConfig.AirdropCheckFrames, {})
@@ -939,6 +1108,24 @@ function PureLuckyCrateMode_Setting()
     DisableCelestialDragonShipUpgradesForAllPlayers()
     SchedulerModule.delay_call(DisableCelestialDragonShipUpgradesForAllPlayers, 15, {})
     TryEnableLuckyCrateIfAllowed()
+    -- 问题4：清除玩家开局自带的船厂（地图初始建筑），只保留玩家自己建造的
+    -- 生产建筑，确保生产余额只由玩家自造建筑的生产序列消耗。
+    if g_PureDrawNavalYardFilter == nil then
+        g_PureDrawNavalYardFilter = CreateObjectFilter({
+            Rule = "ANY",
+            IncludeThing = {
+                "AlliedNavalYard", "SovietNavalYard", "JapanNavalYard", "CelestialNavalYard"
+            }
+        })
+    end
+    local yards, yardCount = ObjectFindObjects(nil, nil, g_PureDrawNavalYardFilter)
+    for yardIndex = 1, yardCount, 1 do
+        local yardOwner = ObjectPlayerScriptName(yards[yardIndex])
+        if g_PlayerNameToIndex[yardOwner] ~= nil then
+            ExecuteAction("NAMED_DELETE", yards[yardIndex])
+            PureDrawDebug("removed starting naval yard for " .. tostring(yardOwner))
+        end
+    end
     for playerIndex = 1, 6, 1 do
         PureDrawRefreshQuota(playerIndex)
     end
@@ -1033,3 +1220,42 @@ end
 RegisterUnitCreateCallback("LuckyUnitCrateSeed", PureDrawOnCrateSeedBorn)
 RegisterUnitCreateCallback("UnitCrateNew", PureDrawOnPhysicalCrateBorn)
 RegisterUnitCreateCallback("UnitCrate", PureDrawOnPhysicalCrateBorn)
+
+-- 监听所有原生抽卡单位（碰箱子生成的单位）的创建，实现事件驱动拦截
+-- （玩家碰箱子 -> 生成自定义单位；AI 碰箱子 -> 加入 AI 攻击队列）。
+g_PureDrawRegisteredNativeCrateHashes = {}
+for crateType = 1, 4, 1 do
+    local source = g_CrateUnitsTemplate[crateType]
+    for i = 1, getn(source), 1 do
+        local unitType = source[i].Type
+        local unitHash = FastHash(unitType)
+        if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
+            RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
+            g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
+        end
+    end
+end
+for i = 1, getn(g_GroundCrateUnits), 1 do
+    local unitType = g_GroundCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
+        g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
+    end
+end
+for i = 1, getn(g_AirCrateUnits), 1 do
+    local unitType = g_AirCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
+        g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
+    end
+end
+for i = 1, getn(g_SeaCrateUnits), 1 do
+    local unitType = g_SeaCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
+        g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
+    end
+end
