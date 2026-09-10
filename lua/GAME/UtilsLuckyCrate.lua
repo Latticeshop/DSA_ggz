@@ -298,7 +298,6 @@ g_PureDrawUnitInfoByHash = {}
 g_PureDrawQuota = { 0, 0, 0, 0, 0, 0 }
 g_PureDrawTrackedCrates = {}
 g_PureDrawAirdropCrateIds = {}
-g_PureDrawPendingCrateSeeds = {}
 g_PureDrawScriptCreatedUnitIds = {}
 g_PureDrawLastRound = -1
 g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
@@ -626,6 +625,12 @@ end
 g_PureDrawCollectorFilter = CreateObjectFilter({
     Include = "SELECTABLE",
     Exclude = "STRUCTURE",
+    -- 箱子本身不能作为“拾取者”被检测到（幸运箱子由技能创建时可能属于玩家）。
+    ExcludeThing = {
+        "LuckyUnitCrateSeed",
+        "UnitCrateNew",
+        "UnitCrate",
+    },
 })
 
 function PureDrawFindCollector(x, y, z, radius)
@@ -684,7 +689,7 @@ function PureDrawTrackCustomCrate(id)
     if not ObjectIsAlive(id) then
         g_PureDrawTrackedCrates[id] = nil
         local fallbackPlayer = state.LastCollector or state.Owner
-        PureDrawDebug("physical custom crate disappeared id=" .. tostring(id)
+        PureDrawDebug("custom crate disappeared id=" .. tostring(id)
             .. ", fallbackPlayer=" .. tostring(fallbackPlayer))
         if g_PlayerNameToIndex[fallbackPlayer] == nil then
             PureDrawDebug("ERROR custom crate disappeared before a player collector was identified")
@@ -715,77 +720,56 @@ function PureDrawTrackCustomCrate(id)
     SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
 end
 
-function PureDrawTakePendingSeed(x, y, z)
-    local now = GetFrame()
-    local bestIndex = nil
-    local bestDistance = nil
-    for i = getn(g_PureDrawPendingCrateSeeds), 1, -1 do
-        local state = g_PureDrawPendingCrateSeeds[i]
-        if now - state.Frame > 45 then
-            tremove(g_PureDrawPendingCrateSeeds, i)
-        else
-            local dx = x - state.X
-            local dy = y - state.Y
-            local distance = dx * dx + dy * dy
-            if distance <= 250 * 250
-                and (bestDistance == nil or distance < bestDistance) then
-                bestIndex = i
-                bestDistance = distance
-            end
-        end
-    end
-    if bestIndex == nil then
-        return nil
-    end
-    local result = g_PureDrawPendingCrateSeeds[bestIndex]
-    tremove(g_PureDrawPendingCrateSeeds, bestIndex)
-    return result
-end
-
+-- 日冕引擎的“幸运单位箱子”技能直接创建可拾取的 LuckyUnitCrateSeed 对象，
+-- 而不会再有第二段 UnitCrateNew 物理箱（原版可正常工作的实现就是直接跟踪
+-- LuckyUnitCrateSeed）。因此拦截逻辑直接跟踪种子对象本身；
+-- UnitCrateNew / UnitCrate 的创建回调仅作兼容备份，以防某些途径确实生成物理箱。
 function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
     local roll = GetRandomNumber()
     local useCustomDraw = g_DrawMode == 2
         and roll < g_PureDrawConfig.CustomDrawChance
-    tinsert(g_PureDrawPendingCrateSeeds, {
-        X = x,
-        Y = y,
-        Z = z,
-        Owner = ownerPlayerName,
-        UseCustom = useCustomDraw,
-        Frame = GetFrame(),
-    })
-    PureDrawDebug("crate seed created id=" .. tostring(createdObjId)
-        .. ", owner=" .. tostring(ownerPlayerName)
-        .. ", customRoll=" .. tostring(roll)
-        .. ", useCustom=" .. tostring(useCustomDraw))
-end
-
-function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    local x, y, z = ObjectGetPosition(createdObjId)
-    local pending = PureDrawTakePendingSeed(x, y, z)
-    local useCustomDraw = false
-    local intendedOwner = ownerPlayerName
-    if pending ~= nil then
-        useCustomDraw = pending.UseCustom
-        intendedOwner = pending.Owner
-    elseif g_DrawMode == 2 then
-        local roll = GetRandomNumber()
-        useCustomDraw = roll < g_PureDrawConfig.CustomDrawChance
-        PureDrawDebug("physical crate had no seed; customRoll=" .. tostring(roll))
-    end
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
-    PureDrawDebug("physical crate created id=" .. tostring(createdObjId)
+    PureDrawDebug("crate created id=" .. tostring(createdObjId)
         .. ", owner=" .. tostring(ownerPlayerName)
-        .. ", intendedOwner=" .. tostring(intendedOwner)
         .. ", airdrop=" .. tostring(isAirdrop)
+        .. ", customRoll=" .. tostring(roll)
         .. ", useCustom=" .. tostring(useCustomDraw))
     if useCustomDraw then
         g_PureDrawTrackedCrates[createdObjId] = {
             X = x,
             Y = y,
             Z = z,
-            Owner = intendedOwner,
+            Owner = ownerPlayerName,
+        }
+    end
+    if not isAirdrop then
+        -- 保持旧版规则：禁止把玩家箱子投放到中央战场（空投箱子不受此限制）。
+        SchedulerModule.delay_call(NoCreatesInCenter, 1, { createdObjId })
+    end
+    if useCustomDraw then
+        SchedulerModule.delay_call(PureDrawTrackCustomCrate, 2, { createdObjId })
+    end
+end
+
+-- 兼容备份：若某些途径确实创建了 UnitCrateNew / UnitCrate 物理箱，同样直接跟踪。
+function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    local x, y, z = ObjectGetPosition(createdObjId)
+    local roll = GetRandomNumber()
+    local useCustomDraw = g_DrawMode == 2
+        and roll < g_PureDrawConfig.CustomDrawChance
+    local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
+    PureDrawDebug("physical crate created id=" .. tostring(createdObjId)
+        .. ", owner=" .. tostring(ownerPlayerName)
+        .. ", airdrop=" .. tostring(isAirdrop)
+        .. ", customRoll=" .. tostring(roll)
+        .. ", useCustom=" .. tostring(useCustomDraw))
+    if useCustomDraw then
+        g_PureDrawTrackedCrates[createdObjId] = {
+            X = x,
+            Y = y,
+            Z = z,
+            Owner = ownerPlayerName,
         }
         PureDrawTrackCustomCrate(createdObjId)
     elseif not isAirdrop then
@@ -832,6 +816,33 @@ for i = 1, getn(g_SeaCrateUnits), 1 do
     RegisterUnitCreateCallback(g_SeaCrateUnits[i], PureDrawReplaceNativeSeaResult)
 end
 
+-- 生成一个空投箱子。箱子使用引擎同款 LuckyUnitCrateSeed 类型（技能创建的
+-- 可拾取箱子就是它，而不是 UnitCrateNew）。成功时记录实际对象 ID 并返回 true。
+-- 注意：RA3LuaBridge 方言（Lua 4.0）不支持闭包访问外层局部变量，因此
+-- 序列号、中心坐标等全部通过参数显式传入，函数体内不使用任何外层局部变量。
+function PureDrawSpawnAirdropCrate(serial, i, team, centerX, centerY, centerZ)
+    local crateName = format("PureDrawAirdrop_%d_%d", serial, i)
+    local column = mod(i - 1, 5) - 2
+    local row = floor((i - 1) / 5) - 0.5
+    local nextObjectId = GetNextObjectId()
+    g_PureDrawAirdropCrateIds[nextObjectId] = true
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", crateName, "LuckyUnitCrateSeed",
+        team, {
+            X = centerX + column * 80,
+            Y = centerY + row * 90,
+            Z = centerZ,
+        }, 0)
+    local crate = GetObjectByScriptName(crateName)
+    if ObjectIsAlive(crate) then
+        local actualId = ObjectGetId(crate)
+        g_PureDrawAirdropCrateIds[actualId] = true
+        ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
+        return true
+    end
+    PureDrawDebug("ERROR airdrop crate failed to spawn: " .. crateName)
+    return false
+end
+
 function PureDrawSpawnAirdrop()
     local leftTower = GetObjectByScriptName("T74")
     local rightTower = GetObjectByScriptName("T84")
@@ -845,29 +856,33 @@ function PureDrawSpawnAirdrop()
     local centerY = (ly + ry) / 2
     local centerZ = (lz + rz) / 2
     g_PureDrawAirdropSerial = g_PureDrawAirdropSerial + 1
+
     local spawnedCount = 0
-    for i = 1, 10, 1 do
-        local column = mod(i - 1, 5) - 2
-        local row = floor((i - 1) / 5) - 0.5
-        local nextObjectId = GetNextObjectId()
-        g_PureDrawAirdropCrateIds[nextObjectId] = true
-        local crateName = format("PureDrawAirdrop_%d_%d", g_PureDrawAirdropSerial, i)
-        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", crateName, "UnitCrateNew",
-            "PlyrNeutral/teamPlyrNeutral", {
-                X = centerX + column * 80,
-                Y = centerY + row * 90,
-                Z = centerZ,
-            }, 0)
-        local crate = GetObjectByScriptName(crateName)
-        if ObjectIsAlive(crate) then
-            local actualId = ObjectGetId(crate)
-            g_PureDrawAirdropCrateIds[actualId] = true
-            spawnedCount = spawnedCount + 1
-            ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
-        else
-            PureDrawDebug("ERROR airdrop crate failed to spawn: " .. crateName)
+    -- 先探测中立阵营是否可生成箱子；若中立阵营不可用，则改用双方电脑阵营，
+    -- 保证空投箱子必定能实际落地（两侧玩家与双方电脑均为友军，均可拾取）。
+    if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, 1,
+            "PlyrNeutral/teamPlyrNeutral", centerX, centerY, centerZ) then
+        spawnedCount = 1
+        for i = 2, 10, 1 do
+            if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, i,
+                    "PlyrNeutral/teamPlyrNeutral", centerX, centerY, centerZ) then
+                spawnedCount = spawnedCount + 1
+            end
+        end
+    else
+        PureDrawDebug("airdrop neutral team unavailable; splitting crates between both AI sides")
+        for i = 1, 10, 1 do
+            local team = "PlyrCivilian/teamPlyrCivilian"
+            if i > 5 then
+                team = "PlyrCreeps/teamPlyrCreeps"
+            end
+            if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, i, team,
+                    centerX, centerY, centerZ) then
+                spawnedCount = spawnedCount + 1
+            end
         end
     end
+
     PureDrawDebug("airdrop spawned " .. tostring(spawnedCount) .. " crates at x=" .. tostring(centerX)
         .. ", y=" .. tostring(centerY))
     if spawnedCount > 0 then
