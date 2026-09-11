@@ -43,33 +43,27 @@ end
 
 SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, nil)
 
+-- 青龙核心舰升级禁用列表（玩家不能升级，AI 可以通过地编赋予升级使龙船能开火）
+-- 青龙核心舰7个升级：禁止玩家升级（AI保留升级能力，龙船才能开火）
 g_DisabledCelestialDragonShipUpgrades = {
-    "CelestialDragonShipUpgrade01",
-    "CelestialDragonShipUpgrade02",
-    "CelestialDragonShipUpgrade02_B",
-    "CelestialDragonShipUpgrade03",
-    "CelestialDragonShipUpgrade03_B",
-    "CelestialDragonShipUpgrade03_C",
-    "CelestialDragonShipUpgrade04",
+    "_CelestialDragonShip_AAWeapons",
+    "_CelestialDragonShip_MissileWeapons",
+    "_CelestialDragonShip_PlasmaWeapons",
+    "_CelestialDragonShip_AAWeapons02",
+    "_CelestialDragonShip_MissileWeapons02",
+    "_CelestialDragonShip_MainWeapons",
+    "_CelestialDragonShip_AAWeapons03",
 }
 
-function DisableCelestialDragonShipUpgradesForPlayer(playerName)
-    local previous = SetWorldBuilderThisPlayer(1)
-    for i = 1, getn(g_DisabledCelestialDragonShipUpgrades), 1 do
-        ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", playerName,
-            g_DisabledCelestialDragonShipUpgrades[i], false)
-    end
-    SetWorldBuilderThisPlayer(previous)
-end
-
-function DisableCelestialDragonShipUpgradesForAllPlayers()
-    for i = 1, 6, 1 do
-        DisableCelestialDragonShipUpgradesForPlayer("Player_" .. i)
-    end
-    -- 技能召唤的青龙核心舰实际属于双方电脑玩家，升级权限也必须封锁其所有者。
-    DisableCelestialDragonShipUpgradesForPlayer("PlyrCivilian")
-    DisableCelestialDragonShipUpgradesForPlayer("PlyrCreeps")
-    _ALERT("[PureDraw] disabled all 7 Celestial Dragon Ship upgrades for 8 players")
+-- 开局禁用6个玩家的龙船升级按钮（参考高强度机械变形框架的锁栏位写法）
+for playerIdx = 1, 6, 1 do
+    local playerName = "Player_" .. playerIdx
+    SchedulerModule.delay_call(function(targetPlayerName)
+        for i = 1, getn(g_DisabledCelestialDragonShipUpgrades), 1 do
+            ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", targetPlayerName, 
+                g_DisabledCelestialDragonShipUpgrades[i], 0)
+        end
+    end, 1, {playerName})
 end
 
 -- 守护者坦克只能使用激光指示器：禁用玩家和 AI 的模式切换，出生脚本仍可强制切换一次。
@@ -80,7 +74,6 @@ SchedulerModule.delay_call(function()
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_ToggleAimLaser", "Disabled")
     -- 神州工程师禁用 F 技能（放置维修天灯）。
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_CelestialEngineerRepairDrone_A", "Disabled")
-    DisableCelestialDragonShipUpgradesForAllPlayers()
 end, 1)
 
 function ShowTimedHelp(ownerPlayerName, name, localizedText, x, y, z)
