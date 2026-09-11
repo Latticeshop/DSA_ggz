@@ -204,9 +204,9 @@ Localization._text_sources = {
     ["center_top.copy_enemy_skill.title"] = { zh = "复制敌方技能", en = "Copy Enemy Skill" },
     ["center_top.copy_enemy_skill.description"] = { zh = "复制敌方最近一次使用的技能（如果最近一次是复制技能，则一直回溯到最近一次非复制的技能），如果没有找到合适的技能，则不释放(冷却30s)", en = "Copy the last enemy-used skill (cooldown 30s)" },
     ["center_top.nano_repair.title"] = { zh = "纳米维修", en = "Nano Repair" },
-    ["center_top.nano_repair.description"] = { zh = "在陆地前线生成1个纳米维修立场和4个大型维修天灯，并在海上生成1个维修立场和2个维修天灯，治愈己方部队和前线防御塔", en = "Deploy repair fields and drones to support both land and naval fronts" },
+    ["center_top.nano_repair.description"] = { zh = "在陆地前线生成1个纳米维修立场和大型维修天灯，治愈己方部队和前线海陆防御塔", en = "Deploy repair fields and repair drones to support land fronts, heal both land and sea towers" },
     ["center_top.reinforce_army.title"] = { zh = "补充军队", en = "Reinforce Army" },
-    ["center_top.reinforce_army.description"] = { zh = "立即触发一次陆地、空中和海军部队生成；禁海模式不生成海军(冷却70秒)", en = "Immediately reinforce land, air, and naval forces; no navy in No-Navy mode (70s cooldown)" },
+    ["center_top.reinforce_army.description"] = { zh = "立即触发一次陆地、空中生成 (冷却70秒)", en = "Immediately reinforce land and air forces (70s cooldown)" },
     ["center_top.temporal_raid.title"] = { zh = "超时空突袭", en = "ChronoSphere Raid" },
     ["center_top.temporal_raid.description"] = { zh = "请建造盟军小超武「超时空传送仪」以解锁此按钮", en = "Build the Allied Chronosphere to unlock this button" },
     ["center_top.morale_boost.title"] = { zh = "士气提升", en = "Morale Boost" },
@@ -503,6 +503,13 @@ Localization.recycle = function(key, ...)
         if translated ~= unit_key then
             return translated
         else
+            -- JapanAntiAirVehicleTech3 and SovietPineElectronicRadarTruck
+            -- will be added in the next version of Corona
+            -- we are supporting these two units ahead of time
+            -- so for now we should not warn about missing translation for these two units
+            if unit_key == "JapanAntiAirVehicleTech3" or unit_key == "SovietPineElectronicRadarTruck" then
+                return unit_key
+            end
             _ALERT("Localization: failed to translate unit key " .. unit_key)
         end
         return translated

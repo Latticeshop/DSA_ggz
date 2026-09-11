@@ -14,7 +14,7 @@ for i = 1 , 6 , 1 do
     ExecuteAction("SET_UNIT_REFERENCE","LIGHTVEHSP8"..i , LIGHTVEHSP[8][i])
     LIGHTVEHSPCH[8][i] = "LIGHTVEHSP8"..i
 end
---exMessageAppendToMessageArea("鐗╀綋瀹氫箟")
+--exMessageAppendToMessageArea("物体定义")
 LIGHTVEHTEAM = {}
 LIGHTVEHTEAM[7] = {}
 LIGHTVEHTEAM[8] = {}
