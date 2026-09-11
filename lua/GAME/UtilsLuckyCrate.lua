@@ -847,7 +847,7 @@ function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, own
     -- AI 碰箱子（空投等）：保留单位，但把 AI 单位加入对应阵营的攻击队列。
     if ownerPlayerName == "PlyrCivilian" or ownerPlayerName == "PlyrCreeps" then
         SchedulerModule.delay_call(PureDrawJoinAIAttackTeam, 1,
-            { createdObjId, ownerPlayerName })
+            { createdObjId })
         return
     end
     -- 只有玩家碰箱子生成的原生单位才拦截
@@ -872,18 +872,53 @@ function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z)
     PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
--- 问题3：把 AI 阵营的空投/箱子单位加入对应攻击队列，让它们主动进攻。
-function PureDrawJoinAIAttackTeam(unitId, ownerPlayerName)
+-- 问题3：把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。
+-- 逐个设置单位队伍，不合并整个源队伍，避免把玩家单位一起带入 AI 阵营。
+function PureDrawJoinAIAttackTeam(unitId)
     if not ObjectIsAlive(unitId) then
         return
     end
     local unit = GetObjectById(unitId)
-    if ownerPlayerName == "PlyrCivilian" then
-        ExecuteAction("UNIT_SET_TEAM", unit, "PlyrCivilian/ATTACK")
-    elseif ownerPlayerName == "PlyrCreeps" then
-        ExecuteAction("UNIT_SET_TEAM", unit, "PlyrCreeps/ATTACK")
+    local actualOwnerPlayerName = ObjectPlayerScriptName(unit)
+    if actualOwnerPlayerName ~= "PlyrCivilian"
+        and actualOwnerPlayerName ~= "PlyrCreeps" then
+        return
+    end
+    local idleTeam = actualOwnerPlayerName .. "/team" .. actualOwnerPlayerName
+    local idleShortTeam = "team" .. actualOwnerPlayerName
+    local currentTeam = ObjectTeamName(unit)
+    if currentTeam == idleTeam or currentTeam == idleShortTeam then
+        ExecuteAction("UNIT_SET_TEAM", unit, actualOwnerPlayerName .. "/ATTACK")
     end
 end
+
+-- 周期检查两个 AI 阵营的全部战斗单位，补上没有经过普通生产编队流程的单位。
+-- 通过实际所有者过滤，玩家单位不会被处理；通过默认待命队伍过滤，只处理未编队单位。
+function PureDrawScanAIAttackUnits()
+    if g_PureDrawAIAttackUnitFilter == nil then
+        g_PureDrawAIAttackUnitFilter = CreateObjectFilter({
+            Rule = "ANY",
+            Include = "INFANTRY VEHICLE AIRCRAFT",
+            Exclude = "STRUCTURE",
+        })
+    end
+    for sideIndex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[sideIndex], nil,
+            g_PureDrawAIAttackUnitFilter)
+        for i = 1, count, 1 do
+            local unit = units[i]
+            if ObjectIsAlive(unit) then
+                local ownerPlayerName = ObjectPlayerScriptName(unit)
+                if ownerPlayerName == "PlyrCivilian"
+                    or ownerPlayerName == "PlyrCreeps" then
+                    PureDrawJoinAIAttackTeam(ObjectGetId(unit))
+                end
+            end
+        end
+    end
+end
+
+SchedulerModule.call_every_x_frame(PureDrawScanAIAttackUnits, 30, nil)
 
 -- 日冕引擎的“幸运单位箱子”技能直接创建可拾取的 LuckyUnitCrateSeed 对象，
 -- 而不会再有第二段 UnitCrateNew 物理箱（原版可正常工作的实现就是直接跟踪
@@ -1222,6 +1257,9 @@ g_MCVTypes = {
 }
 g_AIBannedTypes = {
     "CelestialTransportUAV", -- 迅雷运输艇
+    "JapanLightTransportVehicle",
+    "JapanLightTransportVehicle_AntiTank",
+    "JapanLightTransportVehicle_Kamikaze",
 }
 -- 技能召唤的龙船所属队伍（保留，不击杀）
 g_DragonShipSkillTeamNames = {
