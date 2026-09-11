@@ -105,13 +105,24 @@ function LIMITPOWER()
             if ObjectIsAlive(P[playindex]) then
                 -- 假如有玩家继承了另一位玩家的基地，那这个玩家的电厂上限也要继承过去
                 local actualOwner = ObjectPlayerScriptName(P[playindex])
+                local actualOwnerIndex = nil
                 if actualOwner ~= nil then
-                    local actualIndex = g_PlayerNameToIndex[actualOwner]
-                    if actualIndex ~= nil then
-                        local currentCount = g_CachedPlayersPowerPlantLimit[actualIndex]
-                        local newCount = currentCount + LIMITPOWERC
-                        g_CachedPlayersPowerPlantLimit[actualIndex] = newCount
+                    actualOwnerIndex = g_PlayerNameToIndex[actualOwner]
+                end
+                if actualOwnerIndex == nil then
+                    -- 尝试从另外的参考单位判定
+                    local ref = GetObjectByScriptName("wan" .. playindex)
+                    if ref ~= nil then
+                        actualOwner = ObjectPlayerScriptName(ref)
+                        if actualOwner ~= nil then
+                            actualOwnerIndex = g_PlayerNameToIndex[actualOwner]
+                        end
                     end
+                end
+                if actualOwnerIndex ~= nil then
+                    local currentCount = g_CachedPlayersPowerPlantLimit[actualOwnerIndex]
+                    local newCount = currentCount + LIMITPOWERC
+                    g_CachedPlayersPowerPlantLimit[actualOwnerIndex] = newCount
                 end
             end
         end
