@@ -1,12 +1,12 @@
 function floor(num)
-  -- 澶勭悊姝ｆ暟
+  -- 处理正数
   if num >= 0 then
       local integer = 0
       while integer + 1 <= num do
           integer = integer + 1
       end
       return integer
-  -- 澶勭悊璐熸暟
+  -- 处理负数
   else
       local integer = 0
       while integer - 1 >= num do
@@ -16,7 +16,7 @@ function floor(num)
   end
 end
 function RANDOMGENERATE(MAX, MIN)
-  -- 澶勭悊MAX <= MIN鐨勬儏鍐?
+  -- 处理MAX <= MIN的情况
   if MAX <= MIN then
       return MAX
   end
@@ -25,24 +25,24 @@ function RANDOMGENERATE(MAX, MIN)
 if MIN < 0 then
     ZERODELTA = -MIN
 end
-local MININ = MIN + ZERODELTA  -- 杞崲涓洪潪璐熸暟鍧愭爣绯?
+local MININ = MIN + ZERODELTA  -- 转换为非负数坐标系
 local MAXIN = MAX + ZERODELTA
 
   local range = MAXIN - MININ + 1
   local randomNum = 0
 
-  -- 鐢熸垚16浣嶉殢鏈烘暟锛?-65535锛?
+  -- 生成16位随机数（0-65535）
   for i = 1, 16 do
       randomNum = randomNum * 2 + GetRandomNumber()
-      if randomNum < 0 then break end  -- 闃叉鏁板€兼孩鍑?
+      if randomNum < 0 then break end  -- 防止数值溢出
   end
 
-  -- 纭繚鏁板€艰惤鍦ㄦ湁鏁堣寖鍥?
+  -- 确保数值落在有效范围
   while randomNum >= range do
       randomNum = randomNum - range
   end
 
-  -- 鏈€缁堟暣鏁板寲杈撳嚭
+  -- 最终整数化输出
   local final = floor(MININ + randomNum) + ZERODELTA
   return final
 end
