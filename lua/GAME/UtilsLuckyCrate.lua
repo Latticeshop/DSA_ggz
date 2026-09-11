@@ -126,17 +126,10 @@ g_PureDrawConfig = {
     RefreshRounds = 3,
     CustomDrawChance = 0.50,
     AirdropCheckFrames = 15 * 60,
-    -- 测试阶段暂设为二分之一，功能稳定后再恢复正式概率。
-    AirdropChance = 0.50,
+    -- 空投十连概率：5%。
+    AirdropChance = 0.05,
     TierWeights = { 37, 50, 10, 3 },
-    DebugAlerts = true,
 }
-
-function PureDrawDebug(message)
-    if g_PureDrawConfig.DebugAlerts then
-        _ALERT("[PureDraw] " .. tostring(message))
-    end
-end
 
 -- 显式生产池：只收录玩家实际生产的战斗单位，排除塔卫、赠送单位和运行时变形别名。
 -- Sea 标记供禁海组合使用；IsBigShip 标记用于保留地图原有的大船数量限制。
@@ -406,9 +399,6 @@ function PureDrawSpawnQuotaWall(playerIndex, slot)
             p[2] + (slot - 3) * 38,
             p[3])
         ExecuteAction("UNIT_AFFECT_OBJECT_PANEL_FLAGS", wall, "Indestructible", true)
-        PureDrawDebug("quota wall created: " .. name)
-    else
-        PureDrawDebug("ERROR quota wall was not created: " .. name)
     end
 end
 
@@ -538,16 +528,9 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
             })
             return
         end
-        PureDrawDebug("orphan unit skip quota id=" .. tostring(createdObjId)
-            .. ", typeHash=" .. tostring(createdObjInstanceId)
-            .. ", owner=" .. tostring(ownerPlayerName))
         return
     end
     local oldQuota = g_PureDrawQuota[playerIndex] or 0
-    PureDrawDebug("produced unit detected id=" .. tostring(createdObjId)
-        .. ", typeHash=" .. tostring(createdObjInstanceId)
-        .. ", owner=" .. tostring(ownerPlayerName)
-        .. ", oldQuota=" .. tostring(oldQuota))
     if oldQuota <= 0 then
         local refund = PureDrawGetBuildCost(createdObjInstanceId)
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
@@ -579,29 +562,21 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
     end
     if g_PureDrawScriptCreatedUnitIds[createdObjId] then
         g_PureDrawScriptCreatedUnitIds[createdObjId] = nil
-        PureDrawDebug("script-created draw unit bypassed quota id=" .. tostring(createdObjId))
         return
     end
     local producer = ObjectGetProducerObject(createdObjId)
     if producer == nil then
         -- 凭空出现的玩家单位：不消耗余额。若匹配到刚消失的被跟踪箱子，则拦截。
-        PureDrawDebug("orphan player unit id=" .. tostring(createdObjId)
-            .. ", typeHash=" .. tostring(createdObjInstanceId)
-            .. ", owner=" .. tostring(ownerPlayerName))
         local consumedCrateId = PureDrawFindConsumedTrackedCrate()
         if consumedCrateId ~= nil then
             local x, y, z = ObjectGetPosition(createdObjId)
             PureDrawRemoveTrackedCrate(consumedCrateId)
             g_PureDrawScriptCreatedUnitIds[createdObjId] = true
-            PureDrawDebug("custom draw intercepted: player=" .. tostring(ownerPlayerName))
             SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
                 { createdObjId, ownerPlayerName, x, y, z })
         end
         return
     end
-    PureDrawDebug("buildable unit birth event id=" .. tostring(createdObjId)
-        .. ", typeHash=" .. tostring(createdObjInstanceId)
-        .. ", owner=" .. tostring(ownerPlayerName))
     PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
         playerIndex, ownerPlayerName, 3)
 end
@@ -693,7 +668,6 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
     local unit = GetObjectByScriptName(unitName)
     if not ObjectIsAlive(unit) then
         g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
-        PureDrawDebug("ERROR custom draw unit failed to spawn: " .. info.Type)
         return
     end
     local actualId = ObjectGetId(unit)
@@ -701,9 +675,6 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
         g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
         g_PureDrawScriptCreatedUnitIds[actualId] = true
     end
-    PureDrawDebug("custom draw spawned " .. info.Type .. " for " .. playerName
-        .. ", tier=" .. tostring(info.Tier)
-        .. ", id=" .. tostring(actualId))
     exAddTextToPublicBoardForPlayer(playerName,
         Localization.get("pure_draw.custom_result", info.Tier), 5)
 end
@@ -752,13 +723,10 @@ function PureDrawDeleteNativeResultNear(x, y, z)
     for i = 1, count, 1 do
         ExecuteAction("NAMED_DELETE", units[i])
     end
-    PureDrawDebug("removed " .. tostring(count)
-        .. " native result objects near consumed custom crate")
 end
 
 function PureDrawFinishCustomCrate(playerName, x, y, z, removeNativeResult)
     if g_PlayerNameToIndex[playerName] == nil then
-        PureDrawDebug("ERROR custom crate has no valid player collector")
         return
     end
     if removeNativeResult then
@@ -859,7 +827,6 @@ function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, own
         local x, y, z = ObjectGetPosition(createdObjId)
         PureDrawRemoveTrackedCrate(consumedCrateId)
         g_PureDrawScriptCreatedUnitIds[createdObjId] = true
-        PureDrawDebug("native crate intercepted: player=" .. tostring(ownerPlayerName))
         SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
             { createdObjId, ownerPlayerName, x, y, z })
     end
@@ -872,8 +839,12 @@ function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z)
     PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
--- 问题3：把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。
+-- 把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。
 -- 逐个设置单位队伍，不合并整个源队伍，避免把玩家单位一起带入 AI 阵营。
+-- 注意：空投十连的箱子以 PlyrNeutral/teamPlyrNeutral 生成，AI 拾取后生成的
+-- 单位所有者已变为 AI（PlyrCivilian/PlyrCreeps），但队伍可能是引擎赋予的
+-- 各种名字（teamPlyrNeutral 等）。因此这里放宽判断：只要所有者是 AI 且
+-- 当前队伍不是攻击队列，就统一编入对应 AI 阵营的 ATTACK 队列。
 function PureDrawJoinAIAttackTeam(unitId)
     if not ObjectIsAlive(unitId) then
         return
@@ -884,11 +855,10 @@ function PureDrawJoinAIAttackTeam(unitId)
         and actualOwnerPlayerName ~= "PlyrCreeps" then
         return
     end
-    local idleTeam = actualOwnerPlayerName .. "/team" .. actualOwnerPlayerName
-    local idleShortTeam = "team" .. actualOwnerPlayerName
     local currentTeam = ObjectTeamName(unit)
-    if currentTeam == idleTeam or currentTeam == idleShortTeam then
-        ExecuteAction("UNIT_SET_TEAM", unit, actualOwnerPlayerName .. "/ATTACK")
+    local attackTeam = actualOwnerPlayerName .. "/ATTACK"
+    if currentTeam ~= attackTeam and currentTeam ~= "ATTACK" then
+        ExecuteAction("UNIT_SET_TEAM", unit, attackTeam)
     end
 end
 
@@ -1131,7 +1101,6 @@ function PureLuckyCrateMode_Setting()
         return
     end
     g_PureDrawInitialized = true
-    PureDrawDebug("pure draw mode initializing")
     TryEnableLuckyCrateIfAllowed()
     -- 问题4：清除玩家开局自带的船厂（地图初始建筑），只保留玩家自己建造的
     -- 生产建筑，确保生产余额只由玩家自造建筑的生产序列消耗。
@@ -1148,7 +1117,6 @@ function PureLuckyCrateMode_Setting()
         local yardOwner = ObjectPlayerScriptName(yards[yardIndex])
         if g_PlayerNameToIndex[yardOwner] ~= nil then
             ExecuteAction("NAMED_DELETE", yards[yardIndex])
-            PureDrawDebug("removed starting naval yard for " .. tostring(yardOwner))
         end
     end
     for playerIndex = 1, 6, 1 do
@@ -1262,9 +1230,12 @@ g_AIBannedTypes = {
     "JapanLightTransportVehicle_Kamikaze",
 }
 -- 技能召唤的龙船所属队伍（保留，不击杀）
+-- ObjectTeamName 可能返回完整路径（PlyrCivilian/ATTACK）或短名（ATTACK），
+-- 两种都识别，避免技能龙船被 NoMCVInCenter 误杀。
 g_DragonShipSkillTeamNames = {
     ["PlyrCivilian/ATTACK"] = true,
     ["PlyrCreeps/ATTACK"] = true,
+    ["ATTACK"] = true,
 }
 
 function IsSkillDragonShip(unit)
