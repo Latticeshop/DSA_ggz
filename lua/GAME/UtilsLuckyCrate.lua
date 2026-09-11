@@ -117,11 +117,6 @@ function DisableCrateDragonAttack(createdObjId, createdObjInstanceId, ownerPlaye
         end
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", GetObjectById(id), "NO_ATTACK", 1)
     end, 1, { createdObjId })
-    -- 龙船由双方电脑玩家持有；出生后再次封锁所有舰载升级，防止对象初始化重新开放按钮。
-    SchedulerModule.delay_call(function(playerName)
-        DisableCelestialDragonShipUpgradesForPlayer(playerName)
-        _ALERT("[PureDraw] reapplied Dragon Ship upgrade lock for owner " .. tostring(playerName))
-    end, 2, { ownerPlayerName })
 end
 g_UnitCreateEventFunc[FastHash("CelestialMCV")] = DisableCrateDragonAttack
 
@@ -499,9 +494,6 @@ function PureDrawSetPlayerBuildability(playerIndex, enable)
     if not enable and RescueBlockedProductions_DoRescue ~= nil then
         RescueBlockedProductions_DoRescue(playerName, disallowedHashes)
     end
-    PureDrawDebug("buildability applied to " .. playerName
-        .. ", quotaEnabled=" .. tostring(enable)
-        .. ", quota=" .. tostring(g_PureDrawQuota[playerIndex] or 0))
 end
 
 function PureDrawRefreshQuota(playerIndex)
@@ -1105,8 +1097,6 @@ function PureLuckyCrateMode_Setting()
     end
     g_PureDrawInitialized = true
     PureDrawDebug("pure draw mode initializing")
-    DisableCelestialDragonShipUpgradesForAllPlayers()
-    SchedulerModule.delay_call(DisableCelestialDragonShipUpgradesForAllPlayers, 15, {})
     TryEnableLuckyCrateIfAllowed()
     -- 问题4：清除玩家开局自带的船厂（地图初始建筑），只保留玩家自己建造的
     -- 生产建筑，确保生产余额只由玩家自造建筑的生产序列消耗。
@@ -1130,6 +1120,7 @@ function PureLuckyCrateMode_Setting()
         PureDrawRefreshQuota(playerIndex)
     end
     SchedulerModule.delay_call(PureDrawAirdropCheck, g_PureDrawConfig.AirdropCheckFrames, {})
+    SchedulerModule.delay_call(NoMCVInCenter, 30, {})
 end
 
 -- 箱子模式：只允许抽卡，不允许在地图上刷随机箱子（万一被 AI 捡了太麻烦）
@@ -1217,6 +1208,132 @@ function NoCreatesInCenter(id)
         exMessageAppendToMessageArea(Localization.get("error.crate_in_battlefield"))
     end
 end
+
+-- 检测 MCV（包括青龙战斗核心舰）是否在中央战场，禁止 MCV 参与战斗。
+-- 玩家的 MCV → 传送回基地 + 警告；AI 的 MCV（非技能召唤）/迅雷运输艇 → 直接击杀。
+g_LastMCVWarningFrame = nil
+g_MCVTypes = {
+    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
+    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
+    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
+    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
+    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
+    "CelestialMCV_Enhanced_Air",
+}
+g_AIBannedTypes = {
+    "CelestialTransportUAV", -- 迅雷运输艇
+}
+-- 技能召唤的龙船所属队伍（保留，不击杀）
+g_DragonShipSkillTeamNames = {
+    ["PlyrCivilian/ATTACK"] = true,
+    ["PlyrCreeps/ATTACK"] = true,
+}
+
+function IsSkillDragonShip(unit)
+    if unit == nil then
+        return false
+    end
+    local teamName = ObjectTeamName(unit)
+    return g_DragonShipSkillTeamNames[teamName] == true
+end
+
+function NoMCVInCenter()
+    if not g_CelestialOutpostsFilter then
+        g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
+    end
+    
+    -- 检测 MCV（包括青龙核心舰）
+    local mcvFilter = CreateObjectFilter({
+        Rule = "ANY",
+        IncludeThing = g_MCVTypes
+    })
+    local mcvs, mcvCount = ObjectFindObjects(nil, nil, mcvFilter)
+    for i = 1, mcvCount, 1 do
+        local mcv = mcvs[i]
+        if ObjectIsAlive(mcv) then
+            local isMCVInCenter = false
+            if EvaluateCondition("NAMED_INSIDE_AREA", mcv, "SHOW7")
+                and EvaluateCondition("NAMED_INSIDE_AREA", mcv, "SHOW8") then
+                isMCVInCenter = true
+            end
+            if isMCVInCenter then
+                local ownerPlayerName = ObjectPlayerScriptName(mcv)
+                local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+                if playerIndex ~= nil then
+                    -- 玩家的 MCV：传送回基地（根据阵营选择哨站）
+                    local outposts, outpostCount = ObjectFindObjects(nil, nil, g_CelestialOutpostsFilter)
+                    if outpostCount > 0 then
+                        -- 根据玩家阵营筛选哨站：1-3 在下方（Y 小），4-6 在上方（Y 大）
+                        local validOutposts = {}
+                        for j = 1, outpostCount, 1 do
+                            local ox, oy, oz = ObjectGetPosition(outposts[j])
+                            if playerIndex <= 3 then
+                                -- 下方玩家（1-3）→ 传送到下方哨站（Y < 3000）
+                                if oy < 3000 then
+                                    tinsert(validOutposts, outposts[j])
+                                end
+                            else
+                                -- 上方玩家（4-6）→ 传送到上方哨站（Y > 3000）
+                                if oy > 3000 then
+                                    tinsert(validOutposts, outposts[j])
+                                end
+                            end
+                        end
+                        if getn(validOutposts) > 0 then
+                            local index = ceil(GetRandomNumber() * getn(validOutposts))
+                            if index < 1 then index = 1 end
+                            if index > getn(validOutposts) then index = getn(validOutposts) end
+                            local outpost = validOutposts[index]
+                            local RandomInRange = function(min, max)
+                                local sign = 1
+                                if GetRandomNumber() < 0.5 then sign = -1 end
+                                return (min + (GetRandomNumber() * (max - min))) * sign
+                            end
+                            local offsetX = RandomInRange(100, 300)
+                            local offsetY = RandomInRange(100, 250)
+                            local x, y, z = ObjectGetPosition(outpost)
+                            ObjectSetPosition(mcv, x + offsetX, y + offsetY, z)
+                            -- 雷达事件 + 警告（30帧内限制一次）
+                            ExecuteAction("OBJECT_CREATE_RADAR_EVENT", mcv, "Information")
+                            if g_LastMCVWarningFrame == nil or g_LastMCVWarningFrame + 30 <= GetFrame() then
+                                g_LastMCVWarningFrame = GetFrame()
+                                exMessageAppendToMessageArea("禁止将MCV用于战斗！")
+                            end
+                        end
+                    end
+                else
+                    -- AI 的 MCV：检查是否是技能召唤的龙船
+                    if not IsSkillDragonShip(mcv) then
+                        -- 非技能龙船 → 击杀
+                        ExecuteAction("NAMED_KILL", mcv)
+                    end
+                    -- 技能龙船 → 保留，不处理
+                end
+            end
+        end
+    end
+    
+    -- 检测 AI 的迅雷运输艇等禁用单位（任何位置都击杀）
+    local bannedFilter = CreateObjectFilter({
+        Rule = "ANY",
+        IncludeThing = g_AIBannedTypes
+    })
+    local bannedUnits, bannedCount = ObjectFindObjects(nil, nil, bannedFilter)
+    for i = 1, bannedCount, 1 do
+        local unit = bannedUnits[i]
+        if ObjectIsAlive(unit) then
+            local ownerPlayerName = ObjectPlayerScriptName(unit)
+            local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+            if playerIndex == nil then
+                -- AI 的禁用单位：直接击杀
+                ExecuteAction("NAMED_KILL", unit)
+            end
+        end
+    end
+    
+    SchedulerModule.delay_call(NoMCVInCenter, 30, {})
+end
+
 RegisterUnitCreateCallback("LuckyUnitCrateSeed", PureDrawOnCrateSeedBorn)
 RegisterUnitCreateCallback("UnitCrateNew", PureDrawOnPhysicalCrateBorn)
 RegisterUnitCreateCallback("UnitCrate", PureDrawOnPhysicalCrateBorn)
