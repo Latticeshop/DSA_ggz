@@ -486,6 +486,13 @@ Localization.recycle = function(key, ...)
         if translated ~= unit_key then
             return translated
         else
+            -- JapanAntiAirVehicleTech3 and SovietPineElectronicRadarTruck
+            -- will be added in the next version of Corona
+            -- we are supporting these two units ahead of time
+            -- so for now we should not warn about missing translation for these two units
+            if unit_key == "JapanAntiAirVehicleTech3" or unit_key == "SovietPineElectronicRadarTruck" then
+                return unit_key
+            end
             _ALERT("Localization: failed to translate unit key " .. unit_key)
         end
         return translated

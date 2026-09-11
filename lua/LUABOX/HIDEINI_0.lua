@@ -30,5 +30,4 @@ for i = 1 , countNightinales , 1 do
   ExecuteAction("UNIT_SET_MODELCONDITION_GENERIC", nightinale, "HIDDEN", 0) -- 这个 0 代表永久持续
   ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", nightinale, "STEALTHED", 1)
   ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", nightinale, "UNDER_IRON_CURTAIN", 1)
-  HIDDEN
 end

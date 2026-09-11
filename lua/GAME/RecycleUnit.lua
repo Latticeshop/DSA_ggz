@@ -334,12 +334,9 @@ g_CrateUnitsTemplate = {
             Image = "Button_VDVBmptVehicle" },
 
         { Type = "WinterArmyReaperHeavyMecha", Count = 2 },
-        
-        { Type = "SovietGrinderVehicle", Count = 1,
-            Name = Localization.recycle('unit.SovietGrinderVehicle'),
-            Image = "Button_SovietGrinder" },
+
         { Type = "Overlordtank", Count = 1,
-            Name = Localization.recycle('unit.Overlordtank'),
+            Name = Localization.recycle('unit.SovietOverlordtank'),
             Image = "Button_Overlordtank" },
         
     },
