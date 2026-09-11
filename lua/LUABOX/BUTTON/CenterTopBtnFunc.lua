@@ -824,6 +824,17 @@ function RequestNanoMaintainHive(playerIndex)
     end
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName))
+    -- 给海塔回血 30%
+    for i = 1, getn(seaTowers), 1 do
+        local seaTower = GetObjectByScriptName(seaTowers[i])
+        if ObjectIsAlive(seaTower) then
+            local currentHp = ObjectGetCurrentHealth(seaTower)
+            -- 塔的血量被改过因此不适用 ObjectGetInitialHealth
+            local maxHp = exObjectGetMaxHealth(ObjectGetId(seaTower))
+            local healAmount = maxHp * 0.30
+            ExecuteAction("NAMED_DAMAGE", seaTower, -healAmount)
+        end
+    end
 
     ExecuteAction("CREATE_OBJECT", 'JapanNanoMaintainHive', sideAIPlayer .. "/team" .. sideAIPlayer, positions, 0)
     for j = 1, 4, 1 do
