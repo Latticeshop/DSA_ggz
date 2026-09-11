@@ -209,8 +209,8 @@ g_PureDrawBuildableUnitPool = {
         { Type = "AlliedAntiVehicleVehicleTech3" },
         { Type = "SovietAntiStructureVehicle" },
         { Type = "SovietAntiVehicleVehicleTech3" },
-        { Type = "SovietGrinderVehicle" },
-        { Type = "SovietElectronicRadarTruck" },
+        -- SovietGrinderVehicle 未实装。
+        { Type = "SovietPineElectronicRadarTruck" },
         { Type = "JapanAntiVehicleVehicleTech3" },
         { Type = "JapanAntiStructureVehicle" },
         { Type = "JapanAntiAirVehicleTech3" },
