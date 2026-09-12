@@ -1,9 +1,7 @@
--- ============================================================
 -- PureDraw: 生产配额（余额）
 --   - 余额墙/信标 UI 显示
 --   - 单位可造性判断与按钮开关
 --   - 生产消耗余额、超额删除退款
--- ============================================================
 
 function PureDrawIsHumanPlayer(playerIndex)
     return EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", "Player_" .. playerIndex, "Human")
