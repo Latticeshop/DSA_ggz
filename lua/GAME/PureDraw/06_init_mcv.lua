@@ -1,11 +1,9 @@
--- ============================================================
 -- PureDraw: 模式初始化与 MCV/迅雷车管理
 --   - PureLuckyCrateMode_Setting 模式初始化（清船厂/刷配额）
 --   - 箱子不能进中央战场（NoCreatesInCenter）
 --   - 开局备份出生点占位 JapanLightTransportVehicle，避免被击杀
 --   - NoMCVInCenter：MCV 禁战、AI 禁用单位击杀（排除备份占位）
 --   - 原生抽卡单位回调注册
--- ============================================================
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)

@@ -1,10 +1,8 @@
--- ============================================================
 -- PureDraw: 抽卡核心逻辑
 --   - 生产监听（有生产者消耗余额，无生产者拦截箱子结果）
 --   - 加权随机抽卡、生成自定义单位
 --   - 箱子跟踪与原生结果拦截
 --   - AI 单位加入攻击队列
--- ============================================================
 
 -- 玩家碰箱子后引擎生成的原生单位没有生产者（ObjectGetProducerObject 返回 nil），
 -- 而正常从生产建筑序列产出的单位一定有生产者。因此：
@@ -311,37 +309,84 @@ function PureDrawJoinAIAttackTeam(unitId)
         and actualOwnerPlayerName ~= "PlyrCreeps" then
         return
     end
+    
+    -- 确定阵营索引 (7=PlyrCivilian, 8=PlyrCreeps)
+    local sideIndex = 7
+    if actualOwnerPlayerName == "PlyrCreeps" then
+        sideIndex = 8
+    end
+    
     local currentTeam = ObjectTeamName(unit)
     local attackTeam = actualOwnerPlayerName .. "/ATTACK"
     if currentTeam ~= attackTeam and currentTeam ~= "ATTACK" then
         ExecuteAction("UNIT_SET_TEAM", unit, attackTeam)
-    end
-end
-
--- 周期检查两个 AI 阵营的全部战斗单位，补上没有经过普通生产编队流程的单位。
--- 通过实际所有者过滤，玩家单位不会被处理；通过默认待命队伍过滤，只处理未编队单位。
-function PureDrawScanAIAttackUnits()
-    if g_PureDrawAIAttackUnitFilter == nil then
-        g_PureDrawAIAttackUnitFilter = CreateObjectFilter({
-            Rule = "ANY",
-            Include = "INFANTRY VEHICLE AIRCRAFT",
-            Exclude = "STRUCTURE",
-        })
-    end
-    for sideIndex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[sideIndex], nil,
-            g_PureDrawAIAttackUnitFilter)
-        for i = 1, count, 1 do
-            local unit = units[i]
-            if ObjectIsAlive(unit) then
-                local ownerPlayerName = ObjectPlayerScriptName(unit)
-                if ownerPlayerName == "PlyrCivilian"
-                    or ownerPlayerName == "PlyrCreeps" then
-                    PureDrawJoinAIAttackTeam(ObjectGetId(unit))
-                end
+        
+        -- 加入队列后，根据LEVELUP变量设置正确的星级
+        -- 这样与原版逻辑保持一致：星级由玩家T4升级状态决定
+        if LEVELUP and LEVELUP[sideIndex] then
+            local levelCount = LEVELUP[sideIndex]
+            for i = 1, levelCount, 1 do
+                ExecuteAction("UNIT_GAIN_LEVEL", unit, 1)
             end
         end
     end
 end
 
-SchedulerModule.call_every_x_frame(PureDrawScanAIAttackUnits, 30, nil)
+-- 事件驱动：当单位创建时检查是否是AI单位，如果是就加入攻击队列
+-- 这个回调会被注册给所有可能从箱子/空投出来的单位
+function PureDrawOnAIUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- 只在抽卡模式下处理
+    if g_DrawMode ~= 2 then
+        return
+    end
+    -- 只处理AI单位
+    if ownerPlayerName ~= "PlyrCivilian" and ownerPlayerName ~= "PlyrCreeps" then
+        return
+    end
+    -- 延迟1帧加入队伍，确保单位完全初始化
+    SchedulerModule.delay_call(PureDrawJoinAIAttackTeam, 1, { createdObjId })
+end
+
+-- 为所有可能从箱子/空投出来的单位注册创建回调
+-- Lua 4.0不支持local function，直接在循环中注册
+g_PureDrawRegisteredAIUnitHashes = {}
+
+-- 注册所有箱子单位
+for crateType = 1, 4, 1 do
+    local source = g_CrateUnitsTemplate[crateType]
+    for i = 1, getn(source), 1 do
+        local unitType = source[i].Type
+        local unitHash = FastHash(unitType)
+        if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
+            RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
+            g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+        end
+    end
+end
+
+for i = 1, getn(g_GroundCrateUnits), 1 do
+    local unitType = g_GroundCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
+        g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+    end
+end
+
+for i = 1, getn(g_AirCrateUnits), 1 do
+    local unitType = g_AirCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
+        g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+    end
+end
+
+for i = 1, getn(g_SeaCrateUnits), 1 do
+    local unitType = g_SeaCrateUnits[i]
+    local unitHash = FastHash(unitType)
+    if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
+        RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
+        g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+    end
+end
