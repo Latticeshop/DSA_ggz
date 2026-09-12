@@ -1122,8 +1122,11 @@ function PureLuckyCrateMode_Setting()
     for playerIndex = 1, 6, 1 do
         PureDrawRefreshQuota(playerIndex)
     end
+    -- 开局备份现存迅雷车 ID（出生点占位，模拟出兵用）。
+    -- PureDrawBackupSpawnTransports 会等待开局动画结束（start 计时器出现）后再备份，
+    -- 备份完成后自行启动 NoMCVInCenter，确保击杀逻辑不会误杀出生点迅雷车。
+    SchedulerModule.delay_call(PureDrawBackupSpawnTransports, 5, {})
     SchedulerModule.delay_call(PureDrawAirdropCheck, g_PureDrawConfig.AirdropCheckFrames, {})
-    SchedulerModule.delay_call(NoMCVInCenter, 30, {})
 end
 
 -- 箱子模式：只允许抽卡，不允许在地图上刷随机箱子（万一被 AI 捡了太麻烦）
@@ -1229,6 +1232,43 @@ g_AIBannedTypes = {
     "JapanLightTransportVehicle_AntiTank",
     "JapanLightTransportVehicle_Kamikaze",
 }
+-- 出生点占位单位：JapanLightTransportVehicle（地图初始对象，用于模拟出兵/释放单位）。
+-- 开局时备份其 ID，NoMCVInCenter 击杀迅雷车时排除这些 ID，避免误杀出兵点。
+-- 空投/抽卡开出的多余迅雷车不在备份中，仍会被正常击杀。
+g_PureDrawReservedTransportIds = {}
+g_PureDrawReservedTransportFilter = nil
+g_PureDrawReservedTransportType = "JapanLightTransportVehicle"
+
+function PureDrawBackupSpawnTransports()
+    -- 等待开局动画结束（cam4 设置 start 计时器 = 玩家可操作），此时出生点占位单位已创建。
+    local start = exCounterGetByName("start")
+    if start == nil or start <= 0 then
+        SchedulerModule.delay_call(PureDrawBackupSpawnTransports, 30, {})
+        return
+    end
+    if g_PureDrawReservedTransportFilter == nil then
+        g_PureDrawReservedTransportFilter = CreateObjectFilter({
+            Rule = "ANY",
+            IncludeThing = { g_PureDrawReservedTransportType }
+        })
+    end
+    local units, count = ObjectFindObjects(nil, nil, g_PureDrawReservedTransportFilter)
+    for i = 1, count, 1 do
+        local unit = units[i]
+        if ObjectIsAlive(unit) then
+            g_PureDrawReservedTransportIds[ObjectGetId(unit)] = true
+        end
+    end
+    SchedulerModule.delay_call(NoMCVInCenter, 30, {})
+end
+
+function IsPureDrawReservedTransport(unit)
+    if unit == nil then
+        return false
+    end
+    return g_PureDrawReservedTransportIds[ObjectGetId(unit)] == true
+end
+
 -- 技能召唤的龙船所属队伍（保留，不击杀）
 -- ObjectTeamName 可能返回完整路径（PlyrCivilian/ATTACK）或短名（ATTACK），
 -- 两种都识别，避免技能龙船被 NoMCVInCenter 误杀。
@@ -1322,7 +1362,8 @@ function NoMCVInCenter()
         end
     end
     
-    -- 检测 AI 的迅雷运输艇等禁用单位（任何位置都击杀）
+    -- 检测 AI 的迅雷运输艇等禁用单位（任何位置都击杀）。
+    -- 排除开局备份的出生点占位迅雷车（用于模拟出兵，见 PureDrawBackupSpawnTransports）。
     local bannedFilter = CreateObjectFilter({
         Rule = "ANY",
         IncludeThing = g_AIBannedTypes
@@ -1331,11 +1372,15 @@ function NoMCVInCenter()
     for i = 1, bannedCount, 1 do
         local unit = bannedUnits[i]
         if ObjectIsAlive(unit) then
-            local ownerPlayerName = ObjectPlayerScriptName(unit)
-            local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
-            if playerIndex == nil then
-                -- AI 的禁用单位：直接击杀
-                ExecuteAction("NAMED_KILL", unit)
+            if IsPureDrawReservedTransport(unit) then
+                -- 出生点占位迅雷车：保留，用于模拟出兵
+            else
+                local ownerPlayerName = ObjectPlayerScriptName(unit)
+                local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+                if playerIndex == nil then
+                    -- AI 的禁用单位（空投/抽卡开出的多余迅雷车等）：直接击杀
+                    ExecuteAction("NAMED_KILL", unit)
+                end
             end
         end
     end
