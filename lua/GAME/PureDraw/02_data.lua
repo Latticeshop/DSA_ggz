@@ -10,8 +10,10 @@ g_PureDrawConfig = {
     RefreshRounds = 3,
     CustomDrawChance = 0.50,
     AirdropCheckFrames = 15 * 60,
-    -- 空投十连概率：5%。
-    AirdropChance = 0.05,
+    AirdropUnitScanFrames = 15 * 5,
+    AirdropUnitScanInterval = 2,
+    -- 测试配置：空投十连概率 100%。
+    AirdropChance = 1.0,
     TierWeights = { 37, 50, 10, 3 },
 }
 
