@@ -309,8 +309,8 @@ RegisterUnitCreateCallback("LuckyUnitCrateSeed", PureDrawOnCrateSeedBorn)
 RegisterUnitCreateCallback("UnitCrateNew", PureDrawOnPhysicalCrateBorn)
 RegisterUnitCreateCallback("UnitCrate", PureDrawOnPhysicalCrateBorn)
 
--- 监听所有原生抽卡单位（碰箱子生成的单位）的创建，实现事件驱动拦截
--- （玩家碰箱子 -> 生成自定义单位；AI 碰箱子 -> 加入 AI 攻击队列）。
+-- 监听玩家碰箱子后生成的已知原生单位，用于替换为自定义抽卡单位。
+-- AI 空投入队不使用这些类型表，由 04_draw 的事件与短时扫描独立处理。
 g_PureDrawRegisteredNativeCrateHashes = {}
 for crateType = 1, 4, 1 do
     local source = g_CrateUnitsTemplate[crateType]

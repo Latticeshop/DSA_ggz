@@ -2,7 +2,7 @@
 --   - 生产监听（有生产者消耗余额，无生产者拦截箱子结果）
 --   - 加权随机抽卡、生成自定义单位
 --   - 箱子跟踪与原生结果拦截
---   - AI 单位加入攻击队列
+--   - 事件驱动并短时扫描空投点附近新生成的 AI 单位，加入攻击队列
 
 -- 玩家碰箱子后引擎生成的原生单位没有生产者（ObjectGetProducerObject 返回 nil），
 -- 而正常从生产建筑序列产出的单位一定有生产者。因此：
@@ -255,21 +255,40 @@ function PureDrawCleanupTrackedCrate(id)
     end
 end
 
+-- 空投十连使用固定的十个落点：中心一点，外圈九点。只允许在这些落点小范围内
+-- 新生成的 AI 单位进入根 ATTACK，从源头排除远处出生点刷新的无生产者单位。
+function PureDrawIsNearAirdropPoint(unitId)
+    local x, y, z = ObjectGetPosition(unitId)
+    local centerX = 3547.06
+    local centerY = 3055.49
+    local detectRadius = 220
+    for pointIndex = 1, 10, 1 do
+        local pointX = centerX
+        local pointY = centerY
+        if pointIndex > 1 then
+            local direction = g_PureDrawAirdropCircle[pointIndex - 1]
+            pointX = pointX + direction[1] * 140
+            pointY = pointY + direction[2] * 140
+        end
+        local dx = x - pointX
+        local dy = y - pointY
+        if dx * dx + dy * dy <= detectRadius * detectRadius then
+            return true
+        end
+    end
+    return false
+end
+
 -- 玩家碰箱子后，引擎会立即删除箱子并在玩家阵营生成一个原生抽卡单位。
 -- 拦截：既监听原生单位创建（本回调），也在 PureDrawOnBuildableUnitBorn 里
 -- 用生产者判定处理。匹配一律基于“该玩家刚消失的被跟踪箱子”，不依赖位置。
+-- AI 空投单位由下方独立的事件回调与短时空间扫描处理。
 function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     if g_DrawMode ~= 2 then
         return
     end
     -- 已被 buildable 回调拦截处理（它先注册先执行），跳过避免重复。
     if g_PureDrawScriptCreatedUnitIds[createdObjId] then
-        return
-    end
-    -- AI 碰箱子（空投等）：保留单位，但把 AI 单位加入对应阵营的攻击队列。
-    if ownerPlayerName == "PlyrCivilian" or ownerPlayerName == "PlyrCreeps" then
-        SchedulerModule.delay_call(PureDrawJoinAIAttackTeam, 1,
-            { createdObjId })
         return
     end
     -- 只有玩家碰箱子生成的原生单位才拦截
@@ -332,58 +351,102 @@ function PureDrawJoinAIAttackTeam(unitId)
     end
 end
 
--- 事件驱动：当单位创建时检查是否是AI单位，如果是就加入攻击队列
--- 这个回调会被注册给所有可能从箱子/空投出来的单位
-function PureDrawOnAIUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    -- 只在抽卡模式下处理
-    if g_DrawMode ~= 2 then
+-- UNITLIST 内的常规单位优先走事件驱动；箱子专属等未知模板则由每次空投后的
+-- 短时扫描补漏。两个路径共用已入队 ID，事件成功后扫描不会重复处理。
+g_PureDrawSeenAIUnitIds = {}
+g_PureDrawJoinedAIUnitIds = {}
+g_PureDrawAIUnitScanFilter = nil
+g_PureDrawAirdropAIScanUntilFrame = 0
+g_PureDrawAirdropAIScanActive = nil
+
+function PureDrawTryJoinAirdropAIUnit(unitId)
+    if g_PureDrawJoinedAIUnitIds[unitId] or not ObjectIsAlive(unitId) then
         return
     end
-    -- 只处理AI单位
+    local unit = GetObjectById(unitId)
+    local ownerPlayerName = ObjectPlayerScriptName(unit)
     if ownerPlayerName ~= "PlyrCivilian" and ownerPlayerName ~= "PlyrCreeps" then
         return
     end
-    -- 延迟1帧加入队伍，确保单位完全初始化
-    SchedulerModule.delay_call(PureDrawJoinAIAttackTeam, 1, { createdObjId })
+    if not PureDrawIsNearAirdropPoint(unitId) then
+        return
+    end
+    g_PureDrawJoinedAIUnitIds[unitId] = true
+    PureDrawJoinAIAttackTeam(unitId)
 end
 
--- 为所有可能从箱子/空投出来的单位注册创建回调
--- Lua 4.0不支持local function，直接在循环中注册
-g_PureDrawRegisteredAIUnitHashes = {}
+function PureDrawOnAIUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if g_DrawMode ~= 2 then
+        return
+    end
+    if ownerPlayerName ~= "PlyrCivilian" and ownerPlayerName ~= "PlyrCreeps" then
+        return
+    end
+    -- 部分模板的创建事件早于最终坐标初始化，延迟两帧再判断空投点位置。
+    SchedulerModule.delay_call(PureDrawTryJoinAirdropAIUnit, 2, { createdObjId })
+end
 
--- 注册所有箱子单位
-for crateType = 1, 4, 1 do
-    local source = g_CrateUnitsTemplate[crateType]
-    for i = 1, getn(source), 1 do
-        local unitType = source[i].Type
-        local unitHash = FastHash(unitType)
-        if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
-            RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
-            g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+function PureDrawInitializeAIUnitScanFilter()
+    if g_PureDrawAIUnitScanFilter == nil then
+        g_PureDrawAIUnitScanFilter = CreateObjectFilter({
+            Relationship = "SAME_PLAYER",
+            Include = "SELECTABLE",
+            Exclude = "STRUCTURE",
+            ExcludeThing = {
+                "LuckyUnitCrateSeed",
+                "UnitCrateNew",
+                "UnitCrate",
+            },
+        })
+    end
+end
+
+function PureDrawScanNewAIUnitsNearAirdrops(markOnly)
+    PureDrawInitializeAIUnitScanFilter()
+    for sideIndex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[sideIndex], nil,
+            g_PureDrawAIUnitScanFilter)
+        for i = 1, count, 1 do
+            local unit = units[i]
+            local unitId = ObjectGetId(unit)
+            if not g_PureDrawSeenAIUnitIds[unitId] then
+                g_PureDrawSeenAIUnitIds[unitId] = true
+                if not markOnly and not g_PureDrawJoinedAIUnitIds[unitId] then
+                    PureDrawTryJoinAirdropAIUnit(unitId)
+                end
+            end
         end
     end
 end
 
-for i = 1, getn(g_GroundCrateUnits), 1 do
-    local unitType = g_GroundCrateUnits[i]
-    local unitHash = FastHash(unitType)
-    if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
-        RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
-        g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+function PureDrawContinueAirdropAIUnitScan()
+    if g_DrawMode ~= 2 or GetFrame() > g_PureDrawAirdropAIScanUntilFrame then
+        g_PureDrawAirdropAIScanActive = nil
+        return
     end
+    PureDrawScanNewAIUnitsNearAirdrops(nil)
+    SchedulerModule.delay_call(PureDrawContinueAirdropAIUnitScan,
+        g_PureDrawConfig.AirdropUnitScanInterval, {})
 end
 
-for i = 1, getn(g_AirCrateUnits), 1 do
-    local unitType = g_AirCrateUnits[i]
-    local unitHash = FastHash(unitType)
-    if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
-        RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
-        g_PureDrawRegisteredAIUnitHashes[unitHash] = true
+function PureDrawStartAirdropAIUnitScan()
+    g_PureDrawAirdropAIScanUntilFrame = GetFrame()
+        + g_PureDrawConfig.AirdropUnitScanFrames
+    if g_PureDrawAirdropAIScanActive then
+        return
     end
+    g_PureDrawAirdropAIScanActive = true
+    -- 先记录空投前已经存在的 AI 单位。之后只有扫描窗口内新出现且出生在
+    -- 空投点附近的对象才会入队，避免把后来路过中央区域的旧单位误收。
+    PureDrawScanNewAIUnitsNearAirdrops(true)
+    SchedulerModule.delay_call(PureDrawContinueAirdropAIUnitScan,
+        g_PureDrawConfig.AirdropUnitScanInterval, {})
 end
 
-for i = 1, getn(g_SeaCrateUnits), 1 do
-    local unitType = g_SeaCrateUnits[i]
+-- 事件驱动只注册完整 UNITLIST，不再维护不完整且重复的 AI 箱子单位表。
+g_PureDrawRegisteredAIUnitHashes = {}
+for unitIndex = 1, unitcountmax, 1 do
+    local unitType = UNITLIST[unitIndex]
     local unitHash = FastHash(unitType)
     if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
         RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
