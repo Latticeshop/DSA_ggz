@@ -97,7 +97,7 @@ function PureDrawCanEnableUnit(playerIndex, info)
     return true
 end
 
-function PureDrawSetPlayerBuildability(playerIndex, enable)
+function PureDrawSetPlayerBuildability(playerIndex, enable, skipQueueRescue)
     local playerName = "Player_" .. playerIndex
     local disallowedHashes = {}
     for tier = 1, 4, 1 do
@@ -125,9 +125,18 @@ function PureDrawSetPlayerBuildability(playerIndex, enable)
             end
         end
     end
-    if not enable and RescueBlockedProductions_DoRescue ~= nil then
+    if not enable and not skipQueueRescue and RescueBlockedProductions_DoRescue ~= nil then
         RescueBlockedProductions_DoRescue(playerName, disallowedHashes)
     end
+end
+
+-- 单位创建回调触发时，引擎仍可能在本帧末尾刷新刚完成生产的建造按钮，
+-- 覆盖上面的即时禁造。下一帧只重套用按钮状态，不重复触发生产队列解卡。
+function PureDrawReapplyExhaustedQuotaAfterProduction(playerIndex)
+    if g_DrawMode ~= 2 or (g_PureDrawQuota[playerIndex] or 0) > 0 then
+        return
+    end
+    PureDrawSetPlayerBuildability(playerIndex, false, true)
 end
 
 function PureDrawRefreshQuota(playerIndex)
@@ -179,6 +188,9 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
     end
     local oldQuota = g_PureDrawQuota[playerIndex] or 0
     if oldQuota <= 0 then
+        -- 兜底路径也重新锁定，防止未知外部脚本或引擎时序再次打开按钮。
+        PureDrawSetPlayerBuildability(playerIndex, false)
+        SchedulerModule.delay_call(PureDrawReapplyExhaustedQuotaAfterProduction, 1, { playerIndex })
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
         exAddTextToPublicBoardForPlayer(ownerPlayerName,
             Localization.get("pure_draw.quota.exceeded"), 6)
@@ -191,5 +203,6 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
         Localization.get("pure_draw.quota.remaining", g_PureDrawQuota[playerIndex]), 5)
     if g_PureDrawQuota[playerIndex] <= 0 then
         PureDrawSetPlayerBuildability(playerIndex, false)
+        SchedulerModule.delay_call(PureDrawReapplyExhaustedQuotaAfterProduction, 1, { playerIndex })
     end
 end

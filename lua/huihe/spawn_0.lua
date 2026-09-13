@@ -97,6 +97,11 @@ if not RoundLuaManager then
     exEnableWBScript("EnvKillAllUnit");
 end
 
+-- PureDraw 可能早于 RoundLuaManager 初始化；在回合系统就绪后完成一次事件注册。
+if PureDrawRegisterRoundBeginRefresh ~= nil then
+    PureDrawRegisterRoundBeginRefresh()
+end
+
 -- 回合结束
 RoundLuaManager._end()
 
