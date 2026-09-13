@@ -348,8 +348,46 @@ if yaoguangIndex ~= nil then
 end
 --exMessageAppendToMessageArea("过滤器完毕")
 ----------------------------------------------------------------
+function GetDrawnUnitNameFromRecycleList(playindex, unitType)
+    local playerFaction = g_PlayerSide[playindex]
+    if g_RecycleBtnsMapByFaction ~= nil and playerFaction ~= nil then
+        for category = 1, 4, 1 do
+            local unitInfos = g_RecycleBtnsMapByFaction[playerFaction][category]
+            for i = 1, getn(unitInfos), 1 do
+                if unitInfos[i].Type == unitType then
+                    return unitInfos[i].Name
+                end
+            end
+        end
+        for faction = 1, 4, 1 do
+            if faction ~= playerFaction then
+                for category = 1, 4, 1 do
+                    local unitInfos = g_RecycleBtnsMapByFaction[faction][category]
+                    for i = 1, getn(unitInfos), 1 do
+                        if unitInfos[i].Type == unitType then
+                            return unitInfos[i].Name
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if g_CrateUnits ~= nil then
+        for category = 1, 4, 1 do
+            local unitInfos = g_CrateUnits[category]
+            for i = 1, getn(unitInfos), 1 do
+                if unitInfos[i].Type == unitType then
+                    return unitInfos[i].Name
+                end
+            end
+        end
+    end
+    return Localization.ObjectsTranslate(unitType)
+end
+
 function unitgetcountanddelet (playindex)
     --exMessageAppendToMessageArea("unitgetcountanddelet")
+    local drawnUnitCounts = {}
     -- 先让单位下车
     for unitindex = 1 , unitcountmax , 1 do
         local TAR, count = ObjectFindObjects(P[playindex], nil, FilterLIST[unitindex])
@@ -374,9 +412,18 @@ function unitgetcountanddelet (playindex)
                     end
                     -- 检查箱子单位
                     local producer = ObjectGetProducerObject(unitId)
-                    if producer == nil then
+                    local isProducedUnit = producer ~= nil
+                    if g_PureDrawProducedUnitIds ~= nil
+                        and g_PureDrawProducedUnitIds[unitId] then
+                        isProducedUnit = true
+                    end
+                    if not isProducedUnit then
                         -- 没有生产者的单位，说明是箱子单位
                         CRATEUNITCOUNT[playindex][actualUnitIndex] = CRATEUNITCOUNT[playindex][actualUnitIndex] + 1
+                        drawnUnitCounts[actualUnitIndex] = (drawnUnitCounts[actualUnitIndex] or 0) + 1
+                    end
+                    if g_PureDrawProducedUnitIds ~= nil then
+                        g_PureDrawProducedUnitIds[unitId] = nil
                     end
                     ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
                     UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
@@ -411,6 +458,16 @@ function unitgetcountanddelet (playindex)
                     -- end
                 end
                 ExecuteAction("NAMED_DELETE", TAR[i])
+            end
+        end
+    end
+    if g_LuckyCrateMode == 1 then
+        for unitindex = 1, unitcountmax, 1 do
+            local drawnCount = drawnUnitCounts[unitindex] or 0
+            if drawnCount > 0 then
+                local unitName = GetDrawnUnitNameFromRecycleList(playindex, UNITLIST[unitindex])
+                exAddTextToPublicBoardForPlayer("Player_" .. playindex,
+                    Localization.get("draw.unit_received", drawnCount, unitName), 5)
             end
         end
     end

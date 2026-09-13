@@ -21,20 +21,20 @@ g_PureDrawConfig = {
 -- Sea 标记供禁海组合使用；IsBigShip 标记用于保留地图原有的大船数量限制。
 g_PureDrawBuildableUnitPool = {
     [1] = {
-        { Type = "AlliedScoutInfantry" },
-        { Type = "AlliedAntiInfantryInfantry" },
-        { Type = "AlliedAntiVehicleInfantry" },
-        { Type = "AlliedRangerInfantry" },
-        { Type = "SovietScoutInfantry" },
-        { Type = "SovietAntiInfantryInfantry" },
-        { Type = "SovietAntiVehicleInfantry" },
-        { Type = "JapanScoutInfantry" },
-        { Type = "JapanAntiInfantryInfantry" },
-        { Type = "JapanAntiVehicleInfantry" },
-        { Type = "JapanArcherInfantry" },
-        { Type = "CelestialScoutDrone" },
-        { Type = "CelestialAntiInfantryInfantry" },
-        { Type = "CelestialAntiVehicleInfantry" },
+        { Type = "AlliedScoutInfantry", CustomDrawCount = 5 },
+        { Type = "AlliedAntiInfantryInfantry", CustomDrawCount = 5 },
+        { Type = "AlliedAntiVehicleInfantry", CustomDrawCount = 5 },
+        { Type = "AlliedRangerInfantry", CustomDrawCount = 5 },
+        { Type = "SovietScoutInfantry", CustomDrawCount = 5 },
+        { Type = "SovietAntiInfantryInfantry", CustomDrawCount = 5 },
+        { Type = "SovietAntiVehicleInfantry", CustomDrawCount = 5 },
+        { Type = "JapanScoutInfantry", CustomDrawCount = 5 },
+        { Type = "JapanAntiInfantryInfantry", CustomDrawCount = 5 },
+        { Type = "JapanAntiVehicleInfantry", CustomDrawCount = 5 },
+        { Type = "JapanArcherInfantry", CustomDrawCount = 5 },
+        { Type = "CelestialScoutDrone", CustomDrawCount = 5 },
+        { Type = "CelestialAntiInfantryInfantry", CustomDrawCount = 5 },
+        { Type = "CelestialAntiVehicleInfantry", CustomDrawCount = 5 },
         { Type = "AlliedAntiInfantryVehicle_Ground" },
         { Type = "AlliedAntiAirVehicleTech1" },
         { Type = "AlliedAntiVehicleVehicleTech1" },
@@ -210,6 +210,8 @@ g_PureDrawTrackedCrates = {}
 g_PureDrawTrackedCrateList = {}
 g_PureDrawAirdropCrateIds = {}
 g_PureDrawScriptCreatedUnitIds = {}
+-- 已确认由玩家生产且成功消耗余额的单位。周期回收时据此排除 producer 异常为空的生产单位。
+g_PureDrawProducedUnitIds = {}
 g_PureDrawLastRound = -1
 g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
 g_PureDrawRegisteredProductionHashes = {}

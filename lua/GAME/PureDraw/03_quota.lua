@@ -184,6 +184,7 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
             Localization.get("pure_draw.quota.exceeded"), 6)
         return
     end
+    g_PureDrawProducedUnitIds[createdObjId] = true
     g_PureDrawQuota[playerIndex] = oldQuota - 1
     ExecuteAction("NAMED_DELETE", format("PureDrawQuota_%d_%d", playerIndex, oldQuota))
     exAddTextToPublicBoardForPlayer(ownerPlayerName,

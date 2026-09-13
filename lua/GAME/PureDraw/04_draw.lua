@@ -117,24 +117,25 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
     if info == nil then
         return
     end
-    g_PureDrawCustomSpawnSerial = g_PureDrawCustomSpawnSerial + 1
-    local unitName = format("PureDrawCustom_%d", g_PureDrawCustomSpawnSerial)
-    local nextObjectId = GetNextObjectId()
-    g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
-    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", unitName, info.Type,
-        format("%s/team%s", playerName, playerName), { X = x, Y = y, Z = z }, 0)
-    local unit = GetObjectByScriptName(unitName)
-    if not ObjectIsAlive(unit) then
-        g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
-        return
+    local spawnCount = info.CustomDrawCount or 1
+    for spawnIndex = 1, spawnCount, 1 do
+        g_PureDrawCustomSpawnSerial = g_PureDrawCustomSpawnSerial + 1
+        local unitName = format("PureDrawCustom_%d", g_PureDrawCustomSpawnSerial)
+        local nextObjectId = GetNextObjectId()
+        g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
+        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", unitName, info.Type,
+            format("%s/team%s", playerName, playerName), { X = x, Y = y, Z = z }, 0)
+        local unit = GetObjectByScriptName(unitName)
+        if ObjectIsAlive(unit) then
+            local actualId = ObjectGetId(unit)
+            if actualId ~= nextObjectId then
+                g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
+                g_PureDrawScriptCreatedUnitIds[actualId] = true
+            end
+        else
+            g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
+        end
     end
-    local actualId = ObjectGetId(unit)
-    if actualId ~= nextObjectId then
-        g_PureDrawScriptCreatedUnitIds[nextObjectId] = nil
-        g_PureDrawScriptCreatedUnitIds[actualId] = true
-    end
-    exAddTextToPublicBoardForPlayer(playerName,
-        Localization.get("pure_draw.custom_result", info.Tier), 5)
 end
 
 g_PureDrawCollectorFilter = CreateObjectFilter({
