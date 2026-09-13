@@ -103,7 +103,7 @@ Localization._text_sources = {
     ["draw_mode.back"] = { zh = "返回上一页", en = "Back" },
     ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled: %d" },
     ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining: %d" },
-    ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消并返还%d资金", en = "No production quota remained; the extra unit was cancelled and %d refunded" },
+    ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消", en = "No production quota remained; the extra unit was cancelled" },
     ["pure_draw.custom_result"] = { zh = "本次获得自定义抽卡单位（T%d）", en = "Custom draw unit received (T%d)" },
     ["pure_draw.airdrop"] = { zh = "中央战场出现了一次十连空投！", en = "A ten-crate airdrop has landed in the center!" },
 

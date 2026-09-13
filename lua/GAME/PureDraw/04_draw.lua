@@ -28,8 +28,12 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
             g_PureDrawScriptCreatedUnitIds[createdObjId] = true
             SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
                 { createdObjId, ownerPlayerName, x, y, z })
+            return
         end
-        return
+        if createdObjInstanceId ~= FastHash("JapanMechaX")
+            and createdObjInstanceId ~= FastHash("JapanKingOniXMecha_Enhanced") then
+            return
+        end
     end
     PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
         playerIndex, ownerPlayerName, 3)
