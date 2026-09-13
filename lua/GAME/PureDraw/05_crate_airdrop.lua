@@ -186,7 +186,7 @@ function PureDrawAirdropCheck()
     SchedulerModule.delay_call(PureDrawAirdropCheck, g_PureDrawConfig.AirdropCheckFrames, {})
 end
 
-function PureDrawRoundCheck()
+function PureDrawOnRoundBeginRefreshQuota()
     if g_DrawMode ~= 2 then
         return
     end
@@ -201,4 +201,11 @@ function PureDrawRoundCheck()
         end
     end
 end
-SchedulerModule.call_every_x_frame(PureDrawRoundCheck, 15, nil)
+
+function PureDrawRegisterRoundBeginRefresh()
+    if g_PureDrawRoundBeginRefreshRegistered or RoundLuaManager == nil then
+        return
+    end
+    RoundLuaManager.CallOnEveryRoundBegin(PureDrawOnRoundBeginRefreshQuota, {})
+    g_PureDrawRoundBeginRefreshRegistered = true
+end

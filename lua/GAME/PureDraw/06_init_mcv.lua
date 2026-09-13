@@ -18,6 +18,7 @@ function PureLuckyCrateMode_Setting()
         return
     end
     g_PureDrawInitialized = true
+    PureDrawRegisterRoundBeginRefresh()
     TryEnableLuckyCrateIfAllowed()
     -- 问题4：清除玩家开局自带的船厂（地图初始建筑），只保留玩家自己建造的
     -- 生产建筑，确保生产余额只由玩家自造建筑的生产序列消耗。
