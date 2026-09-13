@@ -67,6 +67,9 @@ function PureDrawCreateQuotaDisplay(playerIndex)
 end
 
 function PureDrawCanEnableUnit(playerIndex, info)
+    if info.LockPlayerProduction then
+        return false
+    end
     if g_DisableSeaArmy == 1 and info.Sea then
         return false
     end
@@ -169,17 +172,16 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
             })
             return
         end
-        return
+        if createdObjInstanceId ~= FastHash("JapanMechaX")
+            and createdObjInstanceId ~= FastHash("JapanKingOniXMecha_Enhanced") then
+            return
+        end
     end
     local oldQuota = g_PureDrawQuota[playerIndex] or 0
     if oldQuota <= 0 then
-        local refund = PureDrawGetBuildCost(createdObjInstanceId)
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
-        if refund > 0 then
-            ExecuteAction("PLAYER_GIVE_MONEY", ownerPlayerName, refund)
-        end
         exAddTextToPublicBoardForPlayer(ownerPlayerName,
-            Localization.get("pure_draw.quota.exceeded", refund), 6)
+            Localization.get("pure_draw.quota.exceeded"), 6)
         return
     end
     g_PureDrawQuota[playerIndex] = oldQuota - 1
