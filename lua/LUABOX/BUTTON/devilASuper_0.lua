@@ -20,7 +20,6 @@ local groupSize = 8 -- 每组X个，只需修改此值。
 local sourceTower = T74
 local targetTower = T84
 local sideTeam = "PlyrCivilian/teamPlyrCivilian"
-local fallbackWaypoints = { "devil-ASuper1", "devil-ASuper2", "devil-ASuper3", "devil-ASuper4" }
 
 local units, count = ObjectFindObjects(sourceTower, nil, T2tank)
 if count <= 0 then
@@ -31,14 +30,28 @@ local landingTargetFilter = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "SAME_PLAYER",
     Include = "INFANTRY VEHICLE HUGE_VEHICLE",
+    ExcludeThing = { "JapanFortressShip", "JapanigaFortressShip" },
     Exclude = "AIRCRAFT SHIP STRUCTURE DEBRIS IGNORE_IN_AI_HUNT_TACTIC",
 })
 local landingTargets, landingTargetCount = ObjectFindObjects(targetTower, nil, landingTargetFilter)
+-- 特殊海塔和其后方的超级要塞守卫无法被 SHIP/STRUCTURE Kind 稳定排除。
+-- 按地图对象 ID 再兜底一次，避免将 seaTower7/8 所在水域选为落点。
+local excludedLandingTargetIds = {}
+local excludedLandingTargetNames = {
+    "T73F", "T83F", "Sea3ProtectShip7", "Sea3ProtectShip8"
+}
+for i = 1, getn(excludedLandingTargetNames), 1 do
+    local excludedTarget = GetObjectByScriptName(excludedLandingTargetNames[i])
+    if excludedTarget then
+        excludedLandingTargetIds[ObjectGetId(excludedTarget)] = true
+    end
+end
 local availableLandingTargets = {}
 local availableLandingTargetCount = 0
 for i = 1, landingTargetCount, 1 do
-    if ObjectIsAlive(landingTargets[i]) then
-        tinsert(availableLandingTargets, landingTargets[i])
+    local target = landingTargets[i]
+    if ObjectIsAlive(target) and not excludedLandingTargetIds[ObjectGetId(target)] then
+        tinsert(availableLandingTargets, target)
     end
 end
 availableLandingTargetCount = getn(availableLandingTargets)
@@ -62,8 +75,9 @@ for groupIndex = 1, groupCount, 1 do
         -- RA3LuaBridge 不允许局部函数捕获外层局部变量，因此直接在当前作用域补充目标池。
         availableLandingTargets = {}
         for i = 1, landingTargetCount, 1 do
-            if ObjectIsAlive(landingTargets[i]) then
-                tinsert(availableLandingTargets, landingTargets[i])
+            local target = landingTargets[i]
+            if ObjectIsAlive(target) and not excludedLandingTargetIds[ObjectGetId(target)] then
+                tinsert(availableLandingTargets, target)
             end
         end
         availableLandingTargetCount = getn(availableLandingTargets)
@@ -79,9 +93,7 @@ for groupIndex = 1, groupCount, 1 do
         end
     end
     if position == nil then
-        local waypoint = fallbackWaypoints[randomIndex(getn(fallbackWaypoints))]
-        local p = exWaypointGetPos(waypoint)
-        position = { X = p[1] + randomOffset(90), Y = p[2] + randomOffset(90), Z = p[3] }
+        return
     end
 
     g_DevilChronosphereTransportIndex = g_DevilChronosphereTransportIndex + 1
