@@ -21,13 +21,13 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
     local producer = ObjectGetProducerObject(createdObjId)
     if producer == nil then
         -- 凭空出现的玩家单位：不消耗余额。若匹配到刚消失的被跟踪箱子，则拦截。
-        local consumedCrateId = PureDrawFindConsumedTrackedCrate()
+        local consumedCrateId = PureDrawFindConsumedTrackedCrate(ownerPlayerName)
         if consumedCrateId ~= nil then
             local x, y, z = ObjectGetPosition(createdObjId)
             PureDrawRemoveTrackedCrate(consumedCrateId)
             g_PureDrawScriptCreatedUnitIds[createdObjId] = true
             SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
-                { createdObjId, ownerPlayerName, x, y, z })
+                { createdObjId, createdObjInstanceId, ownerPlayerName, x, y, z })
             return
         end
         if createdObjInstanceId ~= FastHash("JapanMechaX")
@@ -44,13 +44,13 @@ end
 -- DiedFrame 尚未记录时（原生结果单位先于下一帧的跟踪回调创建）按“刚消失”处理，
 -- 优先返回。超过 60 帧未清理的过期箱子会由 CleanupTrackedCrate 移除，因此
 -- 列表里“已死”的箱子都是近期消失的。
-function PureDrawFindConsumedTrackedCrate()
+function PureDrawFindConsumedTrackedCrate(playerName)
     local now = GetFrame()
     local bestId, bestAge = nil, 1e9
     for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
         local tid = g_PureDrawTrackedCrateList[i]
         local state = g_PureDrawTrackedCrates[tid]
-        if state ~= nil and not ObjectIsAlive(tid) then
+        if state ~= nil and state.Owner == playerName and not ObjectIsAlive(tid) then
             local age
             if state.DiedFrame ~= nil then
                 age = now - state.DiedFrame
@@ -162,7 +162,7 @@ function PureDrawFindCollector(x, y, z, radius)
     return nil
 end
 
-function PureDrawDeleteNativeResultNear(x, y, z)
+function PureDrawDeleteNativeResultNear(x, y, z, playerName, instanceId, minimumId)
     if g_PureDrawNativeResultFilter == nil then
         local nativeTypes = {}
         for crateType = 1, 4, 1 do
@@ -170,6 +170,15 @@ function PureDrawDeleteNativeResultNear(x, y, z)
             for i = 1, getn(source), 1 do
                 tinsert(nativeTypes, source[i].Type)
             end
+        end
+        for i = 1, getn(g_GroundCrateUnits), 1 do
+            tinsert(nativeTypes, g_GroundCrateUnits[i])
+        end
+        for i = 1, getn(g_AirCrateUnits), 1 do
+            tinsert(nativeTypes, g_AirCrateUnits[i])
+        end
+        for i = 1, getn(g_SeaCrateUnits), 1 do
+            tinsert(nativeTypes, g_SeaCrateUnits[i])
         end
         g_PureDrawNativeResultFilter = CreateObjectFilter({
             Rule = "ANY",
@@ -180,7 +189,18 @@ function PureDrawDeleteNativeResultNear(x, y, z)
         X = x, Y = y, Z = z, Radius = 180, DistType = "CENTER_2D"
     }, g_PureDrawNativeResultFilter)
     for i = 1, count, 1 do
-        ExecuteAction("NAMED_DELETE", units[i])
+        local unit = units[i]
+        local matchesPlayer = playerName == nil
+            or ObjectPlayerScriptName(unit) == playerName
+        local matchesType = instanceId == nil
+            or ObjectGetInstanceId(ObjectGetId(unit)) == instanceId
+        local isUnproduced = playerName == nil
+            or ObjectGetProducerObject(unit) == nil
+        local isCurrentBatch = minimumId == nil
+            or ObjectGetId(unit) >= minimumId
+        if matchesPlayer and matchesType and isUnproduced and isCurrentBatch then
+            ExecuteAction("NAMED_DELETE", unit)
+        end
     end
 end
 
@@ -300,17 +320,20 @@ function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, own
     if g_PlayerNameToIndex[ownerPlayerName] == nil then
         return
     end
-    local consumedCrateId = PureDrawFindConsumedTrackedCrate()
+    local consumedCrateId = PureDrawFindConsumedTrackedCrate(ownerPlayerName)
     if consumedCrateId ~= nil then
         local x, y, z = ObjectGetPosition(createdObjId)
         PureDrawRemoveTrackedCrate(consumedCrateId)
         g_PureDrawScriptCreatedUnitIds[createdObjId] = true
         SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
-            { createdObjId, ownerPlayerName, x, y, z })
+            { createdObjId, createdObjInstanceId, ownerPlayerName, x, y, z })
     end
 end
 
-function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z)
+function PureDrawInterceptNativeResult(createdObjId, createdObjInstanceId, playerName, x, y, z)
+    -- 系统抽卡可能一次生成多个同种单位；按玩家、模板和出生区域删除整批结果。
+    -- producer 过滤可避免误删同一区域内由玩家生产建筑正常造出的同型单位。
+    PureDrawDeleteNativeResultNear(x, y, z, playerName, createdObjInstanceId, createdObjId)
     if ObjectIsAlive(createdObjId) then
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
     end
