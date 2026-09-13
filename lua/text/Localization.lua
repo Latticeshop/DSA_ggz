@@ -391,18 +391,23 @@ Localization._text_sources = {
 2. 上方玩家（天使）单位出现在战场右侧，下方玩家（恶魔）单位出现在战场左侧
 3. 电厂提供收入，请尽快造满电厂以避免卡钱；苏联超级反应堆和神州导流尖塔不提供收入（仅解锁科技）；建造T4高科附赠精兵学院
 标准模式：前期收入有限，请摧毁敌方防御塔来解锁更多的电厂和科技
-死亡模式：双方开局就只剩最后一座塔
-抽卡模式：可以使用抽卡技能获得额外单位。禁止在战场中央抽卡！
-纯抽卡模式：开局开放抽卡；每名玩家每3回合补满5点生产余额，抽卡结果有一半替换为全阵营加权生产单位
+死亡模式：双方开局就只剩最后一座塔，且无科技权限限制
+升本模式：玩家需要花钱来解锁更多的电厂和更高科技权限，科技权限所需金额随时间减少，同一阵营共同解锁
+缩小模式：场上的单位获得缩小BUFF！
+抽卡功能：可以使用抽卡技能获得额外单位。禁止在战场中央抽卡！
+抽卡模式：开局开放抽卡；每3回合内只能生产5个单位，抽卡结果有一半概率替换为全阵营加权生产单位，场地中间会有随机空投！
 可点击下方"更新日志"按钮查看更新内容]],
         en = [[DSA Game Rules:
+This map is a test version developed with assistance from GGZ. It contains many experimental features and may be unstable. Features that pass testing will be updated and merged into the official DSA_XXX map.
 1. Units you build are recorded. At the start of each round, all units you've built are respawned on the battlefield under AI control.
 2. Upper-side players (Angel) units appear on the right side of the battlefield. Lower-side players (Devil) units appear on the left side.
 3. Power plants provide income. Build power plants ASAP to avoid running out of money. Soviet Super Reactors and Celestial Diversion Spire do not provide income (tech unlock only). Building T4 high-tech grants a free Veteran Academy.
 Standard Mode: Limited income in early stages. Destroy enemy defense towers to unlock more power plants and technology.
-Death Mode: Both sides start with only the last tower remaining.
-Lucky Crate Mode: Use the Lucky Crate Boxes to gain extra units. Do not use Lucky Crate in the central battlefield!
-Pure Draw Mode: Crates are available at game start. Each player refills 5 production points every 3 rounds; half of all draws become weighted buildable units from all factions.
+Death Mode: Both sides start with only their final tower remaining, with no tech-access restrictions.
+Level-Up Mode: Players spend money to unlock more power plants and higher tech tiers. Tech unlock costs decrease over time, and players of the same faction share their unlocks.
+Shrink Mode: Units on the battlefield receive the Shrink buff!
+Lucky Crate Feature: Use the Lucky Crate skill to gain extra units. Do not use it in the central battlefield!
+Pure Draw Mode: Lucky Crates are available from the start. Only 5 units may be produced during each 3-round cycle. Half of all draws are replaced with weighted buildable units from all factions, and random airdrops appear in the center of the battlefield!
 Click the "Update Log" button below to view update details.]]
     },
     ["game.qq_group"] = { 
