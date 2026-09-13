@@ -97,9 +97,8 @@ function PureDrawCanEnableUnit(playerIndex, info)
     return true
 end
 
-function PureDrawSetPlayerBuildability(playerIndex, enable, skipQueueRescue)
+function PureDrawSetPlayerBuildability(playerIndex, enable)
     local playerName = "Player_" .. playerIndex
-    local disallowedHashes = {}
     for tier = 1, 4, 1 do
         local pool = g_PureDrawBuildableUnitPool[tier]
         for i = 1, getn(pool), 1 do
@@ -115,28 +114,17 @@ function PureDrawSetPlayerBuildability(playerIndex, enable, skipQueueRescue)
                     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, aliases[aliasIndex], availability)
                 end
             end
-            if not availability then
-                disallowedHashes[tostring(FastHash(info.Type))] = true
-                if aliases ~= nil then
-                    for aliasIndex = 1, getn(aliases), 1 do
-                        disallowedHashes[tostring(FastHash(aliases[aliasIndex]))] = true
-                    end
-                end
-            end
         end
-    end
-    if not enable and not skipQueueRescue and RescueBlockedProductions_DoRescue ~= nil then
-        RescueBlockedProductions_DoRescue(playerName, disallowedHashes)
     end
 end
 
 -- 单位创建回调触发时，引擎仍可能在本帧末尾刷新刚完成生产的建造按钮，
--- 覆盖上面的即时禁造。下一帧只重套用按钮状态，不重复触发生产队列解卡。
+-- 覆盖上面的即时禁造，因此下一帧再重套用一次按钮状态。
 function PureDrawReapplyExhaustedQuotaAfterProduction(playerIndex)
     if g_DrawMode ~= 2 or (g_PureDrawQuota[playerIndex] or 0) > 0 then
         return
     end
-    PureDrawSetPlayerBuildability(playerIndex, false, true)
+    PureDrawSetPlayerBuildability(playerIndex, false)
 end
 
 function PureDrawRefreshQuota(playerIndex)

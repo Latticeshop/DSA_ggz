@@ -111,14 +111,19 @@ end
 function CelestialLaserTowerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
     ShowTimedHelp(ownerPlayerName, "CelestialLaserTowerHelp", "SCRIPT:CelestialLaserTowerHelp", x, y, z)
-    SchedulerModule.delay_call(function(id)
+    SchedulerModule.delay_call(function(id, playerName)
         if ObjectIsAlive(id) then
-            local teamName = ObjectTeamName(GetObjectById(id))
-            local playerName = g_objectTeamNameToPlayerName[teamName]
-            ExecuteAction("NAMED_DELETE", GetObjectById(id));
+            local unit = GetObjectById(id)
+            if playerName == nil or g_PlayerNameToIndex[playerName] == nil then
+                playerName = ObjectPlayerScriptName(unit)
+            end
+            ExecuteAction("NAMED_DELETE", unit);
+            if playerName == nil or g_PlayerNameToIndex[playerName] == nil then
+                return
+            end
             ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", playerName, 'CelestialAntiVehicleInfantry', playerName .. '/team' .. playerName, 'commonSpawn')
         end
-    end, 5, {createdObjId})
+    end, 5, {createdObjId, ownerPlayerName})
 end
 
 function CelestialSpaceReinforceMarkerBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
