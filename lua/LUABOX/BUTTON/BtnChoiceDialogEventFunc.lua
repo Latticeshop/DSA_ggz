@@ -1194,7 +1194,7 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 local getSovietBonus = g_ProductionBonus_SovietGet[playerIndex2];
                 -- 只给90%回收
                 local discount = 0.9;
-                if getSovietBonus then
+                if getSovietBonus == 1 then
                     discount = 0.72;
                 end
                 ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * discount) ;

@@ -43,27 +43,104 @@ end
 
 SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, nil)
 
--- 青龙核心舰升级禁用列表（玩家不能升级，AI 可以通过地编赋予升级使龙船能开火）
--- 青龙核心舰7个升级：禁止玩家升级（AI保留升级能力，龙船才能开火）
-g_DisabledCelestialDragonShipUpgrades = {
-    "_CelestialDragonShip_AAWeapons",
-    "_CelestialDragonShip_MissileWeapons",
-    "_CelestialDragonShip_PlasmaWeapons",
-    "_CelestialDragonShip_AAWeapons02",
-    "_CelestialDragonShip_MissileWeapons02",
-    "_CelestialDragonShip_MainWeapons",
-    "_CelestialDragonShip_AAWeapons03",
+-- 玩家获得青龙核心舰后不能将其作为战斗单位使用：每名玩家第一次获得时转换成伏龙殿，
+-- 第二次及以后自动按现有回收规则返款。电脑所属的技能龙船不受影响。
+g_PlayerDragonShipTypes = {
+    "CelestialMCV",
+    "CelestialMCV_Enhanced",
+    "CelestialMCV_Ground",
+    "CelestialMCV_Naval",
+    "CelestialMCV_Air",
+    "CelestialMCV_Enhanced_Ground",
+    "CelestialMCV_Enhanced_Naval",
+    "CelestialMCV_Enhanced_Air",
 }
+g_PlayerDragonShipRecyclePrice = 5000
+g_PendingPlayerDragonShips = {}
+g_PlayerDragonShipAcquireCount = { 0, 0, 0, 0, 0, 0 }
 
--- 开局禁用6个玩家的龙船升级按钮（参考高强度机械变形框架的锁栏位写法）
-for playerIdx = 1, 6, 1 do
-    local playerName = "Player_" .. playerIdx
-    SchedulerModule.delay_call(function(targetPlayerName)
-        for i = 1, getn(g_DisabledCelestialDragonShipUpgrades), 1 do
-            ExecuteAction("ALLOW_DISALLOW_ONE_UPGRADE", targetPlayerName, 
-                g_DisabledCelestialDragonShipUpgrades[i], 0)
+function GetPlayerDragonShipRecycleMoney(playerIndex)
+    local firstPlayerIndex = 1
+    if playerIndex >= 4 then
+        firstPlayerIndex = 4
+    end
+    local discount = 0.9
+    for i = firstPlayerIndex, firstPlayerIndex + 2, 1 do
+        if g_ProductionBonus_SovietGet[i] == 1 then
+            discount = 0.72
+            break
         end
-    end, 1, {playerName})
+    end
+    return g_PlayerDragonShipRecyclePrice * discount
+end
+
+function GivePlayerDragonShipRecycleMoney(ownerPlayerName, refundMoney, messageKey)
+    -- 与玩家主动回收使用相同的 WorldBuilder 执行上下文，确保加钱动作实际落地。
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GIVE_MONEY", ownerPlayerName, refundMoney)
+    SetWorldBuilderThisPlayer(previous)
+    exAddTextToPublicBoardForPlayer(ownerPlayerName,
+        Localization.get(messageKey, refundMoney), 8)
+end
+
+function RecyclePlayerDragonShip(dragonShip, ownerPlayerName, playerIndex, messageKey)
+    if not ObjectIsAlive(dragonShip) then
+        return
+    end
+    local refundMoney = GetPlayerDragonShipRecycleMoney(playerIndex)
+    ExecuteAction("NAMED_DELETE", dragonShip)
+    -- 生成事件可能早于引擎的购买费用结算；延迟返钱，避免退款随后被扣除。
+    SchedulerModule.delay_call(GivePlayerDragonShipRecycleMoney, 2,
+        { ownerPlayerName, refundMoney, messageKey })
+end
+
+function GetPlayerCelestialConstructionYardName(playerIndex)
+    return "PlayerDragonShipConstructionYard_" .. playerIndex
+end
+
+function ProcessPlayerDragonShip(createdObjId, ownerPlayerName)
+    g_PendingPlayerDragonShips[createdObjId] = nil
+    if not ObjectIsAlive(createdObjId) then
+        return
+    end
+    local dragonShip = GetObjectById(createdObjId)
+    ownerPlayerName = ObjectPlayerScriptName(dragonShip)
+    local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+    if playerIndex == nil then
+        return
+    end
+
+    g_PlayerDragonShipAcquireCount[playerIndex] =
+        (g_PlayerDragonShipAcquireCount[playerIndex] or 0) + 1
+    if g_PlayerDragonShipAcquireCount[playerIndex] > 1 then
+        RecyclePlayerDragonShip(dragonShip, ownerPlayerName, playerIndex,
+            "player_dragonship.recycled")
+        return
+    end
+
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("NAMED_DELETE", dragonShip)
+    -- 复用已验证的建筑生成通道，直接在对应玩家的基地出生点生成伏龙殿。
+    ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION",
+        GetPlayerCelestialConstructionYardName(playerIndex),
+        "CelestialConstructionYard",
+        ownerPlayerName .. "/team" .. ownerPlayerName,
+        "Player_" .. playerIndex .. "_Start",
+        -3.1415926 / 4)
+    SetWorldBuilderThisPlayer(previous)
+    exAddTextToPublicBoardForPlayer(ownerPlayerName,
+        Localization.get("player_dragonship.converted"), 8)
+end
+
+function PlayerDragonShipBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if g_PlayerNameToIndex[ownerPlayerName] == nil
+        or g_PendingPlayerDragonShips[createdObjId] ~= nil then
+        return
+    end
+    g_PendingPlayerDragonShips[createdObjId] = 1
+    -- 等对象归属与形态完成结算后，再计入对应玩家的获得次数。
+    SchedulerModule.delay_call(ProcessPlayerDragonShip, 2,
+        { createdObjId, ownerPlayerName })
 end
 
 -- 守护者坦克只能使用激光指示器：禁用玩家和 AI 的模式切换，出生脚本仍可强制切换一次。
@@ -1059,6 +1136,10 @@ exObjectRegisterCreateEvent("SovietInterceptorAircraft")
 exObjectRegisterCreateEvent("SovietInterceptorAircraft_Enhanced")
 exObjectRegisterCreateEvent("JapanSakuraAttackRocket")
 exObjectRegisterCreateEvent("JapanKamikazeCommandTower")
+
+for i = 1, getn(g_PlayerDragonShipTypes), 1 do
+    RegisterUnitCreateCallback(g_PlayerDragonShipTypes[i], PlayerDragonShipBorn)
+end
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     local registered = g_UnitCreateEventFunc[createdObjInstanceId]
