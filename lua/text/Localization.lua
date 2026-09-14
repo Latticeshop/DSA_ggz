@@ -330,6 +330,9 @@ Localization._text_sources = {
     ["recycle.choice.20"] = { zh = "回收20个", en = "Recycle 20" },
     ["recycle.choice.cancel"] = { zh = "取消", en = "Cancel" },
     ["recycle.message"] = { zh = "$p%dName回收了%d个%s，剩余%d个", en = "$p%dName recycled %d %s, %d remaining" },
+    ["player_dragonship.converted"] = { zh = "获得神州MCV，已在基地处生成伏龙殿。", en = "Celestial MCV acquired. A Celestial Construction Yard has been spawned at your base." },
+    ["player_dragonship.recycled"] = { zh = "你已经拥有伏龙殿，多余的神州MCV已自动回收，返还$%d。", en = "You already own a Celestial Construction Yard. The extra Celestial MCV was recycled for $%d." },
+    ["player_dragonship.recycled_no_base"] = { zh = "无法定位你的基地，神州MCV已自动回收，返还$%d。", en = "Your base could not be located. The Celestial MCV was recycled for $%d." },
 
     -- 回收按钮描述文字
     ["recycle.desc.infantry"] = { zh = "回收步兵单位", en = "Recycle infantry units" },

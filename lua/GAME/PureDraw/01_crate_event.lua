@@ -113,14 +113,3 @@ g_UnitCreateEventFunc[FastHash("AlliedGaintAirCraftCarrier_B")] = SetCrateShipLi
 g_UnitCreateEventFunc[FastHash("AlliedThetisBattleShip")] = SetCrateShipLifetime
 g_UnitCreateEventFunc[FastHash("JapanYumiAircraftCarrier")] = SetCrateShipLifetime
 
--- 箱子里开出来的龙船禁止攻击
-exObjectRegisterCreateEvent("CelestialMCV")
-function DisableCrateDragonAttack(createdObjId, createdObjInstanceId, ownerPlayerName)
-    Scheduler.delay_call(function(id)
-        if not ObjectIsAlive(id) then
-            return
-        end
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", GetObjectById(id), "NO_ATTACK", 1)
-    end, 1, { createdObjId })
-end
-g_UnitCreateEventFunc[FastHash("CelestialMCV")] = DisableCrateDragonAttack
