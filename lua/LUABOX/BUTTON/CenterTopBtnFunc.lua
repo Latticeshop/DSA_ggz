@@ -30,6 +30,52 @@ g_ProductionBonus_SovietGet = {
     [6] = 0,
 }
 
+-- 回收倍率由经济倍率决定；苏联大生产按本队已获得协议的人数统一折算。
+-- 这样即使队内最低生产成本降至 65%，回收仍只返还该成本的基础比例。
+g_RecycleEconomicRate = {
+    [0.5] = 0.9,
+    [0.75] = 0.7,
+    [1] = 0.7,
+    [1.5] = 0.5,
+    [2] = 0.35,
+}
+
+g_SovietProductionCostFactor = {
+    [0] = 1,
+    [1] = 0.75,
+    [2] = 0.7,
+    [3] = 0.65,
+}
+
+function GetBaseRecycleRate(economicMultiplier)
+    economicMultiplier = economicMultiplier or exModeGetCheatMultiplier()
+    return g_RecycleEconomicRate[economicMultiplier] or 0.7
+end
+
+function GetTeamSovietProductionBonusCount(playerIndex)
+    local firstPlayerIndex = 1
+    if playerIndex >= 4 then
+        firstPlayerIndex = 4
+    end
+
+    local count = 0
+    for i = firstPlayerIndex, firstPlayerIndex + 2, 1 do
+        if g_ProductionBonus_SovietGet[i] == 1 then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function GetRecycleRate(playerIndex)
+    -- 纯抽卡模式有生产余额限制，不应用大生产削减。
+    if g_DrawMode == 2 then
+        return GetBaseRecycleRate()
+    end
+    local productionBonusCount = GetTeamSovietProductionBonusCount(playerIndex)
+    return GetBaseRecycleRate() * g_SovietProductionCostFactor[productionBonusCount]
+end
+
 g_ProductionBonus_JapanWeaponEnable = {
     [1] = 1,
     [2] = 1,

@@ -59,8 +59,8 @@ g_PlayerDragonShipRecyclePrice = 5000
 g_PendingPlayerDragonShips = {}
 g_PlayerDragonShipAcquireCount = { 0, 0, 0, 0, 0, 0 }
 
-function GetPlayerDragonShipRecycleMoney()
-    return g_PlayerDragonShipRecyclePrice * 0.7
+function GetPlayerDragonShipRecycleMoney(playerIndex)
+    return g_PlayerDragonShipRecyclePrice * GetRecycleRate(playerIndex)
 end
 
 function GivePlayerDragonShipRecycleMoney(ownerPlayerName, refundMoney, messageKey)
@@ -72,11 +72,11 @@ function GivePlayerDragonShipRecycleMoney(ownerPlayerName, refundMoney, messageK
         Localization.get(messageKey, refundMoney), 8)
 end
 
-function RecyclePlayerDragonShip(dragonShip, ownerPlayerName, messageKey)
+function RecyclePlayerDragonShip(dragonShip, ownerPlayerName, playerIndex, messageKey)
     if not ObjectIsAlive(dragonShip) then
         return
     end
-    local refundMoney = GetPlayerDragonShipRecycleMoney()
+    local refundMoney = GetPlayerDragonShipRecycleMoney(playerIndex)
     ExecuteAction("NAMED_DELETE", dragonShip)
     -- 生成事件可能早于引擎的购买费用结算；延迟返钱，避免退款随后被扣除。
     SchedulerModule.delay_call(GivePlayerDragonShipRecycleMoney, 2,
@@ -102,7 +102,7 @@ function ProcessPlayerDragonShip(createdObjId, ownerPlayerName)
     g_PlayerDragonShipAcquireCount[playerIndex] =
         (g_PlayerDragonShipAcquireCount[playerIndex] or 0) + 1
     if g_PlayerDragonShipAcquireCount[playerIndex] > 1 then
-        RecyclePlayerDragonShip(dragonShip, ownerPlayerName,
+        RecyclePlayerDragonShip(dragonShip, ownerPlayerName, playerIndex,
             "player_dragonship.recycled")
         return
     end
