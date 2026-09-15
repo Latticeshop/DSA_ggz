@@ -134,9 +134,48 @@ function PureDrawFindConsumedTrackedCrate(x, y, z, candidateFrame)
     end
     -- 原生结果通常在箱子接触点附近生成；220 足以覆盖成组单位的出生散布。
     if nearestDistanceSquared <= 220 * 220 then
-        return nearestId
+        return nearestId, nearestDistanceSquared
     end
-    return nil
+    return nil, nil
+end
+
+function PureDrawIsSameNativeBatchType(state, instanceId)
+    if state.BatchInstanceId == instanceId then
+        return true
+    end
+    local batchInfo = g_PureDrawUnitInfoByHash[state.BatchInstanceId]
+    if batchInfo ~= nil and g_PureDrawUnitInfoByHash[instanceId] == batchInfo then
+        return true
+    end
+    if state.BatchUnitIndex ~= nil and g_UnitNameToUnitIndex[instanceId] == state.BatchUnitIndex then
+        return true
+    end
+    return false
+end
+
+-- 已匹配箱子的后续同兵种结果仍属于原批次，不能再占用附近的另一个箱子。
+function PureDrawFindActiveNativeBatch(x, y, z, playerName, instanceId)
+    local nearestId, nearestDistanceSquared = nil, 1e9
+    local now = GetFrame()
+    for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
+        local tid = g_PureDrawTrackedCrateList[i]
+        local state = g_PureDrawTrackedCrates[tid]
+        if state ~= nil and state.Matched and state.BatchUntilFrame ~= nil
+            and now <= state.BatchUntilFrame and state.BatchPlayer == playerName
+            and PureDrawIsSameNativeBatchType(state, instanceId) then
+            local dx = x - state.X
+            local dy = y - state.Y
+            local distanceSquared = dx * dx + dy * dy
+            if distanceSquared < nearestDistanceSquared then
+                nearestDistanceSquared = distanceSquared
+                nearestId = tid
+            end
+        end
+    end
+    if nearestDistanceSquared <= 260 * 260 then
+        return nearestId, nearestDistanceSquared
+    end
+    return nil, nil
 end
 
 for tier = 1, 4, 1 do
@@ -193,13 +232,6 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
         return
     end
     local spawnCount = info.CustomDrawCount or 1
-    local playerIndex = g_PlayerNameToIndex[playerName]
-    local displayName = info.Type
-    if playerIndex ~= nil and GetDrawnUnitNameFromRecycleList ~= nil then
-        displayName = GetDrawnUnitNameFromRecycleList(playerIndex, info.Type)
-    end
-    _ALERT(format("[自定义抽卡] 本次结果：%s × %d（%s）",
-        displayName, spawnCount, info.Type))
     for spawnIndex = 1, spawnCount, 1 do
         g_PureDrawCustomSpawnSerial = g_PureDrawCustomSpawnSerial + 1
         local unitName = format("PureDrawCustom_%d", g_PureDrawCustomSpawnSerial)
@@ -244,7 +276,7 @@ function PureDrawFindCollector(x, y, z, radius)
     return nil
 end
 
-function PureDrawDeleteNativeResultNear(x, y, z, playerName)
+function PureDrawDeleteNativeResultNear(x, y, z, playerName, batchInstanceId, batchUnitIndex)
     if g_PureDrawNativeResultFilter == nil then
         local nativeTypes = {}
         for crateType = 1, 4, 1 do
@@ -283,7 +315,7 @@ function PureDrawDeleteNativeResultNear(x, y, z, playerName)
         })
     end
     local units, count = ObjectFindObjects(nil, {
-        X = x, Y = y, Z = z, Radius = 180, DistType = "CENTER_2D"
+        X = x, Y = y, Z = z, Radius = 260, DistType = "CENTER_2D"
     }, g_PureDrawNativeResultFilter)
     for i = 1, count, 1 do
         local unit = units[i]
@@ -292,21 +324,18 @@ function PureDrawDeleteNativeResultNear(x, y, z, playerName)
         local isUnproduced = ObjectGetProducerObject(unit) == nil
         local unitId = ObjectGetId(unit)
         local isUnknown = not PureDrawIsKnownPlayerUnit(unitId)
-        if matchesPlayer and isUnproduced and isUnknown then
+        local instanceId = ObjectGetInstanceId(unitId)
+        local matchesBatchType = instanceId == batchInstanceId
+            or (batchUnitIndex ~= nil
+                and g_UnitNameToUnitIndex[instanceId] == batchUnitIndex)
+            or (g_PureDrawUnitInfoByHash[batchInstanceId] ~= nil
+                and g_PureDrawUnitInfoByHash[instanceId]
+                    == g_PureDrawUnitInfoByHash[batchInstanceId])
+        if matchesPlayer and isUnproduced and isUnknown and matchesBatchType then
             PureDrawRemoveKnownPlayerUnit(unitId)
             ExecuteAction("NAMED_DELETE", unit)
         end
     end
-end
-
-function PureDrawFinishCustomCrate(playerName, x, y, z, removeNativeResult)
-    if g_PlayerNameToIndex[playerName] == nil then
-        return
-    end
-    if removeNativeResult then
-        PureDrawDeleteNativeResultNear(x, y, z)
-    end
-    PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
 function PureDrawRemoveTrackedCrate(id)
@@ -337,21 +366,9 @@ function PureDrawTrackCustomCrate(id)
     end
     local collectorPlayerName = PureDrawFindCollector(state.X, state.Y, state.Z, 65)
     if collectorPlayerName ~= nil then
-        if state.ContactFrame == nil then
-            _ALERT(format("[自定义抽卡] 箱子接触候选：箱子ID=%d，玩家=%s，坐标=(%.0f, %.0f)",
-                id, collectorPlayerName, state.X, state.Y))
-        end
-        state.ContactPlayer = collectorPlayerName
-        state.ContactFrame = GetFrame()
-        state.DestroyedFrame = state.ContactFrame
+        state.DestroyedFrame = GetFrame()
     end
     SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
-end
-
-function PureDrawCleanupTrackedCrate(id)
-    if g_PureDrawTrackedCrates[id] ~= nil then
-        PureDrawRemoveTrackedCrate(id)
-    end
 end
 
 -- 空投十连使用固定的十个落点：中心一点，外圈九点。只允许在这些落点小范围内
@@ -401,15 +418,40 @@ function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, 
         return
     end
     local x, y, z = ObjectGetPosition(createdObjId)
-    local consumedCrateId = PureDrawFindConsumedTrackedCrate(x, y, z, GetFrame())
+    local activeBatchId, activeBatchDistance = PureDrawFindActiveNativeBatch(x, y, z,
+        playerName, instanceId)
+    local consumedCrateId, consumedCrateDistance =
+        PureDrawFindConsumedTrackedCrate(x, y, z, GetFrame())
+    -- 同兵种活动批次与另一个未消费箱子同时接近时，仍以最近固定坐标为准。
+    if activeBatchId ~= nil and (consumedCrateId == nil
+        or activeBatchDistance <= consumedCrateDistance) then
+        local activeState = g_PureDrawTrackedCrates[activeBatchId]
+        if activeState.UseCustomDraw then
+            g_PureDrawPendingNativeResultIds[createdObjId] = nil
+            PureDrawRemoveKnownPlayerUnit(createdObjId)
+            ExecuteAction("NAMED_DELETE", createdUnit)
+        else
+            PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
+        end
+        return
+    end
     if consumedCrateId ~= nil then
         g_PureDrawPendingNativeResultIds[createdObjId] = nil
         local state = g_PureDrawTrackedCrates[consumedCrateId]
         state.Matched = true
-        _ALERT(format("[自定义抽卡] 已匹配原生结果：玩家=%s，单位ID=%d，箱子ID=%d",
-            playerName, createdObjId, consumedCrateId))
-        SchedulerModule.delay_call(PureDrawInterceptNativeResult, 2,
-            { createdObjId, playerName, state.X, state.Y, state.Z, consumedCrateId })
+        state.BatchPlayer = playerName
+        state.BatchInstanceId = instanceId
+        state.BatchUnitIndex = g_UnitNameToUnitIndex[instanceId]
+        state.BatchUntilFrame = GetFrame() + 18
+        if state.UseCustomDraw then
+            SchedulerModule.delay_call(PureDrawInterceptNativeResult, 2,
+                { createdObjId, playerName, state.X, state.Y, state.Z,
+                    consumedCrateId, instanceId, state.BatchUnitIndex, 8 })
+        else
+            PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
+            SchedulerModule.delay_call(PureDrawFinishNativePassThrough, 18,
+                { consumedCrateId })
+        end
         return
     end
     if retriesLeft > 0 then
@@ -418,21 +460,35 @@ function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, 
         return
     end
     PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
-    _ALERT(format("[自定义抽卡] 未匹配箱子，登记为普通单位：玩家=%s，单位ID=%d",
-        playerName, createdObjId))
 end
 
-function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z, crateId)
-    -- 等待两帧收齐同批单位；只删除同玩家、同区域、无生产者且尚未登记的对象。
-    _ALERT(format("[自定义抽卡] 开始清除原生整批结果：玩家=%s，起始单位ID=%d",
-        playerName, createdObjId))
-    PureDrawDeleteNativeResultNear(x, y, z, playerName)
+function PureDrawFinishNativePassThrough(crateId)
+    PureDrawRemoveTrackedCrate(crateId)
+end
+
+function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z,
+    crateId, batchInstanceId, batchUnitIndex, passesLeft)
+    local state = g_PureDrawTrackedCrates[crateId]
+    if state == nil then
+        return
+    end
+    PureDrawDeleteNativeResultNear(x, y, z, playerName,
+        batchInstanceId, batchUnitIndex)
     if ObjectIsAlive(createdObjId) then
         PureDrawRemoveKnownPlayerUnit(createdObjId)
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
     end
+    if not state.CustomResultSpawned then
+        state.CustomResultSpawned = true
+        PureDrawSpawnCustomUnit(playerName, x, y, z)
+    end
+    if passesLeft > 0 and GetFrame() <= state.BatchUntilFrame then
+        SchedulerModule.delay_call(PureDrawInterceptNativeResult, 2,
+            { createdObjId, playerName, x, y, z, crateId,
+                batchInstanceId, batchUnitIndex, passesLeft - 1 })
+        return
+    end
     PureDrawRemoveTrackedCrate(crateId)
-    PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
 -- 把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。

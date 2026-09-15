@@ -8,8 +8,7 @@
 g_PureDrawConfig = {
     ProductionQuota = 5,
     RefreshRounds = 3,
-    -- 临时测试：每个箱子都进入自定义替换链路，便于核对拦截与单位数量。
-    CustomDrawChance = 1.00,
+    CustomDrawChance = 0.50,
     AirdropCheckFrames = 15 * 60,
     AirdropUnitScanFrames = 15 * 5,
     AirdropUnitScanInterval = 2,

@@ -12,12 +12,8 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
     local x, y, z = ObjectGetPosition(createdObjId)
     local roll = GetRandomNumber()
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
-    local useCustomDraw = g_DrawMode == 2
-        and not isAirdrop
-        and roll < g_PureDrawConfig.CustomDrawChance
-    if useCustomDraw then
-        _ALERT(format("[自定义抽卡] 箱子生成事件命中：箱子ID=%d，事件Owner=%s",
-            createdObjId, ownerPlayerName or "nil"))
+    local trackCrate = g_DrawMode == 2 and not isAirdrop
+    if trackCrate then
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -27,6 +23,7 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
             Owner = ownerPlayerName,
             ListIndex = listIndex,
             IsSystemAirdrop = false,
+            UseCustomDraw = roll < g_PureDrawConfig.CustomDrawChance,
             Matched = false,
         }
     end
@@ -34,7 +31,7 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
         -- 保持旧版规则：禁止把玩家箱子投放到中央战场（空投箱子不受此限制）。
         SchedulerModule.delay_call(NoCreatesInCenter, 1, { createdObjId })
     end
-    if useCustomDraw then
+    if trackCrate then
         SchedulerModule.delay_call(PureDrawTrackCustomCrate, 2, { createdObjId })
     end
 end
@@ -44,12 +41,8 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
     local x, y, z = ObjectGetPosition(createdObjId)
     local roll = GetRandomNumber()
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
-    local useCustomDraw = g_DrawMode == 2
-        and not isAirdrop
-        and roll < g_PureDrawConfig.CustomDrawChance
-    if useCustomDraw then
-        _ALERT(format("[自定义抽卡] 物理箱生成事件命中：箱子ID=%d，事件Owner=%s",
-            createdObjId, ownerPlayerName or "nil"))
+    local trackCrate = g_DrawMode == 2 and not isAirdrop
+    if trackCrate then
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -59,11 +52,15 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
             Owner = ownerPlayerName,
             ListIndex = listIndex,
             IsSystemAirdrop = false,
+            UseCustomDraw = roll < g_PureDrawConfig.CustomDrawChance,
             Matched = false,
         }
-        PureDrawTrackCustomCrate(createdObjId)
-    elseif not isAirdrop then
+    end
+    if not isAirdrop then
         SchedulerModule.delay_call(NoCreatesInCenter, 1, { createdObjId })
+    end
+    if trackCrate then
+        SchedulerModule.delay_call(PureDrawTrackCustomCrate, 2, { createdObjId })
     end
 end
 

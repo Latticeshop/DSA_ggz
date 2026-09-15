@@ -18,7 +18,6 @@ function PureLuckyCrateMode_Setting()
         return
     end
     g_PureDrawInitialized = true
-    _ALERT("[自定义抽卡] 测试诊断已启用：自定义概率=100%")
     PureDrawRegisterRoundBeginRefresh()
     PureDrawInitializeKnownPlayerUnits()
     TryEnableLuckyCrateIfAllowed()
