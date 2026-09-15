@@ -934,7 +934,8 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
     end
     exMessageAppendToMessageArea(Localization.get("game.start.begin", gameModeText))
     exMessageAppendToMessageArea(skillText)
-    exAddTextToPublicBoard(format("%s\n%s\n%s", Localization.get("game.start.begin", gameModeText), skillText, Localization.get("game.start.economic_multiplier", exModeGetCheatMultiplier())), 15)
+    local economicMultiplier = exModeGetCheatMultiplier()
+    exAddTextToPublicBoard(format("%s\n%s\n%s", Localization.get("game.start.begin", gameModeText), skillText, Localization.get("game.start.economic_multiplier", economicMultiplier, GetBaseRecycleRate(economicMultiplier) * 100)), 15)
     exEnableWBScript("readyForStartCam")
 end
 
@@ -1190,7 +1191,7 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 local count = g_RecycleUnitCount[buttonIndex];
                 local leftCount = 0
                 count, leftCount = RemoveRecycleUnitCount(playerIndex2, recycleUnitInfo, count)
-                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * 0.7) ;
+                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * GetRecycleRate(playerIndex2)) ;
                 -- 同时也要告诉盟友
                 local msg = Localization.get("recycle.message", tostring(playerIndex2), count, recycleUnitInfo.Name, tostring(leftCount));
                 if playerIndex2 >= 4 then

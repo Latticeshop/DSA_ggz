@@ -170,7 +170,7 @@ Localization._text_sources = {
 
     -- === 游戏开局 ===
     ["game.start.begin"] = { zh = "游戏开始！已选择游戏模式：%s", en = "Game starting! Selected game mode: %s" },
-    ["game.start.economic_multiplier"] = { zh = "经济倍率: %.2f", en = "Economic multiplier: %.2f" },
+    ["game.start.economic_multiplier"] = { zh = "经济倍率: %.2f，回收倍率: %d%%", en = "Economic multiplier: %.2f, recycle rate: %d%%" },
     ["game.start.skill_prefix"] = { zh = "技能组：", en = "Skill set: " },
     ["game.start.skill_free_choice"] = { zh = "技能组：由玩家自由选择", en = "Skill set: chosen freely by players" },
     ["game.start.skill_random_symmetric"] = { zh = "技能组：随机（可重复，对称）", en = "Skill set: random (repeatable, symmetric)" },
