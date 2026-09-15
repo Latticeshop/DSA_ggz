@@ -34,11 +34,11 @@ g_ProductionBonus_SovietGet = {
 -- 这样即使队内最低生产成本降至 65%，回收仍只返还该成本的基础比例。
 g_RecycleEconomicRate = {
     [0.5] = 0.9,
-    [0.75] = 0.7,
     [1] = 0.7,
     [1.5] = 0.5,
     [2] = 0.35,
 }
+g_DefaultRecycleRate = 0.7
 
 g_SovietProductionCostFactor = {
     [0] = 1,
@@ -49,7 +49,11 @@ g_SovietProductionCostFactor = {
 
 function GetBaseRecycleRate(economicMultiplier)
     economicMultiplier = economicMultiplier or exModeGetCheatMultiplier()
-    return g_RecycleEconomicRate[economicMultiplier] or 0.7
+    local matchedRate = g_RecycleEconomicRate[economicMultiplier]
+    if matchedRate ~= nil then
+        return matchedRate
+    end
+    return g_DefaultRecycleRate
 end
 
 function GetTeamSovietProductionBonusCount(playerIndex)
