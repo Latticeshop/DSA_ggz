@@ -1190,14 +1190,7 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 local count = g_RecycleUnitCount[buttonIndex];
                 local leftCount = 0
                 count, leftCount = RemoveRecycleUnitCount(playerIndex2, recycleUnitInfo, count)
-                -- 苏联拿到大生产之后需要乘一个系数  可能会导致苏联后期回收亏钱，不过也很难管了
-                local getSovietBonus = g_ProductionBonus_SovietGet[playerIndex2];
-                -- 只给90%回收
-                local discount = 0.9;
-                if getSovietBonus == 1 then
-                    discount = 0.72;
-                end
-                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * discount) ;
+                ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * 0.7) ;
                 -- 同时也要告诉盟友
                 local msg = Localization.get("recycle.message", tostring(playerIndex2), count, recycleUnitInfo.Name, tostring(leftCount));
                 if playerIndex2 >= 4 then
