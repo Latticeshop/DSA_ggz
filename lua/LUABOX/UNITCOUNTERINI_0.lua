@@ -457,6 +457,9 @@ function unitgetcountanddelet (playindex)
                     --     playerGiftState.GiftSovietAntiInfantryInfantry = conscriptState
                     -- end
                 end
+                if PureDrawRemoveKnownPlayerUnit ~= nil then
+                    PureDrawRemoveKnownPlayerUnit(ObjectGetId(TAR[i]))
+                end
                 ExecuteAction("NAMED_DELETE", TAR[i])
             end
         end

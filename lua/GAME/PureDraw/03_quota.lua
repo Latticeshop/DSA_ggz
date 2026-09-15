@@ -179,6 +179,9 @@ function PureDrawTryConsumeProductionQuota(createdObjId, createdObjInstanceId,
         -- 兜底路径也重新锁定，防止未知外部脚本或引擎时序再次打开按钮。
         PureDrawSetPlayerBuildability(playerIndex, false)
         SchedulerModule.delay_call(PureDrawReapplyExhaustedQuotaAfterProduction, 1, { playerIndex })
+        if PureDrawRemoveKnownPlayerUnit ~= nil then
+            PureDrawRemoveKnownPlayerUnit(createdObjId)
+        end
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
         exAddTextToPublicBoardForPlayer(ownerPlayerName,
             Localization.get("pure_draw.quota.exceeded"), 6)

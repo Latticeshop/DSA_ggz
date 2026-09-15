@@ -8,7 +8,8 @@
 g_PureDrawConfig = {
     ProductionQuota = 5,
     RefreshRounds = 3,
-    CustomDrawChance = 0.50,
+    -- 临时测试：每个箱子都进入自定义替换链路，便于核对拦截与单位数量。
+    CustomDrawChance = 1.00,
     AirdropCheckFrames = 15 * 60,
     AirdropUnitScanFrames = 15 * 5,
     AirdropUnitScanInterval = 2,
@@ -205,6 +206,11 @@ g_PureDrawTrackedCrates = {}
 g_PureDrawTrackedCrateList = {}
 g_PureDrawAirdropCrateIds = {}
 g_PureDrawScriptCreatedUnitIds = {}
+-- 玩家单位登记：值为本模式分配的独立流水号。无生产者的新单位先进入观察队列，
+-- 只有确认不是某个已摧毁箱子的原生结果后才会登记。
+g_PureDrawKnownPlayerUnitIds = {}
+g_PureDrawKnownPlayerUnitSerial = 0
+g_PureDrawPendingNativeResultIds = {}
 -- 已确认由玩家生产且成功消耗余额的单位。周期回收时据此排除 producer 异常为空的生产单位。
 g_PureDrawProducedUnitIds = {}
 g_PureDrawLastRound = -1
@@ -212,6 +218,24 @@ g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
 g_PureDrawRegisteredProductionHashes = {}
 g_PureDrawAirdropSerial = 0
 g_PureDrawCustomSpawnSerial = 0
+
+-- 这些单位不会进入常规战斗单位回收，但仍必须登记，避免被当成箱子结果。
+g_PureDrawAlwaysKnownUnitHashes = {}
+g_PureDrawObservedPlayerUnitHashes = {}
+g_PureDrawAlwaysKnownUnitTypes = {
+    "AlliedEngineer", "SovietEngineer", "JapanEngineer", "CelestialEngineer",
+    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
+    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
+    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
+    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
+    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
+    "CelestialMCV_Enhanced_Air",
+}
+for i = 1, getn(g_PureDrawAlwaysKnownUnitTypes), 1 do
+    local unitHash = FastHash(g_PureDrawAlwaysKnownUnitTypes[i])
+    g_PureDrawAlwaysKnownUnitHashes[unitHash] = true
+    g_PureDrawObservedPlayerUnitHashes[unitHash] = true
+end
 
 -- 空投十连的圆形布局：i=1 在圆心，其余 9 个均匀分布在圆周上。
 -- RA3LuaBridge 方言不保证提供 cos/sin，因此这里直接用预计算的圆上点坐标。

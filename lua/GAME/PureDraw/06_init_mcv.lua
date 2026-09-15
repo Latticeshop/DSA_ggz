@@ -18,7 +18,9 @@ function PureLuckyCrateMode_Setting()
         return
     end
     g_PureDrawInitialized = true
+    _ALERT("[自定义抽卡] 测试诊断已启用：自定义概率=100%")
     PureDrawRegisterRoundBeginRefresh()
+    PureDrawInitializeKnownPlayerUnits()
     TryEnableLuckyCrateIfAllowed()
     -- 问题4：清除玩家开局自带的船厂（地图初始建筑），只保留玩家自己建造的
     -- 生产建筑，确保生产余额只由玩家自造建筑的生产序列消耗。
@@ -123,6 +125,13 @@ function NoCreatesInCenter(id)
     local offsetY = RandomInRange(50, 150)
     local x, y, z = ObjectGetPosition(outpost)
     ObjectSetPosition(crate, x + offsetX, y + offsetY, z)
+    -- 玩家箱子被中央战场规则搬移后，立即同步其固定匹配坐标。
+    local trackedState = g_PureDrawTrackedCrates[id]
+    if trackedState ~= nil then
+        trackedState.X = x + offsetX
+        trackedState.Y = y + offsetY
+        trackedState.Z = z
+    end
     -- 发送警告
     ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
     if g_LastWarningFrame ~= nil and g_LastWarningFrame + 30 > GetFrame() then
@@ -271,6 +280,7 @@ for crateType = 1, 4, 1 do
     for i = 1, getn(source), 1 do
         local unitType = source[i].Type
         local unitHash = FastHash(unitType)
+        g_PureDrawObservedPlayerUnitHashes[unitHash] = true
         if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
             RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
             g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
@@ -280,6 +290,7 @@ end
 for i = 1, getn(g_GroundCrateUnits), 1 do
     local unitType = g_GroundCrateUnits[i]
     local unitHash = FastHash(unitType)
+    g_PureDrawObservedPlayerUnitHashes[unitHash] = true
     if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
         RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
         g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
@@ -288,6 +299,7 @@ end
 for i = 1, getn(g_AirCrateUnits), 1 do
     local unitType = g_AirCrateUnits[i]
     local unitHash = FastHash(unitType)
+    g_PureDrawObservedPlayerUnitHashes[unitHash] = true
     if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
         RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
         g_PureDrawRegisteredNativeCrateHashes[unitHash] = true
@@ -296,6 +308,7 @@ end
 for i = 1, getn(g_SeaCrateUnits), 1 do
     local unitType = g_SeaCrateUnits[i]
     local unitHash = FastHash(unitType)
+    g_PureDrawObservedPlayerUnitHashes[unitHash] = true
     if not g_PureDrawRegisteredNativeCrateHashes[unitHash] then
         RegisterUnitCreateCallback(unitType, PureDrawOnNativeCrateResultBorn)
         g_PureDrawRegisteredNativeCrateHashes[unitHash] = true

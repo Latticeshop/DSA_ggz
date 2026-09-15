@@ -77,6 +77,9 @@ function RecyclePlayerDragonShip(dragonShip, ownerPlayerName, playerIndex, messa
         return
     end
     local refundMoney = GetPlayerDragonShipRecycleMoney(playerIndex)
+    if PureDrawRemoveKnownPlayerUnit ~= nil then
+        PureDrawRemoveKnownPlayerUnit(ObjectGetId(dragonShip))
+    end
     ExecuteAction("NAMED_DELETE", dragonShip)
     -- 生成事件可能早于引擎的购买费用结算；延迟返钱，避免退款随后被扣除。
     SchedulerModule.delay_call(GivePlayerDragonShipRecycleMoney, 2,
@@ -108,6 +111,9 @@ function ProcessPlayerDragonShip(createdObjId, ownerPlayerName)
     end
 
     local previous = SetWorldBuilderThisPlayer(1)
+    if PureDrawRemoveKnownPlayerUnit ~= nil then
+        PureDrawRemoveKnownPlayerUnit(createdObjId)
+    end
     ExecuteAction("NAMED_DELETE", dragonShip)
     -- 复用已验证的建筑生成通道，直接在对应玩家的基地出生点生成伏龙殿。
     ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION",
@@ -1138,5 +1144,10 @@ function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
         for i = 1, getn(registered), 1 do
             registered[i](createdObjId, createdObjInstanceId, ownerPlayerName)
         end
+    end
+    -- PureDraw 使用已注册模板的统一出生观察器维护玩家单位登记。放在原有回调
+    -- 之后执行，既不改变旧功能顺序，也能看到前置回调留下的脚本生成标记。
+    if PureDrawOnAnyRegisteredUnitBorn ~= nil then
+        PureDrawOnAnyRegisteredUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     end
 end
