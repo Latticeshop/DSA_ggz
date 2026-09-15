@@ -11,10 +11,13 @@
 function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
     local roll = GetRandomNumber()
-    local useCustomDraw = g_DrawMode == 2
-        and roll < g_PureDrawConfig.CustomDrawChance
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
+    local useCustomDraw = g_DrawMode == 2
+        and not isAirdrop
+        and roll < g_PureDrawConfig.CustomDrawChance
     if useCustomDraw then
+        _ALERT(format("[自定义抽卡] 箱子生成事件命中：箱子ID=%d，事件Owner=%s",
+            createdObjId, ownerPlayerName or "nil"))
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -23,6 +26,8 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
             Z = z,
             Owner = ownerPlayerName,
             ListIndex = listIndex,
+            IsSystemAirdrop = false,
+            Matched = false,
         }
     end
     if not isAirdrop then
@@ -38,10 +43,13 @@ end
 function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
     local roll = GetRandomNumber()
-    local useCustomDraw = g_DrawMode == 2
-        and roll < g_PureDrawConfig.CustomDrawChance
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
+    local useCustomDraw = g_DrawMode == 2
+        and not isAirdrop
+        and roll < g_PureDrawConfig.CustomDrawChance
     if useCustomDraw then
+        _ALERT(format("[自定义抽卡] 物理箱生成事件命中：箱子ID=%d，事件Owner=%s",
+            createdObjId, ownerPlayerName or "nil"))
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -50,6 +58,8 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
             Z = z,
             Owner = ownerPlayerName,
             ListIndex = listIndex,
+            IsSystemAirdrop = false,
+            Matched = false,
         }
         PureDrawTrackCustomCrate(createdObjId)
     elseif not isAirdrop then

@@ -4,11 +4,88 @@
 --   - 箱子跟踪与原生结果拦截
 --   - 事件驱动并短时扫描空投点附近新生成的 AI 单位，加入攻击队列
 
--- 玩家碰箱子后引擎生成的原生单位没有生产者（ObjectGetProducerObject 返回 nil），
--- 而正常从生产建筑序列产出的单位一定有生产者。因此：
--- 有生产者 -> 玩家生产 -> 消耗生产余额；
--- 无生产者（凭空出现：箱子结果、赠送单位）-> 不消耗余额；
--- 若该凭空单位匹配到“刚消失的被跟踪箱子”，则拦截并换成自定义抽卡单位。
+function PureDrawRegisterKnownPlayerUnit(unitId, instanceId)
+    if unitId == nil then
+        return
+    end
+    local known = g_PureDrawKnownPlayerUnitIds[unitId]
+    if known ~= nil then
+        if instanceId ~= nil then
+            known.InstanceId = instanceId
+        end
+        return
+    end
+    g_PureDrawKnownPlayerUnitSerial = g_PureDrawKnownPlayerUnitSerial + 1
+    g_PureDrawKnownPlayerUnitIds[unitId] = {
+        Serial = g_PureDrawKnownPlayerUnitSerial,
+        InstanceId = instanceId,
+    }
+    g_PureDrawPendingNativeResultIds[unitId] = nil
+end
+
+function PureDrawRemoveKnownPlayerUnit(unitId)
+    if unitId == nil then
+        return
+    end
+    g_PureDrawKnownPlayerUnitIds[unitId] = nil
+    g_PureDrawPendingNativeResultIds[unitId] = nil
+    g_PureDrawScriptCreatedUnitIds[unitId] = nil
+end
+
+function PureDrawIsKnownPlayerUnit(unitId)
+    return g_PureDrawKnownPlayerUnitIds[unitId] ~= nil
+end
+
+-- 记录抽卡模式开始时已经存在的玩家单位，避免开局赠送单位或预放置单位被误判。
+function PureDrawInitializeKnownPlayerUnits()
+    if g_PureDrawKnownPlayerUnitFilter == nil then
+        g_PureDrawKnownPlayerUnitFilter = CreateObjectFilter({
+            Relationship = "SAME_PLAYER",
+            Include = "SELECTABLE",
+            Exclude = "STRUCTURE",
+            ExcludeThing = { "LuckyUnitCrateSeed", "UnitCrateNew", "UnitCrate" },
+        })
+    end
+    for playerIndex = 1, 6, 1 do
+        local units, count = ObjectFindObjects(P[playerIndex], nil,
+            g_PureDrawKnownPlayerUnitFilter)
+        for i = 1, count, 1 do
+            local unitId = ObjectGetId(units[i])
+            PureDrawRegisterKnownPlayerUnit(unitId, ObjectGetInstanceId(unitId))
+        end
+    end
+end
+
+-- 玩家碰箱子后生成的原生单位没有生产者。任何已注册模板的玩家新单位都会进入
+-- 这里：生产单位、工程师、MCV和脚本生成单位立即登记；其余无生产者单位短暂
+-- 观察，等待箱子的存活状态先转为已摧毁。
+function PureDrawOnAnyRegisteredUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if g_DrawMode ~= 2 or g_PlayerNameToIndex[ownerPlayerName] == nil then
+        return
+    end
+    if not g_PureDrawObservedPlayerUnitHashes[createdObjInstanceId] then
+        return
+    end
+    local createdUnit = GetObjectById(createdObjId)
+    if createdUnit == nil or not ObjectIsAlive(createdUnit) then
+        return
+    end
+    if PureDrawIsKnownPlayerUnit(createdObjId) then
+        return
+    end
+    if g_PureDrawAlwaysKnownUnitHashes[createdObjInstanceId]
+        or g_PureDrawScriptCreatedUnitIds[createdObjId]
+        or ObjectGetProducerObject(createdObjId) ~= nil then
+        PureDrawRegisterKnownPlayerUnit(createdObjId, createdObjInstanceId)
+        return
+    end
+    if not g_PureDrawPendingNativeResultIds[createdObjId] then
+        g_PureDrawPendingNativeResultIds[createdObjId] = true
+        SchedulerModule.delay_call(PureDrawObserveUnknownPlayerUnit, 1,
+            { createdObjId, createdObjInstanceId, ownerPlayerName, 45 })
+    end
+end
+
 function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
     if g_DrawMode ~= 2 or playerIndex == nil then
@@ -16,20 +93,13 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
     end
     if g_PureDrawScriptCreatedUnitIds[createdObjId] then
         g_PureDrawScriptCreatedUnitIds[createdObjId] = nil
+        PureDrawRegisterKnownPlayerUnit(createdObjId, createdObjInstanceId)
         return
     end
     local producer = ObjectGetProducerObject(createdObjId)
     if producer == nil then
-        -- 凭空出现的玩家单位：不消耗余额。若匹配到刚消失的被跟踪箱子，则拦截。
-        local consumedCrateId = PureDrawFindConsumedTrackedCrate(ownerPlayerName)
-        if consumedCrateId ~= nil then
-            local x, y, z = ObjectGetPosition(createdObjId)
-            PureDrawRemoveTrackedCrate(consumedCrateId)
-            g_PureDrawScriptCreatedUnitIds[createdObjId] = true
-            SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
-                { createdObjId, createdObjInstanceId, ownerPlayerName, x, y, z })
-            return
-        end
+        -- 无生产者单位交给统一观察器判断，JapanMechaX 的特殊生产形态仍继续走
+        -- 原有配额重试，以兼容其出生首帧暂时拿不到 producer 的情况。
         if createdObjInstanceId ~= FastHash("JapanMechaX")
             and createdObjInstanceId ~= FastHash("JapanKingOniXMecha_Enhanced") then
             return
@@ -39,37 +109,41 @@ function PureDrawOnBuildableUnitBorn(createdObjId, createdObjInstanceId, ownerPl
         playerIndex, ownerPlayerName, 3)
 end
 
--- 查找该玩家“刚消失（被碰/消耗）”的跟踪箱子。只按箱子是否已死匹配，
--- 不依赖生成位置（引擎可能在玩家基地等位置生成箱子结果单位）。
--- DiedFrame 尚未记录时（原生结果单位先于下一帧的跟踪回调创建）按“刚消失”处理，
--- 优先返回。超过 60 帧未清理的过期箱子会由 CleanupTrackedCrate 移除，因此
--- 列表里“已死”的箱子都是近期消失的。
-function PureDrawFindConsumedTrackedCrate(playerName)
-    local now = GetFrame()
-    local bestId, bestAge = nil, 1e9
+-- 只在已经确认摧毁、尚未匹配的玩家技能箱子中按固定出生坐标选择最近者。
+function PureDrawFindConsumedTrackedCrate(x, y, z, candidateFrame)
+    if x == nil or y == nil then
+        return nil
+    end
+
+    local nearestId, nearestDistanceSquared = nil, 1e9
     for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
         local tid = g_PureDrawTrackedCrateList[i]
         local state = g_PureDrawTrackedCrates[tid]
-        if state ~= nil and state.Owner == playerName and not ObjectIsAlive(tid) then
-            local age
-            if state.DiedFrame ~= nil then
-                age = now - state.DiedFrame
-            else
-                age = 0
-            end
-            if age < bestAge then
-                bestAge = age
-                bestId = tid
+        if state ~= nil and state.DestroyedFrame ~= nil and not state.Matched
+            and not state.IsSystemAirdrop then
+            local dx = x - state.X
+            local dy = y - state.Y
+            local distanceSquared = dx * dx + dy * dy
+            local frameDistance = candidateFrame - state.DestroyedFrame
+            if frameDistance >= -3 and frameDistance <= 60
+                and distanceSquared < nearestDistanceSquared then
+                nearestDistanceSquared = distanceSquared
+                nearestId = tid
             end
         end
     end
-    return bestId
+    -- 原生结果通常在箱子接触点附近生成；220 足以覆盖成组单位的出生散布。
+    if nearestDistanceSquared <= 220 * 220 then
+        return nearestId
+    end
+    return nil
 end
 
 for tier = 1, 4, 1 do
     local pool = g_PureDrawBuildableUnitPool[tier]
     for i = 1, getn(pool), 1 do
         local unitHash = FastHash(pool[i].Type)
+        g_PureDrawObservedPlayerUnitHashes[unitHash] = true
         if not g_PureDrawRegisteredProductionHashes[unitHash] then
             RegisterUnitCreateCallback(pool[i].Type, PureDrawOnBuildableUnitBorn)
             g_PureDrawRegisteredProductionHashes[unitHash] = true
@@ -78,6 +152,7 @@ for tier = 1, 4, 1 do
         if aliases ~= nil then
             for aliasIndex = 1, getn(aliases), 1 do
                 local aliasHash = FastHash(aliases[aliasIndex])
+                g_PureDrawObservedPlayerUnitHashes[aliasHash] = true
                 if not g_PureDrawRegisteredProductionHashes[aliasHash] then
                     RegisterUnitCreateCallback(aliases[aliasIndex], PureDrawOnBuildableUnitBorn)
                     g_PureDrawRegisteredProductionHashes[aliasHash] = true
@@ -118,6 +193,13 @@ function PureDrawSpawnCustomUnit(playerName, x, y, z)
         return
     end
     local spawnCount = info.CustomDrawCount or 1
+    local playerIndex = g_PlayerNameToIndex[playerName]
+    local displayName = info.Type
+    if playerIndex ~= nil and GetDrawnUnitNameFromRecycleList ~= nil then
+        displayName = GetDrawnUnitNameFromRecycleList(playerIndex, info.Type)
+    end
+    _ALERT(format("[自定义抽卡] 本次结果：%s × %d（%s）",
+        displayName, spawnCount, info.Type))
     for spawnIndex = 1, spawnCount, 1 do
         g_PureDrawCustomSpawnSerial = g_PureDrawCustomSpawnSerial + 1
         local unitName = format("PureDrawCustom_%d", g_PureDrawCustomSpawnSerial)
@@ -162,7 +244,7 @@ function PureDrawFindCollector(x, y, z, radius)
     return nil
 end
 
-function PureDrawDeleteNativeResultNear(x, y, z, playerName, instanceId, minimumId)
+function PureDrawDeleteNativeResultNear(x, y, z, playerName)
     if g_PureDrawNativeResultFilter == nil then
         local nativeTypes = {}
         for crateType = 1, 4, 1 do
@@ -180,6 +262,21 @@ function PureDrawDeleteNativeResultNear(x, y, z, playerName, instanceId, minimum
         for i = 1, getn(g_SeaCrateUnits), 1 do
             tinsert(nativeTypes, g_SeaCrateUnits[i])
         end
+        -- 原生箱子也会开出常规生产池单位（例如游骑兵）；这些类型必须一起
+        -- 进入整批删除过滤器，否则混合结果中只会删掉特殊箱子单位。
+        for tier = 1, 4, 1 do
+            local source = g_PureDrawBuildableUnitPool[tier]
+            for i = 1, getn(source), 1 do
+                local unitType = source[i].Type
+                tinsert(nativeTypes, unitType)
+                local aliases = g_PureDrawProductionAliases[unitType]
+                if aliases ~= nil then
+                    for aliasIndex = 1, getn(aliases), 1 do
+                        tinsert(nativeTypes, aliases[aliasIndex])
+                    end
+                end
+            end
+        end
         g_PureDrawNativeResultFilter = CreateObjectFilter({
             Rule = "ANY",
             IncludeThing = nativeTypes,
@@ -192,13 +289,11 @@ function PureDrawDeleteNativeResultNear(x, y, z, playerName, instanceId, minimum
         local unit = units[i]
         local matchesPlayer = playerName == nil
             or ObjectPlayerScriptName(unit) == playerName
-        local matchesType = instanceId == nil
-            or ObjectGetInstanceId(ObjectGetId(unit)) == instanceId
-        local isUnproduced = playerName == nil
-            or ObjectGetProducerObject(unit) == nil
-        local isCurrentBatch = minimumId == nil
-            or ObjectGetId(unit) >= minimumId
-        if matchesPlayer and matchesType and isUnproduced and isCurrentBatch then
+        local isUnproduced = ObjectGetProducerObject(unit) == nil
+        local unitId = ObjectGetId(unit)
+        local isUnknown = not PureDrawIsKnownPlayerUnit(unitId)
+        if matchesPlayer and isUnproduced and isUnknown then
+            PureDrawRemoveKnownPlayerUnit(unitId)
             ExecuteAction("NAMED_DELETE", unit)
         end
     end
@@ -232,46 +327,25 @@ function PureDrawRemoveTrackedCrate(id)
     end
 end
 
--- 判断某个单位是否位于任一被跟踪箱子附近（即它是玩家碰该箱子生成的原生抽卡单位，
--- 会被 PureDrawOnNativeCrateResultBorn 拦截）。生产余额监听用它跳过这些单位。
-function PureDrawIsNearTrackedCrate(unitId)
-    if getn(g_PureDrawTrackedCrateList) <= 0 then
-        return false
-    end
-    local x, y, z = ObjectGetPosition(unitId)
-    for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
-        local tid = g_PureDrawTrackedCrateList[i]
-        local state = g_PureDrawTrackedCrates[tid]
-        if state ~= nil then
-            local dx = x - state.X
-            local dy = y - state.Y
-            if dx * dx + dy * dy < 160 * 160 then
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- 轻量跟踪：箱子活着时持续刷新位置（NoCreatesInCenter 可能移动箱子）。
--- 箱子消失后保留 30 帧，等待“碰箱子生成的原生单位”创建回调来拦截；
--- 若超时无人拦截（例如箱子过期消失），则清理跟踪记录。
+-- LuckyUnitCrateSeed 刚落地时 ObjectIsAlive 就可能返回 false，不能拿它判断拾取。
+-- 箱子不会移动，因此持续检查固定坐标附近的玩家单位；首次接触即视为箱子已被
+-- 摧毁。确认接触前记录永久保留，允许玩家在场上囤积任意数量的箱子。
 function PureDrawTrackCustomCrate(id)
     local state = g_PureDrawTrackedCrates[id]
     if state == nil then
         return
     end
-    if ObjectIsAlive(id) then
-        local x, y, z = ObjectGetPosition(GetObjectById(id))
-        state.X, state.Y, state.Z = x, y, z
-        SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
-        return
+    local collectorPlayerName = PureDrawFindCollector(state.X, state.Y, state.Z, 65)
+    if collectorPlayerName ~= nil then
+        if state.ContactFrame == nil then
+            _ALERT(format("[自定义抽卡] 箱子接触候选：箱子ID=%d，玩家=%s，坐标=(%.0f, %.0f)",
+                id, collectorPlayerName, state.X, state.Y))
+        end
+        state.ContactPlayer = collectorPlayerName
+        state.ContactFrame = GetFrame()
+        state.DestroyedFrame = state.ContactFrame
     end
-    -- 箱子已消失（被碰或过期）：记录消失帧，供拦截逻辑匹配；稍后清理。
-    if state.DiedFrame == nil then
-        state.DiedFrame = GetFrame()
-    end
-    SchedulerModule.delay_call(PureDrawCleanupTrackedCrate, 60, { id })
+    SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
 end
 
 function PureDrawCleanupTrackedCrate(id)
@@ -304,39 +378,60 @@ function PureDrawIsNearAirdropPoint(unitId)
     return false
 end
 
--- 玩家碰箱子后，引擎会立即删除箱子并在玩家阵营生成一个原生抽卡单位。
--- 拦截：既监听原生单位创建（本回调），也在 PureDrawOnBuildableUnitBorn 里
--- 用生产者判定处理。匹配一律基于“该玩家刚消失的被跟踪箱子”，不依赖位置。
--- AI 空投单位由下方独立的事件回调与短时空间扫描处理。
+-- 原生结果模板的专用回调只负责把事件送入统一观察器；所有判定均由已知单位、
+-- producer、箱子销毁状态和固定坐标共同完成。
 function PureDrawOnNativeCrateResultBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    if g_DrawMode ~= 2 then
-        return
-    end
-    -- 已被 buildable 回调拦截处理（它先注册先执行），跳过避免重复。
-    if g_PureDrawScriptCreatedUnitIds[createdObjId] then
-        return
-    end
-    -- 只有玩家碰箱子生成的原生单位才拦截
-    if g_PlayerNameToIndex[ownerPlayerName] == nil then
-        return
-    end
-    local consumedCrateId = PureDrawFindConsumedTrackedCrate(ownerPlayerName)
-    if consumedCrateId ~= nil then
-        local x, y, z = ObjectGetPosition(createdObjId)
-        PureDrawRemoveTrackedCrate(consumedCrateId)
-        g_PureDrawScriptCreatedUnitIds[createdObjId] = true
-        SchedulerModule.delay_call(PureDrawInterceptNativeResult, 1,
-            { createdObjId, createdObjInstanceId, ownerPlayerName, x, y, z })
-    end
+    PureDrawOnAnyRegisteredUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 
-function PureDrawInterceptNativeResult(createdObjId, createdObjInstanceId, playerName, x, y, z)
-    -- 系统抽卡可能一次生成多个同种单位；按玩家、模板和出生区域删除整批结果。
-    -- producer 过滤可避免误删同一区域内由玩家生产建筑正常造出的同型单位。
-    PureDrawDeleteNativeResultNear(x, y, z, playerName, createdObjInstanceId, createdObjId)
+function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, retriesLeft)
+    if g_DrawMode ~= 2 or PureDrawIsKnownPlayerUnit(createdObjId) then
+        g_PureDrawPendingNativeResultIds[createdObjId] = nil
+        return
+    end
+    local createdUnit = GetObjectById(createdObjId)
+    if createdUnit == nil or not ObjectIsAlive(createdUnit) then
+        g_PureDrawPendingNativeResultIds[createdObjId] = nil
+        return
+    end
+    if ObjectGetProducerObject(createdObjId) ~= nil
+        or g_PureDrawAlwaysKnownUnitHashes[instanceId]
+        or g_PureDrawScriptCreatedUnitIds[createdObjId] then
+        PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
+        return
+    end
+    local x, y, z = ObjectGetPosition(createdObjId)
+    local consumedCrateId = PureDrawFindConsumedTrackedCrate(x, y, z, GetFrame())
+    if consumedCrateId ~= nil then
+        g_PureDrawPendingNativeResultIds[createdObjId] = nil
+        local state = g_PureDrawTrackedCrates[consumedCrateId]
+        state.Matched = true
+        _ALERT(format("[自定义抽卡] 已匹配原生结果：玩家=%s，单位ID=%d，箱子ID=%d",
+            playerName, createdObjId, consumedCrateId))
+        SchedulerModule.delay_call(PureDrawInterceptNativeResult, 2,
+            { createdObjId, playerName, state.X, state.Y, state.Z, consumedCrateId })
+        return
+    end
+    if retriesLeft > 0 then
+        SchedulerModule.delay_call(PureDrawObserveUnknownPlayerUnit, 1,
+            { createdObjId, instanceId, playerName, retriesLeft - 1 })
+        return
+    end
+    PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
+    _ALERT(format("[自定义抽卡] 未匹配箱子，登记为普通单位：玩家=%s，单位ID=%d",
+        playerName, createdObjId))
+end
+
+function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z, crateId)
+    -- 等待两帧收齐同批单位；只删除同玩家、同区域、无生产者且尚未登记的对象。
+    _ALERT(format("[自定义抽卡] 开始清除原生整批结果：玩家=%s，起始单位ID=%d",
+        playerName, createdObjId))
+    PureDrawDeleteNativeResultNear(x, y, z, playerName)
     if ObjectIsAlive(createdObjId) then
+        PureDrawRemoveKnownPlayerUnit(createdObjId)
         ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
     end
+    PureDrawRemoveTrackedCrate(crateId)
     PureDrawSpawnCustomUnit(playerName, x, y, z)
 end
 
@@ -476,6 +571,7 @@ g_PureDrawRegisteredAIUnitHashes = {}
 for unitIndex = 1, unitcountmax, 1 do
     local unitType = UNITLIST[unitIndex]
     local unitHash = FastHash(unitType)
+    g_PureDrawObservedPlayerUnitHashes[unitHash] = true
     if not g_PureDrawRegisteredAIUnitHashes[unitHash] then
         RegisterUnitCreateCallback(unitType, PureDrawOnAIUnitBorn)
         g_PureDrawRegisteredAIUnitHashes[unitHash] = true
