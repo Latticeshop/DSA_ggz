@@ -1,47 +1,65 @@
-﻿-- 海克斯符文系统：卡框图片资源
--- 由 analysis/img_to_lua.py 自动生成，来源：
---   E:\Ra3_AutoChess\海克斯符文 HextechRunes 其他游戏参考\本体\assets\images\ui\augmentcard_frame_{gold,silver,prismatic}.png
+-- 海克斯符文系统：卡框图片资源（透明中心已填充为黑色）
+-- 由 analysis/hextech_frames_black.py 自动生成，来源：
+--   augmentcard_frame_{gold,silver,prismatic}.png
 -- 图片 ID 变量：
 --   g_HextechFrameGoldId / g_HextechFrameSilverId / g_HextechFramePrismaticId
--- 用法：作为顶部按钮的 IconId（exCenterTopBtnShowForPlayer 的 textureName 参数接受数字图片 ID）
+-- 用法：作为自定义按钮的 TextureName（接受数字图片 ID）
 
--- 自定义图片嵌入（由 analysis/img_to_lua.py 自动生成，尺寸 64x64）
+-- 自定义图片嵌入（由 analysis/hextech_frames_black.py 自动生成，尺寸 128x128，透明中心已填黑）
 local HextechFrameGold = {
-    size = {64, 64},
+    size = {128, 128},
     base64 = [[
-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
+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
 ]]
 }
-local _textureIdGold = exTextureCreateFromBase64(HextechFrameGold.base64, "DXT5")
+local _textureId = exTextureCreateFromBase64(HextechFrameGold.base64, "DXT5")
 g_HextechFrameGoldId = exPackedTextureImageCreate({
-    Texture = _textureIdGold,
+    Texture = _textureId,
     -- 贴图在纹理中的位置
     CoordsX = 0, CoordsY = 0,
     -- 贴图的尺寸
@@ -52,38 +70,55 @@ g_HextechFrameGoldId = exPackedTextureImageCreate({
     Rotated = 0
 })
 
--- 自定义图片嵌入（由 analysis/img_to_lua.py 自动生成，尺寸 64x64）
+-- 自定义图片嵌入（由 analysis/hextech_frames_black.py 自动生成，尺寸 128x128，透明中心已填黑）
 local HextechFrameSilver = {
-    size = {64, 64},
+    size = {128, 128},
     base64 = [[
-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
+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
 ]]
 }
-local _textureIdSilver = exTextureCreateFromBase64(HextechFrameSilver.base64, "DXT5")
+local _textureId = exTextureCreateFromBase64(HextechFrameSilver.base64, "DXT5")
 g_HextechFrameSilverId = exPackedTextureImageCreate({
-    Texture = _textureIdSilver,
+    Texture = _textureId,
     -- 贴图在纹理中的位置
     CoordsX = 0, CoordsY = 0,
     -- 贴图的尺寸
@@ -94,43 +129,60 @@ g_HextechFrameSilverId = exPackedTextureImageCreate({
     Rotated = 0
 })
 
--- 自定义图片嵌入（由 analysis/img_to_lua.py 自动生成，尺寸 64x64）
+-- 自定义图片嵌入（由 analysis/hextech_frames_black.py 自动生成，尺寸 128x128，透明中心已填黑）
 local HextechFramePrismatic = {
-    size = {64, 64},
+    size = {128, 128},
     base64 = [[
-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
-dGoWdnOQ037nwHED+RQ6mm/M94sNBgAAAA==
+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
 ]]
 }
-local _textureIdPrismatic = exTextureCreateFromBase64(HextechFramePrismatic.base64, "DXT5")
+local _textureId = exTextureCreateFromBase64(HextechFramePrismatic.base64, "DXT5")
 g_HextechFramePrismaticId = exPackedTextureImageCreate({
-    Texture = _textureIdPrismatic,
+    Texture = _textureId,
     -- 贴图在纹理中的位置
     CoordsX = 0, CoordsY = 0,
     -- 贴图的尺寸
@@ -140,4 +192,3 @@ g_HextechFramePrismaticId = exPackedTextureImageCreate({
     -- 旋转角度
     Rotated = 0
 })
-

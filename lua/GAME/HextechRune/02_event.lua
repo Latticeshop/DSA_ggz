@@ -40,12 +40,13 @@ HextechRune.PlayerOpeningTestRarity = {}
 HextechRune.PlayerOptionRarity = {}
 
 -- ===== 屏幕中央 3 个方框的布局参数 =====
--- 假设游戏分辨率 1366x768（日冕地图标准）
-HextechRune.CenterX = 683
+-- 说明：日冕地图逻辑分辨率 1366x768，CenterX/Y 为屏幕中心像素坐标。
+-- 若你的实际画面显示偏右/偏左，请调整 CenterX（减小=左移，增大=右移）。
+HextechRune.CenterX = 583
 HextechRune.CenterY = 384
--- 方框尺寸（卡框素材是方形，可调小像素）
-HextechRune.FrameSize = 150
-HextechRune.FrameSpacing = 24
+-- 方框尺寸（卡框素材是方形，越大越醒目）
+HextechRune.FrameSize = 200
+HextechRune.FrameSpacing = 30
 -- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
 -- 避开已用 index（1-7、21-25、999、1000）
 HextechRune.CustomBtnIndexBase = 100
@@ -108,6 +109,7 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     local startX = self.CenterX - totalWidth / 2
     local x = startX + (optionIndex - 1) * (self.FrameSize + self.FrameSpacing)
     local y = self.CenterY - self.FrameSize / 2 - 30
+    _ALERT("[HextechRune] 布局: 方框" .. tostring(optionIndex) .. " x=" .. tostring(x) .. " y=" .. tostring(y) .. " 尺寸=" .. tostring(self.FrameSize) .. " CenterX=" .. tostring(self.CenterX) .. " 整体宽=" .. tostring(totalWidth))
 
     -- 卡框按钮（TextureName 接受数字图片 ID，参考 huohuo 顶部按钮）
     _ALERT("[HextechRune] CreateOptionBox 玩家 " .. tostring(playerIndex) .. " 选项 " .. tostring(optionIndex) .. " 创建按钮 index=" .. tostring(btnIndex) .. " 图片ID=" .. tostring(frameImageId) .. " 文字=" .. optionText)

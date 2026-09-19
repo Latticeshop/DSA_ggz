@@ -1014,6 +1014,7 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
     -- 这里可以添加一些额外的逻辑，比如检查玩家是否准备好等
     local gameModeText = ''
     local skillText = ''
+    -- 基础模式
     if g_GameMode == 1 then
         gameModeText = Localization.get("game_mode.standard")
     elseif g_GameMode == 2 then
@@ -1021,12 +1022,27 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
     elseif g_GameMode == 4 then
         gameModeText = Localization.get("game_mode.level_up")
     end
+    -- 括号内并列功能：海克斯符文排最前，缩小/禁海随后（参考缩小模式/禁海的开局播报）
+    local featureText = ''
+    if g_EnableHextechRune == 1 then
+        featureText = Localization.get("game_mode.hextech_name")
+    end
     if g_EnableShrinkMode == 1 then
-        gameModeText = gameModeText .. Localization.get("game_mode.shrink_suffix")
+        if featureText ~= '' then
+            featureText = featureText .. Localization.get("game_mode.feature_separator")
+        end
+        featureText = featureText .. Localization.get("game_mode.shrink_name")
     end
     if g_DisableSeaArmy == 1 then
-        gameModeText = gameModeText .. Localization.get("game_mode.no_navy_suffix")
+        if featureText ~= '' then
+            featureText = featureText .. Localization.get("game_mode.feature_separator")
+        end
+        featureText = featureText .. Localization.get("game_mode.no_navy_name")
     end
+    if featureText ~= '' then
+        gameModeText = gameModeText .. Localization.get("game_mode.feature_bracket", featureText)
+    end
+    -- 抽卡后缀（括号外）
     if g_DrawMode == 1 then
         gameModeText = gameModeText .. Localization.get("game_mode.lucky_crate_suffix")
     elseif g_DrawMode == 2 then

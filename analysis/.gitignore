@@ -3,4 +3,5 @@
 *.lua
 *.ps1
 *.js
+*.bin
 luac.exe

@@ -95,6 +95,12 @@ Localization._text_sources = {
     ["game_mode.no_navy_suffix"] = { zh = " (禁止海军)", en = " (No Navy)" },
     ["game_mode.lucky_crate_suffix"] = { zh = " 已启用抽卡功能", en = " Lucky Crate Enabled" },
     ["game_mode.pure_draw_suffix"] = { zh = " 已启用抽卡模式", en = " Pure Draw Enabled" },
+    -- 括号内并列功能名（海克斯符文排最前，参考缩小/禁海）
+    ["game_mode.hextech_name"] = { zh = "海克斯符文", en = "Hextech Rune" },
+    ["game_mode.shrink_name"] = { zh = "缩小", en = "Shrink" },
+    ["game_mode.no_navy_name"] = { zh = "禁海", en = "No Navy" },
+    ["game_mode.feature_separator"] = { zh = "，", en = ", " },
+    ["game_mode.feature_bracket"] = { zh = "（%s）", en = " (%s)" },
     ["draw_mode.dialog.title"] = { zh = "请选择抽卡模式", en = "Choose a draw mode" },
     ["draw_mode.open"] = { zh = "抽卡模式选择：%s", en = "Draw Mode: %s" },
     ["draw_mode.disabled"] = { zh = "不启用抽卡", en = "Draw Disabled" },
