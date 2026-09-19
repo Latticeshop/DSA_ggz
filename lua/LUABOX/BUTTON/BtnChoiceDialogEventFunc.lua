@@ -7,6 +7,9 @@ g_EnableShrinkMode = 0;
 g_DisableSeaArmy = 0;
 g_DrawMode = 0; -- 0: disabled, 1: original lucky crate, 2: pure draw
 g_LuckyCrateMode = 0; -- compatibility flag used by the existing lucky-crate implementation
+g_HextechCount = 3; -- 海克斯符文发放次数：0=不启用, 1/2/3=本场发放次数（默认 3）
+g_HextechCountManuallySet = false; -- 房主是否已手动设置过海克斯次数（开启随机箱子时默认"三个"）
+g_EnableHextechRune = 0; -- 海克斯符文系统是否启用（g_HextechCount > 0 时置 1）
 
 g_GameModeName = {
     [1] = Localization.get("game_mode.name.1"),
@@ -22,11 +25,12 @@ g_GameModeOptions = {
     { Name = Localization.get("game_mode.option.5.name") },
     { Name = Localization.get("game_mode.option.6.name") },
 }
-
 MARKET_DIALOG_ID_OFFSET = 100
 
 GAMEMODE_DIALOG_ID = 201
 DRAW_MODE_DIALOG_ID = 202
+HEXTECH_MODE_DIALOG_ID = 203
+MORE_OPTIONS_DIALOG_ID = 204
 
 SKILL_DIALOG_ID_OFFSET = 1000
 SKILL_DIALOG_ID_OFFSET2 = 2000
@@ -539,7 +543,8 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
         local hasSelected = false
         for i = 1, getn(g_GameModeOptions) do
             local option = g_GameModeOptions[i]
-            if i == 6 then
+            if i == 4 then
+                -- 抽卡模式选择：显示当前状态
                 local drawModeName = Localization.get("draw_mode.disabled")
                 if g_DrawMode == 1 then
                     drawModeName = Localization.get("draw_mode.original")
@@ -547,6 +552,25 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
                     drawModeName = Localization.get("draw_mode.pure")
                 end
                 tinsert(self.Choices, Localization.get("draw_mode.open", drawModeName))
+            elseif i == 5 then
+                -- 海克斯符文设置：显示当前状态
+                local hextechName = Localization.get("hextech.option.0")
+                if g_HextechCount ~= nil then
+                    if g_HextechCount >= 1 and g_HextechCount <= 3 then
+                        hextechName = Localization.get("hextech.option." .. tostring(g_HextechCount))
+                    end
+                end
+                tinsert(self.Choices, Localization.get("hextech.entry", hextechName))
+            elseif i == 6 then
+                -- 更多选项：显示缩小/禁海状态
+                local moreOptionsName = ""
+                if g_EnableShrinkMode == 1 then
+                    moreOptionsName = moreOptionsName .. Localization.get("game_mode.shrink_suffix")
+                end
+                if g_DisableSeaArmy == 1 then
+                    moreOptionsName = moreOptionsName .. Localization.get("game_mode.no_navy_suffix")
+                end
+                tinsert(self.Choices, Localization.get("more_options.entry") .. moreOptionsName)
             elseif option.IsSelected then
                 tinsert(self.Choices, option.Name .. Localization.get("game_mode.selected_suffix"))
                 hasSelected = true
@@ -563,17 +587,21 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
         local normalGameOption = g_GameModeOptions[1]
         local deathGameOption = g_GameModeOptions[2]
         local purchaseTechMode = g_GameModeOptions[3]
-        local shrinkGameOption = g_GameModeOptions[4]
-        local banSeaGameOption = g_GameModeOptions[5]
         -- 是否选择了确认按钮
         if buttonIndex == getn(g_GameModeOptions) + 1 then
             -- 假如选择了确认按钮，设置游戏模式
             g_EnableDeathModeEffect = self:BooleanToNumber(deathGameOption.IsSelected)
-            g_EnableShrinkMode = self:BooleanToNumber(shrinkGameOption.IsSelected)
-            g_DisableSeaArmy = self:BooleanToNumber(banSeaGameOption.IsSelected)
             g_LuckyCrateMode = 0
             if g_DrawMode == 1 or g_DrawMode == 2 then
                 g_LuckyCrateMode = 1
+            end
+            -- 开启随机箱子时，海克斯默认选中"三个"（若尚未手动设置过）
+            if g_LuckyCrateMode == 1 and not g_HextechCountManuallySet then
+                g_HextechCount = 3
+            end
+            g_EnableHextechRune = 0
+            if g_HextechCount ~= nil and g_HextechCount > 0 then
+                g_EnableHextechRune = 1
             end
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
@@ -592,13 +620,24 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(self.PlayerName)
             return
         end
+        -- 抽卡模式选择入口（选项 4）
+        if buttonIndex == 4 then
+            BtnChoiceDialogEventFunc_ShowDrawModeDialog(self.PlayerName)
+            return
+        end
+        -- 海克斯符文设置入口（选项 5）
+        if buttonIndex == 5 then
+            BtnChoiceDialogEventFunc_ShowHextechModeDialog(self.PlayerName)
+            return
+        end
+        -- 更多选项入口（选项 6：缩小/禁止海军）
+        if buttonIndex == 6 then
+            BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(self.PlayerName)
+            return
+        end
         local option = g_GameModeOptions[buttonIndex]
         if not option then
             exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
-            return
-        end
-        if buttonIndex == 6 then
-            BtnChoiceDialogEventFunc_ShowDrawModeDialog(self.PlayerName)
             return
         end
         if not option.IsSelected then
@@ -634,6 +673,54 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
     ButtonChoiceDialogManager:ShowDialog(dialogData)
 end
 
+-- 更多选项对话框（缩小模式 / 禁止海军）
+function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
+    local dialogData = {
+        DialogId = MORE_OPTIONS_DIALOG_ID,
+        PlayerName = playerName,
+        Title = Localization.get("more_options.dialog.title"),
+        Choices = {},
+    }
+    dialogData.RefreshData = function(self)
+        self.Choices = {
+            Localization.get("more_options.shrink") .. (g_EnableShrinkMode == 1 and Localization.get("game_mode.selected_suffix") or ""),
+            Localization.get("more_options.no_navy") .. (g_DisableSeaArmy == 1 and Localization.get("game_mode.selected_suffix") or ""),
+            Localization.get("more_options.back"),
+        }
+    end
+    dialogData.OnChoice = function(self, buttonIndex)
+        if buttonIndex == 1 then
+            if g_EnableShrinkMode == 1 then
+                g_EnableShrinkMode = 0
+                exMessageAppendToMessageArea(Localization.get("game_mode.host.canceled", Localization.get("more_options.shrink")))
+            else
+                g_EnableShrinkMode = 1
+                exMessageAppendToMessageArea(Localization.get("game_mode.host.selected", Localization.get("more_options.shrink")))
+            end
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        elseif buttonIndex == 2 then
+            if g_DisableSeaArmy == 1 then
+                g_DisableSeaArmy = 0
+                exMessageAppendToMessageArea(Localization.get("game_mode.host.canceled", Localization.get("more_options.no_navy")))
+            else
+                g_DisableSeaArmy = 1
+                exMessageAppendToMessageArea(Localization.get("game_mode.host.selected", Localization.get("more_options.no_navy")))
+            end
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        elseif buttonIndex == 3 then
+            BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
+            return
+        end
+        exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
+    end
+    dialogData:RefreshData()
+    ButtonChoiceDialogManager:ShowDialog(dialogData)
+end
+
 function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
     local dialogData = {
         DialogId = DRAW_MODE_DIALOG_ID,
@@ -659,6 +746,10 @@ function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
             g_LuckyCrateMode = 0
             if g_DrawMode ~= 0 then
                 g_LuckyCrateMode = 1
+                -- 开启随机箱子时，海克斯默认选中"三个"（若尚未手动设置过）
+                if not g_HextechCountManuallySet then
+                    g_HextechCount = 3
+                end
             end
             local selectedDrawModeName = Localization.get("draw_mode.disabled")
             if g_DrawMode == 1 then
@@ -672,6 +763,46 @@ function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         elseif buttonIndex == 4 then
+            BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
+            return
+        end
+        exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
+    end
+    dialogData:RefreshData()
+    ButtonChoiceDialogManager:ShowDialog(dialogData)
+end
+
+function BtnChoiceDialogEventFunc_ShowHextechModeDialog(playerName)
+    local dialogData = {
+        DialogId = HEXTECH_MODE_DIALOG_ID,
+        PlayerName = playerName,
+        Title = Localization.get("hextech.dialog.title"),
+        Choices = {},
+    }
+    dialogData.RefreshData = function(self)
+        self.Choices = {
+            Localization.get("hextech.option.0"),
+            Localization.get("hextech.option.1"),
+            Localization.get("hextech.option.2"),
+            Localization.get("hextech.option.3"),
+            Localization.get("hextech.back"),
+        }
+        if g_HextechCount >= 0 and g_HextechCount <= 3 then
+            self.Choices[g_HextechCount + 1] = self.Choices[g_HextechCount + 1]
+                .. Localization.get("game_mode.selected_suffix")
+        end
+    end
+    dialogData.OnChoice = function(self, buttonIndex)
+        if buttonIndex >= 1 and buttonIndex <= 4 then
+            g_HextechCount = buttonIndex - 1
+            g_HextechCountManuallySet = true
+            local selectedHextechName = Localization.get("hextech.option." .. g_HextechCount)
+            exMessageAppendToMessageArea(
+                Localization.get("game_mode.host.selected", selectedHextechName))
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        elseif buttonIndex == 5 then
             BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
             return
         end
