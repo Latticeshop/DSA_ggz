@@ -1,19 +1,18 @@
--- 海克斯符文系统：回合事件与开局测试事件
---   - 回合开始钩子（RoundLuaManager.CallOnEveryRoundBegin）
---   - 开局测试事件：第 1 回合开始弹出三选一（额外第四个，不受配置数量影响）
---     - 屏幕正中间出现 3 个方框选项（用卡框素材 g_HextechFrame*Id，可调小像素）
---     - 3 个选项用通用文字（测试符文·彩 / 测试符文·金 / 测试符文·银）
---     - 按默认稀有度概率（彩 10% / 金 40% / 银 50%）加权抽 3 个选项
---     - 方框不会自动消失，除非玩家点击选择了某个选项
---   - 正式的第 5/11/18 回合事件在后续步骤接入（本步骤先做开局测试事件）
+-- 海克斯符文系统：回合事件（开局测试事件 + 正式海克斯事件）
+--   - 回合监听：轮询 lvc 计数器（不依赖 RoundLuaManager）
+--   - 开局测试事件（第 1 回合，测试环境专用，不受配置数量影响）：
+--     - 屏幕正中间 3 个方框，展示测试指定的符文和三种稀有度选项
+--     - 3 个选项稀有度不同（彩/金/银 各一），按默认概率加权抽取
+--   - 正式海克斯事件（第 5/11/18 回合，按 g_HextechCount 截取）：
+--     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
+--     - 再对每个玩家独立刷新 3 个方框（每个玩家选项不同，稀有度相同，内容留空）
+--     - 内容（具体符文）在符文池接入后填充
 --
 -- 注意：本文件遵循本图 Lua 4.0 约束——闭包不访问外层局部变量，
 --       需要的数据通过 self 或参数传递。
 
--- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前测试事件用屏幕方框）
+-- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
-
-_ALERT("[HextechRune] 02_event.lua 加载，开始定义 HextechRune 表")
 
 HextechRune = HextechRune or {}
 
@@ -30,7 +29,7 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
--- 开局测试事件是否已触发
+-- 开局测试事件是否已触发（第 1 回合，测试环境专用）
 HextechRune.OpeningTestTriggered = false
 
 -- 记录每个玩家开局测试选择的结果（用于展示）
@@ -38,6 +37,15 @@ HextechRune.PlayerOpeningTestRarity = {}
 
 -- 记录每个玩家的 3 个选项稀有度（index 100 起，每玩家 3 个）
 HextechRune.PlayerOptionRarity = {}
+
+-- 记录当前显示的选项是否为测试事件（true=开局测试，false=正式事件）
+HextechRune.PlayerOptionIsTest = {}
+
+-- 记录每个玩家正式事件的选择（后续 buff 用）
+HextechRune.PlayerChosenRarity = {}
+
+-- 正式事件已触发的回合（防止重复触发）
+HextechRune.FormalTriggered = {}
 
 -- ===== 屏幕中央 3 个方框的布局参数 =====
 -- 说明：日冕地图逻辑分辨率 1366x768，CenterX/Y 为屏幕中心像素坐标。
@@ -50,8 +58,11 @@ HextechRune.FrameSpacing = 30
 -- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
 -- 避开已用 index（1-7、21-25、999、1000）
 HextechRune.CustomBtnIndexBase = 100
--- 自定义文字 index 基础（全局文字，每玩家 index 唯一）
+-- 自定义文字 index 基础（每玩家 index 唯一）
 HextechRune.CustomTextIndexBase = 200
+
+-- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
+HextechRune.FormalRounds = { 5, 11, 18 }
 
 -- 计算某玩家某个方框的按钮 index
 function HextechRune:GetOptionBtnIndex(playerIndex, optionIndex)
@@ -63,8 +74,7 @@ function HextechRune:GetOptionTextIndex(playerIndex, optionIndex)
     return self.CustomTextIndexBase + (playerIndex - 1) * 3 + optionIndex
 end
 
--- 按稀有度概率抽取 3 个不同稀有度选项（去重）。
--- tier 1 = 开局测试事件（默认概率），后续可扩展正式回合的 tier。
+-- 按稀有度概率抽取 3 个不同稀有度选项（去重）。开局测试事件用（默认概率）。
 function HextechRune:PickThreeRarityByProbability()
     -- 默认概率：彩 10% / 金 40% / 银 50%
     local weightMap = {
@@ -99,6 +109,43 @@ function HextechRune:PickThreeRarityByProbability()
     return picked
 end
 
+-- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
+-- 第 5 回合（第一次）= 彩 5% / 金 30% / 银 65%；第 11/18 回合 = 彩 10% / 金 40% / 银 50%
+function HextechRune:RollFieldRarity(round)
+    local weightMap
+    if round <= self.FormalRounds[1] then
+        -- 第一次正式事件：彩 5 / 金 30 / 银 65
+        weightMap = { [1] = 5, [2] = 30, [3] = 65 }
+    else
+        -- 后续：彩 10 / 金 40 / 银 50
+        weightMap = { [1] = 10, [2] = 40, [3] = 50 }
+    end
+    local totalWeight = weightMap[1] + weightMap[2] + weightMap[3]
+    local roll = GetRandomNumber() * totalWeight
+    local acc = 0
+    for i = 1, 3, 1 do
+        acc = acc + weightMap[i]
+        if roll < acc then
+            return i
+        end
+    end
+    return 3
+end
+
+-- 判断某回合是否为正式海克斯发放回合（按 g_HextechCount 截取）
+function HextechRune:IsFormalRound(round)
+    local count = g_HextechCount or 0
+    if count <= 0 then
+        return false
+    end
+    for i = 1, count, 1 do
+        if self.FormalRounds[i] == round then
+            return true
+        end
+    end
+    return false
+end
+
 -- 创建单个屏幕中央方框（按钮 + 文字）
 function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImageId, optionText)
     local playerName = "Player_" .. playerIndex
@@ -109,10 +156,8 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     local startX = self.CenterX - totalWidth / 2
     local x = startX + (optionIndex - 1) * (self.FrameSize + self.FrameSpacing)
     local y = self.CenterY - self.FrameSize / 2 - 30
-    _ALERT("[HextechRune] 布局: 方框" .. tostring(optionIndex) .. " x=" .. tostring(x) .. " y=" .. tostring(y) .. " 尺寸=" .. tostring(self.FrameSize) .. " CenterX=" .. tostring(self.CenterX) .. " 整体宽=" .. tostring(totalWidth))
 
-    -- 卡框按钮（TextureName 接受数字图片 ID，参考 huohuo 顶部按钮）
-    _ALERT("[HextechRune] CreateOptionBox 玩家 " .. tostring(playerIndex) .. " 选项 " .. tostring(optionIndex) .. " 创建按钮 index=" .. tostring(btnIndex) .. " 图片ID=" .. tostring(frameImageId) .. " 文字=" .. optionText)
+    -- 卡框按钮（TextureName 接受数字图片 ID）
     exCreateCustomButtonForPlayer(playerName, {
         Index = btnIndex,
         TextureName = frameImageId,
@@ -138,12 +183,11 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     })
 end
 
--- 弹出开局测试三选一事件（屏幕正中间 3 个方框）
+-- 弹出开局测试三选一事件（屏幕正中间 3 个方框，测试环境专用）
 function HextechRune:ShowOpeningTestEvent(playerIndex)
-    _ALERT("[HextechRune] ShowOpeningTestEvent 玩家 " .. tostring(playerIndex) .. " 开始抽稀有度")
     local pickedRarity = self:PickThreeRarityByProbability()
     self.PlayerOptionRarity[playerIndex] = pickedRarity
-    _ALERT("[HextechRune] 玩家 " .. tostring(playerIndex) .. " 抽到稀有度: " .. tostring(pickedRarity[1]) .. "," .. tostring(pickedRarity[2]) .. "," .. tostring(pickedRarity[3]))
+    self.PlayerOptionIsTest[playerIndex] = true
     for i = 1, 3, 1 do
         local rarity = pickedRarity[i]
         local rarityName = self.RarityNames[rarity]
@@ -152,13 +196,36 @@ function HextechRune:ShowOpeningTestEvent(playerIndex)
     end
 end
 
+-- 正式海克斯事件：全场统一稀有度 + 每个玩家独立 3 个空选项
+function HextechRune:ShowFormalEvent(round)
+    local rarity = self:RollFieldRarity(round)
+    for playerIndex = 1, 6, 1 do
+        -- 仅对存在的玩家触发（有建筑的玩家）
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            -- 每个玩家 3 个选项，稀有度相同，内容留空（符文池接入后填充）
+            self.PlayerOptionRarity[playerIndex] = { rarity, rarity, rarity }
+            self.PlayerOptionIsTest[playerIndex] = false
+            for i = 1, 3, 1 do
+                self:CreateOptionBox(playerIndex, i, rarity, self.RarityFrameImageIds[rarity], "")
+            end
+        end
+    end
+end
+
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
-    _ALERT("[HextechRune] HandleOptionClick 玩家 " .. tostring(playerIndex) .. " 点击选项 " .. tostring(optionIndex))
+    if not self.PlayerOptionRarity[playerIndex] then
+        return
+    end
     local rarity = self.PlayerOptionRarity[playerIndex][optionIndex]
     local rarityName = self.RarityNames[rarity]
     local rarityLabel = Localization.get("hextech.rarity." .. rarityName)
-    self.PlayerOpeningTestRarity[playerIndex] = rarity
+    -- 记录选择（测试事件和正式事件都记录到 PlayerChosenRarity）
+    self.PlayerChosenRarity[playerIndex] = rarity
     -- 移除该玩家的 3 个方框按钮和文字
     for i = 1, 3, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
@@ -166,11 +233,14 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         exCustomBtnRemoveForPlayer("Player_" .. playerIndex, btnIndex)
         exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex, textIndex, 0)
     end
-    -- 广播选择结果
-    exAddTextToPublicBoardForPlayer(
-        "Player_" .. playerIndex,
-        Localization.get("hextech.test.picked", rarityLabel),
-        10)
+    -- 广播选择结果（测试事件和正式事件用不同文案）
+    local msg
+    if self.PlayerOptionIsTest[playerIndex] then
+        msg = Localization.get("hextech.test.picked", rarityLabel)
+    else
+        msg = Localization.get("hextech.picked", rarityLabel)
+    end
+    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, msg, 10)
 end
 
 -- 注册自定义按钮点击处理（屏幕中央方框）
@@ -197,12 +267,11 @@ function HextechRune:RegisterCustomBtnHandler()
     end)
 end
 
--- 回合开始回调（由 lvc 轮询驱动，每帧检查）
+-- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
-    -- 开局测试事件：第 1 回合开始触发一次（额外第四个，不受配置数量影响）
+    -- 开局测试事件：第 1 回合开始触发一次（测试环境专用，不受配置数量影响）
     if not self.OpeningTestTriggered and round == 1 then
         self.OpeningTestTriggered = true
-        _ALERT("[HextechRune] 第 1 回合开始，弹出开局测试事件")
         for playerIndex = 1, 6, 1 do
             -- 仅对存在的玩家触发（有建筑的玩家）
             local playerName = "Player_" .. playerIndex
@@ -213,32 +282,41 @@ function HextechRune:OnRoundBegin(round)
                 self:ShowOpeningTestEvent(playerIndex)
             end
         end
-        -- 触发后暂停轮询（后续正式回合事件另接）
-        if HextechRune._watcherId then
-            SchedulerModule.pause_scheduler(HextechRune._watcherId)
-        end
     end
-    -- TODO 后续步骤：正式的第 5/11/18 回合三选一事件（按 g_HextechCount 截取发放回合）
+    -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
+    if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
+        self.FormalTriggered[round] = true
+        self:ShowFormalEvent(round)
+    end
 end
 
--- 轮询 lvc 计数器触发回合事件。
--- 不依赖 RoundLuaManager（其在游戏开始后才定义），只要 lvc 计数器可用即可。
-function HextechRune:StartRoundWatcher()
-    if HextechRune._watcherStarted then
+-- 注册到回合开始钩子（复用抽卡模式 PureDraw 的 RoundLuaManager 方案）。
+-- RoundLuaManager 由 huihe/spawn（start 计时器到期）定义，本脚本（CONDITION_TRUE）
+-- 在地图加载早期执行时其尚未就绪；这里延迟重试直到就绪，成功后不再轮询。
+function HextechRune:RegisterRoundBegin()
+    if HextechRune._roundRegistered then
         return
     end
-    HextechRune._watcherStarted = true
-    _ALERT("[HextechRune] 启动 lvc 轮询（每帧检测回合开始）")
-    HextechRune._watcherId = SchedulerModule.call_every_x_frame(function()
-        local round = exCounterGetByName("lvc")
-        if round ~= nil then
-            HextechRune:OnRoundBegin(round)
-        end
-    end, 1, nil, {})
+    if RoundLuaManager == nil then
+        -- 未就绪：15 帧（约 1 秒）后重试；不打日志避免刷屏
+        SchedulerModule.delay_call(function()
+            HextechRune:RegisterRoundBegin()
+        end, 15, {})
+        return
+    end
+    HextechRune._roundRegistered = true
+    RoundLuaManager.CallOnEveryRoundBegin(function(args)
+        HextechRune:OnRoundBegin(exCounterGetByName("lvc"))
+    end, {})
+    -- 注册成功时若第 1 回合已经开始（lvc>=1），立即补触发一次，避免错过开局测试事件
+    local currentRound = exCounterGetByName("lvc")
+    if currentRound ~= nil and currentRound >= 1 then
+        HextechRune:OnRoundBegin(currentRound)
+    end
 end
 
 -- 注册自定义按钮点击处理（屏幕中央方框）
 HextechRune:RegisterCustomBtnHandler()
 
--- 启动 lvc 轮询（触发回合事件，不依赖 RoundLuaManager）
-HextechRune:StartRoundWatcher()
+-- 注册回合开始回调（RoundLuaManager 就绪后自动注册，无需轮询）
+HextechRune:RegisterRoundBegin()

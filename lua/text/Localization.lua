@@ -95,7 +95,6 @@ Localization._text_sources = {
     ["game_mode.no_navy_suffix"] = { zh = " (禁止海军)", en = " (No Navy)" },
     ["game_mode.lucky_crate_suffix"] = { zh = " 已启用抽卡功能", en = " Lucky Crate Enabled" },
     ["game_mode.pure_draw_suffix"] = { zh = " 已启用抽卡模式", en = " Pure Draw Enabled" },
-    -- 括号内并列功能名（海克斯符文排最前，参考缩小/禁海）
     ["game_mode.hextech_name"] = { zh = "海克斯符文", en = "Hextech Rune" },
     ["game_mode.shrink_name"] = { zh = "缩小", en = "Shrink" },
     ["game_mode.no_navy_name"] = { zh = "禁海", en = "No Navy" },
@@ -126,6 +125,7 @@ Localization._text_sources = {
     ["hextech.test.option"] = { zh = "测试符文%d（%s）", en = "Test Rune %d (%s)" },
     ["hextech.test.picked"] = { zh = "你选择了%s海克斯符文（测试）", en = "You picked a %s Hextech rune (test)" },
     ["hextech.test.result.desc"] = { zh = "已选择：%s海克斯符文（测试）", en = "Picked: %s Hextech rune (test)" },
+    ["hextech.picked"] = { zh = "你选择了符文：%s", en = "You picked the rune: %s" },
     ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled: %d" },
     ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining: %d" },
     ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消", en = "No production quota remained; the extra unit was cancelled" },
