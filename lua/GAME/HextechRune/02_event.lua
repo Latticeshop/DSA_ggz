@@ -4,6 +4,7 @@
 --     - 屏幕正中间出现 3 个方框选项（用卡框素材 g_HextechFrame*Id，可调小像素）
 --     - 3 个选项用通用文字（测试符文·彩 / 测试符文·金 / 测试符文·银）
 --     - 按默认稀有度概率（彩 10% / 金 40% / 银 50%）加权抽 3 个选项
+--     - 方框不会自动消失，除非玩家点击选择了某个选项
 --   - 正式的第 5/11/18 回合事件在后续步骤接入（本步骤先做开局测试事件）
 --
 -- 注意：本文件遵循本图 Lua 4.0 约束——闭包不访问外层局部变量，
@@ -11,6 +12,8 @@
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前测试事件用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
+
+_ALERT("[HextechRune] 02_event.lua 加载，开始定义 HextechRune 表")
 
 HextechRune = HextechRune or {}
 
@@ -107,6 +110,7 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     local y = self.CenterY - self.FrameSize / 2 - 30
 
     -- 卡框按钮（TextureName 接受数字图片 ID，参考 huohuo 顶部按钮）
+    _ALERT("[HextechRune] CreateOptionBox 玩家 " .. tostring(playerIndex) .. " 选项 " .. tostring(optionIndex) .. " 创建按钮 index=" .. tostring(btnIndex) .. " 图片ID=" .. tostring(frameImageId) .. " 文字=" .. optionText)
     exCreateCustomButtonForPlayer(playerName, {
         Index = btnIndex,
         TextureName = frameImageId,
@@ -134,8 +138,10 @@ end
 
 -- 弹出开局测试三选一事件（屏幕正中间 3 个方框）
 function HextechRune:ShowOpeningTestEvent(playerIndex)
+    _ALERT("[HextechRune] ShowOpeningTestEvent 玩家 " .. tostring(playerIndex) .. " 开始抽稀有度")
     local pickedRarity = self:PickThreeRarityByProbability()
     self.PlayerOptionRarity[playerIndex] = pickedRarity
+    _ALERT("[HextechRune] 玩家 " .. tostring(playerIndex) .. " 抽到稀有度: " .. tostring(pickedRarity[1]) .. "," .. tostring(pickedRarity[2]) .. "," .. tostring(pickedRarity[3]))
     for i = 1, 3, 1 do
         local rarity = pickedRarity[i]
         local rarityName = self.RarityNames[rarity]
@@ -146,6 +152,7 @@ end
 
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
+    _ALERT("[HextechRune] HandleOptionClick 玩家 " .. tostring(playerIndex) .. " 点击选项 " .. tostring(optionIndex))
     local rarity = self.PlayerOptionRarity[playerIndex][optionIndex]
     local rarityName = self.RarityNames[rarity]
     local rarityLabel = Localization.get("hextech.rarity." .. rarityName)
@@ -188,11 +195,12 @@ function HextechRune:RegisterCustomBtnHandler()
     end)
 end
 
--- 回合开始回调
+-- 回合开始回调（由 lvc 轮询驱动，每帧检查）
 function HextechRune:OnRoundBegin(round)
     -- 开局测试事件：第 1 回合开始触发一次（额外第四个，不受配置数量影响）
     if not self.OpeningTestTriggered and round == 1 then
         self.OpeningTestTriggered = true
+        _ALERT("[HextechRune] 第 1 回合开始，弹出开局测试事件")
         for playerIndex = 1, 6, 1 do
             -- 仅对存在的玩家触发（有建筑的玩家）
             local playerName = "Player_" .. playerIndex
@@ -203,31 +211,32 @@ function HextechRune:OnRoundBegin(round)
                 self:ShowOpeningTestEvent(playerIndex)
             end
         end
+        -- 触发后暂停轮询（后续正式回合事件另接）
+        if HextechRune._watcherId then
+            SchedulerModule.pause_scheduler(HextechRune._watcherId)
+        end
     end
     -- TODO 后续步骤：正式的第 5/11/18 回合三选一事件（按 g_HextechCount 截取发放回合）
 end
 
--- 注册到回合开始钩子。
--- RoundLuaManager 由 huihe/spawn（TIMER_EXPIRED start）定义，本脚本（CONDITION_TRUE）
--- 可能先于 spawn 执行；若未就绪则延迟重试，确保事件最终注册。
-function HextechRune:RegisterRoundBegin()
-    if self._registered then
+-- 轮询 lvc 计数器触发回合事件。
+-- 不依赖 RoundLuaManager（其在游戏开始后才定义），只要 lvc 计数器可用即可。
+function HextechRune:StartRoundWatcher()
+    if HextechRune._watcherStarted then
         return
     end
-    if RoundLuaManager == nil then
-        SchedulerModule.delay_call(function()
-            HextechRune:RegisterRoundBegin()
-        end, 1, {})
-        return
-    end
-    self._registered = true
-    RoundLuaManager.CallOnEveryRoundBegin(function(args)
-        HextechRune:OnRoundBegin(exCounterGetByName("lvc"))
-    end, {})
+    HextechRune._watcherStarted = true
+    _ALERT("[HextechRune] 启动 lvc 轮询（每帧检测回合开始）")
+    HextechRune._watcherId = SchedulerModule.call_every_x_frame(function()
+        local round = exCounterGetByName("lvc")
+        if round ~= nil then
+            HextechRune:OnRoundBegin(round)
+        end
+    end, 1, nil, {})
 end
 
 -- 注册自定义按钮点击处理（屏幕中央方框）
 HextechRune:RegisterCustomBtnHandler()
 
--- 注册回合开始回调
-HextechRune:RegisterRoundBegin()
+-- 启动 lvc 轮询（触发回合事件，不依赖 RoundLuaManager）
+HextechRune:StartRoundWatcher()
