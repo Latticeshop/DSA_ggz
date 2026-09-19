@@ -236,6 +236,15 @@ for i = 1, getn(g_PureDrawAlwaysKnownUnitTypes), 1 do
     g_PureDrawObservedPlayerUnitHashes[unitHash] = true
 end
 
+-- 工程师不允许作为抽卡结果：若原版箱子开出工程师，一律强制转成自定义抽卡。
+-- 玩家自造工程师仍按常规 AlwaysKnown 处理（有生产者，登记为已知单位）。
+g_PureDrawNativeEngineerHashes = {
+    [FastHash("AlliedEngineer")] = true,
+    [FastHash("SovietEngineer")] = true,
+    [FastHash("JapanEngineer")] = true,
+    [FastHash("CelestialEngineer")] = true,
+}
+
 -- 空投十连的圆形布局：i=1 在圆心，其余 9 个均匀分布在圆周上。
 -- RA3LuaBridge 方言不保证提供 cos/sin，因此这里直接用预计算的圆上点坐标。
 -- 每个元素是 {cos(角度), sin(角度)}，角度从 0 度起每 40 度一个，共 9 个点。

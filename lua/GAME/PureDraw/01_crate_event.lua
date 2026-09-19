@@ -65,6 +65,10 @@ function TryEnableLuckyCrateIfAllowed()
                 local offsetX = 200
                 local position = { X = p[1] + offsetX, Y = p[2], Z = p[3] }
                 local nextObjectId = GetNextObjectId()
+                -- 赠送工程师是脚本生成的已知单位，标记后不会被当成箱子原生结果。
+                if g_PureDrawScriptCreatedUnitIds then
+                    g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
+                end
                 ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION",
                     "",
                     "JapanEngineer",

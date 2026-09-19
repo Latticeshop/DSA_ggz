@@ -225,13 +225,9 @@ function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
             end
         })
     end
-    if g_PlayerSide[playerIndex] == 1 then
-        buttons[3] = CreateChronosphereButton(playerIndex)
-    elseif g_PlayerSide[playerIndex] == 3 then
-        buttons[3] = CreateJapanShieldButton(playerIndex)
-    elseif g_PlayerSide[playerIndex] == 4 then
-        buttons[3] = CreateCelestialMoraleButton(playerIndex)
-    end
+    -- 第三个阵营技能按钮不再强制自身阵营：按已拥有的技能决定（见
+    -- CenterTopBtnFunc_CreateFactionSkillButton）。开局未解锁时留空，解锁后出现。
+    buttons[3] = CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
     buttons[4] = CreateButton({
         PlayerName = playerName,
         PlayerIndex = playerIndex,
@@ -309,17 +305,38 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
     ButtonManager:SetButton(buttons[2])
 end
 
+-- 兼容化的第三个阵营技能按钮：不再强制使用玩家自身阵营技能。
+-- 玩家可能拥有多个技能判定（盟军超武 / 帝国生产协议 / 神洲超武），选择规则：
+--   技能组为空（未解锁任何阵营技能）→ 不创建按钮，玩家继续使用已拥有的技能；
+--   只解锁一个阵营技能 → 直接使用该已拥有的技能；
+--   解锁多个阵营技能 → 以自身阵营为主。
+function CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
+    local playerSide = g_PlayerSide[playerIndex]
+    local hasAllied = g_AlliedSuperWeaponBuilt[playerIndex] == 1
+    local hasJapan = g_ProductionBonus_JapanGet[playerIndex] == 1
+    local hasCelestial = g_CelestialSuperWeapon_Get[playerIndex] == 1
+    -- 拥有多个技能时以自身阵营为主
+    if playerSide == 1 and hasAllied then
+        return CreateChronosphereButton(playerIndex)
+    elseif playerSide == 3 and hasJapan then
+        return CreateJapanShieldButton(playerIndex)
+    elseif playerSide == 4 and hasCelestial then
+        return CreateCelestialMoraleButton(playerIndex)
+    end
+    -- 自身阵营技能未解锁时，先使用其它已拥有的技能
+    if hasAllied then
+        return CreateChronosphereButton(playerIndex)
+    elseif hasJapan then
+        return CreateJapanShieldButton(playerIndex)
+    elseif hasCelestial then
+        return CreateCelestialMoraleButton(playerIndex)
+    end
+    return nil
+end
+
 function CenterTopBtnFunc_UpdatePlayer3rdButton(playerIndex)
     local playerName = "Player_" .. playerIndex
-    local button = nil
-    local playerSide = g_PlayerSide[playerIndex]
-    if playerSide == 1 and g_AlliedSuperWeaponBuilt[playerIndex] == 1 then
-        button = CreateChronosphereButton(playerIndex)
-    elseif playerSide == 3 and g_ProductionBonus_JapanGet[playerIndex] == 1 then
-        button = CreateJapanShieldButton(playerIndex)
-    elseif playerSide == 4 and g_CelestialSuperWeapon_Get[playerIndex] == 1 then
-        button = CreateCelestialMoraleButton(playerIndex)
-    end
+    local button = CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
     if button then
         button.Description = button.UnlockedDescription
         button.IsLocked = false

@@ -73,9 +73,21 @@ function PureDrawOnAnyRegisteredUnitBorn(createdObjId, createdObjInstanceId, own
     if PureDrawIsKnownPlayerUnit(createdObjId) then
         return
     end
+    local isScriptCreated = g_PureDrawScriptCreatedUnitIds[createdObjId]
+    local hasProducer = ObjectGetProducerObject(createdObjId) ~= nil
+    -- 原版箱子结果若是工程师，不直接登记为已知单位：交给统一观察器匹配箱子，
+    -- 强制走自定义抽卡（工程师不允许成为抽卡结果）。自造/赠送工程师仍直接登记。
+    if g_PureDrawNativeEngineerHashes[createdObjInstanceId]
+        and not isScriptCreated and not hasProducer then
+        if not g_PureDrawPendingNativeResultIds[createdObjId] then
+            g_PureDrawPendingNativeResultIds[createdObjId] = true
+            SchedulerModule.delay_call(PureDrawObserveUnknownPlayerUnit, 1,
+                { createdObjId, createdObjInstanceId, ownerPlayerName, 45 })
+        end
+        return
+    end
     if g_PureDrawAlwaysKnownUnitHashes[createdObjInstanceId]
-        or g_PureDrawScriptCreatedUnitIds[createdObjId]
-        or ObjectGetProducerObject(createdObjId) ~= nil then
+        or isScriptCreated or hasProducer then
         PureDrawRegisterKnownPlayerUnit(createdObjId, createdObjInstanceId)
         return
     end
@@ -294,6 +306,11 @@ function PureDrawDeleteNativeResultNear(x, y, z, playerName, batchInstanceId, ba
         for i = 1, getn(g_SeaCrateUnits), 1 do
             tinsert(nativeTypes, g_SeaCrateUnits[i])
         end
+        -- 原版箱子也可能开出工程师；工程师不能作为抽卡结果，进入整批删除过滤器，
+        -- 确保拦截自定义抽卡时开出的工程师也会被清理。
+        for i = 1, getn(g_PlayerEngineerTypes), 1 do
+            tinsert(nativeTypes, g_PlayerEngineerTypes[i])
+        end
         -- 原生箱子也会开出常规生产池单位（例如游骑兵）；这些类型必须一起
         -- 进入整批删除过滤器，否则混合结果中只会删掉特殊箱子单位。
         for tier = 1, 4, 1 do
@@ -412,11 +429,14 @@ function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, 
         return
     end
     if ObjectGetProducerObject(createdObjId) ~= nil
-        or g_PureDrawAlwaysKnownUnitHashes[instanceId]
-        or g_PureDrawScriptCreatedUnitIds[createdObjId] then
+        or g_PureDrawScriptCreatedUnitIds[createdObjId]
+        or (g_PureDrawAlwaysKnownUnitHashes[instanceId]
+            and not g_PureDrawNativeEngineerHashes[instanceId]) then
         PureDrawRegisterKnownPlayerUnit(createdObjId, instanceId)
         return
     end
+    -- 工程师不能作为抽卡结果：无论箱子是否掷出自定义抽卡，一律强制自定义。
+    local forceCustomDraw = g_PureDrawNativeEngineerHashes[instanceId] == true
     local x, y, z = ObjectGetPosition(createdObjId)
     local activeBatchId, activeBatchDistance = PureDrawFindActiveNativeBatch(x, y, z,
         playerName, instanceId)
@@ -426,7 +446,7 @@ function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, 
     if activeBatchId ~= nil and (consumedCrateId == nil
         or activeBatchDistance <= consumedCrateDistance) then
         local activeState = g_PureDrawTrackedCrates[activeBatchId]
-        if activeState.UseCustomDraw then
+        if activeState.UseCustomDraw or forceCustomDraw then
             g_PureDrawPendingNativeResultIds[createdObjId] = nil
             PureDrawRemoveKnownPlayerUnit(createdObjId)
             ExecuteAction("NAMED_DELETE", createdUnit)
@@ -443,7 +463,7 @@ function PureDrawObserveUnknownPlayerUnit(createdObjId, instanceId, playerName, 
         state.BatchInstanceId = instanceId
         state.BatchUnitIndex = g_UnitNameToUnitIndex[instanceId]
         state.BatchUntilFrame = GetFrame() + 18
-        if state.UseCustomDraw then
+        if state.UseCustomDraw or forceCustomDraw then
             SchedulerModule.delay_call(PureDrawInterceptNativeResult, 2,
                 { createdObjId, playerName, state.X, state.Y, state.Z,
                     consumedCrateId, instanceId, state.BatchUnitIndex, 8 })
