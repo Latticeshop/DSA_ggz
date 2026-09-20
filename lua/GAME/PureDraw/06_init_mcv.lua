@@ -60,6 +60,11 @@ SchedulerModule.delay_call(function()
             g_DrawMode = 1
             g_LuckyCrateMode = 1
         end
+        -- 入局前勾选“开启随机箱子”时，海克斯默认同步为本场三个；
+        -- 未检测到随机箱子时则保留初始化的“不启用”。
+        if not g_HextechCountManuallySet then
+            g_HextechCount = 3
+        end
     end
 end, 1, {})
 SchedulerModule.delay_call(function()

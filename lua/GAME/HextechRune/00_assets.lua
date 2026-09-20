@@ -192,3 +192,38 @@ g_HextechFramePrismaticId = exPackedTextureImageCreate({
     -- 旋转角度
     Rotated = 0
 })
+
+
+-- 自定义图片嵌入：海克斯面板关闭按钮（hextechRemoveButton.png，76x46 保持比例）
+local HextechRemoveButton = {
+    size = {76, 46},
+    base64 = [[
+UklGRiwDAABXRUJQVlA4WAoAAAAQAAAASwAALQAAQUxQSC4AAAABL0CYbeSPMNDLPasREYF2GG3b
+pqs23lP6/4nBAxH9n4C1gKmgw4jefTMi6CFSVlA4INgCAABQDgCdASpMAC4APjEYiUQiIYiK2hAB
+glAFyL4VJt83bjjS4Ub6JfP/6iXnz/aVPc3/aZxB5Nvnn2Bf1T/0n5jDhG8lKXrGmVC4cotdh8Mx
+h9TO8jarzsybL8Shtj5EqIkoq++RyEar5PgX9SxfhztRs+To6noBpmKTn0AA/virRu/2dP/Nu38x
+Ik6Ksl2ilsP94po38ABbdSEouE3v0dro+ljOcf/nWT9fC9Yl4AHkOf67yrf/4mMdw3r/cLh2X5P/
+xIP/emfBD/Hv9F0PQ3/10QKb0TaIqMl+gg83OIsHuZorSVQ+3bZ4DS/7FTMIE3y8Q+4CQQ41/R1I
+h4bvzoSAPVp5qGPPwM25YNZ43p55uGTSMrBXIJPj833IUi1S30n8nwL6fDR/5hh/4NC+aeMLiHZi
+EZU//b/+d0u8kZKxONucXdcZx0ZAKzmVL9vTUPFsPt/zKbPEevXLtsUbb7xwxsdabsQhnWg56V+R
+z7uaGJAlHKs2+4f/1eFv9+agjq76aj9BdYbhpUgpscbrgnxT/+D9N+1zgOf6LsfssL+ZW6LtEoV9
+U1hRCHOJWz3PPZFy+yAiYpUWVkOIXmXwI/+JPlZ6v1LCzjslpN59PywAuRI3v6wDZVZ8hMcQqSyO
+slzToBfAbLqJHw/km/d9v//Bxr+0T0T8gY+hGyFRL8/tvuv3m9jNnFt4fx+WAX2IgehX91n8f/eR
+KNzxsRmfZxvTrfwbfDdrz0BBV/68u8UpNkE7CgKgxZpowY6ipWw08y07faiYJeYW6qqd8R6bjrOZ
+PWBVNG/4qDSa1s486DmJ9ZLFIAiPCnzoNPKiZshM406fkLbm1v/wdzW45TnPHF/WN5yNxADNM1pR
+TBEy2/kWc9i/GOUZOGjIXpTOgAQXiQEAOACpAGrRNOuXFQsKDyMMBbkbdSYLnTRDmmsPKzhlwsCJ
+jz1M18IUHZ9ce9Pe41UNPabNm6AAAA==
+]]
+}
+local _textureId = exTextureCreateFromBase64(HextechRemoveButton.base64, "DXT5")
+g_HextechRemoveBtnId = exPackedTextureImageCreate({
+    Texture = _textureId,
+    -- 贴图在纹理中的位置
+    CoordsX = 0, CoordsY = 0,
+    -- 贴图的尺寸
+    DimensionsX = HextechRemoveButton.size[1], DimensionsY = HextechRemoveButton.size[2],
+    -- 源纹理的尺寸
+    TextureDimensionsX = HextechRemoveButton.size[1], TextureDimensionsY = HextechRemoveButton.size[2],
+    -- 旋转角度
+    Rotated = 0
+})

@@ -241,6 +241,8 @@ function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
             return true
         end
     })
+    -- 按钮 5：海克斯面板（仅在启用海克斯符文时启用；未启用时禁用显示）
+    buttons[5] = CenterTopBtnFunc_CreateHextechPanelButton(playerIndex)
     buttons[6] = CreateButton({
         PlayerName = playerName,
         PlayerIndex = playerIndex,
@@ -266,6 +268,42 @@ function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
     end
     -- 如果解锁事件早于按钮初始化发生，则在初始按钮创建后按已记录状态重新解锁。
     CenterTopBtnFunc_UpdatePlayer3rdButton(playerIndex)
+end
+
+-- 创建海克斯面板按钮（按钮 5）。仅在启用海克斯符文（g_EnableHextechRune == 1）时启用。
+-- 点击后展开/收起海克斯面板（显示上三/下三玩家拥有的海克斯符文）。
+function CenterTopBtnFunc_CreateHextechPanelButton(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local enabled = 0
+    if g_EnableHextechRune == 1 then
+        enabled = 1
+    end
+    local button = CreateButton({
+        PlayerName = playerName,
+        PlayerIndex = playerIndex,
+        ButtonIndex = 5,
+        IconId = 'Button_SovietChiefScientist',
+        Title = Localization.get("button.hextech_panel.title"),
+        Description = Localization.get("button.hextech_panel.description"),
+        IsEnabled = (enabled == 1),
+        OnClick = function(self)
+            HextechRune:TogglePanel(self.PlayerIndex)
+            return true
+        end
+    })
+    return button
+end
+
+-- 按当前 g_EnableHextechRune 刷新 6 个玩家的海克斯面板按钮（启用/禁用）。
+-- 在地图加载后（g_EnableHextechRune 由开局配置决定）调用，使按钮 5 状态与配置一致。
+function CenterTopBtnFunc_UpdateHextechPanelButton()
+    for i = 1, 6, 1 do
+        local button = CenterTopBtnFunc_CreateHextechPanelButton(i)
+        if button then
+            button:FormatText()
+            ButtonManager:SetButton(button)
+        end
+    end
 end
 
 function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)

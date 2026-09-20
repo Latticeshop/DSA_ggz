@@ -7,7 +7,7 @@ g_EnableShrinkMode = 0;
 g_DisableSeaArmy = 0;
 g_DrawMode = 0; -- 0: disabled, 1: original lucky crate, 2: pure draw
 g_LuckyCrateMode = 0; -- compatibility flag used by the existing lucky-crate implementation
-g_HextechCount = 3; -- 海克斯符文发放次数：0=不启用, 1/2/3=本场发放次数（默认 3）
+g_HextechCount = 0; -- 海克斯符文发放次数：默认随入局前“开启随机箱子”配置选择 0 或 3
 g_HextechCountManuallySet = false; -- 房主是否已手动设置过海克斯次数（开启随机箱子时默认"三个"）
 g_EnableHextechRune = 0; -- 海克斯符文系统是否启用（g_HextechCount > 0 时置 1）
 
@@ -595,13 +595,21 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             if g_DrawMode == 1 or g_DrawMode == 2 then
                 g_LuckyCrateMode = 1
             end
-            -- 开启随机箱子时，海克斯默认选中"三个"（若尚未手动设置过）
-            if g_LuckyCrateMode == 1 and not g_HextechCountManuallySet then
-                g_HextechCount = 3
+            -- 未手动设置海克斯时，始终跟随随机箱子：关闭=不启用，开启=三个。
+            if not g_HextechCountManuallySet then
+                if g_LuckyCrateMode == 1 then
+                    g_HextechCount = 3
+                else
+                    g_HextechCount = 0
+                end
             end
             g_EnableHextechRune = 0
             if g_HextechCount ~= nil and g_HextechCount > 0 then
                 g_EnableHextechRune = 1
+            end
+            -- 海克斯配置确定后刷新按钮 5（海克斯面板）的启用状态
+            if CenterTopBtnFunc_UpdateHextechPanelButton ~= nil then
+                CenterTopBtnFunc_UpdateHextechPanelButton()
             end
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
@@ -750,6 +758,9 @@ function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
                 if not g_HextechCountManuallySet then
                     g_HextechCount = 3
                 end
+            elseif not g_HextechCountManuallySet then
+                -- 关闭抽卡时，未手动配置的海克斯也恢复为“不启用”。
+                g_HextechCount = 0
             end
             local selectedDrawModeName = Localization.get("draw_mode.disabled")
             if g_DrawMode == 1 then
