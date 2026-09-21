@@ -47,15 +47,15 @@ HextechRune.OptionCardWidth = 200
 HextechRune.OptionCardHeight = 200
 HextechRune.OptionCardSpacing = 30
 HextechRune.OptionIconSize = 52
--- 日冕文字渲染的实际视觉中心略偏左，标题中心单独向右校正。
+-- 日冕文字渲染的实际视觉中心偏差随标题长度变化；默认值再由长度函数细分。
 HextechRune.OptionTitleOffsetX = 14
 -- 日冕自定义文字的 X 是文字左边界而不是文字中心；中英文使用不同宽度权重。
 HextechRune.TextWidthScale = 1.65
 HextechRune.AsciiWidthWeight = 0.55
 HextechRune.PlayerNameEstimatedUnits = 3
 -- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
--- 避开已用 index（1-7、21-25、999、1000）
-HextechRune.CustomBtnIndexBase = 100
+-- 回收单位按钮占用 31~230；事件卡改用 251~268，避免同一次点击误入回收处理器。
+HextechRune.CustomBtnIndexBase = 250
 -- 事件卡片顶部原生图标按钮 index（每玩家 3 个）
 HextechRune.CustomIconBtnIndexBase = 300
 -- 自定义文字 index 基础（每玩家 index 唯一）
@@ -149,10 +149,96 @@ function HextechRune:GetTextMaxVisualUnits(text)
     return maxUnits
 end
 
+-- 取得最宽一行的真实字符数，仅用于标题长度分档。
+-- 不能复用视觉宽度：ASCII 会按 0.55 计宽，导致 MCV 被误判为“其他长度”。
+function HextechRune:GetTextMaxCharacterCount(text)
+    if text == nil then
+        return 0
+    end
+    local maxCount = 0
+    local lineCount = 0
+    local i = 1
+    local length = strlen(text)
+    while i <= length do
+        local b = strbyte(text, i)
+        if b == 10 then
+            if lineCount > maxCount then
+                maxCount = lineCount
+            end
+            lineCount = 0
+            i = i + 1
+        elseif b < 128 then
+            lineCount = lineCount + 1
+            i = i + 1
+        elseif b < 224 then
+            lineCount = lineCount + 1
+            i = i + 2
+        elseif b < 240 then
+            lineCount = lineCount + 1
+            i = i + 3
+        else
+            lineCount = lineCount + 1
+            i = i + 4
+        end
+    end
+    if lineCount > maxCount then
+        maxCount = lineCount
+    end
+    return maxCount
+end
+
+function HextechRune:IsAsciiText(text)
+    if text == nil then
+        return false
+    end
+    for i = 1, strlen(text), 1 do
+        if strbyte(text, i) >= 128 then
+            return false
+        end
+    end
+    return true
+end
+
 -- 自定义文字使用与卡框一致的 left 屏幕锚点，并把估算宽度的一半放到中心点左侧。
 function HextechRune:GetCenteredTextLeftX(centerX, text, fontSize)
     local width = self:GetTextMaxVisualUnits(text) * fontSize * self.TextWidthScale
     return centerX - width / 2
+end
+
+-- 实机字体并非严格等宽，中文与纯 ASCII 的字面留白也不同。
+-- 四字标题保持已确认的参数；三字中文和纯 ASCII 分开校正。
+function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
+    local name = Localization.get(rune.NameKey)
+    local characterCount = self:GetTextMaxCharacterCount(name)
+    -- 全频段阻塞干扰在卡面显示为“全频段阻塞 / 干扰”，以最宽的
+    -- 五字行实测校正；不用未换行的七字本地化名称分档。
+    if rune.Effect == "broadband_jamming" then
+        if isPanel then
+            return 9
+        end
+        return 22
+    end
+    if characterCount == 4 then
+        if isPanel then
+            return 9
+        end
+        return 22
+    elseif characterCount == 3 then
+        if self:IsAsciiText(name) then
+            if isPanel then
+                return 2
+            end
+            return 8
+        end
+        if isPanel then
+            return 5
+        end
+        return 14
+    end
+    if isPanel then
+        return self.PanelRuneTitleOffsetX
+    end
+    return self.OptionTitleOffsetX
 end
 
 -- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
@@ -241,7 +327,8 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     exCreateCustomTextForPlayer(playerName, {
         Index = textIndex,
         Content = optionText,
-        X = self:GetCenteredTextLeftX(x + self.OptionCardWidth / 2 + self.OptionTitleOffsetX,
+        X = self:GetCenteredTextLeftX(x + self.OptionCardWidth / 2
+            + self:GetRuneTitleVisualOffsetX(rune, false),
             optionText, optionTitleSize),
         Y = y + 108,
         Color = 16777215,
@@ -280,9 +367,9 @@ end
 function HextechRune:ShowOpeningTestEvent()
     -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "gold_starting_funds",
-        "prismatic_divine_intervention",
-        "gold_buy_two_get_one",
+        "prismatic_broadband_jamming",
+        "gold_cash_reward",
+        "prismatic_five_thunder",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -520,7 +607,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
             Index = runeTextIndex,
             Content = runeTitle,
             X = self:GetCenteredTextLeftX(x + self.PanelRuneWidth / 2
-                + self.PanelRuneTitleOffsetX,
+                + self:GetRuneTitleVisualOffsetX(rune, true),
                 runeTitle, runeTitleSize),
             Y = topY + 30,
             Color = 16777215,
@@ -600,7 +687,8 @@ function HextechRune:RegisterCustomBtnHandler()
             end
         end
         -- 解析 index 属于哪位玩家的哪个方框
-        if index >= HextechRune.CustomBtnIndexBase then
+        if index > HextechRune.CustomBtnIndexBase
+            and index <= HextechRune.CustomBtnIndexBase + 18 then
             local offset = index - HextechRune.CustomBtnIndexBase - 1
             local playerIndex = floor(offset / 3) + 1
             local optionIndex = mod(offset, 3) + 1
@@ -618,6 +706,7 @@ end
 
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
+    self:OnFiveThunderRoundBegin(round)
     -- 开局真实测试事件：只在启用海克斯时触发，不计入配置次数。
     if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
         and not self.OpeningTestTriggered and round == 1 then

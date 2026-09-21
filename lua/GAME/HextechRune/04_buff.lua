@@ -45,6 +45,12 @@ end
 if not g_HextechRangeX135Modifier then
     g_HextechRangeX135Modifier = exAttributeModifierCreate({ RANGE = 1.35 }, 1)
 end
+if not g_HextechAstralBodyModifier then
+    g_HextechAstralBodyModifier = exAttributeModifierCreate({
+        HEALTH_MULT = 1.5,
+        DAMAGE_MULT = 0.9,
+    }, 1)
+end
 if not g_HextechEnemyRangeX075Modifier then
     g_HextechEnemyRangeX075Modifier = exAttributeModifierCreate({ RANGE = 0.75 }, 1)
 end
@@ -67,6 +73,16 @@ HextechRune.DivineInterventionInterval = 450
 HextechRune.DivineInterventionBaseDuration = 75
 HextechRune.DivineInterventionExtraDurationPerCopy = 38
 HextechRune.DivineInterventionSchedulerId = HextechRune.DivineInterventionSchedulerId or nil
+HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
+HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
+HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
+HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
+HextechRune.FiveThunderCooldownRounds = 5
+-- 现金奖励同时受玩家科技锁和 SpecialPower 可用性两层控制。
+-- 使用日冕协议枚举中的规范 ID，避免只生成按钮但仍因科技锁置灰。
+HextechRune.CashRewardSpecialPower = "SpecialPower_ProductionKickbacks"
+HextechRune.CashRewardPlayerTech = "PlayerTech_Soviet_ProductionKickbacks"
+HextechRune.FortifiedTowerState = HextechRune.FortifiedTowerState or {}
 
 g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
 g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
@@ -98,12 +114,16 @@ function HextechRune:GetRuneTestValue(rune)
         return "射程×1.25"
     elseif rune.Effect == "range_prismatic" then
         return "射程×1.35"
+    elseif rune.Effect == "astral_body" then
+        return "生命×1.5，伤害×0.9"
     elseif rune.Effect == "infinite_ammo" then
         return "武器槽1~5弹药=100000"
     elseif rune.Effect == "broadband_jamming" then
         return "敌方全体单位射程×0.75"
     elseif rune.Effect == "divine_intervention" then
         return "每30秒铁幕5秒，同阵营额外每份+2.5秒"
+    elseif rune.Effect == "five_thunder" then
+        return "立即获得1次，释放后每5回合恢复"
     end
     return rune.Effect or "未知效果"
 end
@@ -216,6 +236,158 @@ function HextechRune:EnsureDivineInterventionScheduler()
     end, self.DivineInterventionInterval, nil, {})
 end
 
+function HextechRune:SetFiveThunderAvailability(playerIndex, availability)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    -- 首发与 0cd 属于同一套原生技能流程，开放和冷却必须同步控制。
+    -- 触发检测会检查两段，但命中后也同步禁用两段，避免 0cd 持续运行。
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderFirstPower, availability)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderRepeatPower, availability)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:SetFiveThunderFirstAvailability(playerIndex, availability)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderFirstPower, availability)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:GrantFiveThunderPowers(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.FiveThunderFirstPower, playerName)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.FiveThunderRepeatPower, playerName)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:SetFiveThunderCountdown(playerIndex, seconds)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.FiveThunderFirstPower, seconds)
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.FiveThunderRepeatPower, seconds)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+
+function HextechRune:GrantFiveThunder(playerIndex)
+    if self.FiveThunderState[playerIndex] == nil then
+        self.FiveThunderState[playerIndex] = {}
+    end
+    local state = self.FiveThunderState[playerIndex]
+    state.Owned = true
+    state.Ready = true
+    state.ReadyRound = nil
+    state.WaitingForTriggerClear = false
+
+    -- 两段都显式授予并同步开放：首发负责玩家选点，0cd 完成原生连发。
+    self:GrantFiveThunderPowers(playerIndex)
+    self:SetFiveThunderCountdown(playerIndex, 0)
+    self:SetFiveThunderAvailability(playerIndex, "Available")
+    self:EnsureFiveThunderMonitor()
+    self:TestAlert(format("P%d 五雷天罚：已授予首发和0cd连发技能，等待玩家释放", playerIndex))
+end
+
+function HextechRune:CheckFiveThunderTriggered()
+    for playerIndex = 1, 6, 1 do
+        local state = self.FiveThunderState[playerIndex]
+        if state ~= nil and state.Owned then
+            local playerName = "Player_" .. playerIndex
+            local firstTriggered = EvaluateCondition("PLAYER_TRIGGERED_SPECIAL_POWER",
+                playerName, self.FiveThunderFirstPower)
+            local repeatTriggered = EvaluateCondition("PLAYER_TRIGGERED_SPECIAL_POWER",
+                playerName, self.FiveThunderRepeatPower)
+            if state.WaitingForTriggerClear then
+                -- 只有旧的五雷连发触发态真正结束后才解锁。恢复时不再
+                -- Grant，避免重新授予 0cd 又制造一次瞬时触发；同时把两段
+                -- 的引擎内部倒计时清零，解决图标亮起但仍无法释放。
+                if not firstTriggered and not repeatTriggered then
+                    self:SetFiveThunderCountdown(playerIndex, 0)
+                    self:SetFiveThunderAvailability(playerIndex, "Available")
+                    state.WaitingForTriggerClear = false
+                    state.Ready = true
+                    state.ReadyRound = nil
+                    self:TestAlert(format("P%d 五雷天罚：旧连发触发状态已清除，两段内部CD已清零并恢复",
+                        playerIndex))
+                end
+            elseif state.Ready and (firstTriggered or repeatTriggered) then
+                state.Ready = false
+                state.ReadyRound = exCounterGetByName("lvc")
+                    + self.FiveThunderCooldownRounds
+                -- 首发只负责开启本次原生五连发；检测到输出段后只关闭
+                -- 首发入口，保留 0cd 连发段，让引擎完整走完后续四次落雷。
+                self:SetFiveThunderFirstAvailability(playerIndex, "Disabled")
+                local triggerStage = "首发"
+                if repeatTriggered and not firstTriggered then
+                    triggerStage = "0cd连发"
+                end
+                self:TestAlert(format("P%d 五雷天罚：检测到%s释放，已关闭首发入口并保留0cd五连发；第%d回合恢复",
+                    playerIndex, triggerStage, state.ReadyRound))
+            end
+        end
+    end
+end
+
+
+function HextechRune:EnsureFiveThunderMonitor()
+    if self.FiveThunderMonitorSchedulerId ~= nil then
+        return
+    end
+    self.FiveThunderMonitorSchedulerId = SchedulerModule.call_every_x_frame(function()
+        HextechRune:CheckFiveThunderTriggered()
+    end, 1, nil, {})
+end
+
+function HextechRune:OnFiveThunderRoundBegin(round)
+    for playerIndex = 1, 6, 1 do
+        local state = self.FiveThunderState[playerIndex]
+        if state ~= nil and state.Owned and not state.Ready
+            and not state.WaitingForTriggerClear and state.ReadyRound ~= nil
+            and round >= state.ReadyRound then
+            state.WaitingForTriggerClear = true
+            self:TestAlert(format("P%d 五雷天罚：5回合冷却完成，等待旧连发触发状态清除",
+                playerIndex))
+        end
+    end
+end
+
+function HextechRune:GrantCashRewardProtocol(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    -- PLAYER_GRANT_SPECIAL_POWER 会授予能力及所需科技等级，但不会
+    -- 覆盖 PLAYER_LOCK_PLAYER_TECH 的显式锁。先解锁现金协议科技，
+    -- 再授予并开放 SpecialPower，避免图标已出现但仍置灰。
+    ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
+        self.CashRewardPlayerTech, 0)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.CashRewardSpecialPower, playerName)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.CashRewardSpecialPower, "Available")
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.CashRewardSpecialPower, 0)
+    SetWorldBuilderThisPlayer(previous)
+    -- 技能实例由 PLAYER_GRANT_SPECIAL_POWER 延迟创建；同帧的 Available 可能只
+    -- 改到全局禁用记录而没有改到新按钮，因此下一帧再对持有者单独解禁一次。
+    SchedulerModule.delay_call(function(index)
+        local delayedPlayerName = "Player_" .. index
+        local delayedPrevious = SetWorldBuilderThisPlayer(1)
+        ExecuteAction("PLAYER_LOCK_PLAYER_TECH", delayedPlayerName,
+            HextechRune.CashRewardPlayerTech, 0)
+        ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", delayedPlayerName,
+            HextechRune.CashRewardSpecialPower, "Available")
+        ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", delayedPlayerName,
+            HextechRune.CashRewardSpecialPower, 0)
+        SetWorldBuilderThisPlayer(delayedPrevious)
+        HextechRune:TestAlert(format("P%d 现金奖励：延迟科技解锁、能力解禁及冷却清零已执行", index))
+    end, 1, {playerIndex})
+    self:TestAlert(format("P%d 现金奖励：已解锁科技 %s 并赋予能力 %s",
+        playerIndex, self.CashRewardPlayerTech, self.CashRewardSpecialPower))
+end
+
 function HextechRune:GetPlayerHomeSpawnPosition(playerIndex, forwardOffset, sideOffset)
     local p = exWaypointGetPos(format("Player_%d_Start", playerIndex))
     local direction = 1
@@ -244,6 +416,16 @@ function HextechRune:GrantYaoguang(playerIndex)
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
     self:TestAlert(format("P%d 穿云定海：已在基地生成摇光，objectId=%s，等待系统回收进单位池",
+        playerIndex, tostring(nextObjectId)))
+end
+
+function HextechRune:GrantOlympusCarrier(playerIndex)
+    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "AlliedGaintAirCraftCarrier_B",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, -80), 0)
+    self:TestAlert(format("P%d 海上霸主：已在基地生成奥林匹斯级航空母舰，objectId=%s，等待系统回收进单位池",
         playerIndex, tostring(nextObjectId)))
 end
 
@@ -403,6 +585,9 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
         ObjectLoadAttributeModifier(unit, g_HextechRangeX125Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "range_prismatic" then
         ObjectLoadAttributeModifier(unit, g_HextechRangeX135Modifier, self.PersistentBuffDuration)
+    elseif rune.Effect == "astral_body" then
+        ObjectLoadAttributeModifier(unit, g_HextechAstralBodyModifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "infinite_ammo" then
         self:ApplyInfiniteAmmoToUnit(unit)
     else
@@ -541,7 +726,9 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "recycler" and rune.Effect ~= "broadband_jamming"
                 and rune.Effect ~= "divine_intervention" and rune.Effect ~= "grant_foreign_mcv"
                 and rune.Effect ~= "grant_yaoguang" and rune.Effect ~= "oil_king"
-                and rune.Effect ~= "buy_two_get_one" then
+                and rune.Effect ~= "buy_two_get_one" and rune.Effect ~= "five_thunder"
+                and rune.Effect ~= "grant_olympus_carrier"
+                and rune.Effect ~= "cash_reward" then
                 local assignedCount = 0
                 local appliedCount = 0
                 for i = 1, getn(assignments), 1 do
@@ -578,22 +765,47 @@ function HextechRune:ApplyRuneToAssignedBattleUnits(playerIndex, rune, sourceNam
     self:AlertPersistentResult(sourceName, playerIndex, rune, assignedCount, appliedCount)
 end
 
-function HextechRune:ApplyFortified(playerIndex)
-    local towerNames = { "T71", "T72", "T73", "T74" }
-    if playerIndex >= 4 then
-        towerNames = { "T81", "T82", "T83", "T84" }
-    end
+function HextechRune:ApplyFortifiedToTowerLine(playerIndex, towerNames, lineName)
     for i = 1, getn(towerNames), 1 do
         local tower = GetObjectByScriptName(towerNames[i])
         if ObjectIsAlive(tower) then
             local maxHealth = exObjectGetMaxHealth(ObjectGetId(tower))
-            ExecuteAction("NAMED_SET_MAX_HEALTH", towerNames[i], maxHealth + 1500, 1)
-            self:TestAlert(format("P%d 固若金汤：%s 最大生命 %.0f→%.0f",
-                playerIndex, towerNames[i], maxHealth, maxHealth + 1500))
-            return
+            local towerState = self.FortifiedTowerState[towerNames[i]]
+            if towerState == nil then
+                towerState = {
+                    BaseMaxHealth = maxHealth,
+                    CopyCount = 0,
+                }
+                self.FortifiedTowerState[towerNames[i]] = towerState
+            end
+            towerState.CopyCount = towerState.CopyCount + 1
+            -- 队友各自持有一份时按基础生命直接相加：1/2/3份 = +25%/+50%/+75%，
+            -- 不以已经强化过的生命继续乘算。
+            local newMaxHealth = towerState.BaseMaxHealth
+                * (1 + 0.25 * towerState.CopyCount)
+            ExecuteAction("NAMED_SET_MAX_HEALTH", towerNames[i], newMaxHealth, 1)
+            self:TestAlert(format("P%d 固若金汤（%s）：%s 基础最大生命%.0f，队伍%d份，当前%.0f→%.0f（+%d%%）",
+                playerIndex, lineName, towerNames[i], towerState.BaseMaxHealth,
+                towerState.CopyCount, maxHealth, newMaxHealth,
+                towerState.CopyCount * 25))
+            return true
         end
     end
-    self:TestAlert(format("P%d 固若金汤：未找到仍存活的前线防御塔", playerIndex))
+    self:TestAlert(format("P%d 固若金汤：未找到仍存活的%s前线防御塔",
+        playerIndex, lineName))
+    return false
+end
+
+function HextechRune:ApplyFortified(playerIndex)
+    local landTowerNames = { "T71", "T72", "T73", "T74" }
+    local seaTowerNames = { "T71F", "T72F", "T73F" }
+    if playerIndex >= 4 then
+        landTowerNames = { "T81", "T82", "T83", "T84" }
+        seaTowerNames = { "T81F", "T82F", "T83F" }
+    end
+    -- 不判断禁海配置：选择符文时，陆地和海上两条防线各强化最前端存活塔。
+    self:ApplyFortifiedToTowerLine(playerIndex, landTowerNames, "陆地")
+    self:ApplyFortifiedToTowerLine(playerIndex, seaTowerNames, "海上")
 end
 
 function HextechRune:ApplyPersistentRune(playerIndex, rune)
@@ -608,6 +820,8 @@ end
 function HextechRune:OnRuneChosen(playerIndex, rune)
     if rune.Effect == "grant_yaoguang" then
         self:GrantYaoguang(playerIndex)
+    elseif rune.Effect == "grant_olympus_carrier" then
+        self:GrantOlympusCarrier(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then
@@ -627,6 +841,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "divine_intervention" then
         self:EnsureDivineInterventionScheduler()
         self:ApplyDivineInterventionToSide(self:GetPlayerSideIndex(playerIndex), "选择符文")
+    elseif rune.Effect == "five_thunder" then
+        self:GrantFiveThunder(playerIndex)
+    elseif rune.Effect == "cash_reward" then
+        self:GrantCashRewardProtocol(playerIndex)
     else
         self:ApplyPersistentRune(playerIndex, rune)
     end

@@ -17,6 +17,10 @@ HextechRune.RunePool = {
     { Id = "silver_scope", Rarity = 3, NameKey = "hextech.rune.scope.silver.name",
         DescKey = "hextech.rune.scope.silver.desc", Effect = "range_silver", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    { Id = "silver_astral_body", Rarity = 3,
+        NameKey = "hextech.rune.astral_body.name",
+        DescKey = "hextech.rune.astral_body.desc", Effect = "astral_body",
+        NeedsUnitType = true, Icon = "SovietCompositeArmorUpgrade" },
     { Id = "silver_mcv", Rarity = 3, NameKey = "hextech.rune.mcv.name",
         DescKey = "hextech.rune.mcv.desc", Effect = "grant_foreign_mcv",
         Icon = "Button_JapanMCV" },
@@ -34,6 +38,10 @@ HextechRune.RunePool = {
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
+    { Id = "gold_cash_reward", Rarity = 2,
+        NameKey = "hextech.rune.cash_reward.name",
+        DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
+        Icon = "Button_PlayerPower_ProductionKickback" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_JapanPointShieldControlTower" },
@@ -43,6 +51,9 @@ HextechRune.RunePool = {
     { Id = "gold_scope", Rarity = 2, NameKey = "hextech.rune.scope.gold.name",
         DescKey = "hextech.rune.scope.gold.desc", Effect = "range_gold", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    { Id = "gold_sea_overlord", Rarity = 2, NameKey = "hextech.rune.sea_overlord.name",
+        DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
+        RequiresSea = true, Icon = "Button_AlliedGaintAircraftCarrier" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -55,11 +66,15 @@ HextechRune.RunePool = {
     { Id = "prismatic_broadband_jamming", Rarity = 1,
         NameKey = "hextech.rune.broadband_jamming.name",
         DescKey = "hextech.rune.broadband_jamming.desc", Effect = "broadband_jamming",
-        Icon = "Button_SovietPineElectronicRadarTruck" },
+        Icon = "Button_JapanPointShieldControlTower" },
     { Id = "prismatic_divine_intervention", Rarity = 1,
         NameKey = "hextech.rune.divine_intervention.name",
         DescKey = "hextech.rune.divine_intervention.desc", Effect = "divine_intervention",
         Icon = "Button_PlayerPower_IronCurtain" },
+    { Id = "prismatic_five_thunder", Rarity = 1,
+        NameKey = "hextech.rune.five_thunder.name",
+        DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
+        Icon = "Button_CelestialPantaOrbitalStrike" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -99,6 +114,7 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         TargetUnitType = rune.TargetUnitType,
         TargetUnitIndex = rune.TargetUnitIndex,
         TargetUnitName = rune.TargetUnitName,
+        RequiresSea = rune.RequiresSea,
     }
 end
 
@@ -219,6 +235,9 @@ function HextechRune:GetRuneCompactTitle(rune)
     if rune.UnitType ~= nil then
         return name .. "\n" .. self:GetRuneUnitTypeLabel(rune)
     end
+    if rune.Effect == "broadband_jamming" then
+        return "全频段阻塞\n干扰"
+    end
     return name
 end
 
@@ -274,7 +293,7 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
     local filtered = {}
     for i = 1, getn(self.RunePool), 1 do
         local rune = self.RunePool[i]
-        if rune.Rarity == rarity then
+        if rune.Rarity == rarity and (not rune.RequiresSea or g_DisableSeaArmy ~= 1) then
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
