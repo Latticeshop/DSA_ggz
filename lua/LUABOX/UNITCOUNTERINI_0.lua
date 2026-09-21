@@ -428,6 +428,20 @@ function unitgetcountanddelet (playindex)
                     ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
                     UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
 
+                    -- 摇光限造 3 个只统计玩家实际生产的单位。
+                    -- 海克斯/箱子赠送没有生产者，不增加此独立计数。
+                    if isProducedUnit
+                        and UNITLIST[actualUnitIndex] == "CelestialAdvanceAircraftTech4"
+                        and RecordPlayerProducedYaoguang ~= nil then
+                        RecordPlayerProducedYaoguang(playindex, 1)
+                    end
+
+                    -- 海克斯“买二送一”：复用狂热武士的回收计数时机。
+                    -- 赠送直接写入单位池，不生成待回收实体，因此不会递归计数。
+                    if HextechRune ~= nil and HextechRune.OnPlayerUnitCollected ~= nil then
+                        HextechRune:OnPlayerUnitCollected(playindex, actualUnitIndex)
+                    end
+
                     -- 每两个 JapanAntiInfantryInfantry 赠送一个 JapanKamikazeInfantry
                     if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry" then
                         local playerGiftState = g_PlayerGiftStates[playindex]
@@ -534,7 +548,7 @@ function bigshiplimit()
     --exMessageAppendToMessageArea("ACT")
     for i = 1 , 6 , 1 do
         bigshiplimitc[i] = UNITCOUNT[i][step35+4] +  UNITCOUNT[i][step35+1] +  UNITCOUNT[i][step35+2] +  UNITCOUNT[i][step35+3]
-        CAIRTECH4limitc[i] = UNITCOUNT[i][step35]
+        CAIRTECH4limitc[i] = GetPlayerYaoguangCount(i)
         --exMessageAppendToMessageArea(" bigshiplimitc[i]".. bigshiplimitc[i])
         exCounterSetByName("bigshiplimit"..i,  bigshiplimitc[i]);
         exCounterSetByName("CAIRTECH4limit"..i,  CAIRTECH4limitc[i]);

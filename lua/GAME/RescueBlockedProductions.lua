@@ -75,7 +75,7 @@ function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
         end
     elseif unitType == 'CelestialAdvanceAircraftTech4'
         or unitType == 'CelestialAdvanceAircraftTech4_Enhanced' then
-        return GetPlayerYaoguangCount(playerIndex) < YAOGUANG_LIMIT
+        return GetPlayerYaoguangRemainingProductionQuota(playerIndex) > 0
     elseif unitType == 'AlliedAntiVehicleVehicleTech1'
         or unitType == 'AlliedAntiVehicleVehicleTech1_Enhanced' then
         return GetPlayerGuardianTankCount(playerIndex) < GUARDIAN_TANK_LIMIT

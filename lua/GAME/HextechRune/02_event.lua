@@ -46,7 +46,9 @@ HextechRune.CenterY = 384
 HextechRune.OptionCardWidth = 200
 HextechRune.OptionCardHeight = 200
 HextechRune.OptionCardSpacing = 30
-HextechRune.OptionIconSize = 66
+HextechRune.OptionIconSize = 52
+-- 日冕文字渲染的实际视觉中心略偏左，标题中心单独向右校正。
+HextechRune.OptionTitleOffsetX = 8
 -- 日冕自定义文字的 X 是文字左边界而不是文字中心；中英文使用不同宽度权重。
 HextechRune.TextWidthScale = 1.65
 HextechRune.AsciiWidthWeight = 0.55
@@ -73,6 +75,8 @@ HextechRune.PanelRowY = { 230, 300, 420, 490 }
 HextechRune.PanelRuneWidth = 50
 HextechRune.PanelRuneHeight = 50
 HextechRune.PanelRuneGap = 10
+HextechRune.PanelRuneIconSize = 14
+HextechRune.PanelRuneTitleOffsetX = 2
 -- 当前测试最多为开局真实测试 1 个 + 正式事件 3 个。
 HextechRune.PanelMaxRuneCount = 4
 -- 面板自定义元素 index 基础（避开已用 index）
@@ -237,7 +241,7 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     exCreateCustomTextForPlayer(playerName, {
         Index = textIndex,
         Content = optionText,
-        X = self:GetCenteredTextLeftX(x + self.OptionCardWidth / 2,
+        X = self:GetCenteredTextLeftX(x + self.OptionCardWidth / 2 + self.OptionTitleOffsetX,
             optionText, optionTitleSize),
         Y = y + 108,
         Color = 16777215,
@@ -274,8 +278,39 @@ function HextechRune:ShowRuneEvent(round)
 end
 
 function HextechRune:ShowOpeningTestEvent()
-    -- 使用第一轮（第 5 回合）概率，但候选、选择和效果全部走正式流程。
-    self:ShowRuneEvent(self.FormalRounds[1])
+    -- 开局实测固定展示三个新黄金符文；正式轮次仍按阶级和个人池随机抽取。
+    local testRuneIds = {
+        "gold_cloudbreaker",
+        "gold_oil_king",
+        "gold_buy_two_get_one",
+    }
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, 3, 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                -- 买二送一也在选项生成时随机目标；候选创建后目标即固定，点击不重抽。
+                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, nil)
+                if candidate ~= nil then
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) == 3 then
+                self.PlayerOptions[playerIndex] = options
+                for i = 1, 3, 1 do
+                    self:CreateOptionBox(playerIndex, i, 2,
+                        self.RarityFrameImageIds[2], options[i])
+                end
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
 end
 
 function HextechRune:ShowFormalEvent(round)
@@ -466,7 +501,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
             AlignY = "top",
         })
         -- 总览面板沿用相同比例布局，但卡框和图标都更小。
-        local iconSize = floor(self.PanelRuneWidth / 3)
+        local iconSize = self.PanelRuneIconSize
         exCreateCustomButtonForPlayer(viewerName, {
             Index = iconBtnIndex,
             TextureName = rune.Icon,
@@ -484,7 +519,8 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
         exCreateCustomTextForPlayer(viewerName, {
             Index = runeTextIndex,
             Content = runeTitle,
-            X = self:GetCenteredTextLeftX(x + self.PanelRuneWidth / 2,
+            X = self:GetCenteredTextLeftX(x + self.PanelRuneWidth / 2
+                + self.PanelRuneTitleOffsetX,
                 runeTitle, runeTitleSize),
             Y = topY + 30,
             Color = 16777215,

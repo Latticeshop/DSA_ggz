@@ -47,6 +47,8 @@ if not g_HextechRangeX135Modifier then
 end
 
 g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
+g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
+g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
 
 -- 在现有经济倍率/苏联大生产修正之后叠加玩家自己的破烂王倍率。
 if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
@@ -78,6 +80,94 @@ function HextechRune:GetRuneTestValue(rune)
         return "武器槽1~5弹药=100000"
     end
     return rune.Effect or "未知效果"
+end
+
+function HextechRune:GetPlayerHomeSpawnPosition(playerIndex, forwardOffset, sideOffset)
+    local p = exWaypointGetPos(format("Player_%d_Start", playerIndex))
+    local direction = 1
+    if PureDrawGetQuotaDisplayDirection ~= nil then
+        direction = PureDrawGetQuotaDisplayDirection(playerIndex)
+    end
+    return {
+        X = p[1] + direction * forwardOffset,
+        Y = p[2] + sideOffset,
+        Z = p[3],
+    }
+end
+
+function HextechRune:MarkNextSpawnAsKnownPureDrawUnit()
+    local nextObjectId = GetNextObjectId()
+    if g_PureDrawScriptCreatedUnitIds ~= nil then
+        g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
+    end
+    return nextObjectId
+end
+
+function HextechRune:GrantYaoguang(playerIndex)
+    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "CelestialAdvanceAircraftTech4",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
+    self:TestAlert(format("P%d 穿云定海：已在基地生成摇光，objectId=%s，等待系统回收进单位池",
+        playerIndex, tostring(nextObjectId)))
+end
+
+function HextechRune:GrantOilDerricks(playerIndex)
+    local teamName = format("Player_%d/teamPlayer_%d", playerIndex, playerIndex)
+    g_HextechOilDerrickSerial[playerIndex] = g_HextechOilDerrickSerial[playerIndex] + 1
+    local serial = g_HextechOilDerrickSerial[playerIndex]
+    for i = 1, 2, 1 do
+        local sideOffset = -170
+        if i == 2 then
+            sideOffset = 170
+        end
+        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION",
+            format("HextechOilDerrick_%d_%d_%d", playerIndex, serial, i),
+            "oilderrick", teamName,
+            self:GetPlayerHomeSpawnPosition(playerIndex, 180, sideOffset), 0)
+    end
+    self:TestAlert(format("P%d 石油王：已在基地生成2个油井，地编ID=oilderrick", playerIndex))
+end
+
+function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)
+    if g_HextechBuyTwoGetOne[playerIndex] == nil then
+        g_HextechBuyTwoGetOne[playerIndex] = {}
+    end
+    tinsert(g_HextechBuyTwoGetOne[playerIndex], {
+        UnitIndex = rune.TargetUnitIndex,
+        UnitType = rune.TargetUnitType,
+        UnitName = rune.TargetUnitName,
+        Progress = 0,
+        RuneInstanceId = self:GetRuneEffectInstanceId(rune),
+    })
+    self:TestAlert(format("P%d 买二送一：目标=%s，unitIndex=%s，当前进度=0/2",
+        playerIndex, rune.TargetUnitName or rune.TargetUnitType or "?",
+        tostring(rune.TargetUnitIndex)))
+end
+
+-- 在 unitgetcountanddelet 的真实单位回收计数后调用，参考狂热武士“每二赠一”。
+function HextechRune:OnPlayerUnitCollected(playerIndex, unitIndex)
+    local states = g_HextechBuyTwoGetOne[playerIndex]
+    if states == nil then
+        return
+    end
+    for i = 1, getn(states), 1 do
+        local state = states[i]
+        if state.UnitIndex == unitIndex then
+            state.Progress = state.Progress + 1
+            if state.Progress >= 2 then
+                state.Progress = 0
+                ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] + 1
+                UNITCOUNT[playerIndex][unitIndex] = UNITCOUNT[playerIndex][unitIndex] + 1
+                self:TestAlert(format("P%d 买二送一（%s）：累计2个，已向单位池赠送1个",
+                    playerIndex, state.UnitName or state.UnitType or "?"))
+            else
+                self:TestAlert(format("P%d 买二送一（%s）：当前进度1/2",
+                    playerIndex, state.UnitName or state.UnitType or "?"))
+            end
+        end
+    end
 end
 
 function HextechRune:GetAvailableUnitTypes(playerIndex)
@@ -246,12 +336,12 @@ end
 
 -- AppliedRunes 是“单位 + 独立符文”级标记，阻止幸存单位跨回合重复叠加 Buff。
 function HextechRune:ApplyRuneToAssignment(rune, assignment, typeLookup)
-    local ownershipId = self:GetRuneOwnershipId(rune)
-    if assignment.AppliedRunes[ownershipId] then
+    local effectInstanceId = self:GetRuneEffectInstanceId(rune)
+    if assignment.AppliedRunes[effectInstanceId] then
         return false
     end
     if self:ApplyPersistentRuneToUnit(assignment.PlayerIndex, rune, assignment.Unit, typeLookup) then
-        assignment.AppliedRunes[ownershipId] = true
+        assignment.AppliedRunes[effectInstanceId] = true
         return true
     end
     return false
@@ -273,7 +363,7 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
         for runeIndex = 1, getn(owned), 1 do
             local rune = owned[runeIndex]
             local isExcluded = playerIndex == excludedPlayerIndex
-                and self:GetRuneOwnershipId(rune) == excludedOwnershipId
+                and self:GetRuneEffectInstanceId(rune) == excludedOwnershipId
             if not isExcluded and rune.Effect ~= "starting_funds" and rune.Effect ~= "fortified"
                 and rune.Effect ~= "recycler" then
                 local assignedCount = 0
@@ -336,18 +426,25 @@ function HextechRune:ApplyPersistentRune(playerIndex, rune)
     self:ApplyRuneToAssignedBattleUnits(playerIndex, rune, "选择符文")
     -- 新登记单位还需要补齐所有玩家此前持有的其他持续符文；当前符文刚处理过，跳过其重复日志。
     self:ApplyOwnedRunesToNewAssignments(newAssignments, "选择时补登记",
-        playerIndex, self:GetRuneOwnershipId(rune))
+        playerIndex, self:GetRuneEffectInstanceId(rune))
 end
 
 function HextechRune:OnRuneChosen(playerIndex, rune)
-    if rune.Effect == "starting_funds" then
+    if rune.Effect == "grant_yaoguang" then
+        self:GrantYaoguang(playerIndex)
+    elseif rune.Effect == "oil_king" then
+        self:GrantOilDerricks(playerIndex)
+    elseif rune.Effect == "buy_two_get_one" then
+        self:EnableBuyTwoGetOne(playerIndex, rune)
+    elseif rune.Effect == "starting_funds" then
         ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, 10000)
         self:TestAlert(format("P%d 启动资金：资金 +10000", playerIndex))
     elseif rune.Effect == "fortified" then
         self:ApplyFortified(playerIndex)
     elseif rune.Effect == "recycler" then
-        g_HextechRecycleBonus[playerIndex] = 0.2
-        self:TestAlert(format("P%d 破烂王：回收金额倍率 +20%%", playerIndex))
+        g_HextechRecycleBonus[playerIndex] = (g_HextechRecycleBonus[playerIndex] or 0) + 0.2
+        self:TestAlert(format("P%d 破烂王：本次回收倍率 +20%%，累计 +%.0f%%",
+            playerIndex, g_HextechRecycleBonus[playerIndex] * 100))
     else
         self:ApplyPersistentRune(playerIndex, rune)
     end

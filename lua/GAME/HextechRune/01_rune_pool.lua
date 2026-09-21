@@ -19,6 +19,15 @@ HextechRune.RunePool = {
         Icon = "AUA_Tank_TargetPainter" },
 
     -- 金色
+    { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
+        DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
+        Icon = "Button_CelestialAdvancedAircraftTech4" },
+    { Id = "gold_oil_king", Rarity = 2, NameKey = "hextech.rune.oil_king.name",
+        DescKey = "hextech.rune.oil_king.desc", Effect = "oil_king",
+        Icon = "Button_PlayerPower_FreeTrade" },
+    { Id = "gold_buy_two_get_one", Rarity = 2, NameKey = "hextech.rune.buy_two_get_one.name",
+        DescKey = "hextech.rune.buy_two_get_one.desc", Effect = "buy_two_get_one",
+        Icon = "Button_JapanAntiInfantryInfantry" },
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
@@ -42,8 +51,15 @@ HextechRune.RunePool = {
         Icon = "AUA_Tank_TargetPainter" },
 }
 
+-- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
+-- 同一轮三选一仍由 PickThreeRunes 的无放回抽取保证互不重复。
+HextechRune.NonRepeatableRuneIds = {
+    gold_fortified = true,
+}
+
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
 HextechRune.PlayerOwnedRuneIds = HextechRune.PlayerOwnedRuneIds or {}
+HextechRune.PlayerOwnedRuneCounts = HextechRune.PlayerOwnedRuneCounts or {}
 HextechRune.PlayerOptions = HextechRune.PlayerOptions or {}
 
 function HextechRune:EnsurePlayerRuneState(playerIndex)
@@ -52,6 +68,9 @@ function HextechRune:EnsurePlayerRuneState(playerIndex)
     end
     if self.PlayerOwnedRuneIds[playerIndex] == nil then
         self.PlayerOwnedRuneIds[playerIndex] = {}
+    end
+    if self.PlayerOwnedRuneCounts[playerIndex] == nil then
+        self.PlayerOwnedRuneCounts[playerIndex] = {}
     end
 end
 
@@ -64,7 +83,59 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         Effect = rune.Effect,
         UnitType = unitType,
         Icon = rune.Icon,
+        TargetUnitType = rune.TargetUnitType,
+        TargetUnitIndex = rune.TargetUnitIndex,
+        TargetUnitName = rune.TargetUnitName,
     }
+end
+
+-- 从玩家自身阵营的回收/单位池中选一个可计数单位，供“买二送一”使用。
+function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
+    if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
+        or g_UnitNameToUnitIndex == nil then
+        return nil
+    end
+    local faction = g_PlayerSide[playerIndex]
+    local factionPool = g_RecycleBtnsMapByFaction[faction]
+    if factionPool == nil then
+        return nil
+    end
+    local candidates = {}
+    for category = 1, 4, 1 do
+        if category ~= 4 or g_DisableSeaArmy ~= 1 then
+            local units = factionPool[category]
+            for i = 1, getn(units), 1 do
+                local info = units[i]
+                local countType = info.CountType or info.Type
+                local unitIndex = g_UnitNameToUnitIndex[countType]
+                if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false then
+                    tinsert(candidates, {
+                        Type = countType,
+                        UnitIndex = unitIndex,
+                        Name = info.Name or Localization.ObjectsTranslate(countType),
+                    })
+                end
+            end
+        end
+    end
+    if getn(candidates) == 0 then
+        return nil
+    end
+    return candidates[self:RandomIndex(getn(candidates))]
+end
+
+function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
+    local candidate = self:CopyRuneForCandidate(rune, unitType)
+    if candidate.Effect == "buy_two_get_one" then
+        local target = self:PickBuyTwoGetOneTarget(playerIndex)
+        if target == nil then
+            return nil
+        end
+        candidate.TargetUnitType = target.Type
+        candidate.TargetUnitIndex = target.UnitIndex
+        candidate.TargetUnitName = target.Name
+    end
+    return candidate
 end
 
 -- 带兵种的符文按“基础符文 + 兵种”视为独立符文。
@@ -75,6 +146,25 @@ function HextechRune:GetRuneOwnershipId(rune)
         return rune.Id .. ":" .. rune.UnitType
     end
     return rune.Id
+end
+
+function HextechRune:IsRuneNonRepeatable(rune)
+    return rune ~= nil and self.NonRepeatableRuneIds[rune.Id] == true
+end
+
+function HextechRune:IsRuneCandidateAvailable(playerIndex, rune)
+    if not self:IsRuneNonRepeatable(rune) then
+        return true
+    end
+    return not self.PlayerOwnedRuneIds[playerIndex][self:GetRuneOwnershipId(rune)]
+end
+
+-- 可重复符文每次选择都获得独立实例 ID，用于持续效果的单位级加载标记。
+function HextechRune:GetRuneEffectInstanceId(rune)
+    if rune.OwnedInstanceId ~= nil then
+        return rune.OwnedInstanceId
+    end
+    return self:GetRuneOwnershipId(rune)
 end
 
 function HextechRune:GetRuneUnitTypeLabel(rune)
@@ -101,6 +191,8 @@ function HextechRune:GetRuneDescription(rune)
     end
     if rune.UnitType ~= nil then
         return Localization.get(rune.DescKey, self:GetRuneUnitTypeLabel(rune))
+    elseif rune.Effect == "buy_two_get_one" then
+        return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
     end
     return Localization.get(rune.DescKey)
 end
@@ -171,18 +263,30 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
-                    local candidate = self:CopyRuneForCandidate(rune, availableTypes[typeIndex])
-                    local ownershipId = self:GetRuneOwnershipId(candidate)
-                    if not self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
+                    local candidate = self:CreateRuneCandidateForPlayer(playerIndex, rune,
+                        availableTypes[typeIndex])
+                    if self:IsRuneCandidateAvailable(playerIndex, candidate) then
                         tinsert(filtered, candidate)
                     end
                 end
-            elseif not self.PlayerOwnedRuneIds[playerIndex][rune.Id] then
-                tinsert(filtered, self:CopyRuneForCandidate(rune, nil))
+            else
+                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, rune, nil)
+                if candidate ~= nil and self:IsRuneCandidateAvailable(playerIndex, candidate) then
+                    tinsert(filtered, candidate)
+                end
             end
         end
     end
     return filtered
+end
+
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
 end
 
 function HextechRune:PickThreeRunes(playerIndex, rarity)
@@ -202,10 +306,14 @@ end
 function HextechRune:AddOwnedRune(playerIndex, rune)
     self:EnsurePlayerRuneState(playerIndex)
     local ownershipId = self:GetRuneOwnershipId(rune)
-    if self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
+    if self:IsRuneNonRepeatable(rune)
+        and self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
         return false
     end
+    local ownedCount = (self.PlayerOwnedRuneCounts[playerIndex][ownershipId] or 0) + 1
+    self.PlayerOwnedRuneCounts[playerIndex][ownershipId] = ownedCount
     self.PlayerOwnedRuneIds[playerIndex][ownershipId] = true
+    rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
 end

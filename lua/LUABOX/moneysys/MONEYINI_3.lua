@@ -8,28 +8,54 @@ g_CachedPlayersPowerPlantLimit = {}
 
 YAOGUANG_LIMIT = 3
 FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
+-- 只记录通过玩家生产建筑实际造出、且当前仍保留在单位池中的摇光。
+-- 箱子、海克斯及其他脚本赠送来源仍进入 UNITCOUNT，但不占用限造额度。
+g_PlayerProducedYaoguangCount = g_PlayerProducedYaoguangCount or { 0, 0, 0, 0, 0, 0 }
 
 GUARDIAN_TANK_LIMIT = 3
 FLAGENGUARDIANTANK = { 1, 1, 1, 1, 1, 1 }
 
 function GetPlayerYaoguangCount(playindex)
-    local savedCount = 0
-    if g_UnitNameToUnitIndex ~= nil and UNITCOUNT ~= nil then
-        local unitIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
-        if unitIndex ~= nil and UNITCOUNT[playindex] ~= nil then
-            savedCount = tonumber(UNITCOUNT[playindex][unitIndex]) or 0
-        end
+    return tonumber(g_PlayerProducedYaoguangCount[playindex]) or 0
+end
+
+function RecordPlayerProducedYaoguang(playindex, count)
+    local addCount = tonumber(count) or 0
+    if addCount <= 0 then
+        return
     end
-    -- 只使用已经结算进 UNITCOUNT 的稳定数量。
-    -- 不叠加场上待删除的实体，避免同一个摇光在结算帧被重复计算。
-    return savedCount
+    -- 实际计数不强行截成 3：若引擎同帧完成超额单位，必须保留真实数量，
+    -- 防止只回收一个就错误解锁。对外剩余额度由下方函数严格夹在 0~3。
+    g_PlayerProducedYaoguangCount[playindex] = GetPlayerYaoguangCount(playindex) + addCount
+end
+
+function RemovePlayerProducedYaoguangFromPool(playindex, removedCount)
+    local producedCount = GetPlayerYaoguangCount(playindex)
+    local reduceCount = tonumber(removedCount) or 0
+    if reduceCount < 0 then
+        reduceCount = 0
+    end
+    if reduceCount > producedCount then
+        reduceCount = producedCount
+    end
+    g_PlayerProducedYaoguangCount[playindex] = producedCount - reduceCount
+end
+
+function GetPlayerYaoguangRemainingProductionQuota(playindex)
+    local remaining = YAOGUANG_LIMIT - GetPlayerYaoguangCount(playindex)
+    if remaining < 0 then
+        remaining = 0
+    elseif remaining > YAOGUANG_LIMIT then
+        remaining = YAOGUANG_LIMIT
+    end
+    return remaining
 end
 
 function LIMITYAOGUANG()
     for playindex = 1, 6, 1 do
-        local count = GetPlayerYaoguangCount(playindex)
+        local remainingQuota = GetPlayerYaoguangRemainingProductionQuota(playindex)
         local playerName = "Player_" .. playindex
-        if count >= YAOGUANG_LIMIT and FLAGENYAOGUANG[playindex] == 1 then
+        if remainingQuota <= 0 and FLAGENYAOGUANG[playindex] == 1 then
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4", 0)
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4_Enhanced", 0)
             FLAGENYAOGUANG[playindex] = 0
@@ -39,7 +65,7 @@ function LIMITYAOGUANG()
                 blocked[tostring(FastHash("CelestialAdvanceAircraftTech4_Enhanced"))] = true
                 RescueBlockedProductions_DoRescue(playerName, blocked)
             end
-        elseif count < YAOGUANG_LIMIT and FLAGENYAOGUANG[playindex] == 0 then
+        elseif remainingQuota > 0 and FLAGENYAOGUANG[playindex] == 0 then
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4", 1)
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "CelestialAdvanceAircraftTech4_Enhanced", 1)
             FLAGENYAOGUANG[playindex] = 1

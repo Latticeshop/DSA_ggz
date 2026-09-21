@@ -477,6 +477,12 @@ function RemoveRecycleUnitCount(playerIndex, unitInfo, requestedCount)
     if unitInfo.CountsTowardArmyTotal ~= false then
         ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] - removedCount
     end
+    local recycleCountType = unitInfo.CountType or unitInfo.Type
+    if recycleCountType == "CelestialAdvanceAircraftTech4"
+        and RemovePlayerProducedYaoguangFromPool ~= nil then
+        -- 单位池已合并来源，回收时优先释放实际生产部分的限造额度。
+        RemovePlayerProducedYaoguangFromPool(playerIndex, removedCount)
+    end
     return removedCount, leftCount
 end
 
