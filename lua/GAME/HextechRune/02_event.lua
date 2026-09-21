@@ -1,12 +1,10 @@
--- 海克斯符文系统：回合事件（开局测试事件 + 正式海克斯事件）+ 海克斯面板
+-- 海克斯符文系统：真实候选事件 + 海克斯面板
 --   - 回合监听：RoundLuaManager.CallOnEveryRoundBegin（复用抽卡模式 PureDraw 方案）
---   - 开局测试事件（第 1 回合，测试环境专用，不受配置数量影响）：
---     - 屏幕正中间 3 个方框，展示测试指定的符文和三种稀有度选项
---     - 3 个选项稀有度不同（彩/金/银 各一），按默认概率加权抽取
+--   - 开局真实测试事件（第 1 回合，测试环境专用，不计入配置数量）：
+--     - 先确定统一稀有度，再按每名玩家状态筛池并无放回抽取 3 个真实符文
 --   - 正式海克斯事件（第 5/11/18 回合，按 g_HextechCount 截取）：
 --     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
---     - 再对每个玩家独立刷新 3 个方框（每个玩家选项不同，稀有度相同，内容留空）
---     - 内容（具体符文）在符文池接入后填充
+--     - 再对每个玩家独立筛池并刷新 3 个不同符文
 --   - 海克斯面板（顶部按钮 5 展开）：横六筒造型展示上三/下三玩家的海克斯符文
 --
 -- 注意：本文件遵循本图 Lua 4.0 约束——闭包不访问外层局部变量，
@@ -30,20 +28,11 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
--- 开局测试事件是否已触发（第 1 回合，测试环境专用）
+-- 开局真实测试事件是否启用/已触发（不计入 g_HextechCount）
+HextechRune.EnableOpeningRealTest = true
 HextechRune.OpeningTestTriggered = false
 
--- 记录每个玩家开局测试选择的结果（用于展示）
-HextechRune.PlayerOpeningTestRarity = {}
-
--- 记录每个玩家的 3 个选项稀有度（index 100 起，每玩家 3 个）
-HextechRune.PlayerOptionRarity = {}
-
--- 记录当前显示的选项是否为测试事件（true=开局测试，false=正式事件）
-HextechRune.PlayerOptionIsTest = {}
-
--- 记录每个玩家正式事件的选择（后续 buff 用）
-HextechRune.PlayerChosenRarity = {}
+-- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
 HextechRune.FormalTriggered = {}
@@ -53,12 +42,20 @@ HextechRune.FormalTriggered = {}
 -- 若你的实际画面显示偏右/偏左，请调整 CenterX（减小=左移，增大=右移）。
 HextechRune.CenterX = 583
 HextechRune.CenterY = 384
--- 方框尺寸（卡框素材是方形，越大越醒目）
-HextechRune.FrameSize = 200
-HextechRune.FrameSpacing = 30
+-- 恢复已经实测满意的 200x200 三卡布局；仅把原生图标缩小到卡宽约三分之一。
+HextechRune.OptionCardWidth = 200
+HextechRune.OptionCardHeight = 200
+HextechRune.OptionCardSpacing = 30
+HextechRune.OptionIconSize = 66
+-- 日冕自定义文字的 X 是文字左边界而不是文字中心；中英文使用不同宽度权重。
+HextechRune.TextWidthScale = 1.65
+HextechRune.AsciiWidthWeight = 0.55
+HextechRune.PlayerNameEstimatedUnits = 3
 -- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
 -- 避开已用 index（1-7、21-25、999、1000）
 HextechRune.CustomBtnIndexBase = 100
+-- 事件卡片顶部原生图标按钮 index（每玩家 3 个）
+HextechRune.CustomIconBtnIndexBase = 300
 -- 自定义文字 index 基础（每玩家 index 唯一）
 HextechRune.CustomTextIndexBase = 200
 
@@ -72,27 +69,19 @@ HextechRune.PanelTitleCenterX = 683
 HextechRune.PanelColumnGap = 240
 -- 四行 y 坐标
 HextechRune.PanelRowY = { 230, 300, 420, 490 }
--- 面板符文小卡框尺寸（占位展示）
--- 注：4 个符文总宽 = 4*50 + 3*10 = 230 < 列间距 240，保证相邻玩家的符文不重叠
-HextechRune.PanelRuneSize = 50
+-- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
+HextechRune.PanelRuneWidth = 50
+HextechRune.PanelRuneHeight = 50
 HextechRune.PanelRuneGap = 10
--- 单个玩家最多可拥有的符文数（占位测试 0~4）
+-- 当前测试最多为开局真实测试 1 个 + 正式事件 3 个。
 HextechRune.PanelMaxRuneCount = 4
--- 测试用占位符文数量（每个玩家 0~4 个，用于检测不同数量的布局兼容性；
--- 符文池接入后改为读取玩家真实已拥有符文）
-HextechRune.PanelTestRuneCount = {
-    [1] = 3,  -- 恶魔1号（下行）：3 个
-    [2] = 3,  -- 恶魔2号（下行）：3 个
-    [3] = 3,  -- 恶魔3号（下行）：3 个
-    [4] = 4,  -- 天使1号（上行）：4 个
-    [5] = 4,  -- 天使2号（上行）：4 个
-    [6] = 4,  -- 天使3号（上行）：4 个
-}
 -- 面板自定义元素 index 基础（避开已用 index）
-HextechRune.PanelBtnIndexBase = 400      -- 符文占位按钮：玩家 i 的第 j 个 = 400 + (i-1)*4 + j（每玩家 4 槽，400~423）
+HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*4 + j（401~424）
 HextechRune.PanelCloseBtnBase = 500      -- 关闭按钮：玩家 i = 500 + i
 HextechRune.PanelTextIndexBase = 600     -- 名字文字：玩家 i = 600 + i
 HextechRune.PanelTitleTextBase = 610     -- 标题文字：玩家 i = 610 + i
+HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~724
+HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~824
 
 -- 每玩家面板是否展开
 HextechRune.PanelVisible = {}
@@ -110,39 +99,56 @@ function HextechRune:GetOptionTextIndex(playerIndex, optionIndex)
     return self.CustomTextIndexBase + (playerIndex - 1) * 3 + optionIndex
 end
 
--- 按稀有度概率抽取 3 个不同稀有度选项（去重）。开局测试事件用（默认概率）。
-function HextechRune:PickThreeRarityByProbability()
-    -- 默认概率：彩 10% / 金 40% / 银 50%
-    local weightMap = {
-        [1] = 10,  -- 彩
-        [2] = 40,  -- 金
-        [3] = 50,  -- 银
-    }
-    -- 抽出 3 个不同的稀有度（不放回），保证选项不重复
-    local picked = {}
-    local pickedCount = 0
-    local pool = { 1, 2, 3 }
-    while pickedCount < 3 do
-        local totalWeight = 0
-        for i = 1, getn(pool), 1 do
-            totalWeight = totalWeight + weightMap[pool[i]]
-        end
-        local roll = GetRandomNumber() * totalWeight
-        local acc = 0
-        local chosenIndex = 1
-        for i = 1, getn(pool), 1 do
-            acc = acc + weightMap[pool[i]]
-            if roll < acc then
-                chosenIndex = i
-                break
-            end
-        end
-        local rarity = pool[chosenIndex]
-        tinsert(picked, rarity)
-        tremove(pool, chosenIndex)
-        pickedCount = pickedCount + 1
+function HextechRune:GetOptionIconBtnIndex(playerIndex, optionIndex)
+    return self.CustomIconBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+end
+
+-- 估算自定义文字中最宽一行的视觉宽度单位。
+-- 中文等 UTF-8 字符按 1 个全宽字符计算，ASCII 按较窄字符计算；换行分别计宽。
+-- $pNName 会在引擎内部展开，Lua 无法预先取得最终昵称，按常见 3 个全宽字符估算。
+function HextechRune:GetTextMaxVisualUnits(text)
+    if text == nil then
+        return 0
     end
-    return picked
+    if strsub(text, 1, 2) == "$p" and strsub(text, -4) == "Name" then
+        return self.PlayerNameEstimatedUnits
+    end
+    local maxUnits = 0
+    local lineUnits = 0
+    local i = 1
+    local length = strlen(text)
+    while i <= length do
+        local b = strbyte(text, i)
+        if b == 10 then
+            if lineUnits > maxUnits then
+                maxUnits = lineUnits
+            end
+            lineUnits = 0
+            i = i + 1
+        elseif b < 128 then
+            lineUnits = lineUnits + self.AsciiWidthWeight
+            i = i + 1
+        elseif b < 224 then
+            lineUnits = lineUnits + 1
+            i = i + 2
+        elseif b < 240 then
+            lineUnits = lineUnits + 1
+            i = i + 3
+        else
+            lineUnits = lineUnits + 1
+            i = i + 4
+        end
+    end
+    if lineUnits > maxUnits then
+        maxUnits = lineUnits
+    end
+    return maxUnits
+end
+
+-- 自定义文字使用与卡框一致的 left 屏幕锚点，并把估算宽度的一半放到中心点左侧。
+function HextechRune:GetCenteredTextLeftX(centerX, text, fontSize)
+    local width = self:GetTextMaxVisualUnits(text) * fontSize * self.TextWidthScale
+    return centerX - width / 2
 end
 
 -- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
@@ -183,57 +189,66 @@ function HextechRune:IsFormalRound(round)
 end
 
 -- 创建单个屏幕中央方框（按钮 + 文字）
-function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImageId, optionText)
+function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImageId, rune)
     local playerName = "Player_" .. playerIndex
     local btnIndex = self:GetOptionBtnIndex(playerIndex, optionIndex)
+    local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, optionIndex)
     local textIndex = self:GetOptionTextIndex(playerIndex, optionIndex)
-    -- 3 个方框水平居中排列
-    local totalWidth = self.FrameSize * 3 + self.FrameSpacing * 2
+    local optionText = self:GetRuneCompactTitle(rune)
+    local optionTitleSize = self:GetRuneTitleFontSize(rune, self.OptionCardWidth)
+    local optionDesc = self:GetRuneDescription(rune)
+    local hoverDesc = format("%s\n%s", self:GetRuneDisplayName(rune), optionDesc)
+    -- 3 张竖卡水平紧凑居中排列
+    local totalWidth = self.OptionCardWidth * 3 + self.OptionCardSpacing * 2
     local startX = self.CenterX - totalWidth / 2
-    local x = startX + (optionIndex - 1) * (self.FrameSize + self.FrameSpacing)
-    local y = self.CenterY - self.FrameSize / 2 - 30
+    local x = startX + (optionIndex - 1) * (self.OptionCardWidth + self.OptionCardSpacing)
+    local y = self.CenterY - self.OptionCardHeight / 2 - 30
 
     -- 卡框按钮（TextureName 接受数字图片 ID）
     exCreateCustomButtonForPlayer(playerName, {
         Index = btnIndex,
         TextureName = frameImageId,
-        Desc = optionText,
+        Desc = hoverDesc,
         X = x,
         Y = y,
-        SizeX = self.FrameSize,
-        SizeY = self.FrameSize,
+        SizeX = self.OptionCardWidth,
+        SizeY = self.OptionCardHeight,
         GroupIndex = btnIndex,
         AlignX = "left",
         AlignY = "top",
     })
-    -- 方框上的文字标签（每玩家独立文字）
+    -- 日冕原生图标：卡片顶部居中。图标按钮与卡框拥有相同详情和点击行为。
+    local iconSize = self.OptionIconSize
+    exCreateCustomButtonForPlayer(playerName, {
+        Index = iconBtnIndex,
+        TextureName = rune.Icon,
+        Desc = hoverDesc,
+        X = x + (self.OptionCardWidth - iconSize) / 2,
+        Y = y + 20,
+        SizeX = iconSize,
+        SizeY = iconSize,
+        GroupIndex = iconBtnIndex,
+        AlignX = "left",
+        AlignY = "top",
+    })
+    -- 刷新/重建按钮时引擎默认深度不稳定，固定图标在稀有度卡框上方。
+    exCustomBtnGroupSortDepthAboveAnotherGroup(iconBtnIndex, btnIndex)
+    -- 卡面只保留图标和标题；完整效果放入卡框/图标的原生悬浮详情框。
     exCreateCustomTextForPlayer(playerName, {
         Index = textIndex,
         Content = optionText,
-        X = x + 10,
-        Y = y + self.FrameSize - 28,
+        X = self:GetCenteredTextLeftX(x + self.OptionCardWidth / 2,
+            optionText, optionTitleSize),
+        Y = y + 108,
         Color = 16777215,
-        Size = 16,
+        Size = optionTitleSize,
         AlignX = "left",
         AlignY = "top",
     })
 end
 
--- 弹出开局测试三选一事件（屏幕正中间 3 个方框，测试环境专用）
-function HextechRune:ShowOpeningTestEvent(playerIndex)
-    local pickedRarity = self:PickThreeRarityByProbability()
-    self.PlayerOptionRarity[playerIndex] = pickedRarity
-    self.PlayerOptionIsTest[playerIndex] = true
-    for i = 1, 3, 1 do
-        local rarity = pickedRarity[i]
-        local rarityName = self.RarityNames[rarity]
-        local optionText = Localization.get("hextech.test.option", i, Localization.get("hextech.rarity." .. rarityName))
-        self:CreateOptionBox(playerIndex, i, rarity, self.RarityFrameImageIds[rarity], optionText)
-    end
-end
-
--- 正式海克斯事件：全场统一稀有度 + 每个玩家独立 3 个空选项
-function HextechRune:ShowFormalEvent(round)
+-- 真实符文事件：先确定全场稀有度，再为每名玩家独立筛池并无放回抽 3 个。
+function HextechRune:ShowRuneEvent(round)
     local rarity = self:RollFieldRarity(round)
     for playerIndex = 1, 6, 1 do
         -- 仅对存在的玩家触发（有建筑的玩家）
@@ -242,55 +257,82 @@ function HextechRune:ShowFormalEvent(round)
         local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
-            -- 每个玩家 3 个选项，稀有度相同，内容留空（符文池接入后填充）
-            self.PlayerOptionRarity[playerIndex] = { rarity, rarity, rarity }
-            self.PlayerOptionIsTest[playerIndex] = false
-            for i = 1, 3, 1 do
-                self:CreateOptionBox(playerIndex, i, rarity, self.RarityFrameImageIds[rarity], "")
+            local options = self:PickThreeRunes(playerIndex, rarity)
+            if options ~= nil then
+                self.PlayerOptions[playerIndex] = options
+                for i = 1, 3, 1 do
+                    local rune = options[i]
+                    self:CreateOptionBox(playerIndex, i, rarity,
+                        self.RarityFrameImageIds[rarity], rune)
+                end
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
             end
         end
     end
 end
 
+function HextechRune:ShowOpeningTestEvent()
+    -- 使用第一轮（第 5 回合）概率，但候选、选择和效果全部走正式流程。
+    self:ShowRuneEvent(self.FormalRounds[1])
+end
+
+function HextechRune:ShowFormalEvent(round)
+    self:ShowRuneEvent(round)
+end
+
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
-    if not self.PlayerOptionRarity[playerIndex] then
+    local options = self.PlayerOptions[playerIndex]
+    if options == nil or options[optionIndex] == nil then
         return
     end
-    local rarity = self.PlayerOptionRarity[playerIndex][optionIndex]
-    local rarityName = self.RarityNames[rarity]
-    local rarityLabel = Localization.get("hextech.rarity." .. rarityName)
-    -- 记录选择（测试事件和正式事件都记录到 PlayerChosenRarity）
-    self.PlayerChosenRarity[playerIndex] = rarity
+    local rune = options[optionIndex]
+    if not self:AddOwnedRune(playerIndex, rune) then
+        return
+    end
+    self.PlayerOptions[playerIndex] = nil
+    self:OnRuneChosen(playerIndex, rune)
     -- 移除该玩家的 3 个方框按钮和文字。
     -- 注意：先隐藏按钮（exCustomBtnSetVisibilityForPlayer 0）再移除，
     -- 否则引擎的原生悬浮详情窗（Desc 文本）会在按钮移除后残留。
     for i = 1, 3, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
+        local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
         local textIndex = self:GetOptionTextIndex(playerIndex, i)
         exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, btnIndex, 0)
         exCustomBtnRemoveForPlayer("Player_" .. playerIndex, btnIndex)
+        exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, iconBtnIndex, 0)
+        exCustomBtnRemoveForPlayer("Player_" .. playerIndex, iconBtnIndex)
         exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex, textIndex, 0)
     end
-    -- 广播选择结果（测试事件和正式事件用不同文案）
-    local msg
-    if self.PlayerOptionIsTest[playerIndex] then
-        msg = Localization.get("hextech.test.picked", rarityLabel)
-    else
-        msg = Localization.get("hextech.picked", rarityLabel)
-    end
+    local msg = Localization.get("hextech.picked", self:GetRuneDisplayName(rune))
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, msg, 10)
+    -- 若总览面板正处于展开状态，立即用真实持有数据刷新。
+    if self.PanelVisible[playerIndex] then
+        self:HidePanel(playerIndex)
+        self:ShowPanel(playerIndex)
+    end
 end
 
 -- ===== 海克斯面板（按钮 5 展开）=====
 -- 面板显示上三玩家（天使 4/5/6）与下三玩家（恶魔 1/2/3）的海克斯符文。
--- 测试阶段：每个玩家用 3 个占位符文（彩/金/银卡框各一）占满 3 个位置。
+-- 面板内容直接读取每名玩家真实拥有的符文。
 
 -- 计算某玩家面板符文按钮 index（slot 1..PanelMaxRuneCount）
 -- 注意：每玩家必须预留 PanelMaxRuneCount（4）个 index，否则 4 个符文时
 --       玩家 i 的第 4 个符文会与玩家 i+1 的第 1 个符文共用 index（被覆盖）。
 function HextechRune:GetPanelRuneBtnIndex(playerIndex, slot)
     return self.PanelBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
+end
+
+function HextechRune:GetPanelRuneIconBtnIndex(playerIndex, slot)
+    return self.PanelIconBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
+end
+
+function HextechRune:GetPanelRuneTextIndex(playerIndex, slot)
+    return self.PanelRuneTextIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
 end
 
 -- 计算某玩家面板名字文字 index
@@ -317,19 +359,21 @@ function HextechRune:IsPlayerAlive(playerIndex)
     return structureCount > 0
 end
 
--- 显示面板（对单个玩家）。占位符文：3 个 = 彩/金/银卡框各一。
+-- 显示面板（对单个玩家），内容为六名玩家真实拥有的符文。
 function HextechRune:ShowPanel(playerIndex)
     local playerName = "Player_" .. playerIndex
+    self:EnsurePlayerRuneState(playerIndex)
     -- 标题（固定居中于屏幕中央，不随面板整体左移）
     local titleTextIndex = self:GetPanelTitleTextIndex(playerIndex)
+    local panelTitle = Localization.get("hextech.panel.title")
     exCreateCustomTextForPlayer(playerName, {
         Index = titleTextIndex,
-        Content = Localization.get("hextech.panel.title"),
-        X = self.PanelTitleCenterX,
+        Content = panelTitle,
+        X = self:GetCenteredTextLeftX(self.PanelTitleCenterX, panelTitle, 24),
         Y = 180,
         Color = 16777215,
         Size = 24,
-        AlignX = "center",
+        AlignX = "left",
         AlignY = "center",
     })
     -- 关闭按钮（右上角，使用 hextechRemoveButton 图标，不显示悬浮详情框）
@@ -370,49 +414,81 @@ end
 function HextechRune:CreatePanelNameText(viewerIndex, targetIndex, x, y)
     local viewerName = "Player_" .. viewerIndex
     local nameTextIndex = self:GetPanelNameTextIndex(targetIndex)
+    local nameText = "$p" .. targetIndex .. "Name"
     exCreateCustomTextForPlayer(viewerName, {
         Index = nameTextIndex,
-        Content = "$p" .. targetIndex .. "Name",
-        X = x,
+        Content = nameText,
+        X = self:GetCenteredTextLeftX(x, nameText, 16),
         Y = y,
         Color = 16777215,
         Size = 16,
-        AlignX = "center",
+        AlignX = "left",
         AlignY = "center",
     })
 end
 
--- 创建某玩家的一行符文（按 PanelTestRuneCount 动态创建 0~4 个占位，水平一排，居中于列）
+-- 创建某玩家的一行真实符文（当前最多显示 4 个，水平一排并居中于列）。
 function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     local viewerName = "Player_" .. viewerIndex
-    local count = self.PanelTestRuneCount[targetIndex] or 0
-    if count < 0 then
-        count = 0
-    elseif count > self.PanelMaxRuneCount then
+    self:EnsurePlayerRuneState(targetIndex)
+    local owned = self.PlayerOwnedRunes[targetIndex]
+    local count = getn(owned)
+    if count > self.PanelMaxRuneCount then
         count = self.PanelMaxRuneCount
     end
     if count == 0 then
         return
     end
-    -- 占位符文水平一排，整体居中于列中心 colX
-    local totalWidth = self.PanelRuneSize * count + self.PanelRuneGap * (count - 1)
+    -- 真实符文水平一排，整体居中于列中心 colX
+    local totalWidth = self.PanelRuneWidth * count + self.PanelRuneGap * (count - 1)
     local startX = colX - totalWidth / 2
     for slot = 1, count, 1 do
-        -- 占位稀有度：slot1=彩(1) slot2=金(2) slot3=银(3) slot4=彩(1)（循环）
-        local rarity = mod(slot - 1, 3) + 1
+        local rune = owned[slot]
+        local rarity = rune.Rarity
         local btnIndex = self:GetPanelRuneBtnIndex(targetIndex, slot)
-        local x = startX + (slot - 1) * (self.PanelRuneSize + self.PanelRuneGap)
-        -- 悬浮详情窗：聚焦时展示符文描述（占位阶段用测试符文文案，符文池接入后替换为真实描述）
-        local runeDesc = Localization.get("hextech.test.option", slot, Localization.get("hextech.rarity." .. self.RarityNames[rarity]))
+        local iconBtnIndex = self:GetPanelRuneIconBtnIndex(targetIndex, slot)
+        local runeTextIndex = self:GetPanelRuneTextIndex(targetIndex, slot)
+        local runeTitle = self:GetRuneCompactTitle(rune)
+        local runeTitleSize = self:GetRuneTitleFontSize(rune, self.PanelRuneHeight)
+        local x = startX + (slot - 1) * (self.PanelRuneWidth + self.PanelRuneGap)
+        local topY = y - self.PanelRuneHeight / 2
+        local runeDesc = format("%s\n%s", self:GetRuneDisplayName(rune), self:GetRuneDescription(rune))
         exCreateCustomButtonForPlayer(viewerName, {
             Index = btnIndex,
             TextureName = self.RarityFrameImageIds[rarity],
             Desc = runeDesc,
             X = x,
-            Y = y - self.PanelRuneSize / 2,
-            SizeX = self.PanelRuneSize,
-            SizeY = self.PanelRuneSize,
+            Y = topY,
+            SizeX = self.PanelRuneWidth,
+            SizeY = self.PanelRuneHeight,
             GroupIndex = btnIndex,
+            AlignX = "left",
+            AlignY = "top",
+        })
+        -- 总览面板沿用相同比例布局，但卡框和图标都更小。
+        local iconSize = floor(self.PanelRuneWidth / 3)
+        exCreateCustomButtonForPlayer(viewerName, {
+            Index = iconBtnIndex,
+            TextureName = rune.Icon,
+            Desc = runeDesc,
+            X = x + (self.PanelRuneWidth - iconSize) / 2,
+            Y = topY + 5,
+            SizeX = iconSize,
+            SizeY = iconSize,
+            GroupIndex = iconBtnIndex,
+            AlignX = "left",
+            AlignY = "top",
+        })
+        -- 面板重建时同样固定层级，避免黑色卡框偶发遮住图标。
+        exCustomBtnGroupSortDepthAboveAnotherGroup(iconBtnIndex, btnIndex)
+        exCreateCustomTextForPlayer(viewerName, {
+            Index = runeTextIndex,
+            Content = runeTitle,
+            X = self:GetCenteredTextLeftX(x + self.PanelRuneWidth / 2,
+                runeTitle, runeTitleSize),
+            Y = topY + 30,
+            Color = 16777215,
+            Size = runeTitleSize,
             AlignX = "left",
             AlignY = "top",
         })
@@ -426,8 +502,13 @@ function HextechRune:HidePanel(playerIndex)
     for targetIndex = 1, 6, 1 do
         for slot = 1, self.PanelMaxRuneCount, 1 do
             local btnIndex = self:GetPanelRuneBtnIndex(targetIndex, slot)
+            local iconBtnIndex = self:GetPanelRuneIconBtnIndex(targetIndex, slot)
+            local runeTextIndex = self:GetPanelRuneTextIndex(targetIndex, slot)
             exCustomBtnSetVisibilityForPlayer(playerName, btnIndex, 0)
             exCustomBtnRemoveForPlayer(playerName, btnIndex)
+            exCustomBtnSetVisibilityForPlayer(playerName, iconBtnIndex, 0)
+            exCustomBtnRemoveForPlayer(playerName, iconBtnIndex)
+            exCustomTextUpdateVisibilityForPlayer(playerName, runeTextIndex, 0)
         end
         -- 移除名字文字
         local nameTextIndex = self:GetPanelNameTextIndex(targetIndex)
@@ -469,13 +550,27 @@ function HextechRune:RegisterCustomBtnHandler()
             end
             return nil
         end
+        -- 事件卡片的原生图标按钮与下层卡框按钮执行同一个选择。
+        if index > HextechRune.CustomIconBtnIndexBase
+            and index <= HextechRune.CustomIconBtnIndexBase + 18 then
+            local iconOffset = index - HextechRune.CustomIconBtnIndexBase - 1
+            local iconPlayerIndex = floor(iconOffset / 3) + 1
+            local iconOptionIndex = mod(iconOffset, 3) + 1
+            if iconPlayerIndex >= 1 and iconPlayerIndex <= 6
+                and playerName == "Player_" .. iconPlayerIndex
+                and HextechRune.PlayerOptions[iconPlayerIndex] then
+                HextechRune:HandleOptionClick(iconPlayerIndex, iconOptionIndex)
+                return true
+            end
+        end
         -- 解析 index 属于哪位玩家的哪个方框
         if index >= HextechRune.CustomBtnIndexBase then
             local offset = index - HextechRune.CustomBtnIndexBase - 1
             local playerIndex = floor(offset / 3) + 1
             local optionIndex = mod(offset, 3) + 1
-            if playerIndex >= 1 and playerIndex <= 6 and optionIndex >= 1 and optionIndex <= 3 then
-                if HextechRune.PlayerOptionRarity[playerIndex] then
+            if playerIndex >= 1 and playerIndex <= 6 and optionIndex >= 1 and optionIndex <= 3
+                and playerName == "Player_" .. playerIndex then
+                if HextechRune.PlayerOptions[playerIndex] then
                     HextechRune:HandleOptionClick(playerIndex, optionIndex)
                     return true
                 end
@@ -487,19 +582,11 @@ end
 
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
-    -- 开局测试事件：第 1 回合开始触发一次（测试环境专用，不受配置数量影响）
-    if not self.OpeningTestTriggered and round == 1 then
+    -- 开局真实测试事件：只在启用海克斯时触发，不计入配置次数。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
         self.OpeningTestTriggered = true
-        for playerIndex = 1, 6, 1 do
-            -- 仅对存在的玩家触发（有建筑的玩家）
-            local playerName = "Player_" .. playerIndex
-            local previous = SetWorldBuilderThisPlayer(1)
-            local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
-            SetWorldBuilderThisPlayer(previous)
-            if structureCount > 0 then
-                self:ShowOpeningTestEvent(playerIndex)
-            end
-        end
+        self:ShowOpeningTestEvent()
     end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
