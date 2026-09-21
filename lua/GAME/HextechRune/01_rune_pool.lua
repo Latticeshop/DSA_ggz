@@ -17,6 +17,9 @@ HextechRune.RunePool = {
     { Id = "silver_scope", Rarity = 3, NameKey = "hextech.rune.scope.silver.name",
         DescKey = "hextech.rune.scope.silver.desc", Effect = "range_silver", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    { Id = "silver_mcv", Rarity = 3, NameKey = "hextech.rune.mcv.name",
+        DescKey = "hextech.rune.mcv.desc", Effect = "grant_foreign_mcv",
+        Icon = "Button_JapanMCV" },
 
     -- 金色
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
@@ -49,12 +52,22 @@ HextechRune.RunePool = {
     { Id = "prismatic_scope", Rarity = 1, NameKey = "hextech.rune.scope.prismatic.name",
         DescKey = "hextech.rune.scope.prismatic.desc", Effect = "range_prismatic", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    { Id = "prismatic_broadband_jamming", Rarity = 1,
+        NameKey = "hextech.rune.broadband_jamming.name",
+        DescKey = "hextech.rune.broadband_jamming.desc", Effect = "broadband_jamming",
+        Icon = "Button_SovietPineElectronicRadarTruck" },
+    { Id = "prismatic_divine_intervention", Rarity = 1,
+        NameKey = "hextech.rune.divine_intervention.name",
+        DescKey = "hextech.rune.divine_intervention.desc", Effect = "divine_intervention",
+        Icon = "Button_PlayerPower_IronCurtain" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
 -- 同一轮三选一仍由 PickThreeRunes 的无放回抽取保证互不重复。
 HextechRune.NonRepeatableRuneIds = {
     gold_fortified = true,
+    prismatic_broadband_jamming = true,
+    prismatic_divine_intervention = true,
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
@@ -215,6 +228,8 @@ function HextechRune:GetRuneTitleFontSize(rune, cardSize)
     if rune ~= nil and (rune.Effect == "range_silver" or rune.Effect == "range_gold"
         or rune.Effect == "range_prismatic") then
         baseSize = 10
+    elseif rune ~= nil and rune.Effect == "broadband_jamming" then
+        baseSize = 12
     elseif rune ~= nil and rune.UnitType ~= nil then
         baseSize = 14
     end

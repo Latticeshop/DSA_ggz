@@ -1,7 +1,7 @@
 -- 海克斯符文系统：真实候选事件 + 海克斯面板
 --   - 回合监听：RoundLuaManager.CallOnEveryRoundBegin（复用抽卡模式 PureDraw 方案）
 --   - 开局真实测试事件（第 1 回合，测试环境专用，不计入配置数量）：
---     - 先确定统一稀有度，再按每名玩家状态筛池并无放回抽取 3 个真实符文
+--     - 固定展示指定符文，并按每个符文自身稀有度显示卡框
 --   - 正式海克斯事件（第 5/11/18 回合，按 g_HextechCount 截取）：
 --     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
 --     - 再对每个玩家独立筛池并刷新 3 个不同符文
@@ -48,7 +48,7 @@ HextechRune.OptionCardHeight = 200
 HextechRune.OptionCardSpacing = 30
 HextechRune.OptionIconSize = 52
 -- 日冕文字渲染的实际视觉中心略偏左，标题中心单独向右校正。
-HextechRune.OptionTitleOffsetX = 8
+HextechRune.OptionTitleOffsetX = 14
 -- 日冕自定义文字的 X 是文字左边界而不是文字中心；中英文使用不同宽度权重。
 HextechRune.TextWidthScale = 1.65
 HextechRune.AsciiWidthWeight = 0.55
@@ -76,7 +76,7 @@ HextechRune.PanelRuneWidth = 50
 HextechRune.PanelRuneHeight = 50
 HextechRune.PanelRuneGap = 10
 HextechRune.PanelRuneIconSize = 14
-HextechRune.PanelRuneTitleOffsetX = 2
+HextechRune.PanelRuneTitleOffsetX = 5
 -- 当前测试最多为开局真实测试 1 个 + 正式事件 3 个。
 HextechRune.PanelMaxRuneCount = 4
 -- 面板自定义元素 index 基础（避开已用 index）
@@ -278,10 +278,10 @@ function HextechRune:ShowRuneEvent(round)
 end
 
 function HextechRune:ShowOpeningTestEvent()
-    -- 开局实测固定展示三个新黄金符文；正式轮次仍按阶级和个人池随机抽取。
+    -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "gold_cloudbreaker",
-        "gold_oil_king",
+        "gold_starting_funds",
+        "prismatic_divine_intervention",
         "gold_buy_two_get_one",
     }
     for playerIndex = 1, 6, 1 do
@@ -302,8 +302,8 @@ function HextechRune:ShowOpeningTestEvent()
             if getn(options) == 3 then
                 self.PlayerOptions[playerIndex] = options
                 for i = 1, 3, 1 do
-                    self:CreateOptionBox(playerIndex, i, 2,
-                        self.RarityFrameImageIds[2], options[i])
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
                 end
             else
                 exAddTextToPublicBoardForPlayer(playerName,
