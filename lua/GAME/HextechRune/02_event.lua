@@ -64,6 +64,11 @@ HextechRune.RerollButtonWidth = 57
 HextechRune.RerollButtonHeight = 35
 -- 自定义文字 index 基础（每玩家 index 唯一）
 HextechRune.CustomTextIndexBase = 200
+-- 选择页隐藏时显示在顶部技能组下方的提示文字（901~906）。
+HextechRune.SelectionHintTextIndexBase = 900
+HextechRune.SelectionHintCenterX = 683
+HextechRune.SelectionHintY = 82
+HextechRune.SelectionHintFontSize = 16
 
 -- ===== 海克斯面板（按钮 5 展开）布局参数 =====
 -- 横六筒造型：上三玩家（天使 4/5/6）名字 + 符文，下三玩家（恶魔 1/2/3）符文 + 名字
@@ -95,6 +100,10 @@ HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~824
 HextechRune.PanelVisible = {}
 -- 每次打开三选一时重置；三个按钮共享同一次使用机会。
 HextechRune.PlayerRerollUsed = HextechRune.PlayerRerollUsed or {}
+-- 每名真人玩家独立保存尚未展示的正式符文事件；当前三选一完成后按先进先出弹出。
+HextechRune.PlayerEventQueues = HextechRune.PlayerEventQueues or {}
+-- 当前三选一是否实际显示；隐藏时 PlayerOptions 仍保留，J 键可原样恢复。
+HextechRune.PlayerSelectionVisible = HextechRune.PlayerSelectionVisible or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 3, 10, 18 }
@@ -115,6 +124,10 @@ end
 
 function HextechRune:GetRerollBtnIndex(playerIndex, optionIndex)
     return self.RerollBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+end
+
+function HextechRune:GetSelectionHintTextIndex(playerIndex)
+    return self.SelectionHintTextIndexBase + playerIndex
 end
 
 -- 估算自定义文字中最宽一行的视觉宽度单位。
@@ -384,6 +397,78 @@ function HextechRune:RefreshRerollButtons(playerIndex)
     end
 end
 
+function HextechRune:HideSelectionHint(playerIndex)
+    exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex,
+        self:GetSelectionHintTextIndex(playerIndex), 0)
+end
+
+function HextechRune:ShowSelectionHint(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local hint = Localization.get("hextech.selection.hidden_hint")
+    exCreateCustomTextForPlayer(playerName, {
+        Index = self:GetSelectionHintTextIndex(playerIndex),
+        Content = hint,
+        X = self:GetCenteredTextLeftX(self.SelectionHintCenterX, hint,
+            self.SelectionHintFontSize),
+        Y = self.SelectionHintY,
+        Color = 16777215,
+        Size = self.SelectionHintFontSize,
+        AlignX = "left",
+        AlignY = "top",
+    })
+end
+
+function HextechRune:SetSelectionPageVisible(playerIndex, visible)
+    if self.PlayerOptions[playerIndex] == nil then
+        self.PlayerSelectionVisible[playerIndex] = false
+        self:HideSelectionHint(playerIndex)
+        return false
+    end
+    local playerName = "Player_" .. playerIndex
+    local visibility = 0
+    if visible then
+        visibility = 1
+    end
+    for optionIndex = 1, 3, 1 do
+        local btnIndex = self:GetOptionBtnIndex(playerIndex, optionIndex)
+        local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, optionIndex)
+        local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, optionIndex)
+        local textIndex = self:GetOptionTextIndex(playerIndex, optionIndex)
+        exCustomBtnSetVisibilityForPlayer(playerName, btnIndex, visibility)
+        exCustomBtnSetVisibilityForPlayer(playerName, iconBtnIndex, visibility)
+        exCustomBtnSetVisibilityForPlayer(playerName, rerollBtnIndex, visibility)
+        exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, visibility)
+        if visible then
+            exCustomBtnGroupSortDepthAboveAnotherGroup(iconBtnIndex, btnIndex)
+        end
+    end
+    self.PlayerSelectionVisible[playerIndex] = visible
+    if visible then
+        self:HideSelectionHint(playerIndex)
+    else
+        self:ShowSelectionHint(playerIndex)
+    end
+    return true
+end
+
+function HextechRune:ToggleSelectionPage(playerIndex)
+    if self.PlayerOptions[playerIndex] == nil then
+        self:HideSelectionHint(playerIndex)
+        return false
+    end
+    return self:SetSelectionPageVisible(playerIndex,
+        self.PlayerSelectionVisible[playerIndex] ~= true)
+end
+
+function HextechRune:HandleSelectionHotKey(playerName)
+    for playerIndex = 1, 6, 1 do
+        if playerName == "Player_" .. playerIndex then
+            return self:ToggleSelectionPage(playerIndex)
+        end
+    end
+    return false
+end
+
 function HextechRune:IsRuneInCurrentOptions(options, candidate, ignoredOptionIndex)
     local candidateId = self:GetRuneOwnershipId(candidate)
     for optionIndex = 1, getn(options), 1 do
@@ -457,6 +542,58 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     return true
 end
 
+function HextechRune:EnsurePlayerEventQueue(playerIndex)
+    if self.PlayerEventQueues[playerIndex] == nil then
+        self.PlayerEventQueues[playerIndex] = {}
+    end
+    return self.PlayerEventQueues[playerIndex]
+end
+
+-- 真正展示时才根据玩家最新持有状态筛池，避免排队期间刚选到的唯一符文
+-- 仍残留在后续事件的候选中。
+function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
+    local options = self:PickThreeRunes(playerIndex, rarity)
+    if options == nil then
+        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
+            Localization.get("hextech.error.not_enough_candidates"), 10)
+        return false
+    end
+    self.PlayerOptions[playerIndex] = options
+    self.PlayerRerollUsed[playerIndex] = false
+    for i = 1, 3, 1 do
+        local rune = options[i]
+        self:CreateOptionBox(playerIndex, i, rarity,
+            self.RarityFrameImageIds[rarity], rune)
+        self:CreateRerollButton(playerIndex, i)
+    end
+    self.PlayerSelectionVisible[playerIndex] = true
+    self:HideSelectionHint(playerIndex)
+    return true
+end
+
+function HextechRune:QueueOrShowRuneEvent(playerIndex, rarity, round)
+    if self.PlayerOptions[playerIndex] == nil then
+        return self:ShowRuneOptionsForPlayer(playerIndex, rarity)
+    end
+    local queue = self:EnsurePlayerEventQueue(playerIndex)
+    tinsert(queue, { Rarity = rarity, Round = round })
+    return true
+end
+
+function HextechRune:ShowNextQueuedRuneEvent(playerIndex)
+    if self.PlayerOptions[playerIndex] ~= nil then
+        return false
+    end
+    local queue = self:EnsurePlayerEventQueue(playerIndex)
+    while getn(queue) > 0 do
+        local event = tremove(queue, 1)
+        if self:ShowRuneOptionsForPlayer(playerIndex, event.Rarity) then
+            return true
+        end
+    end
+    return false
+end
+
 -- 真实符文事件：先确定全场稀有度，再按玩家身份处理。
 -- 真人独立筛池并无放回抽 3 个进行选择；遭遇战电脑直接随机获得同阶符文 1 个。
 function HextechRune:ShowRuneEvent(round)
@@ -469,20 +606,7 @@ function HextechRune:ShowRuneEvent(round)
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
             if self:IsHumanPlayer(playerIndex) then
-                local options = self:PickThreeRunes(playerIndex, rarity)
-                if options ~= nil then
-                    self.PlayerOptions[playerIndex] = options
-                    self.PlayerRerollUsed[playerIndex] = false
-                    for i = 1, 3, 1 do
-                        local rune = options[i]
-                        self:CreateOptionBox(playerIndex, i, rarity,
-                            self.RarityFrameImageIds[rarity], rune)
-                        self:CreateRerollButton(playerIndex, i)
-                    end
-                else
-                    exAddTextToPublicBoardForPlayer(playerName,
-                        Localization.get("hextech.error.not_enough_candidates"), 10)
-                end
+                self:QueueOrShowRuneEvent(playerIndex, rarity, round)
             else
                 self:GrantRandomRuneToComputer(playerIndex, rarity, round)
             end
@@ -527,6 +651,8 @@ function HextechRune:ShowOpeningTestEvent()
                         self.RarityFrameImageIds[options[i].Rarity], options[i])
                     self:CreateRerollButton(playerIndex, i)
                 end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
             else
                 exAddTextToPublicBoardForPlayer(playerName,
                     Localization.get("hextech.error.not_enough_candidates"), 10)
@@ -550,6 +676,8 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         return
     end
     self.PlayerOptions[playerIndex] = nil
+    self.PlayerSelectionVisible[playerIndex] = false
+    self:HideSelectionHint(playerIndex)
     self:OnRuneChosen(playerIndex, rune)
     -- 移除该玩家的 3 个方框按钮和文字。
     -- 注意：先隐藏按钮（exCustomBtnSetVisibilityForPlayer 0）再移除，
@@ -574,6 +702,8 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         self:HidePanel(playerIndex)
         self:ShowPanel(playerIndex)
     end
+    -- 后续正式事件若已到点，则在当前三选一关闭后立即按先进先出展示。
+    self:ShowNextQueuedRuneEvent(playerIndex)
 end
 
 -- ===== 海克斯面板（按钮 5 展开）=====
@@ -867,12 +997,12 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
-    -- 开局测试入口（发版停用；后续开发时取消注释即可继续调用）：
-    -- if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
-    --     and not self.OpeningTestTriggered and round == 1 then
-    --     self.OpeningTestTriggered = true
-    --     self:ShowOpeningTestEvent()
-    -- end
+    -- 开局测试入口：测试阶段启用，不计入正式配置次数。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
+        self.OpeningTestTriggered = true
+        self:ShowOpeningTestEvent()
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

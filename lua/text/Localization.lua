@@ -196,6 +196,7 @@ Localization._text_sources = {
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },
     ["hextech.bonus.broadcast"] = { zh = "$p%dName通过【%s】获得了符文：%s", en = "$p%dName gained a rune from [%s]: %s" },
+    ["hextech.selection.hidden_hint"] = { zh = "当前有未选择的海克斯，按'J'键展开面板", en = "You have an unselected Hextech rune. Press 'J' to open the panel." },
     ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled: %d" },
     ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining: %d" },
     ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消", en = "No production quota remained; the extra unit was cancelled" },

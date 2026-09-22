@@ -34,9 +34,14 @@ function MsgCommand_BanInfantry()
     end
 end
 
--- exRegisterHotKey(76, 0, 1)
+-- J：展开/隐藏当前玩家尚未完成的海克斯选择页。
+exRegisterHotKey(74, 0, 2)
 
 function onUserHotKeyEvent(playerName, commandCode, mouseWorldPos)
+    if commandCode == 2 and HextechRune ~= nil then
+        HextechRune:HandleSelectionHotKey(playerName)
+        return
+    end
     if 1 then return end
     -- todo 必须要在第一回合开始前20秒内输入
     if commandCode == 1 and playerName == g_RoomOwnerPlayer then
