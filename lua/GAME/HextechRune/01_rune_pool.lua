@@ -50,6 +50,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.cash_reward.name",
         DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
         RequiredFaction = 2, Icon = "Button_PlayerPower_ProductionKickback" },
+    { Id = "gold_safety", Rarity = 2,
+        NameKey = "hextech.rune.safety.name",
+        DescKey = "hextech.rune.safety.desc", Effect = "safety",
+        Icon = "Button_AlliedAegisLargeDefenseBase" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_JapanPointShieldControlTower" },
@@ -83,6 +87,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.five_thunder.name",
         DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
         Icon = "Button_CelestialPantaOrbitalStrike" },
+    { Id = "prismatic_tower_defense_expert", Rarity = 1,
+        NameKey = "hextech.rune.tower_defense_expert.name",
+        DescKey = "hextech.rune.tower_defense_expert.desc",
+        Effect = "tower_defense_expert",
+        Icon = "Button_JapanPointShieldControlTower" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -92,6 +101,7 @@ HextechRune.NonRepeatableRuneIds = {
     gold_fortified = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
+    prismatic_tower_defense_expert = true,
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}

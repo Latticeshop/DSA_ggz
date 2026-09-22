@@ -83,6 +83,21 @@ g_BuyTowerId = {
         ["evil"] = { 0, 0 },
     }
 }
+g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
+g_HextechTowerDefenseExpertAegisSerial = g_HextechTowerDefenseExpertAegisSerial
+    or { 0, 0, 0, 0, 0, 0 }
+
+function BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex)
+    return g_HextechTowerDefenseExpert ~= nil
+        and g_HextechTowerDefenseExpert[playerIndex] == true
+end
+
+function BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, basePrice)
+    if BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex) then
+        return floor(basePrice * 0.8)
+    end
+    return basePrice
+end
 
 -- 返回本方当前最前排的存活陆地防御塔；前排损失后自动依次后退到下一座塔。
 function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
@@ -160,11 +175,15 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         nextInvestmentText = nextInvestmentText .. Localization.get("market.next_investment.benefit")
 
         if self.Page == 2 then
+            local shieldTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 10000)
+            local sakuraWellPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 10000)
+            local poplarTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 12000)
+            local aegisPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 15000)
             self.Choices = {
-                Localization.get("market.buy_shield_tower", 10000), -- 1
-                Localization.get("market.buy_sakura_well", 10000), -- 2
-                Localization.get("market.buy_poplar_tower", 12000), -- 3
-                Localization.get("market.buy_aegis_shield_generator", 15000), -- 4
+                Localization.get("market.buy_shield_tower", shieldTowerPrice), -- 1
+                Localization.get("market.buy_sakura_well", sakuraWellPrice), -- 2
+                Localization.get("market.buy_poplar_tower", poplarTowerPrice), -- 3
+                Localization.get("market.buy_aegis_shield_generator", aegisPrice), -- 4
                 Localization.get("market.back_to_main_page"), -- 5
             }
         else
@@ -287,12 +306,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             pos = {X = 4150, Y = 3187};
         end
         local objectId = g_BuyTowerId["JapanPointShieldControlTower"][sideName];
-        if ObjectIsAlive(objectId) then
+        local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
+        if ObjectIsAlive(objectId) and not ignoresLimit then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 10000)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
-        if money < 10000 then
+        if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
             return;
         end
@@ -303,14 +324,16 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             Angle = 0,
             Health = 5500
         });
-        g_BuyTowerId["JapanPointShieldControlTower"][sideName] = id;
+        if not ignoresLimit then
+            g_BuyTowerId["JapanPointShieldControlTower"][sideName] = id;
+        end
         local tower = GetObjectById(id);
         ObjectLoadAttributeModifier(tower,'AttributeModifier_BoxRateOfFireUp', 999999)
         ObjectLoadAttributeModifier(tower,'AttributeModifier_BoxRangeUp', 999999)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"IN_SHIELD_SPHERE", 1)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"UNPACKING", 0)
 
-        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -10000);
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
 
     end
     dialogData.BuySovietHeavyAntiAirMissileTurret = function(self)
@@ -323,12 +346,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             pos = {X = 4150, Y = 3018};
         end
         local objectId = g_BuyTowerId["SovietHeavyAntiAirMissileTurret"][sideName];
-        if ObjectIsAlive(objectId) then
+        local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
+        if ObjectIsAlive(objectId) and not ignoresLimit then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 12000)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
-        if money < 12000 then
+        if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
             return;
         end
@@ -339,14 +364,16 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             Angle = 0,
             Health = 9000
         });
-        g_BuyTowerId["SovietHeavyAntiAirMissileTurret"][sideName] = id;
+        if not ignoresLimit then
+            g_BuyTowerId["SovietHeavyAntiAirMissileTurret"][sideName] = id;
+        end
         local tower = GetObjectById(id);
         ObjectLoadAttributeModifier(tower,'AttributeModifier_MAP_Area_FireSpeed_Up', 999999)
         ObjectLoadAttributeModifier(tower,'AttributeModifier_JapanNanoEnhanceDroneReinforcement', 999999)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"IN_SHIELD_SPHERE", 1)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"UNPACKING", 0)
 
-        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -12000);
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
 
     end
     dialogData.BuyJapanKamikazeCommandTower = function(self)
@@ -368,12 +395,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             pos = {X = towerX + behindDirection * behindDistance, Y = towerY, Z = towerZ};
         end
         local objectId = g_BuyTowerId["JapanKamikazeCommandTower"][sideName];
-        if ObjectIsAlive(objectId) then
+        local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
+        if ObjectIsAlive(objectId) and not ignoresLimit then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 10000)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
-        if money < 10000 then
+        if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
             return;
         end
@@ -389,8 +418,10 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             g_JapanKamikazeCommandTowerRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
         end
         ObjectLoadAttributeModifier(GetObjectById(id), g_JapanKamikazeCommandTowerRangeX25Modifier)
-        g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
-        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -10000);
+        if not ignoresLimit then
+            g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
+        end
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
     end
     dialogData.BuyAlliedAegisLargeDefenseBase = function(self)
         local sideName = "evil";
@@ -408,25 +439,36 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             local towerX, towerY, towerZ = ObjectGetPosition(frontTower);
             towerPos = {X = towerX + behindDirection * 126.75, Y = towerY, Z = towerZ};
         end
+        local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
         local slots = g_BuyTowerId["AlliedAegisLargeDefenseBase"][sideName];
         local slotIndex = nil;
-        for i = 1, 2, 1 do
-            if not ObjectIsAlive(slots[i]) then
-                slotIndex = i;
-                break;
+        local expertSerial = 0
+        if ignoresLimit then
+            expertSerial = g_HextechTowerDefenseExpertAegisSerial[self.PlayerIndex] + 1
+            slotIndex = expertSerial - floor((expertSerial - 1) / 2) * 2
+        else
+            for i = 1, 2, 1 do
+                if not ObjectIsAlive(slots[i]) then
+                    slotIndex = i;
+                    break;
+                end
             end
         end
         if slotIndex == nil then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 15000)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
-        if money < 15000 then
+        if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
             return;
         end
         -- 先取当前最前排存活塔的后方，再在该中心点上下两侧对称填充两个槽位。
         local lateralDistance = 126.75;
+        if ignoresLimit then
+            lateralDistance = lateralDistance + floor((expertSerial - 1) / 2) * 60
+        end
         local lateralDirection = 1;
         if slotIndex == 2 then
             lateralDirection = -1;
@@ -443,8 +485,12 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             Angle = 0,
             Health = 9000
         });
-        slots[slotIndex] = id;
-        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -15000);
+        if ignoresLimit then
+            g_HextechTowerDefenseExpertAegisSerial[self.PlayerIndex] = expertSerial
+        else
+            slots[slotIndex] = id;
+        end
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
     end
 
     dialogData:RefreshData()

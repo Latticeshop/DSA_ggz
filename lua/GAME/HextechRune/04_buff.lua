@@ -87,6 +87,7 @@ HextechRune.FortifiedTowerState = HextechRune.FortifiedTowerState or {}
 g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
 g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
 g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
+g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
 
 -- 在现有经济倍率/苏联大生产修正之后叠加玩家自己的破烂王倍率。
 if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
@@ -464,6 +465,53 @@ function HextechRune:GrantGigaFortress(playerIndex)
         playerIndex, tostring(nextObjectId)))
 end
 
+function HextechRune:GrantSafetyAegisTowers(playerIndex)
+    local playerOwn = "PlyrCivilian"
+    local behindDirection = -1
+    local towerPos = { X = 2900, Y = 3102.5, Z = 210 }
+    if playerIndex >= 4 then
+        playerOwn = "PlyrCreeps"
+        behindDirection = 1
+        towerPos = { X = 4150, Y = 3102.5, Z = 210 }
+    end
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower)
+        towerPos = {
+            X = towerX + behindDirection * 126.75,
+            Y = towerY,
+            Z = towerZ,
+        }
+    end
+    -- 复用交易市场埃奎斯的左右布局，但不写入 g_BuyTowerId：
+    -- 符文塔允许重复生成，也不占用市场的两个常规购买名额。
+    for i = 1, 2, 1 do
+        local lateralDirection = 1
+        if i == 2 then
+            lateralDirection = -1
+        end
+        exCreateObject({
+            ObjectType = FastHash("AlliedAegisLargeDefenseBase"),
+            TeamName = playerOwn .. "/team" .. playerOwn,
+            Position = {
+                X = towerPos.X,
+                Y = towerPos.Y + lateralDirection * 126.75,
+                Z = towerPos.Z,
+            },
+            Angle = 0,
+            Health = 9000,
+        })
+    end
+    self:TestAlert(format("P%d 安全感：已生成左右各1个埃奎斯护盾发生器，不占市场购买名额",
+        playerIndex))
+end
+
+function HextechRune:EnableTowerDefenseExpert(playerIndex)
+    g_HextechTowerDefenseExpert[playerIndex] = true
+    self:TestAlert(format("P%d 塔防专家：市场防御塔价格×0.8，购买无数量限制且不占名额",
+        playerIndex))
+end
+
 function HextechRune:GrantOilDerricks(playerIndex)
     local teamName = format("Player_%d/teamPlayer_%d", playerIndex, playerIndex)
     g_HextechOilDerrickSerial[playerIndex] = g_HextechOilDerrickSerial[playerIndex] + 1
@@ -765,6 +813,8 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "grant_olympus_carrier"
                 and rune.Effect ~= "grant_oblivion_bomb"
                 and rune.Effect ~= "grant_giga_fortress"
+                and rune.Effect ~= "safety"
+                and rune.Effect ~= "tower_defense_expert"
                 and rune.Effect ~= "cash_reward" then
                 local assignedCount = 0
                 local appliedCount = 0
@@ -863,6 +913,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantOblivionBomb(playerIndex)
     elseif rune.Effect == "grant_giga_fortress" then
         self:GrantGigaFortress(playerIndex)
+    elseif rune.Effect == "safety" then
+        self:GrantSafetyAegisTowers(playerIndex)
+    elseif rune.Effect == "tower_defense_expert" then
+        self:EnableTowerDefenseExpert(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then

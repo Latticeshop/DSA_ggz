@@ -367,9 +367,9 @@ end
 function HextechRune:ShowOpeningTestEvent()
     -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "gold_oblivion_bomb",
-        "silver_giga_fortress",
-        "gold_cash_reward",
+        "prismatic_five_thunder",
+        "gold_safety",
+        "prismatic_tower_defense_expert",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -380,11 +380,6 @@ function HextechRune:ShowOpeningTestEvent()
             local options = {}
             for i = 1, 3, 1 do
                 local template = self:FindRuneById(testRuneIds[i])
-                -- 现金奖励受原生“必须拥有苏联基地车”限制；非苏联玩家的
-                -- 开局测试位改用启动资金，避免固定测试事件绕过正式池筛选。
-                if template ~= nil and not self:IsRuneFactionAvailable(playerIndex, template) then
-                    template = self:FindRuneById("gold_starting_funds")
-                end
                 -- 买二送一也在选项生成时随机目标；候选创建后目标即固定，点击不重抽。
                 local candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, nil)
                 if candidate ~= nil then
