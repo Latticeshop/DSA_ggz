@@ -150,12 +150,30 @@ HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
 HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
 HextechRune.FiveThunderCooldownRounds = 5
+HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
+HextechRune.TeslaAirAssaultState = HextechRune.TeslaAirAssaultState or {}
+HextechRune.TeslaAirAssaultCooldownRounds = 5
+HextechRune.CombustionInterestMoney = 2
+HextechRune.CombustionInterestObserverReady =
+    HextechRune.CombustionInterestObserverReady or false
+HextechRune.CombustionInterestCombatActive =
+    HextechRune.CombustionInterestCombatActive or false
 -- 现金奖励同时受玩家科技锁和 SpecialPower 可用性两层控制。
 -- 使用日冕协议枚举中的规范 ID，避免只生成按钮但仍因科技锁置灰。
 HextechRune.CashRewardSpecialPower = "SpecialPower_ProductionKickbacks"
 HextechRune.CashRewardPlayerTech = "PlayerTech_Soviet_ProductionKickbacks"
 HextechRune.FortifiedTowerState = HextechRune.FortifiedTowerState or {}
 HextechRune.TranscendentEvilModifiers = HextechRune.TranscendentEvilModifiers or {}
+HextechRune.FiveTigerGeneralsPower = "SpecialPower_CelestialCenturionUpgrade"
+HextechRune.FiveTigerGeneralsCommand = "Command_Celestial_CenturionUpgrade"
+HextechRune.FiveTigerGeneralsDelay = 45
+HextechRune.FiveTigerPowerGranted = HextechRune.FiveTigerPowerGranted or {}
+HextechRune.CenturionSpellbookFilter = HextechRune.CenturionSpellbookFilter
+    or CreateObjectFilter({
+        Rule = "ANY", Relationship = "SAME_PLAYER",
+        IncludeThing = { "playerspellbook" },
+    })
+g_HextechFiveTigerPendingTargets = g_HextechFiveTigerPendingTargets or {}
 
 g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
 g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
@@ -460,6 +478,146 @@ function HextechRune:GrantCashRewardProtocol(playerIndex)
             HextechRune.CashRewardSpecialPower, 0)
         SetWorldBuilderThisPlayer(delayedPrevious)
     end, 1, {playerIndex})
+end
+
+function HextechRune:SetTeslaAirAssaultAvailability(playerIndex, availability)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.TeslaAirAssaultPower, availability)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:SetTeslaAirAssaultCountdown(playerIndex, seconds)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.TeslaAirAssaultPower, seconds)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:GrantTeslaAirAssault(playerIndex)
+    if self.TeslaAirAssaultState[playerIndex] == nil then
+        self.TeslaAirAssaultState[playerIndex] = {}
+    end
+    local state = self.TeslaAirAssaultState[playerIndex]
+    state.Owned = true
+    state.Ready = true
+    state.ReadyRound = nil
+
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.TeslaAirAssaultPower, playerName)
+    SetWorldBuilderThisPlayer(previous)
+    self:SetTeslaAirAssaultCountdown(playerIndex, 0)
+    self:SetTeslaAirAssaultAvailability(playerIndex, "Available")
+end
+
+-- 磁暴突袭会实际生成史普尼克勘查车。使用产物出生作为本次协议成功释放的
+-- 可靠信号，避免 PLAYER_TRIGGERED_SPECIAL_POWER 在此能力上不返回触发态。
+function HextechRune:OnTeslaAirAssaultSurveyorBorn(ownerPlayerName)
+    local playerIndex = nil
+    if g_PlayerNameToIndex ~= nil then
+        playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+    end
+    if playerIndex == nil or playerIndex < 1 or playerIndex > 6 then
+        return
+    end
+    local state = self.TeslaAirAssaultState[playerIndex]
+    if state == nil or not state.Owned or not state.Ready then
+        return
+    end
+    state.Ready = false
+    state.ReadyRound = exCounterGetByName("lvc")
+        + self.TeslaAirAssaultCooldownRounds
+    self:SetTeslaAirAssaultAvailability(playerIndex, "Disabled")
+end
+
+function HextechRune:OnTeslaAirAssaultRoundBegin(round)
+    for playerIndex = 1, 6, 1 do
+        local state = self.TeslaAirAssaultState[playerIndex]
+        if state ~= nil and state.Owned and not state.Ready
+            and state.ReadyRound ~= nil
+            and round >= state.ReadyRound then
+            self:SetTeslaAirAssaultCountdown(playerIndex, 0)
+            self:SetTeslaAirAssaultAvailability(playerIndex, "Available")
+            state.Ready = true
+            state.ReadyRound = nil
+        end
+    end
+end
+
+-- 死亡事件属于全局入口，使用固定函数转发到当前海克斯对象。
+function HextechCombustionInterestUnitDie(dyingObjId, attackerId,
+    dyingObjInstanceId, attackerInstanceId, ownerPlayerName)
+    if HextechRune ~= nil and HextechRune.OnCombustionInterestUnitDie ~= nil then
+        HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
+    end
+end
+
+function HextechRune:EnsureCombustionInterestObserver()
+    if self.CombustionInterestObserverReady then
+        return
+    end
+    if RegisterUnitDieCallback == nil or UNITLIST == nil or unitcountmax == nil then
+        return
+    end
+    for unitIndex = 1, unitcountmax, 1 do
+        RegisterUnitDieCallback(UNITLIST[unitIndex],
+            HextechCombustionInterestUnitDie)
+    end
+
+    -- 回合结算后的脚本清场不算单位死亡；下一回合开始后重新接受死亡事件。
+    self.CombustionInterestCombatActive = true
+    if RoundLuaManager ~= nil then
+        RoundLuaManager.CallOnEveryRoundBegin(function()
+            HextechRune.CombustionInterestCombatActive = true
+        end)
+        RoundLuaManager.CallOnEveryRoundEnd(function()
+            HextechRune.CombustionInterestCombatActive = false
+        end)
+    end
+    self.CombustionInterestObserverReady = true
+end
+
+function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
+    local assignment = self.BattleUnitAssignments[dyingObjId]
+    if assignment == nil then
+        return
+    end
+    -- 先移除登记，避免同一死亡事件重复结算，也防止 objectId 复用旧记录。
+    self.BattleUnitAssignments[dyingObjId] = nil
+    if not self.CombustionInterestCombatActive then
+        return
+    end
+
+    local firstPlayerIndex = nil
+    local lastPlayerIndex = nil
+    if ownerPlayerName == "PlyrCivilian" then
+        firstPlayerIndex = 4
+        lastPlayerIndex = 6
+    elseif ownerPlayerName == "PlyrCreeps" then
+        firstPlayerIndex = 1
+        lastPlayerIndex = 3
+    else
+        return
+    end
+
+    local rewarded = false
+    local previous = SetWorldBuilderThisPlayer(1)
+    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+        self:EnsurePlayerRuneState(playerIndex)
+        if self.PlayerOwnedRuneIds[playerIndex]["prismatic_combustion_interest"] then
+            ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex,
+                self.CombustionInterestMoney)
+            rewarded = true
+        end
+    end
+    SetWorldBuilderThisPlayer(previous)
+    if rewarded then
+        -- 多名队友各自获得 2，但死亡位置只显示一次与小电厂同款的 +2。
+        exShowFloatingIntAtObject(dyingObjId, self.CombustionInterestMoney)
+    end
 end
 
 function HextechRune:GetPlayerHomeSpawnPosition(playerIndex, forwardOffset, sideOffset)
@@ -955,6 +1113,8 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "divine_intervention" and rune.Effect ~= "grant_foreign_mcv"
                 and rune.Effect ~= "grant_yaoguang" and rune.Effect ~= "oil_king"
                 and rune.Effect ~= "buy_two_get_one" and rune.Effect ~= "five_thunder"
+                and rune.Effect ~= "combustion_interest"
+                and rune.Effect ~= "tesla_air_assault"
                 and rune.Effect ~= "grant_olympus_carrier"
                 and rune.Effect ~= "grant_oblivion_bomb"
                 and rune.Effect ~= "grant_giga_fortress"
@@ -1017,6 +1177,111 @@ function HextechRune:ApplyPersistentRune(playerIndex, rune)
     -- 持续型符文只影响选择之后的新出兵，不追溯强化仍存活的旧单位。
     -- 这里仍登记当前尚未登记的场上单位，避免它们在下一次出兵扫描时被误判为新单位。
     self:AssignNewBattleUnits()
+end
+
+function HextechRune:GetFiveTigerGeneralsCopyCount(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local count = 0
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        if owned[i].Effect == "five_tiger_generals" then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function HextechRune:EnsureFiveTigerGeneralsPower(playerIndex)
+    local sideIndex = self:GetPlayerSideIndex(playerIndex)
+    if self.FiveTigerPowerGranted[sideIndex] then
+        return
+    end
+    local sidePlayerName = "PlyrCivilian"
+    if sideIndex == 8 then
+        sidePlayerName = "PlyrCreeps"
+    end
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.FiveTigerGeneralsPower,
+        sidePlayerName)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", sidePlayerName,
+        self.FiveTigerGeneralsPower, "Available")
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", sidePlayerName,
+        self.FiveTigerGeneralsPower, 0)
+    SetWorldBuilderThisPlayer(previous)
+    self.FiveTigerPowerGranted[sideIndex] = true
+end
+
+function HextechRune:HasCenturionUpgradeObject(unit)
+    local attachers, count = ObjectGetAttachers(unit)
+    for i = 1, count, 1 do
+        if ObjectIsAlive(attachers[i])
+            and ObjectTemplateName(attachers[i]) == "CelestialCenturionUpgradeObject" then
+            return true
+        end
+    end
+    return false
+end
+
+function HextechRune:ShuffleAssignments(assignments)
+    for i = getn(assignments), 2, -1 do
+        local j = self:RandomIndex(i)
+        local temporary = assignments[i]
+        assignments[i] = assignments[j]
+        assignments[j] = temporary
+    end
+end
+
+-- 固定出兵完成 3 秒后，从每名持有者本回合的新步兵中随机选择至多 5 个。
+-- 通过 AI 魔导书调用原生协议，以保留百夫长的附着物、模型标记和光环表现。
+function HextechRune:ApplyFiveTigerGenerals(assignments)
+    local typeLookup = self:BuildAllBattleUnitTypeLookup()
+    for playerIndex = 1, 6, 1 do
+        local copyCount = self:GetFiveTigerGeneralsCopyCount(playerIndex)
+        if copyCount > 0 then
+            local eligible = {}
+            for i = 1, getn(assignments), 1 do
+                local assignment = assignments[i]
+                local unit = assignment.Unit
+                local objectId = ObjectGetId(unit)
+                if assignment.PlayerIndex == playerIndex
+                    and not assignment.FiveTigerGranted
+                    and self:IsCurrentAssignment(unit, assignment)
+                    and typeLookup.infantry[objectId]
+                    and not self:HasCenturionUpgradeObject(unit) then
+                    tinsert(eligible, assignment)
+                end
+            end
+            if getn(eligible) > 0 then
+                self:ShuffleAssignments(eligible)
+                self:EnsureFiveTigerGeneralsPower(playerIndex)
+                local spellbooks, spellbookCount = ObjectFindObjects(
+                    eligible[1].Unit, nil, self.CenturionSpellbookFilter)
+                if spellbookCount > 0 and ObjectIsAlive(spellbooks[1]) then
+                    local spellbookReference = "HextechFiveTigerSpellbook_"
+                        .. tostring(playerIndex)
+                    ExecuteAction("SET_UNIT_REFERENCE", spellbookReference,
+                        spellbooks[1])
+                    local grantCount = 5 * copyCount
+                    if grantCount > getn(eligible) then
+                        grantCount = getn(eligible)
+                    end
+                    for i = 1, grantCount, 1 do
+                        local assignment = eligible[i]
+                        local unit = assignment.Unit
+                        local objectId = ObjectGetId(unit)
+                        local targetReference = "HextechFiveTigerTarget_"
+                            .. tostring(objectId)
+                        assignment.FiveTigerGranted = true
+                        g_HextechFiveTigerPendingTargets[objectId] = true
+                        ExecuteAction("SET_UNIT_REFERENCE", targetReference, unit)
+                        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED",
+                            spellbookReference, self.FiveTigerGeneralsCommand,
+                            targetReference)
+                    end
+                end
+            end
+        end
+    end
 end
 
 function HextechRune:GetTranscendentEvilCopyCount(playerIndex, unitType)
@@ -1097,6 +1362,13 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyDivineInterventionToSide(self:GetPlayerSideIndex(playerIndex), "选择符文")
     elseif rune.Effect == "five_thunder" then
         self:GrantFiveThunder(playerIndex)
+    elseif rune.Effect == "combustion_interest" then
+        self:AssignNewBattleUnits()
+        self:EnsureCombustionInterestObserver()
+    elseif rune.Effect == "tesla_air_assault" then
+        self:GrantTeslaAirAssault(playerIndex)
+    elseif rune.Effect == "five_tiger_generals" then
+        self:EnsureFiveTigerGeneralsPower(playerIndex)
     elseif rune.Effect == "cash_reward" then
         self:GrantCashRewardProtocol(playerIndex)
     else
@@ -1110,8 +1382,13 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName)
     self:ApplyOwnedRunesToNewAssignments(assignments, sourceName or "出兵")
     -- 敌方全体类符文不依赖混编配额，固定出兵与补充军队后扫描新对象。
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
+    return assignments
 end
 
 function HextechRune:ApplyRoundEffects(round)
-    self:ApplyNewBattleUnitEffects("第" .. tostring(round) .. "回合固定出兵")
+    local assignments = self:ApplyNewBattleUnitEffects(
+        "第" .. tostring(round) .. "回合固定出兵")
+    SchedulerModule.delay_call(function(newAssignments)
+        HextechRune:ApplyFiveTigerGenerals(newAssignments)
+    end, self.FiveTigerGeneralsDelay, { assignments })
 end

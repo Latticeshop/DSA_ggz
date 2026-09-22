@@ -617,9 +617,9 @@ end
 function HextechRune:ShowOpeningTestEvent()
     -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "silver_quality_transformation",
-        "gold_quality_transformation",
-        "prismatic_gambling_addict",
+        "silver_five_tiger_generals",
+        "prismatic_combustion_interest",
+        "prismatic_tesla_air_assault",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -997,6 +997,7 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
+    self:OnTeslaAirAssaultRoundBegin(round)
     -- 开局测试入口：测试阶段启用，不计入正式配置次数。
     if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
         and not self.OpeningTestTriggered and round == 1 then

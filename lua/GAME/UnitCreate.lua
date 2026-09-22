@@ -206,16 +206,24 @@ end
 function CelestialCenturionUpgradeBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- 每当百夫长物体出生之后，先等一会（等百夫长机制初始化完毕），之后再看看是不是该给千夫长/万夫长了
     local round = exCounterGetByName("lvc")
-    if round < 9 then
-        -- 前面几个回合不给你用千夫长
-        return
-    end
-    SchedulerModule.delay_call(function(id)
+    SchedulerModule.delay_call(function(id, bornRound)
         if ObjectIsAlive(id) then
             -- 获取拥有百夫长的步兵
             local table, count = ObjectGetAttachees(id)
             if count > 0 and ObjectIsAlive(table[1]) then
                 local centurion = table[1]
+                -- “五虎上将”复用原生百夫长协议来保留完整附着物和视觉效果，
+                -- 但只授予基础百夫长，不参与本项目第 9 回合后的自动晋升。
+                local centurionId = ObjectGetId(centurion)
+                if g_HextechFiveTigerPendingTargets ~= nil
+                    and g_HextechFiveTigerPendingTargets[centurionId] then
+                    g_HextechFiveTigerPendingTargets[centurionId] = nil
+                    return
+                end
+                if bornRound < 9 then
+                    -- 前面几个回合不给你用千夫长
+                    return
+                end
                 -- 看看他是不是已经是千夫长
                 local attachers, attachersCount = ObjectGetAttachers(centurion)
                 for i = 1, attachersCount do
@@ -239,7 +247,7 @@ function CelestialCenturionUpgradeBorn(createdObjId, createdObjInstanceId, owner
                 ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", centurion, "EXITING_COMBINED", 0);
             end
         end
-    end, 20, {createdObjId})
+    end, 20, {createdObjId, round})
 end
 
 function AlliedSuperWeaponBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
@@ -904,6 +912,22 @@ function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
 
 end
 
+-- 磁暴突袭会附带生成史普尼克勘查车。自走棋不需要这两种核心，
+-- 无论来自人类玩家还是 AI，出生时都立即删除；玩家符文以该出生事件
+-- 作为协议成功释放的信号并立刻进入五回合冷却。
+function SovietSurveyorBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if HextechRune ~= nil
+        and HextechRune.OnTeslaAirAssaultSurveyorBorn ~= nil then
+        HextechRune:OnTeslaAirAssaultSurveyorBorn(ownerPlayerName)
+    end
+    if PureDrawRemoveKnownPlayerUnit ~= nil then
+        PureDrawRemoveKnownPlayerUnit(createdObjId)
+    end
+    if ObjectIsAlive(createdObjId) then
+        ExecuteAction("NAMED_DELETE", GetObjectById(createdObjId))
+    end
+end
+
 g_UnitCreateEventFunc[FastHash("CelestialElectricitySale_ForCelestialPower")] = limitCelestialBattery
 g_UnitCreateEventFunc[FastHash("CelestialElectricitySale_ForCelestialAdvancedPower")] = limitCelestialBattery
 g_UnitCreateEventFunc[FastHash("CelestialAlliesElectricitySale_ForCelestialAdvancedPower")] = limitCelestialBattery
@@ -1135,6 +1159,8 @@ exObjectRegisterCreateEvent("JapanKamikazeCommandTower")
 for i = 1, getn(g_PlayerDragonShipTypes), 1 do
     RegisterUnitCreateCallback(g_PlayerDragonShipTypes[i], PlayerDragonShipBorn)
 end
+RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
+RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     local registered = g_UnitCreateEventFunc[createdObjInstanceId]
