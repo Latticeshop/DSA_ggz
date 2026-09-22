@@ -1,7 +1,7 @@
 -- PureDraw: 箱子种子/物理箱与空投
 --   - 跟踪 LuckyUnitCrateSeed / 物理箱
 --   - 禁海时把海里抽卡结果替换为陆地单位
---   - 空投十连（5% 概率，圆形布局）
+--   - 空投十连（命中概率后随机阵型，统一挂到玩家队伍）
 --   - 每 3 回合刷新生产配额
 
 -- 日冕引擎的“幸运单位箱子”技能直接创建可拾取的 LuckyUnitCrateSeed 对象，
@@ -10,10 +10,11 @@
 -- UnitCrateNew / UnitCrate 的创建回调仅作兼容备份，以防某些途径确实生成物理箱。
 function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
-    local roll = GetRandomNumber()
+    -- 系统空投在生成前预登记对象 ID，因此不会进入玩家自定义抽卡检测。
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
     local trackCrate = g_DrawMode == 2 and not isAirdrop
     if trackCrate then
+        local roll = GetRandomNumber()
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -22,7 +23,6 @@ function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayer
             Z = z,
             Owner = ownerPlayerName,
             ListIndex = listIndex,
-            IsSystemAirdrop = false,
             UseCustomDraw = roll < g_PureDrawConfig.CustomDrawChance,
             Matched = false,
         }
@@ -39,10 +39,10 @@ end
 -- 兼容备份：若某些途径确实创建了 UnitCrateNew / UnitCrate 物理箱，同样直接跟踪。
 function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
-    local roll = GetRandomNumber()
     local isAirdrop = g_PureDrawAirdropCrateIds[createdObjId] == true
     local trackCrate = g_DrawMode == 2 and not isAirdrop
     if trackCrate then
+        local roll = GetRandomNumber()
         local listIndex = getn(g_PureDrawTrackedCrateList) + 1
         g_PureDrawTrackedCrateList[listIndex] = createdObjId
         g_PureDrawTrackedCrates[createdObjId] = {
@@ -51,7 +51,6 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
             Z = z,
             Owner = ownerPlayerName,
             ListIndex = listIndex,
-            IsSystemAirdrop = false,
             UseCustomDraw = roll < g_PureDrawConfig.CustomDrawChance,
             Matched = false,
         }
@@ -107,30 +106,44 @@ end
 -- 可拾取箱子就是它，而不是 UnitCrateNew）。成功时记录实际对象 ID 并返回 true。
 -- 注意：RA3LuaBridge 方言（Lua 4.0）不支持闭包访问外层局部变量，因此
 -- 序列号、中心坐标等全部通过参数显式传入，函数体内不使用任何外层局部变量。
-function PureDrawSpawnAirdropCrate(serial, i, team, centerX, centerY, centerZ)
-    local crateName = format("PureDrawAirdrop_%d_%d", serial, i)
-    -- 圆形布局：i=1 在圆心，i=2..10 均匀分布在圆周上（半径 140）。
-    local column, row
-    if i == 1 then
-        column = 0
-        row = 0
-    else
-        local dir = g_PureDrawAirdropCircle[mod(i - 2, 9) + 1]
-        column = dir[1] * 140
-        row = dir[2] * 140
+function PureDrawFindAirdropOwnerTeam()
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human") then
+            -- 与开局赠送抽卡工程师使用同一支已存在的玩家 crate 队伍。
+            return playerName .. "/crate"
+        end
     end
+    return nil
+end
+
+function PureDrawRegisterAirdropPoint(x, y)
+    -- 阵型会重复抽中；相同绝对坐标只登记一次，避免长期游戏中检测表无限增长。
+    for pointIndex = 1, getn(g_PureDrawActiveAirdropPoints), 1 do
+        local point = g_PureDrawActiveAirdropPoints[pointIndex]
+        if point[1] == x and point[2] == y then
+            return
+        end
+    end
+    tinsert(g_PureDrawActiveAirdropPoints, { x, y })
+end
+
+function PureDrawSpawnAirdropCrate(serial, i, ownerTeam,
+    centerX, centerY, centerZ, offsetX, offsetY)
+    local crateName = format("PureDrawAirdrop_%d_%d", serial, i)
     local nextObjectId = GetNextObjectId()
     g_PureDrawAirdropCrateIds[nextObjectId] = true
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", crateName, "LuckyUnitCrateSeed",
-        team, {
-            X = centerX + column,
-            Y = centerY + row,
+        ownerTeam, {
+            X = centerX + offsetX,
+            Y = centerY + offsetY,
             Z = centerZ,
         }, 0)
     local crate = GetObjectByScriptName(crateName)
     if ObjectIsAlive(crate) then
         local actualId = ObjectGetId(crate)
         g_PureDrawAirdropCrateIds[actualId] = true
+        PureDrawRegisterAirdropPoint(centerX + offsetX, centerY + offsetY)
         ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")
         return true
     end
@@ -151,30 +164,26 @@ function PureDrawSpawnAirdrop()
     local centerX = 3547.06
     local centerY = 3055.49
     local centerZ = (lz + rz) / 2
+    local ownerTeam = PureDrawFindAirdropOwnerTeam()
+    if ownerTeam == nil then
+        return
+    end
     g_PureDrawAirdropSerial = g_PureDrawAirdropSerial + 1
 
+    -- 概率判定已经在 PureDrawAirdropCheck 完成；命中后再同步随机本次阵型。
+    local formationCount = getn(g_PureDrawAirdropFormations)
+    local formationIndex = floor(GetRandomNumber() * formationCount) + 1
+    if formationIndex > formationCount then
+        formationIndex = formationCount
+    end
+    local formation = g_PureDrawAirdropFormations[formationIndex]
     local spawnedCount = 0
-    -- 先探测中立阵营是否可生成箱子；若中立阵营不可用，则改用双方电脑阵营，
-    -- 保证空投箱子必定能实际落地（两侧玩家与双方电脑均为友军，均可拾取）。
-    if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, 1,
-            "PlyrNeutral/teamPlyrNeutral", centerX, centerY, centerZ) then
-        spawnedCount = 1
-        for i = 2, 10, 1 do
-            if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, i,
-                    "PlyrNeutral/teamPlyrNeutral", centerX, centerY, centerZ) then
-                spawnedCount = spawnedCount + 1
-            end
-        end
-    else
-        for i = 1, 10, 1 do
-            local team = "PlyrCivilian/teamPlyrCivilian"
-            if i > 5 then
-                team = "PlyrCreeps/teamPlyrCreeps"
-            end
-            if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, i, team,
-                    centerX, centerY, centerZ) then
-                spawnedCount = spawnedCount + 1
-            end
+    -- 所有箱子统一挂到有效玩家队伍，保证能够生成，同时避免 AI 主动拾取。
+    for i = 1, getn(formation), 1 do
+        local offset = formation[i]
+        if PureDrawSpawnAirdropCrate(g_PureDrawAirdropSerial, i, ownerTeam,
+                centerX, centerY, centerZ, offset[1], offset[2]) then
+            spawnedCount = spawnedCount + 1
         end
     end
     if spawnedCount > 0 then

@@ -131,8 +131,7 @@ function PureDrawFindConsumedTrackedCrate(x, y, z, candidateFrame)
     for i = 1, getn(g_PureDrawTrackedCrateList), 1 do
         local tid = g_PureDrawTrackedCrateList[i]
         local state = g_PureDrawTrackedCrates[tid]
-        if state ~= nil and state.DestroyedFrame ~= nil and not state.Matched
-            and not state.IsSystemAirdrop then
+        if state ~= nil and state.DestroyedFrame ~= nil and not state.Matched then
             local dx = x - state.X
             local dy = y - state.Y
             local distanceSquared = dx * dx + dy * dy
@@ -388,23 +387,15 @@ function PureDrawTrackCustomCrate(id)
     SchedulerModule.delay_call(PureDrawTrackCustomCrate, 1, { id })
 end
 
--- 空投十连使用固定的十个落点：中心一点，外圈九点。只允许在这些落点小范围内
--- 新生成的 AI 单位进入根 ATTACK，从源头排除远处出生点刷新的无生产者单位。
+-- 只检查本局实际成功生成过的空投落点。阵型生成时会把真实点位登记进来，
+-- 因此新增阵型会自动同步，同时不会把未抽中的候选阵型扩大为误判区域。
 function PureDrawIsNearAirdropPoint(unitId)
     local x, y, z = ObjectGetPosition(unitId)
-    local centerX = 3547.06
-    local centerY = 3055.49
     local detectRadius = 220
-    for pointIndex = 1, 10, 1 do
-        local pointX = centerX
-        local pointY = centerY
-        if pointIndex > 1 then
-            local direction = g_PureDrawAirdropCircle[pointIndex - 1]
-            pointX = pointX + direction[1] * 140
-            pointY = pointY + direction[2] * 140
-        end
-        local dx = x - pointX
-        local dy = y - pointY
+    for pointIndex = 1, getn(g_PureDrawActiveAirdropPoints), 1 do
+        local point = g_PureDrawActiveAirdropPoints[pointIndex]
+        local dx = x - point[1]
+        local dy = y - point[2]
         if dx * dx + dy * dy <= detectRadius * detectRadius then
             return true
         end
@@ -513,9 +504,8 @@ end
 
 -- 把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。
 -- 逐个设置单位队伍，不合并整个源队伍，避免把玩家单位一起带入 AI 阵营。
--- 注意：空投十连的箱子以 PlyrNeutral/teamPlyrNeutral 生成，AI 拾取后生成的
--- 单位所有者已变为 AI（PlyrCivilian/PlyrCreeps），但队伍可能是引擎赋予的
--- 各种名字（teamPlyrNeutral 等）。因此这里放宽判断：只要所有者是 AI 且
+-- 空投箱挂在实际玩家的 crate 队伍；AI 拾取后单位所有者会变为对应 AI，
+-- 但队伍可能仍是引擎赋予的各种名字。因此这里只判断所有者和目标攻击队伍，
 -- 当前队伍不是攻击队列，就统一编入对应 AI 阵营的 ATTACK 队列。
 function PureDrawJoinAIAttackTeam(unitId)
     if not ObjectIsAlive(unitId) then
