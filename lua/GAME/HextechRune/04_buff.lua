@@ -20,6 +20,38 @@ HextechRune.UnitTypeFilters = {
         Exclude = "STRUCTURE DEBRIS"
     }),
 }
+-- 无限火力（飞机）只开放给六种对空战斗机及其同机型变体。
+-- 轰炸机、天狗、心神等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
+HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
+    Rule = "ANY", Relationship = "SAME_PLAYER",
+    IncludeThing = {
+        -- 阿波罗
+        "AlliedFighterAircraft",
+        "AlliedFighterAircraft_Enhanced",
+        "AlliedFighterAircraft_WithTrailSomke",
+        -- 阿瑞斯
+        "AlliedInterceptorAircraft",
+        "AlliedInterceptorAircraft_Enhanced",
+        -- 凤凰
+        "CelestialFighterAircraft",
+        "CelestialFighterAircraft_WithBlueTrailSomke",
+        "CelestialFighterAircraft_WithRedTrailSomke",
+        "CelestialFighterAircraft_WithTrailSomke",
+        "CelestialFighterAircraft_WithWhiteTrailSomke",
+        -- 崇明
+        "CelestialInterceptorAircraft",
+        "CelestialInterceptorAircraft_Enhanced",
+        -- 米格
+        "SovietFighterAircraft",
+        "SovietFighterAircraft_Enhanced",
+        -- 苏霍伊
+        "SovietInterceptorAircraft",
+        "SovietInterceptorAircraft_Enhanced",
+        -- 摇光巡天炮
+        "CelestialAdvanceAircraftTech4",
+        "CelestialAdvanceAircraftTech4_Enhanced",
+    }
+})
 HextechRune.UnitTypeOrder = { "infantry", "vehicle", "aircraft", "navy" }
 -- 与缩小模式一致，持续时间覆盖整场战斗；同一单位的同一符文只加载一次。
 HextechRune.PersistentBuffDuration = 9999
@@ -104,6 +136,63 @@ function HextechRune:TestAlert(message)
     _ALERT("[海克斯测试] " .. message)
 end
 
+-- 奖励符文不再抽到“质变/赌怪”本身，避免奖励链递归展开；其余筛池规则
+-- 与正式三选一完全一致（阵营、禁海、兵种版本、不可重复符文）。
+function HextechRune:PickBonusRune(playerIndex, rarity)
+    local pool = self:BuildFilteredPool(playerIndex, rarity)
+    local candidates = {}
+    for i = 1, getn(pool), 1 do
+        local rune = pool[i]
+        if rune.Effect ~= "quality_transformation"
+            and rune.Effect ~= "gambling_addict" then
+            tinsert(candidates, rune)
+        end
+    end
+    if getn(candidates) == 0 then
+        return nil
+    end
+    return candidates[self:RandomIndex(getn(candidates))]
+end
+
+function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName)
+    local rune = self:PickBonusRune(playerIndex, rarity)
+    if rune == nil or not self:AddOwnedRune(playerIndex, rune) then
+        self:TestAlert(format("P%d %s：%s池没有可授予符文",
+            playerIndex, sourceName, self.RarityNames[rarity] or tostring(rarity)))
+        return false
+    end
+    self:OnRuneChosen(playerIndex, rune)
+    self:TestAlert(format("P%d %s：获得%s（%s）",
+        playerIndex, sourceName, self:GetRuneDisplayName(rune),
+        self.RarityNames[rarity] or tostring(rarity)))
+    exAddTextToPublicBoard(Localization.get("hextech.bonus.broadcast",
+        playerIndex, sourceName, self:GetRuneDisplayName(rune)), 10)
+    return true
+end
+
+function HextechRune:ApplyQualityTransformation(playerIndex, rune)
+    self:GrantBonusRune(playerIndex, rune.UpgradeRarity,
+        Localization.get("hextech.rune.quality_transformation.name"))
+end
+
+function HextechRune:RollGamblingAddictRarity()
+    local roll = GetRandomNumber() * 100
+    if roll < 5 then
+        return 1
+    elseif roll < 35 then
+        return 2
+    end
+    return 3
+end
+
+function HextechRune:ApplyGamblingAddict(playerIndex)
+    for rewardIndex = 1, 2, 1 do
+        local rarity = self:RollGamblingAddictRarity()
+        self:GrantBonusRune(playerIndex, rarity,
+            Localization.get("hextech.rune.gambling_addict.name"))
+    end
+end
+
 function HextechRune:GetRuneTestValue(rune)
     if rune.Effect == "damage" then
         return "伤害×1.25"
@@ -123,7 +212,7 @@ function HextechRune:GetRuneTestValue(rune)
         local round = tonumber(exCounterGetByName("lvc")) or 0
         return format("第%d回合，生命和伤害各+%d%%", round, round * 2)
     elseif rune.Effect == "infinite_ammo" then
-        return "武器槽1~5弹药=100000"
+        return "仅阿波罗/阿瑞斯/凤凰/崇明/米格/苏霍伊/摇光，武器槽1~5弹药=100000"
     elseif rune.Effect == "broadband_jamming" then
         return "敌方全体单位射程×0.75"
     elseif rune.Effect == "divine_intervention" then
@@ -758,6 +847,10 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
             self:GetTranscendentEvilModifier(playerIndex, rune),
             self.PersistentBuffDuration)
     elseif rune.Effect == "infinite_ammo" then
+        local eligible = typeLookup.infiniteAmmoAircraft
+        if eligible == nil or not eligible[ObjectGetId(unit)] then
+            return false
+        end
         self:ApplyInfiniteAmmoToUnit(unit)
     else
         return false
@@ -858,6 +951,17 @@ function HextechRune:BuildAllBattleUnitTypeLookup()
         end
         result[unitType] = lookup
     end
+    local infiniteAmmoAircraft = {}
+    for sideIndex = 7, 8, 1 do
+        if P ~= nil and P[sideIndex] ~= nil then
+            local units, count = ObjectFindObjects(P[sideIndex], nil,
+                self.InfiniteAmmoAircraftFilter)
+            for i = 1, count, 1 do
+                infiniteAmmoAircraft[ObjectGetId(units[i])] = true
+            end
+        end
+    end
+    result.infiniteAmmoAircraft = infiniteAmmoAircraft
     return result
 end
 
@@ -903,7 +1007,9 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "tower_defense_expert"
                 and rune.Effect ~= "cash_reward"
                 and rune.Effect ~= "brilliant_lights"
-                and rune.Effect ~= "ultimate_refresh" then
+                and rune.Effect ~= "ultimate_refresh"
+                and rune.Effect ~= "quality_transformation"
+                and rune.Effect ~= "gambling_addict" then
                 local assignedCount = 0
                 local appliedCount = 0
                 for i = 1, getn(assignments), 1 do
@@ -1029,6 +1135,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantBrilliantLights(playerIndex)
     elseif rune.Effect == "ultimate_refresh" then
         self:GrantUltimateRefresh(playerIndex)
+    elseif rune.Effect == "quality_transformation" then
+        self:ApplyQualityTransformation(playerIndex, rune)
+    elseif rune.Effect == "gambling_addict" then
+        self:ApplyGamblingAddict(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then

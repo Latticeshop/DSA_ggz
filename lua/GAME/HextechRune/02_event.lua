@@ -58,6 +58,10 @@ HextechRune.PlayerNameEstimatedUnits = 3
 HextechRune.CustomBtnIndexBase = 250
 -- 事件卡片顶部原生图标按钮 index（每玩家 3 个）
 HextechRune.CustomIconBtnIndexBase = 300
+-- 每张事件卡正下方的重随按钮（每玩家 3 个）
+HextechRune.RerollBtnIndexBase = 350
+HextechRune.RerollButtonWidth = 57
+HextechRune.RerollButtonHeight = 35
 -- 自定义文字 index 基础（每玩家 index 唯一）
 HextechRune.CustomTextIndexBase = 200
 
@@ -89,6 +93,8 @@ HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~824
 
 -- 每玩家面板是否展开
 HextechRune.PanelVisible = {}
+-- 每次打开三选一时重置；三个按钮共享同一次使用机会。
+HextechRune.PlayerRerollUsed = HextechRune.PlayerRerollUsed or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 5, 11, 18 }
@@ -105,6 +111,10 @@ end
 
 function HextechRune:GetOptionIconBtnIndex(playerIndex, optionIndex)
     return self.CustomIconBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+end
+
+function HextechRune:GetRerollBtnIndex(playerIndex, optionIndex)
+    return self.RerollBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
 end
 
 -- 估算自定义文字中最宽一行的视觉宽度单位。
@@ -343,6 +353,100 @@ function HextechRune:IsHumanPlayer(playerIndex)
         "Player_" .. playerIndex, "Human")
 end
 
+function HextechRune:CreateRerollButton(playerIndex, optionIndex)
+    local playerName = "Player_" .. playerIndex
+    local totalWidth = self.OptionCardWidth * 3 + self.OptionCardSpacing * 2
+    local startX = self.CenterX - totalWidth / 2
+    local cardX = startX + (optionIndex - 1) * (self.OptionCardWidth + self.OptionCardSpacing)
+    local cardY = self.CenterY - self.OptionCardHeight / 2 - 30
+    local used = self.PlayerRerollUsed[playerIndex] == true
+    exCreateCustomButtonForPlayer(playerName, {
+        Index = self:GetRerollBtnIndex(playerIndex, optionIndex),
+        TextureName = used and g_HextechRerollUsedBtnId or g_HextechRerollBtnId,
+        Desc = Localization.get(used and "hextech.reroll.used" or "hextech.reroll.available"),
+        X = cardX + (self.OptionCardWidth - self.RerollButtonWidth) / 2,
+        Y = cardY + self.OptionCardHeight + 4,
+        SizeX = self.RerollButtonWidth,
+        SizeY = self.RerollButtonHeight,
+        GroupIndex = self:GetRerollBtnIndex(playerIndex, optionIndex),
+        AlignX = "left",
+        AlignY = "top",
+    })
+end
+
+function HextechRune:RefreshRerollButtons(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    for optionIndex = 1, 3, 1 do
+        local buttonIndex = self:GetRerollBtnIndex(playerIndex, optionIndex)
+        exCustomBtnSetVisibilityForPlayer(playerName, buttonIndex, 0)
+        exCustomBtnRemoveForPlayer(playerName, buttonIndex)
+        self:CreateRerollButton(playerIndex, optionIndex)
+    end
+end
+
+function HextechRune:IsRuneInCurrentOptions(options, candidate, ignoredOptionIndex)
+    local candidateId = self:GetRuneOwnershipId(candidate)
+    for optionIndex = 1, getn(options), 1 do
+        if optionIndex ~= ignoredOptionIndex
+            and self:GetRuneOwnershipId(options[optionIndex]) == candidateId then
+            return true
+        end
+    end
+    return false
+end
+
+function HextechRune:PickRerollReplacement(playerIndex, optionIndex)
+    local options = self.PlayerOptions[playerIndex]
+    if options == nil or options[optionIndex] == nil then
+        return nil
+    end
+    local oldRune = options[optionIndex]
+    local oldId = self:GetRuneOwnershipId(oldRune)
+    local pool = self:BuildFilteredPool(playerIndex, oldRune.Rarity)
+    local candidates = {}
+    for i = 1, getn(pool), 1 do
+        local candidate = pool[i]
+        if self:GetRuneOwnershipId(candidate) ~= oldId
+            and not self:IsRuneInCurrentOptions(options, candidate, optionIndex) then
+            tinsert(candidates, candidate)
+        end
+    end
+    if getn(candidates) == 0 then
+        return nil
+    end
+    return candidates[self:RandomIndex(getn(candidates))]
+end
+
+function HextechRune:HandleRerollClick(playerIndex, optionIndex)
+    if self.PlayerRerollUsed[playerIndex] or self.PlayerOptions[playerIndex] == nil then
+        return
+    end
+    local replacement = self:PickRerollReplacement(playerIndex, optionIndex)
+    if replacement == nil then
+        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
+            Localization.get("hextech.reroll.failed"), 6)
+        return
+    end
+    local previousRune = self.PlayerOptions[playerIndex][optionIndex]
+    self.PlayerRerollUsed[playerIndex] = true
+    self.PlayerOptions[playerIndex][optionIndex] = replacement
+    local playerName = "Player_" .. playerIndex
+    local btnIndex = self:GetOptionBtnIndex(playerIndex, optionIndex)
+    local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, optionIndex)
+    local textIndex = self:GetOptionTextIndex(playerIndex, optionIndex)
+    exCustomBtnSetVisibilityForPlayer(playerName, btnIndex, 0)
+    exCustomBtnRemoveForPlayer(playerName, btnIndex)
+    exCustomBtnSetVisibilityForPlayer(playerName, iconBtnIndex, 0)
+    exCustomBtnRemoveForPlayer(playerName, iconBtnIndex)
+    exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, 0)
+    self:CreateOptionBox(playerIndex, optionIndex, replacement.Rarity,
+        self.RarityFrameImageIds[replacement.Rarity], replacement)
+    self:RefreshRerollButtons(playerIndex)
+    self:TestAlert(format("P%d 重随选项%d：%s → %s，本次重随次数已用完",
+        playerIndex, optionIndex, self:GetRuneDisplayName(previousRune),
+        self:GetRuneDisplayName(replacement)))
+end
+
 -- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
 function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     local rune = self:PickOneRune(playerIndex, rarity)
@@ -379,10 +483,12 @@ function HextechRune:ShowRuneEvent(round)
                 local options = self:PickThreeRunes(playerIndex, rarity)
                 if options ~= nil then
                     self.PlayerOptions[playerIndex] = options
+                    self.PlayerRerollUsed[playerIndex] = false
                     for i = 1, 3, 1 do
                         local rune = options[i]
                         self:CreateOptionBox(playerIndex, i, rarity,
                             self.RarityFrameImageIds[rarity], rune)
+                        self:CreateRerollButton(playerIndex, i)
                     end
                 else
                     exAddTextToPublicBoardForPlayer(playerName,
@@ -398,9 +504,9 @@ end
 function HextechRune:ShowOpeningTestEvent()
     -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "gold_transcendent_evil",
-        "gold_brilliant_lights",
-        "prismatic_ultimate_refresh",
+        "silver_quality_transformation",
+        "gold_quality_transformation",
+        "prismatic_gambling_addict",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -426,9 +532,11 @@ function HextechRune:ShowOpeningTestEvent()
             end
             if getn(options) == 3 then
                 self.PlayerOptions[playerIndex] = options
+                self.PlayerRerollUsed[playerIndex] = false
                 for i = 1, 3, 1 do
                     self:CreateOptionBox(playerIndex, i, options[i].Rarity,
                         self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
                 end
             else
                 exAddTextToPublicBoardForPlayer(playerName,
@@ -460,11 +568,14 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     for i = 1, 3, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
         local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
+        local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, i)
         local textIndex = self:GetOptionTextIndex(playerIndex, i)
         exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, btnIndex, 0)
         exCustomBtnRemoveForPlayer("Player_" .. playerIndex, btnIndex)
         exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, iconBtnIndex, 0)
         exCustomBtnRemoveForPlayer("Player_" .. playerIndex, iconBtnIndex)
+        exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, rerollBtnIndex, 0)
+        exCustomBtnRemoveForPlayer("Player_" .. playerIndex, rerollBtnIndex)
         exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex, textIndex, 0)
     end
     local msg = Localization.get("hextech.picked", self:GetRuneDisplayName(rune))
@@ -592,7 +703,16 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     local viewerName = "Player_" .. viewerIndex
     self:EnsurePlayerRuneState(targetIndex)
     local owned = self.PlayerOwnedRunes[targetIndex]
-    local count = getn(owned)
+    -- 质变和赌怪属于即时奖励入口，面板只展示它们实际产出的符文。
+    local displayRunes = {}
+    for ownedIndex = 1, getn(owned), 1 do
+        local ownedRune = owned[ownedIndex]
+        if ownedRune.Effect ~= "quality_transformation"
+            and ownedRune.Effect ~= "gambling_addict" then
+            tinsert(displayRunes, ownedRune)
+        end
+    end
+    local count = getn(displayRunes)
     if count > self.PanelMaxRuneCount then
         count = self.PanelMaxRuneCount
     end
@@ -603,7 +723,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     local totalWidth = self.PanelRuneWidth * count + self.PanelRuneGap * (count - 1)
     local startX = colX - totalWidth / 2
     for slot = 1, count, 1 do
-        local rune = owned[slot]
+        local rune = displayRunes[slot]
         local rarity = rune.Rarity
         local btnIndex = self:GetPanelRuneBtnIndex(targetIndex, slot)
         local iconBtnIndex = self:GetPanelRuneIconBtnIndex(targetIndex, slot)
@@ -645,7 +765,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
             Index = runeTextIndex,
             Content = runeTitle,
             X = self:GetCenteredTextLeftX(x + self.PanelRuneWidth / 2
-                + self:GetRuneTitleVisualOffsetX(rune, true),
+                + self:GetRuneTitleVisualOffsetX(rune, true) - 6,
                 runeTitle, runeTitleSize),
             Y = topY + 30,
             Color = 16777215,
@@ -710,6 +830,19 @@ function HextechRune:RegisterCustomBtnHandler()
                 return true
             end
             return nil
+        end
+        -- 三张事件卡下方的重随按钮共享一次机会，只替换被点击的那张卡。
+        if index > HextechRune.RerollBtnIndexBase
+            and index <= HextechRune.RerollBtnIndexBase + 18 then
+            local rerollOffset = index - HextechRune.RerollBtnIndexBase - 1
+            local rerollPlayerIndex = floor(rerollOffset / 3) + 1
+            local rerollOptionIndex = mod(rerollOffset, 3) + 1
+            if rerollPlayerIndex >= 1 and rerollPlayerIndex <= 6
+                and playerName == "Player_" .. rerollPlayerIndex
+                and HextechRune.PlayerOptions[rerollPlayerIndex] then
+                HextechRune:HandleRerollClick(rerollPlayerIndex, rerollOptionIndex)
+                return true
+            end
         end
         -- 事件卡片的原生图标按钮与下层卡框按钮执行同一个选择。
         if index > HextechRune.CustomIconBtnIndexBase

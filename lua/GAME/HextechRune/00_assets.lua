@@ -193,6 +193,73 @@ g_HextechFramePrismaticId = exPackedTextureImageCreate({
     Rotated = 0
 })
 
+-- 自定义图片嵌入：hextechRerollButton.png（76x46 保持原始比例）
+local HextechRerollButton = {
+    size = {76, 46},
+    base64 = [[
+UklGRm4FAABXRUJQVlA4WAoAAAAQAAAASwAALQAAQUxQSN0BAAAFoCTbtmnb6uMZJbCRsm1W2boF
+eMa3kjf/te4ZibXmXBunABExAb9up1cMabICDAgw+b837+iab2GV5UFZFgblSmoDUIANqQJsAAqw
+ASgpYL3KatkThBbz/YvKwggjsDAgsCwjrMogsCzLAiOMKiuHLCNXxMLUMjIIsExbJik6QmFCYbWm
+qFY5kOsW4ECAAwEOBBhE+YtIWA7k+TUtkq4Ai7bVcNW0qIPFoZ6ZRkfKBoZ3oMCAAgMK6rLhJzIW
+YM1pcaxhARahAZk4VysAhEEtKpMVYPIiHkCmDv47Tq8BAQbUGNJkBRhU+IlpGDSJxcnBwCKDpuBT
+I2QNottD6KRBqbxRA4y6hvzEVMBaJlP8tHZmOtZ4PjtK0wGghNVl8Y4RrBYeZMBq7cJgltXCgExb
+gNWysDKMAKjVzMUGUr5I24GC2oBaZb1a+RSwQgQ4Z2WK1olBjZwqVzNgkTSKxjQpOtKmPVZ+5b/b
+HUbBHFfomffKxmspy6jLgHJGGStFbtg+AwoMKFr99u9dgwADApwSWIBTom1AtA2Il1RoONMHsgI0
+kBmo3ZAj6gagLmE5qD2IAAOiPcjaA7IOFNQmK3odNMtTlsri0TLx49R0DYjeNZ58PZYyoMlpAQIW
+/A4AVlA4IGoDAADQEwCdASpMAC4APhkKhEGhBIsBnQQAYSznb+64vfjW6XtA+1ymDy/hgNwl+uXm
+5etR/dP8B7APIA6zn0AP0i9Mr/M+7f+0fonwrPslfi5mH0VXyM/AG6v82H+x9Pr/A8/2oL+SH5Pc
+aaGGgUdahukm+oXejIu59KDFlmIdfvwc6hWc1PXKzTLaGuVa5FF7eNb8aA9sIcXI/kdmNmzDSfQQ
+ihjm3o/GAAD++6BMm3mp5fjF+fe1/5/15CO4a8fNRQQEvhGHHd4r7EdmD275T81763FcNY2L/8/Y
+3/HSqpY19FGWFf+ihPm3T7f/bAtYG/Xdf/AB04fDfi6sWT6dP9IY3r4FgrK8WjtMgtFNvdUU60MH
+OIGbgBb8CZP8mgDl/w9H3PWfPiyaMwKENqEkmW2pJCs3cs8Jcm9Jl8To643XsVS6of3J4Gss3VgK
+JJJoW/s+3U1t3tDbj6iOeiWN4mTV/xBBp1YA/jhDRwo9Xki7iC6m/jkPGTOWoYhdtfSZNcEhhFxF
+3bklv9s64pClas/kKftAm4M95AHvgTaKOgBx1iaRT2abrL5kBXCaCMViKg1muClJAU4yNSqujH2x
+CtGIZtzhFmRu1b1gN8jAs+2iP7Dv5SoVRPEn6XKXJcPeM7kP9oS7uFYib4l6gtWOV2N8Av0v/gYr
+b5qauMHixVWoFtVzof//TGgumObe2fIDjJh/P09GB90TH6Z/vJr/+cpTtBMmMjeHc8HIn16aT95M
+NmWqODKZP//kKwX7/8IgxGpJU8Men2XqGEOfwnjLVtoHu8Tf+It7EEDAfxaVDnwbF+6Ivi6KLLTK
+iaPGeQH4bMBfXrvrxLL79Tjyn49c/U8RqFAsZvMA5DNOvNzAM9WIlygmN3XPMNmho1lC0m1HNSyo
+YzX0kL0Mhfwi56ZCUXW4tU4nFZrRVTtMqyAaKO+PD9t69PrwU15DlCaSWlY9hxKj04zJJc6tCPHh
+ufEKKHt445TN1+fzd1QfoQ76f4ibzm1JCea3Rq0j780v0l15OwEgha4ItdJnYv+/QIWICNzTwXBk
+P8P7+t6zbiVdgtu10JrKSk1AkAV6MRShM2xgLYlR+Y/l0yhINUwe3WMQ07umOc6G3U2Vz/q4JHCe
+/W/o8Ag9WINq9xzrlKIMIGY6efaXzD05WLyyAAAA
+]]
+}
+local _textureId = exTextureCreateFromBase64(HextechRerollButton.base64, "DXT5")
+g_HextechRerollBtnId = exPackedTextureImageCreate({
+    Texture = _textureId,
+    CoordsX = 0, CoordsY = 0,
+    DimensionsX = HextechRerollButton.size[1], DimensionsY = HextechRerollButton.size[2],
+    TextureDimensionsX = HextechRerollButton.size[1], TextureDimensionsY = HextechRerollButton.size[2],
+    Rotated = 0
+})
+
+-- 自定义图片嵌入：hextechRerollButtonUsed.png（76x46 保持原始比例）
+local HextechRerollButtonUsed = {
+    size = {76, 46},
+    base64 = [[
+UklGRsYCAABXRUJQVlA4WAoAAAAQAAAASwAALQAAQUxQSLwAAAABuS5E9D/gNrZtVdkXt5D+q6AY
+IlLoQB9zoif3IpcwYgIUuW3b2LfODCf5w+kOImkACMZ5tbLnstFUkNqmMVsaNl4gRRYwI3kFRm0x
+LluKmQIp8gkCmE+AADdp6tqdgAGNJ88n47sRipksdf3knFHdJ4z4TIzomxKuAecB+UXLAgCdmfwH
+sPDrWuI0mGUfeAiot7C5bFAkqeuPgSlmrpKcM0E9061zQZacAY4O+n2ywkTTBmnb1LehwgvOAFZQ
+OCDkAQAAsAkAnQEqTAAuAD4ZCINBIQXeSd8EAGEtIBnSfMe12jPRntwOd101X0AOlkIjwZyJMmIV
+AMfKoljPusnmnn5rUP2gA6pHsGu1rPB+vpNbKS4Fafk2s4AA/v/9+X5vZv8YvX//33Hf9/US+R1P
+HSzbXNyKWF5gQZU5Zier1/eKMQkoX3JXr/fUV75n5vQZDelhiYJvEP241mjmXJmVDjyvoFcN8ZkK
+BJR0XuOFVoA85xxTPPqf5Nvff/43b/xDsg/a2/pCpTVvBGziI5+XJA1vvizHuIGJdO0I+kq0excB
+Io3wwtN8k8VP+0OiZx24uAD7z1z3OrPzA2yP8tUy7vPj9Db+7z5MYQOfXbIkjvx+eR93cd/HejYJ
+Zc9oZY/uA/YvBmjRq8EDJ/nz2aP5GlTPV/5w7J9J+plR0MK0f+C6F4nl7mrFNv+918aG0oPF9E68
+1UDpJ24mWdBirbfVxy1pgzQLOWLfDB+ZNsIrkGUR96XSlPVHSSOxqkGiNQHLzXcGNHC4Ox4wpDRU
+1v6Yeb+3YW+rC+V4QcTCqL8N3z2Vb3WerJpxUKc3dkz13TYIlMJvLRukN5MrkO+FdJ7TblRnuUC7
+2j0A8YQZi6augdcV/o4Ig6A5fhdPFn8QVqDqS18RgEiAAA==
+]]
+}
+local _textureId = exTextureCreateFromBase64(HextechRerollButtonUsed.base64, "DXT5")
+g_HextechRerollUsedBtnId = exPackedTextureImageCreate({
+    Texture = _textureId,
+    CoordsX = 0, CoordsY = 0,
+    DimensionsX = HextechRerollButtonUsed.size[1], DimensionsY = HextechRerollButtonUsed.size[2],
+    TextureDimensionsX = HextechRerollButtonUsed.size[1], TextureDimensionsY = HextechRerollButtonUsed.size[2],
+    Rotated = 0
+})
 
 -- 自定义图片嵌入：海克斯面板关闭按钮（hextechRemoveButton.png，76x46 保持比例）
 local HextechRemoveButton = {

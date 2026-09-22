@@ -28,6 +28,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.giga_fortress.name",
         DescKey = "hextech.rune.giga_fortress.desc", Effect = "grant_giga_fortress",
         Icon = "Button_JapanGigaFortressShip" },
+    { Id = "silver_quality_transformation", Rarity = 3,
+        NameKey = "hextech.rune.quality_transformation.name",
+        DescKey = "hextech.rune.quality_transformation.desc",
+        Effect = "quality_transformation", UpgradeRarity = 2,
+        Icon = "CAAT4_Transform" },
 
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -75,6 +80,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.brilliant_lights.name",
         DescKey = "hextech.rune.brilliant_lights.desc",
         Effect = "brilliant_lights", Icon = "CelestialEngineerDroneSpecialPower" },
+    { Id = "gold_quality_transformation", Rarity = 2,
+        NameKey = "hextech.rune.quality_transformation.name",
+        DescKey = "hextech.rune.quality_transformation.desc",
+        Effect = "quality_transformation", UpgradeRarity = 1,
+        Icon = "CAAT4_Transform" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -105,6 +115,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.ultimate_refresh.name",
         DescKey = "hextech.rune.ultimate_refresh.desc",
         Effect = "ultimate_refresh", Icon = "Button_PlayerPower_PointDefenseDrones" },
+    { Id = "prismatic_gambling_addict", Rarity = 1,
+        NameKey = "hextech.rune.gambling_addict.name",
+        DescKey = "hextech.rune.gambling_addict.desc",
+        Effect = "gambling_addict", Icon = "Button_PlayerPower_FreeTrade" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -115,6 +129,7 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_tower_defense_expert = true,
+    prismatic_gambling_addict = true,
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
@@ -148,6 +163,7 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         TargetUnitName = rune.TargetUnitName,
         RequiresSea = rune.RequiresSea,
         RequiredFaction = rune.RequiredFaction,
+        UpgradeRarity = rune.UpgradeRarity,
     }
 end
 
