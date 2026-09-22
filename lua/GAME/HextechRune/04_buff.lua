@@ -429,6 +429,41 @@ function HextechRune:GrantOlympusCarrier(playerIndex)
         playerIndex, tostring(nextObjectId)))
 end
 
+function HextechRune:GrantOblivionBomb(playerIndex)
+    -- 与抽卡空投使用同一个固定战场圆心；高度沿用 T74/T84 的地面平均值。
+    local centerZ = 0
+    local leftTower = GetObjectByScriptName("T74")
+    local rightTower = GetObjectByScriptName("T84")
+    if ObjectIsAlive(leftTower) and ObjectIsAlive(rightTower) then
+        local lx, ly, lz = ObjectGetPosition(leftTower)
+        local rx, ry, rz = ObjectGetPosition(rightTower)
+        centerZ = (lz + rz) / 2
+    elseif ObjectIsAlive(leftTower) then
+        local lx, ly, lz = ObjectGetPosition(leftTower)
+        centerZ = lz
+    elseif ObjectIsAlive(rightTower) then
+        local rx, ry, rz = ObjectGetPosition(rightTower)
+        centerZ = rz
+    end
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "japanomegaoblivionbomb",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        { X = 3547.06, Y = 3055.49, Z = centerZ }, 0)
+    self:TestAlert(format("P%d 湮灭炸弹：已在场地中心(3547.06, 3055.49)生成玩家所属建筑",
+        playerIndex))
+end
+
+function HextechRune:GrantGigaFortress(playerIndex)
+    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "JapanGigaFortressShipEgg",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 0), 0)
+    -- UnitCreate.lua 已为该核心注册 UnitCountFunc：8 帧后计数并删除实体。
+    self:TestAlert(format("P%d 超级要塞：已生成 JapanGigaFortressShipEgg，objectId=%s，等待回收进AI队列",
+        playerIndex, tostring(nextObjectId)))
+end
+
 function HextechRune:GrantOilDerricks(playerIndex)
     local teamName = format("Player_%d/teamPlayer_%d", playerIndex, playerIndex)
     g_HextechOilDerrickSerial[playerIndex] = g_HextechOilDerrickSerial[playerIndex] + 1
@@ -728,6 +763,8 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "grant_yaoguang" and rune.Effect ~= "oil_king"
                 and rune.Effect ~= "buy_two_get_one" and rune.Effect ~= "five_thunder"
                 and rune.Effect ~= "grant_olympus_carrier"
+                and rune.Effect ~= "grant_oblivion_bomb"
+                and rune.Effect ~= "grant_giga_fortress"
                 and rune.Effect ~= "cash_reward" then
                 local assignedCount = 0
                 local appliedCount = 0
@@ -822,6 +859,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantYaoguang(playerIndex)
     elseif rune.Effect == "grant_olympus_carrier" then
         self:GrantOlympusCarrier(playerIndex)
+    elseif rune.Effect == "grant_oblivion_bomb" then
+        self:GrantOblivionBomb(playerIndex)
+    elseif rune.Effect == "grant_giga_fortress" then
+        self:GrantGigaFortress(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then

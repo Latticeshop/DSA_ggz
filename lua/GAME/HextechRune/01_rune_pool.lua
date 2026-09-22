@@ -24,8 +24,16 @@ HextechRune.RunePool = {
     { Id = "silver_mcv", Rarity = 3, NameKey = "hextech.rune.mcv.name",
         DescKey = "hextech.rune.mcv.desc", Effect = "grant_foreign_mcv",
         Icon = "Button_JapanMCV" },
+    { Id = "silver_giga_fortress", Rarity = 3,
+        NameKey = "hextech.rune.giga_fortress.name",
+        DescKey = "hextech.rune.giga_fortress.desc", Effect = "grant_giga_fortress",
+        Icon = "Button_JapanGigaFortressShip" },
 
     -- 金色
+    { Id = "gold_oblivion_bomb", Rarity = 2,
+        NameKey = "hextech.rune.oblivion_bomb.name",
+        DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
+        Icon = "Button_PlayerPower_Telekenetic" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
         Icon = "Button_CelestialAdvancedAircraftTech4" },
@@ -41,7 +49,7 @@ HextechRune.RunePool = {
     { Id = "gold_cash_reward", Rarity = 2,
         NameKey = "hextech.rune.cash_reward.name",
         DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
-        Icon = "Button_PlayerPower_ProductionKickback" },
+        RequiredFaction = 2, Icon = "Button_PlayerPower_ProductionKickback" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_JapanPointShieldControlTower" },
@@ -80,6 +88,7 @@ HextechRune.RunePool = {
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
 -- 同一轮三选一仍由 PickThreeRunes 的无放回抽取保证互不重复。
 HextechRune.NonRepeatableRuneIds = {
+    gold_oblivion_bomb = true,
     gold_fortified = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
@@ -115,6 +124,7 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         TargetUnitIndex = rune.TargetUnitIndex,
         TargetUnitName = rune.TargetUnitName,
         RequiresSea = rune.RequiresSea,
+        RequiredFaction = rune.RequiredFaction,
     }
 end
 
@@ -153,7 +163,18 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
     return candidates[self:RandomIndex(getn(candidates))]
 end
 
+function HextechRune:IsRuneFactionAvailable(playerIndex, rune)
+    if rune.RequiredFaction == nil then
+        return true
+    end
+    return g_PlayerSide ~= nil
+        and g_PlayerSide[playerIndex] == rune.RequiredFaction
+end
+
 function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
+    if not self:IsRuneFactionAvailable(playerIndex, rune) then
+        return nil
+    end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
     if candidate.Effect == "buy_two_get_one" then
         local target = self:PickBuyTwoGetOneTarget(playerIndex)
@@ -293,7 +314,9 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
     local filtered = {}
     for i = 1, getn(self.RunePool), 1 do
         local rune = self.RunePool[i]
-        if rune.Rarity == rarity and (not rune.RequiresSea or g_DisableSeaArmy ~= 1) then
+        local factionAllowed = self:IsRuneFactionAvailable(playerIndex, rune)
+        if rune.Rarity == rarity and factionAllowed
+            and (not rune.RequiresSea or g_DisableSeaArmy ~= 1) then
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
