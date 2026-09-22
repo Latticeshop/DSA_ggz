@@ -83,11 +83,13 @@ HextechRune.FiveThunderCooldownRounds = 5
 HextechRune.CashRewardSpecialPower = "SpecialPower_ProductionKickbacks"
 HextechRune.CashRewardPlayerTech = "PlayerTech_Soviet_ProductionKickbacks"
 HextechRune.FortifiedTowerState = HextechRune.FortifiedTowerState or {}
+HextechRune.TranscendentEvilModifiers = HextechRune.TranscendentEvilModifiers or {}
 
 g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
 g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
 g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
+g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0 }
 
 -- 在现有经济倍率/苏联大生产修正之后叠加玩家自己的破烂王倍率。
 if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
@@ -117,6 +119,9 @@ function HextechRune:GetRuneTestValue(rune)
         return "射程×1.35"
     elseif rune.Effect == "astral_body" then
         return "生命×1.5，伤害×0.9"
+    elseif rune.Effect == "transcendent_evil" then
+        local round = tonumber(exCounterGetByName("lvc")) or 0
+        return format("第%d回合，生命和伤害各+%d%%", round, round * 2)
     elseif rune.Effect == "infinite_ammo" then
         return "武器槽1~5弹药=100000"
     elseif rune.Effect == "broadband_jamming" then
@@ -506,6 +511,79 @@ function HextechRune:GrantSafetyAegisTowers(playerIndex)
         playerIndex))
 end
 
+function HextechRune:GrantBrilliantLights(playerIndex)
+    local forwardDirection = 1
+    local towerPos = { X = 3000, Y = 3102.5, Z = 210 }
+    if playerIndex >= 4 then
+        forwardDirection = -1
+        towerPos = { X = 4030, Y = 3102.5, Z = 210 }
+    end
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower)
+        towerPos = {
+            X = towerX + forwardDirection * 200,
+            Y = towerY,
+            Z = towerZ,
+        }
+    end
+    local teamName = format("Player_%d/teamPlayer_%d", playerIndex, playerIndex)
+    for i = 1, 2, 1 do
+        local sideOffset = -100
+        if i == 2 then
+            sideOffset = 100
+        end
+        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+            "CelestialEngineerRepairDroneLv2", teamName,
+            { X = towerPos.X, Y = towerPos.Y + sideOffset, Z = towerPos.Z }, 0)
+    end
+    self:TestAlert(format("P%d 灯火辉煌：已在前线塔前方生成2个玩家所属的中级天灯", playerIndex))
+end
+
+function HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
+    local copyCount = g_HextechUltimateRefreshCount[playerIndex] or 0
+    if copyCount <= 0 or buttons == nil then
+        return 0
+    end
+    local applied = 0
+    for buttonIndex = 1, 2, 1 do
+        local button = buttons[buttonIndex]
+        if button ~= nil and button.MaxUseCount ~= nil then
+            local previousApplied = button._hextechUltimateRefreshAppliedCount or 0
+            local addCount = copyCount - previousApplied
+            if addCount > 0 then
+                button.MaxUseCount = button.MaxUseCount + addCount
+                button._hextechUltimateRefreshAppliedCount = copyCount
+                if not button.IsLocked and (button._cooldownCount or 0) <= 0
+                    and (button._usedCount or 0) < button.MaxUseCount then
+                    button.IsEnabled = true
+                end
+                button:FormatText()
+                applied = applied + 1
+            end
+        end
+    end
+    return applied
+end
+
+function HextechRune:GrantUltimateRefresh(playerIndex)
+    g_HextechUltimateRefreshCount[playerIndex]
+        = (g_HextechUltimateRefreshCount[playerIndex] or 0) + 1
+    local playerName = "Player_" .. playerIndex
+    local buttons = {
+        ButtonManager:GetButton(playerName, 1),
+        ButtonManager:GetButton(playerName, 2),
+    }
+    local applied = self:ApplyUltimateRefreshToButtons(playerIndex, buttons)
+    for i = 1, 2, 1 do
+        if buttons[i] ~= nil then
+            ButtonManager:SetButton(buttons[i])
+        end
+    end
+    self:TestAlert(format("P%d 终极刷新：累计+%d次，本次已更新%d个现有技能按钮；未选择的技能将在创建时补加",
+        playerIndex, g_HextechUltimateRefreshCount[playerIndex], applied))
+end
+
 function HextechRune:EnableTowerDefenseExpert(playerIndex)
     g_HextechTowerDefenseExpert[playerIndex] = true
     self:TestAlert(format("P%d 塔防专家：市场防御塔价格×0.8，购买无数量限制且不占名额",
@@ -671,6 +749,14 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     elseif rune.Effect == "astral_body" then
         ObjectLoadAttributeModifier(unit, g_HextechAstralBodyModifier,
             self.PersistentBuffDuration)
+    elseif rune.Effect == "transcendent_evil" then
+        -- 同兵种多份按回合数直接相加，只加载一个合并后的 Modifier。
+        if not self:IsPrimaryTranscendentEvilRune(playerIndex, rune) then
+            return false
+        end
+        ObjectLoadAttributeModifier(unit,
+            self:GetTranscendentEvilModifier(playerIndex, rune),
+            self.PersistentBuffDuration)
     elseif rune.Effect == "infinite_ammo" then
         self:ApplyInfiniteAmmoToUnit(unit)
     else
@@ -815,7 +901,9 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "grant_giga_fortress"
                 and rune.Effect ~= "safety"
                 and rune.Effect ~= "tower_defense_expert"
-                and rune.Effect ~= "cash_reward" then
+                and rune.Effect ~= "cash_reward"
+                and rune.Effect ~= "brilliant_lights"
+                and rune.Effect ~= "ultimate_refresh" then
                 local assignedCount = 0
                 local appliedCount = 0
                 for i = 1, getn(assignments), 1 do
@@ -833,23 +921,6 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
             end
         end
     end
-end
-
--- 玩家中途获得新符文时，对之前已登记且仍存活的归属单位补施加一次。
-function HextechRune:ApplyRuneToAssignedBattleUnits(playerIndex, rune, sourceName)
-    local typeLookup = self:BuildAllBattleUnitTypeLookup()
-    local assignedCount = 0
-    local appliedCount = 0
-    for objectId, assignment in self.BattleUnitAssignments do
-        if assignment.PlayerIndex == playerIndex and ObjectIsAlive(assignment.Unit)
-            and ObjectGetId(assignment.Unit) == objectId then
-            assignedCount = assignedCount + 1
-            if self:ApplyRuneToAssignment(rune, assignment, typeLookup) then
-                appliedCount = appliedCount + 1
-            end
-        end
-    end
-    self:AlertPersistentResult(sourceName, playerIndex, rune, assignedCount, appliedCount)
 end
 
 function HextechRune:ApplyFortifiedToTowerLine(playerIndex, towerNames, lineName)
@@ -896,12 +967,49 @@ function HextechRune:ApplyFortified(playerIndex)
 end
 
 function HextechRune:ApplyPersistentRune(playerIndex, rune)
-    -- 先登记选择瞬间可能已经存在、但尚未被固定出兵触发器扫描的单位。
-    local newAssignments = self:AssignNewBattleUnits()
-    self:ApplyRuneToAssignedBattleUnits(playerIndex, rune, "选择符文")
-    -- 新登记单位还需要补齐所有玩家此前持有的其他持续符文；当前符文刚处理过，跳过其重复日志。
-    self:ApplyOwnedRunesToNewAssignments(newAssignments, "选择时补登记",
-        playerIndex, self:GetRuneEffectInstanceId(rune))
+    -- 持续型符文只影响选择之后的新出兵，不追溯强化仍存活的旧单位。
+    -- 这里仍登记当前尚未登记的场上单位，避免它们在下一次出兵扫描时被误判为新单位。
+    local existingAssignments = self:AssignNewBattleUnits()
+    self:TestAlert(format("P%d %s：已登记现存单位%d，只对后续新出兵生效",
+        playerIndex, self:GetRuneDisplayName(rune), getn(existingAssignments)))
+end
+
+function HextechRune:GetTranscendentEvilCopyCount(playerIndex, unitType)
+    self:EnsurePlayerRuneState(playerIndex)
+    local count = 0
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local current = owned[i]
+        if current.Effect == "transcendent_evil" and current.UnitType == unitType then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function HextechRune:IsPrimaryTranscendentEvilRune(playerIndex, rune)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local current = owned[i]
+        if current.Effect == "transcendent_evil" and current.UnitType == rune.UnitType then
+            return current == rune
+        end
+    end
+    return false
+end
+
+function HextechRune:GetTranscendentEvilModifier(playerIndex, rune)
+    local round = tonumber(exCounterGetByName("lvc")) or 0
+    local copyCount = self:GetTranscendentEvilCopyCount(playerIndex, rune.UnitType)
+    local bonus = round * 0.02 * copyCount
+    local cacheKey = tostring(round) .. ":" .. tostring(copyCount)
+    if self.TranscendentEvilModifiers[cacheKey] == nil then
+        self.TranscendentEvilModifiers[cacheKey] = exAttributeModifierCreate({
+            HEALTH_MULT = 1 + bonus,
+            DAMAGE_MULT = 1 + bonus,
+        }, 1)
+    end
+    return self.TranscendentEvilModifiers[cacheKey]
 end
 
 function HextechRune:OnRuneChosen(playerIndex, rune)
@@ -917,6 +1025,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantSafetyAegisTowers(playerIndex)
     elseif rune.Effect == "tower_defense_expert" then
         self:EnableTowerDefenseExpert(playerIndex)
+    elseif rune.Effect == "brilliant_lights" then
+        self:GrantBrilliantLights(playerIndex)
+    elseif rune.Effect == "ultimate_refresh" then
+        self:GrantUltimateRefresh(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then

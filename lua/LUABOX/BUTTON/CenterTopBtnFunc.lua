@@ -339,6 +339,10 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
         end
     end
 
+    -- “终极刷新”可能早于技能组选择获得；创建技能时补上此前累计的次数。
+    if HextechRune ~= nil and HextechRune.ApplyUltimateRefreshToButtons ~= nil then
+        HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
+    end
     ButtonManager:SetButton(buttons[1])
     ButtonManager:SetButton(buttons[2])
 end

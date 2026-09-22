@@ -66,6 +66,15 @@ HextechRune.RunePool = {
     { Id = "gold_sea_overlord", Rarity = 2, NameKey = "hextech.rune.sea_overlord.name",
         DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
         RequiresSea = true, Icon = "Button_AlliedGaintAircraftCarrier" },
+    { Id = "gold_transcendent_evil", Rarity = 2,
+        NameKey = "hextech.rune.transcendent_evil.name",
+        DescKey = "hextech.rune.transcendent_evil.desc",
+        Effect = "transcendent_evil", NeedsUnitType = true,
+        Icon = "Button_PlayerPower_EmperorRage3" },
+    { Id = "gold_brilliant_lights", Rarity = 2,
+        NameKey = "hextech.rune.brilliant_lights.name",
+        DescKey = "hextech.rune.brilliant_lights.desc",
+        Effect = "brilliant_lights", Icon = "CelestialEngineerDroneSpecialPower" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -92,6 +101,10 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.tower_defense_expert.desc",
         Effect = "tower_defense_expert",
         Icon = "Button_JapanPointShieldControlTower" },
+    { Id = "prismatic_ultimate_refresh", Rarity = 1,
+        NameKey = "hextech.rune.ultimate_refresh.name",
+        DescKey = "hextech.rune.ultimate_refresh.desc",
+        Effect = "ultimate_refresh", Icon = "Button_PlayerPower_PointDefenseDrones" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -368,6 +381,16 @@ function HextechRune:PickThreeRunes(playerIndex, rarity)
         tremove(pool, poolIndex)
     end
     return picked
+end
+
+-- 遭遇战电脑不操作符文选择界面，直接从自身筛选后的同阶池中等概率抽取一个。
+-- 与真人三选一使用同一套阵营、禁海、兵种版本和不可重复规则。
+function HextechRune:PickOneRune(playerIndex, rarity)
+    local pool = self:BuildFilteredPool(playerIndex, rarity)
+    if getn(pool) < 1 then
+        return nil
+    end
+    return pool[self:RandomIndex(getn(pool))]
 end
 
 function HextechRune:AddOwnedRune(playerIndex, rune)

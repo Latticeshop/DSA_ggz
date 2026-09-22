@@ -338,7 +338,34 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     })
 end
 
--- 真实符文事件：先确定全场稀有度，再为每名玩家独立筛池并无放回抽 3 个。
+function HextechRune:IsHumanPlayer(playerIndex)
+    return EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY",
+        "Player_" .. playerIndex, "Human")
+end
+
+-- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
+function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
+    local rune = self:PickOneRune(playerIndex, rarity)
+    if rune == nil then
+        self:TestAlert(format("第%d回合 P%d 电脑海克斯：%s池没有可用候选",
+            round, playerIndex, self.RarityNames[rarity] or tostring(rarity)))
+        return false
+    end
+    if not self:AddOwnedRune(playerIndex, rune) then
+        self:TestAlert(format("第%d回合 P%d 电脑海克斯：添加%s失败",
+            round, playerIndex, self:GetRuneDisplayName(rune)))
+        return false
+    end
+    self.PlayerOptions[playerIndex] = nil
+    self:OnRuneChosen(playerIndex, rune)
+    self:TestAlert(format("第%d回合 P%d 电脑海克斯：随机获得%s（%s）",
+        round, playerIndex, self:GetRuneDisplayName(rune),
+        self.RarityNames[rarity] or tostring(rarity)))
+    return true
+end
+
+-- 真实符文事件：先确定全场稀有度，再按玩家身份处理。
+-- 真人独立筛池并无放回抽 3 个进行选择；遭遇战电脑直接随机获得同阶符文 1 个。
 function HextechRune:ShowRuneEvent(round)
     local rarity = self:RollFieldRarity(round)
     for playerIndex = 1, 6, 1 do
@@ -348,17 +375,21 @@ function HextechRune:ShowRuneEvent(round)
         local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
-            local options = self:PickThreeRunes(playerIndex, rarity)
-            if options ~= nil then
-                self.PlayerOptions[playerIndex] = options
-                for i = 1, 3, 1 do
-                    local rune = options[i]
-                    self:CreateOptionBox(playerIndex, i, rarity,
-                        self.RarityFrameImageIds[rarity], rune)
+            if self:IsHumanPlayer(playerIndex) then
+                local options = self:PickThreeRunes(playerIndex, rarity)
+                if options ~= nil then
+                    self.PlayerOptions[playerIndex] = options
+                    for i = 1, 3, 1 do
+                        local rune = options[i]
+                        self:CreateOptionBox(playerIndex, i, rarity,
+                            self.RarityFrameImageIds[rarity], rune)
+                    end
+                else
+                    exAddTextToPublicBoardForPlayer(playerName,
+                        Localization.get("hextech.error.not_enough_candidates"), 10)
                 end
             else
-                exAddTextToPublicBoardForPlayer(playerName,
-                    Localization.get("hextech.error.not_enough_candidates"), 10)
+                self:GrantRandomRuneToComputer(playerIndex, rarity, round)
             end
         end
     end
@@ -367,9 +398,9 @@ end
 function HextechRune:ShowOpeningTestEvent()
     -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
     local testRuneIds = {
-        "prismatic_five_thunder",
-        "gold_safety",
-        "prismatic_tower_defense_expert",
+        "gold_transcendent_evil",
+        "gold_brilliant_lights",
+        "prismatic_ultimate_refresh",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -380,8 +411,15 @@ function HextechRune:ShowOpeningTestEvent()
             local options = {}
             for i = 1, 3, 1 do
                 local template = self:FindRuneById(testRuneIds[i])
-                -- 买二送一也在选项生成时随机目标；候选创建后目标即固定，点击不重抽。
-                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, nil)
+                -- 带兵种的测试符文也在选项生成时确定一个可用兵种，点击时不再重抽。
+                local unitType = nil
+                if template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
                 if candidate ~= nil then
                     tinsert(options, candidate)
                 end

@@ -411,7 +411,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             TeamName = playerOwn.."/team"..playerOwn,
             Position = {X = pos.X, Y = pos.Y, Z = pos.Z},
             Angle = 0,
-            Health = 5500
+            -- 与埃奎斯护盾发生器使用相同的 9000 生命值。
+            Health = 9000
         });
         -- 樱花井射程增加 150%，最终为基础射程的 2.5 倍。
         if not g_JapanKamikazeCommandTowerRangeX25Modifier then
