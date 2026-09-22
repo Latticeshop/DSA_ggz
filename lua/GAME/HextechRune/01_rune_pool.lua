@@ -68,9 +68,6 @@ HextechRune.RunePool = {
     { Id = "gold_scope", Rarity = 2, NameKey = "hextech.rune.scope.gold.name",
         DescKey = "hextech.rune.scope.gold.desc", Effect = "range_gold", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
-    { Id = "gold_sea_overlord", Rarity = 2, NameKey = "hextech.rune.sea_overlord.name",
-        DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
-        RequiresSea = true, Icon = "Button_AlliedGaintAircraftCarrier" },
     { Id = "gold_transcendent_evil", Rarity = 2,
         NameKey = "hextech.rune.transcendent_evil.name",
         DescKey = "hextech.rune.transcendent_evil.desc",
@@ -119,6 +116,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.gambling_addict.name",
         DescKey = "hextech.rune.gambling_addict.desc",
         Effect = "gambling_addict", Icon = "Button_PlayerPower_FreeTrade" },
+    { Id = "prismatic_sea_overlord", Rarity = 1,
+        NameKey = "hextech.rune.sea_overlord.name",
+        DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
+        RequiresSea = true, Icon = "Button_AlliedGaintAircraftCarrier" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。

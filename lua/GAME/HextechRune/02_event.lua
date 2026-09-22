@@ -28,7 +28,7 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
--- 开局真实测试事件是否启用/已触发（不计入 g_HextechCount）
+-- 开局真实测试事件保留供后续开发调用；发版时不接入回合流程。
 HextechRune.EnableOpeningRealTest = true
 HextechRune.OpeningTestTriggered = false
 
@@ -427,7 +427,6 @@ function HextechRune:HandleRerollClick(playerIndex, optionIndex)
             Localization.get("hextech.reroll.failed"), 6)
         return
     end
-    local previousRune = self.PlayerOptions[playerIndex][optionIndex]
     self.PlayerRerollUsed[playerIndex] = true
     self.PlayerOptions[playerIndex][optionIndex] = replacement
     local playerName = "Player_" .. playerIndex
@@ -442,29 +441,19 @@ function HextechRune:HandleRerollClick(playerIndex, optionIndex)
     self:CreateOptionBox(playerIndex, optionIndex, replacement.Rarity,
         self.RarityFrameImageIds[replacement.Rarity], replacement)
     self:RefreshRerollButtons(playerIndex)
-    self:TestAlert(format("P%d 重随选项%d：%s → %s，本次重随次数已用完",
-        playerIndex, optionIndex, self:GetRuneDisplayName(previousRune),
-        self:GetRuneDisplayName(replacement)))
 end
 
 -- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
 function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     local rune = self:PickOneRune(playerIndex, rarity)
     if rune == nil then
-        self:TestAlert(format("第%d回合 P%d 电脑海克斯：%s池没有可用候选",
-            round, playerIndex, self.RarityNames[rarity] or tostring(rarity)))
         return false
     end
     if not self:AddOwnedRune(playerIndex, rune) then
-        self:TestAlert(format("第%d回合 P%d 电脑海克斯：添加%s失败",
-            round, playerIndex, self:GetRuneDisplayName(rune)))
         return false
     end
     self.PlayerOptions[playerIndex] = nil
     self:OnRuneChosen(playerIndex, rune)
-    self:TestAlert(format("第%d回合 P%d 电脑海克斯：随机获得%s（%s）",
-        round, playerIndex, self:GetRuneDisplayName(rune),
-        self.RarityNames[rarity] or tostring(rarity)))
     return true
 end
 
@@ -878,12 +867,12 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
-    -- 开局真实测试事件：只在启用海克斯时触发，不计入配置次数。
-    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
-        and not self.OpeningTestTriggered and round == 1 then
-        self.OpeningTestTriggered = true
-        self:ShowOpeningTestEvent()
-    end
+    -- 开局测试入口（发版停用；后续开发时取消注释即可继续调用）：
+    -- if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+    --     and not self.OpeningTestTriggered and round == 1 then
+    --     self.OpeningTestTriggered = true
+    --     self:ShowOpeningTestEvent()
+    -- end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

@@ -20,7 +20,7 @@ HextechRune.UnitTypeFilters = {
         Exclude = "STRUCTURE DEBRIS"
     }),
 }
--- 无限火力（飞机）只开放给六种对空战斗机及其同机型变体。
+-- 无限火力（飞机）只开放给指定对空战斗机、摇光巡天炮及其同机型变体。
 -- 轰炸机、天狗、心神等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
 HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
     Rule = "ANY", Relationship = "SAME_PLAYER",
@@ -132,10 +132,6 @@ if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
     end
 end
 
-function HextechRune:TestAlert(message)
-    _ALERT("[海克斯测试] " .. message)
-end
-
 -- 奖励符文不再抽到“质变/赌怪”本身，避免奖励链递归展开；其余筛池规则
 -- 与正式三选一完全一致（阵营、禁海、兵种版本、不可重复符文）。
 function HextechRune:PickBonusRune(playerIndex, rarity)
@@ -157,14 +153,9 @@ end
 function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName)
     local rune = self:PickBonusRune(playerIndex, rarity)
     if rune == nil or not self:AddOwnedRune(playerIndex, rune) then
-        self:TestAlert(format("P%d %s：%s池没有可授予符文",
-            playerIndex, sourceName, self.RarityNames[rarity] or tostring(rarity)))
         return false
     end
     self:OnRuneChosen(playerIndex, rune)
-    self:TestAlert(format("P%d %s：获得%s（%s）",
-        playerIndex, sourceName, self:GetRuneDisplayName(rune),
-        self.RarityNames[rarity] or tostring(rarity)))
     exAddTextToPublicBoard(Localization.get("hextech.bonus.broadcast",
         playerIndex, sourceName, self:GetRuneDisplayName(rune)), 10)
     return true
@@ -191,36 +182,6 @@ function HextechRune:ApplyGamblingAddict(playerIndex)
         self:GrantBonusRune(playerIndex, rarity,
             Localization.get("hextech.rune.gambling_addict.name"))
     end
-end
-
-function HextechRune:GetRuneTestValue(rune)
-    if rune.Effect == "damage" then
-        return "伤害×1.25"
-    elseif rune.Effect == "rate_of_fire" then
-        return "射速×1.25"
-    elseif rune.Effect == "speed" then
-        return "速度×1.25"
-    elseif rune.Effect == "range_silver" then
-        return "射程×1.15"
-    elseif rune.Effect == "range_gold" then
-        return "射程×1.25"
-    elseif rune.Effect == "range_prismatic" then
-        return "射程×1.35"
-    elseif rune.Effect == "astral_body" then
-        return "生命×1.5，伤害×0.9"
-    elseif rune.Effect == "transcendent_evil" then
-        local round = tonumber(exCounterGetByName("lvc")) or 0
-        return format("第%d回合，生命和伤害各+%d%%", round, round * 2)
-    elseif rune.Effect == "infinite_ammo" then
-        return "仅阿波罗/阿瑞斯/凤凰/崇明/米格/苏霍伊/摇光，武器槽1~5弹药=100000"
-    elseif rune.Effect == "broadband_jamming" then
-        return "敌方全体单位射程×0.75"
-    elseif rune.Effect == "divine_intervention" then
-        return "每30秒铁幕5秒，同阵营额外每份+2.5秒"
-    elseif rune.Effect == "five_thunder" then
-        return "立即获得1次，释放后每5回合恢复"
-    end
-    return rune.Effect or "未知效果"
 end
 
 function HextechRune:GetPlayerSideIndex(playerIndex)
@@ -269,7 +230,6 @@ function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
     end
     local applied = self.BroadbandJammingApplied[effectInstanceId]
     local units, count = ObjectFindObjects(P[enemySideIndex], nil, self.AllSideUnitsFilter)
-    local appliedCount = 0
     for i = 1, count, 1 do
         local unit = units[i]
         local objectId = ObjectGetId(unit)
@@ -278,12 +238,8 @@ function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
             ObjectLoadAttributeModifier(unit, g_HextechEnemyRangeX075Modifier,
                 self.PersistentBuffDuration)
             applied[objectId] = unit
-            appliedCount = appliedCount + 1
         end
     end
-    self:TestAlert(format("%s P%d 全频段阻塞干扰：敌方AI=Plyr%s，扫描%d，新生效%d，射程×0.75",
-        sourceName or "刷新", playerIndex, enemySideIndex == 7 and "Civilian" or "Creeps",
-        count, appliedCount))
 end
 
 function HextechRune:ApplyAllBroadbandJamming(sourceName)
@@ -312,9 +268,6 @@ function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     for i = 1, count, 1 do
         ObjectLoadAttributeModifier(objects[i], "AttributeModifier_IronCurtain", duration)
     end
-    self:TestAlert(format("%s 神圣干预：己方AI=Plyr%s，同阵营持有%d份，单位/建筑%d个，铁幕%d帧(%.1f秒)",
-        sourceName or "周期触发", sideIndex == 7 and "Civilian" or "Creeps",
-        ownedCount, count, duration, duration / 15))
 end
 
 function HextechRune:ApplyDivineInterventionPulse(sourceName)
@@ -385,7 +338,6 @@ function HextechRune:GrantFiveThunder(playerIndex)
     self:SetFiveThunderCountdown(playerIndex, 0)
     self:SetFiveThunderAvailability(playerIndex, "Available")
     self:EnsureFiveThunderMonitor()
-    self:TestAlert(format("P%d 五雷天罚：已授予首发和0cd连发技能，等待玩家释放", playerIndex))
 end
 
 function HextechRune:CheckFiveThunderTriggered()
@@ -407,8 +359,6 @@ function HextechRune:CheckFiveThunderTriggered()
                     state.WaitingForTriggerClear = false
                     state.Ready = true
                     state.ReadyRound = nil
-                    self:TestAlert(format("P%d 五雷天罚：旧连发触发状态已清除，两段内部CD已清零并恢复",
-                        playerIndex))
                 end
             elseif state.Ready and (firstTriggered or repeatTriggered) then
                 state.Ready = false
@@ -417,12 +367,6 @@ function HextechRune:CheckFiveThunderTriggered()
                 -- 首发只负责开启本次原生五连发；检测到输出段后只关闭
                 -- 首发入口，保留 0cd 连发段，让引擎完整走完后续四次落雷。
                 self:SetFiveThunderFirstAvailability(playerIndex, "Disabled")
-                local triggerStage = "首发"
-                if repeatTriggered and not firstTriggered then
-                    triggerStage = "0cd连发"
-                end
-                self:TestAlert(format("P%d 五雷天罚：检测到%s释放，已关闭首发入口并保留0cd五连发；第%d回合恢复",
-                    playerIndex, triggerStage, state.ReadyRound))
             end
         end
     end
@@ -445,8 +389,6 @@ function HextechRune:OnFiveThunderRoundBegin(round)
             and not state.WaitingForTriggerClear and state.ReadyRound ~= nil
             and round >= state.ReadyRound then
             state.WaitingForTriggerClear = true
-            self:TestAlert(format("P%d 五雷天罚：5回合冷却完成，等待旧连发触发状态清除",
-                playerIndex))
         end
     end
 end
@@ -477,10 +419,7 @@ function HextechRune:GrantCashRewardProtocol(playerIndex)
         ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", delayedPlayerName,
             HextechRune.CashRewardSpecialPower, 0)
         SetWorldBuilderThisPlayer(delayedPrevious)
-        HextechRune:TestAlert(format("P%d 现金奖励：延迟科技解锁、能力解禁及冷却清零已执行", index))
     end, 1, {playerIndex})
-    self:TestAlert(format("P%d 现金奖励：已解锁科技 %s 并赋予能力 %s",
-        playerIndex, self.CashRewardPlayerTech, self.CashRewardSpecialPower))
 end
 
 function HextechRune:GetPlayerHomeSpawnPosition(playerIndex, forwardOffset, sideOffset)
@@ -505,23 +444,19 @@ function HextechRune:MarkNextSpawnAsKnownPureDrawUnit()
 end
 
 function HextechRune:GrantYaoguang(playerIndex)
-    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "CelestialAdvanceAircraftTech4",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
-    self:TestAlert(format("P%d 穿云定海：已在基地生成摇光，objectId=%s，等待系统回收进单位池",
-        playerIndex, tostring(nextObjectId)))
 end
 
 function HextechRune:GrantOlympusCarrier(playerIndex)
-    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "AlliedGaintAirCraftCarrier_B",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, -80), 0)
-    self:TestAlert(format("P%d 海上霸主：已在基地生成奥林匹斯级航空母舰，objectId=%s，等待系统回收进单位池",
-        playerIndex, tostring(nextObjectId)))
 end
 
 function HextechRune:GrantOblivionBomb(playerIndex)
@@ -544,19 +479,15 @@ function HextechRune:GrantOblivionBomb(playerIndex)
         "japanomegaoblivionbomb",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         { X = 3547.06, Y = 3055.49, Z = centerZ }, 0)
-    self:TestAlert(format("P%d 湮灭炸弹：已在场地中心(3547.06, 3055.49)生成玩家所属建筑",
-        playerIndex))
 end
 
 function HextechRune:GrantGigaFortress(playerIndex)
-    local nextObjectId = self:MarkNextSpawnAsKnownPureDrawUnit()
+    self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "JapanGigaFortressShipEgg",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, 0), 0)
     -- UnitCreate.lua 已为该核心注册 UnitCountFunc：8 帧后计数并删除实体。
-    self:TestAlert(format("P%d 超级要塞：已生成 JapanGigaFortressShipEgg，objectId=%s，等待回收进AI队列",
-        playerIndex, tostring(nextObjectId)))
 end
 
 function HextechRune:GrantSafetyAegisTowers(playerIndex)
@@ -596,8 +527,6 @@ function HextechRune:GrantSafetyAegisTowers(playerIndex)
             Health = 9000,
         })
     end
-    self:TestAlert(format("P%d 安全感：已生成左右各1个埃奎斯护盾发生器，不占市场购买名额",
-        playerIndex))
 end
 
 function HextechRune:GrantBrilliantLights(playerIndex)
@@ -626,7 +555,6 @@ function HextechRune:GrantBrilliantLights(playerIndex)
             "CelestialEngineerRepairDroneLv2", teamName,
             { X = towerPos.X, Y = towerPos.Y + sideOffset, Z = towerPos.Z }, 0)
     end
-    self:TestAlert(format("P%d 灯火辉煌：已在前线塔前方生成2个玩家所属的中级天灯", playerIndex))
 end
 
 function HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
@@ -663,20 +591,16 @@ function HextechRune:GrantUltimateRefresh(playerIndex)
         ButtonManager:GetButton(playerName, 1),
         ButtonManager:GetButton(playerName, 2),
     }
-    local applied = self:ApplyUltimateRefreshToButtons(playerIndex, buttons)
+    self:ApplyUltimateRefreshToButtons(playerIndex, buttons)
     for i = 1, 2, 1 do
         if buttons[i] ~= nil then
             ButtonManager:SetButton(buttons[i])
         end
     end
-    self:TestAlert(format("P%d 终极刷新：累计+%d次，本次已更新%d个现有技能按钮；未选择的技能将在创建时补加",
-        playerIndex, g_HextechUltimateRefreshCount[playerIndex], applied))
 end
 
 function HextechRune:EnableTowerDefenseExpert(playerIndex)
     g_HextechTowerDefenseExpert[playerIndex] = true
-    self:TestAlert(format("P%d 塔防专家：市场防御塔价格×0.8，购买无数量限制且不占名额",
-        playerIndex))
 end
 
 function HextechRune:GrantOilDerricks(playerIndex)
@@ -693,7 +617,6 @@ function HextechRune:GrantOilDerricks(playerIndex)
             "oilderrick", teamName,
             self:GetPlayerHomeSpawnPosition(playerIndex, 180, sideOffset), 0)
     end
-    self:TestAlert(format("P%d 石油王：已在基地生成2个油井，地编ID=oilderrick", playerIndex))
 end
 
 function HextechRune:GrantStartingFunds(playerIndex)
@@ -703,8 +626,6 @@ function HextechRune:GrantStartingFunds(playerIndex)
     local previous = SetWorldBuilderThisPlayer(1)
     ExecuteAction("PLAYER_GIVE_MONEY", playerName, 10000)
     SetWorldBuilderThisPlayer(previous)
-    self:TestAlert(format("P%d 启动资金：已通过回收系统同款上下文增加10000资金",
-        playerIndex))
 end
 
 function HextechRune:GrantForeignMCV(playerIndex)
@@ -718,7 +639,6 @@ function HextechRune:GrantForeignMCV(playerIndex)
         [3] = "JapanMCV",
         [4] = "CelestialMCV",
     }
-    local factionNames = { "盟军", "苏联", "帝国", "神州" }
     local candidates = {}
     for faction = 1, 4, 1 do
         if faction ~= ownFaction then
@@ -730,9 +650,6 @@ function HextechRune:GrantForeignMCV(playerIndex)
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         mcvTypes[targetFaction], playerName .. "/teamPlayer_" .. playerIndex,
         self:GetPlayerHomeSpawnPosition(playerIndex, 140, 0), 0)
-    self:TestAlert(format("P%d MCV：自身阵营=%s，已在基地生成非自身阵营%s的%s",
-        playerIndex, factionNames[ownFaction], factionNames[targetFaction],
-        mcvTypes[targetFaction]))
 end
 
 function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)
@@ -746,9 +663,6 @@ function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)
         Progress = 0,
         RuneInstanceId = self:GetRuneEffectInstanceId(rune),
     })
-    self:TestAlert(format("P%d 买二送一：目标=%s，unitIndex=%s，当前进度=0/2",
-        playerIndex, rune.TargetUnitName or rune.TargetUnitType or "?",
-        tostring(rune.TargetUnitIndex)))
 end
 
 -- 在 unitgetcountanddelet 的真实单位回收计数后调用，参考狂热武士“每二赠一”。
@@ -765,11 +679,6 @@ function HextechRune:OnPlayerUnitCollected(playerIndex, unitIndex)
                 state.Progress = 0
                 ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] + 1
                 UNITCOUNT[playerIndex][unitIndex] = UNITCOUNT[playerIndex][unitIndex] + 1
-                self:TestAlert(format("P%d 买二送一（%s）：累计2个，已向单位池赠送1个",
-                    playerIndex, state.UnitName or state.UnitType or "?"))
-            else
-                self:TestAlert(format("P%d 买二送一（%s）：当前进度1/2",
-                    playerIndex, state.UnitName or state.UnitType or "?"))
             end
         end
     end
@@ -978,12 +887,6 @@ function HextechRune:ApplyRuneToAssignment(rune, assignment, typeLookup)
     return false
 end
 
-function HextechRune:AlertPersistentResult(sourceName, playerIndex, rune, assignedCount, appliedCount)
-    self:TestAlert(format("%s P%d %s：本次归属/检查%d，符合兵种并生效%d，%s",
-        sourceName, playerIndex, self:GetRuneDisplayName(rune), assignedCount,
-        appliedCount, self:GetRuneTestValue(rune)))
-end
-
 -- 给本次刚登记的新单位应用其归属玩家的全部持续符文。
 function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
     excludedPlayerIndex, excludedOwnershipId)
@@ -1010,20 +913,12 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "ultimate_refresh"
                 and rune.Effect ~= "quality_transformation"
                 and rune.Effect ~= "gambling_addict" then
-                local assignedCount = 0
-                local appliedCount = 0
                 for i = 1, getn(assignments), 1 do
                     local assignment = assignments[i]
                     if assignment.PlayerIndex == playerIndex then
-                        assignedCount = assignedCount + 1
-                        if self:ApplyRuneToAssignment(rune, assignment, typeLookup) then
-                            appliedCount = appliedCount + 1
-                        end
+                        self:ApplyRuneToAssignment(rune, assignment, typeLookup)
                     end
                 end
-                -- 0 也打印，便于确认触发入口执行过，并区分“没有新单位”和“效果未调用”。
-                self:AlertPersistentResult(sourceName, playerIndex, rune,
-                    assignedCount, appliedCount)
             end
         end
     end
@@ -1048,15 +943,9 @@ function HextechRune:ApplyFortifiedToTowerLine(playerIndex, towerNames, lineName
             local newMaxHealth = towerState.BaseMaxHealth
                 * (1 + 0.25 * towerState.CopyCount)
             ExecuteAction("NAMED_SET_MAX_HEALTH", towerNames[i], newMaxHealth, 1)
-            self:TestAlert(format("P%d 固若金汤（%s）：%s 基础最大生命%.0f，队伍%d份，当前%.0f→%.0f（+%d%%）",
-                playerIndex, lineName, towerNames[i], towerState.BaseMaxHealth,
-                towerState.CopyCount, maxHealth, newMaxHealth,
-                towerState.CopyCount * 25))
             return true
         end
     end
-    self:TestAlert(format("P%d 固若金汤：未找到仍存活的%s前线防御塔",
-        playerIndex, lineName))
     return false
 end
 
@@ -1075,9 +964,7 @@ end
 function HextechRune:ApplyPersistentRune(playerIndex, rune)
     -- 持续型符文只影响选择之后的新出兵，不追溯强化仍存活的旧单位。
     -- 这里仍登记当前尚未登记的场上单位，避免它们在下一次出兵扫描时被误判为新单位。
-    local existingAssignments = self:AssignNewBattleUnits()
-    self:TestAlert(format("P%d %s：已登记现存单位%d，只对后续新出兵生效",
-        playerIndex, self:GetRuneDisplayName(rune), getn(existingAssignments)))
+    self:AssignNewBattleUnits()
 end
 
 function HextechRune:GetTranscendentEvilCopyCount(playerIndex, unitType)
@@ -1151,8 +1038,6 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyFortified(playerIndex)
     elseif rune.Effect == "recycler" then
         g_HextechRecycleBonus[playerIndex] = (g_HextechRecycleBonus[playerIndex] or 0) + 0.2
-        self:TestAlert(format("P%d 破烂王：本次回收倍率 +20%%，累计 +%.0f%%",
-            playerIndex, g_HextechRecycleBonus[playerIndex] * 100))
     elseif rune.Effect == "broadband_jamming" then
         self:ApplyBroadbandJamming(playerIndex, rune, "选择符文")
     elseif rune.Effect == "divine_intervention" then
