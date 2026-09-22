@@ -2,7 +2,7 @@
 --   - 回合监听：RoundLuaManager.CallOnEveryRoundBegin（复用抽卡模式 PureDraw 方案）
 --   - 开局真实测试事件（第 1 回合，测试环境专用，不计入配置数量）：
 --     - 固定展示指定符文，并按每个符文自身稀有度显示卡框
---   - 正式海克斯事件（第 5/11/18 回合，按 g_HextechCount 截取）：
+--   - 正式海克斯事件（第 3/10/18 回合，按 g_HextechCount 截取）：
 --     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
 --     - 再对每个玩家独立筛池并刷新 3 个不同符文
 --   - 海克斯面板（顶部按钮 5 展开）：横六筒造型展示上三/下三玩家的海克斯符文
@@ -97,7 +97,7 @@ HextechRune.PanelVisible = {}
 HextechRune.PlayerRerollUsed = HextechRune.PlayerRerollUsed or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
-HextechRune.FormalRounds = { 5, 11, 18 }
+HextechRune.FormalRounds = { 3, 10, 18 }
 
 -- 计算某玩家某个方框的按钮 index
 function HextechRune:GetOptionBtnIndex(playerIndex, optionIndex)
@@ -252,15 +252,15 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
 end
 
 -- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
--- 第 5 回合（第一次）= 彩 5% / 金 30% / 银 65%；第 11/18 回合 = 彩 10% / 金 40% / 银 50%
+-- 第 3 回合（第一次）= 彩 5% / 金 40% / 银 55%；第 10/18 回合 = 彩 10% / 金 45% / 银 45%
 function HextechRune:RollFieldRarity(round)
     local weightMap
     if round <= self.FormalRounds[1] then
-        -- 第一次正式事件：彩 5 / 金 30 / 银 65
-        weightMap = { [1] = 5, [2] = 30, [3] = 65 }
+        -- 第一次正式事件：彩 5 / 金 40 / 银 55
+        weightMap = { [1] = 5, [2] = 40, [3] = 55 }
     else
-        -- 后续：彩 10 / 金 40 / 银 50
-        weightMap = { [1] = 10, [2] = 40, [3] = 50 }
+        -- 后续：彩 10 / 金 45 / 银 45
+        weightMap = { [1] = 10, [2] = 45, [3] = 45 }
     end
     local totalWeight = weightMap[1] + weightMap[2] + weightMap[3]
     local roll = GetRandomNumber() * totalWeight

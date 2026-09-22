@@ -20,6 +20,46 @@ HextechRune.UnitTypeFilters = {
         Exclude = "STRUCTURE DEBRIS"
     }),
 }
+-- 可变形单位按其两种作战形态同时归入两个兵种，不依赖当前模型形态的
+-- AIRCRAFT / VEHICLE / SHIP category。这样它们能同时享受两类兵种符文。
+HextechRune.DualUnitTypeFilters = {
+    {
+        Types = { "vehicle", "aircraft" },
+        Filter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            IncludeThing = {
+                -- 天狗
+                "JapanAntiInfantryVehicle",
+                "JapanAntiInfantryVehicle_Enhanced",
+                "JapanAntiInfantryVehicle_Enhanced_Water",
+                -- VX
+                "JapanAntiAirVehicleTech1",
+                "JapanAntiAirVehicleTech1_Enhanced",
+                "JapanAntiAirVehicleTech1_Enhanced_Water",
+                -- 心神
+                "JapanMissileMechaAdvanced",
+                "JapanMissileMechaAdvanced_Enhanced",
+                "JapanMissileMechaAdvanced_Enhanced_Water",
+            },
+            Exclude = "STRUCTURE DEBRIS"
+        }),
+    },
+    {
+        Types = { "aircraft", "navy" },
+        Filter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            IncludeThing = {
+                -- 海翼
+                "JapanAntiAirShip",
+                "JapanAntiAirShip_Enhanced",
+                -- 超级要塞（空中要塞 / 大头轰炸形态）
+                "JapanFortressShip",
+                "JapanGigaFortress_Land",
+            },
+            Exclude = "STRUCTURE DEBRIS"
+        }),
+    },
+}
 -- 无限火力（飞机）只开放给指定对空战斗机、摇光巡天炮及其同机型变体。
 -- 轰炸机、天狗、心神等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
 HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
@@ -101,9 +141,9 @@ HextechRune.AllSideUnitsAndStructuresFilter = HextechRune.AllSideUnitsAndStructu
     })
 HextechRune.BroadbandJammingApplied = HextechRune.BroadbandJammingApplied or {}
 HextechRune.DivineInterventionInterval = 450
--- 与超时空突袭相同：基础铁幕 75 帧（5 秒）；叠加增量为其一半，取 38 帧。
-HextechRune.DivineInterventionBaseDuration = 75
-HextechRune.DivineInterventionExtraDurationPerCopy = 38
+-- 基础铁幕 45 帧（3 秒）；同阵营每多一份增加基础时长的一半，22.5 帧向上取 23 帧。
+HextechRune.DivineInterventionBaseDuration = 45
+HextechRune.DivineInterventionExtraDurationPerCopy = 23
 HextechRune.DivineInterventionSchedulerId = HextechRune.DivineInterventionSchedulerId or nil
 HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
 HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
@@ -708,6 +748,18 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
             lookup[ObjectGetId(units[i])] = true
         end
         result[unitType] = lookup
+    end
+    -- 把指定双形态单位补入两张兵种查找表；同一个 objectId 可以同时存在于
+    -- 两个表中，因此会分别响应玩家持有的两类兵种符文。
+    for dualIndex = 1, getn(self.DualUnitTypeFilters), 1 do
+        local dual = self.DualUnitTypeFilters[dualIndex]
+        local units, count = ObjectFindObjects(P[sideIndex], nil, dual.Filter)
+        for i = 1, count, 1 do
+            local objectId = ObjectGetId(units[i])
+            for typeIndex = 1, getn(dual.Types), 1 do
+                result[dual.Types[typeIndex]][objectId] = true
+            end
+        end
     end
     return result
 end

@@ -183,7 +183,7 @@ Localization._text_sources = {
     ["hextech.rune.broadband_jamming.name"] = { zh = "全频段阻塞干扰", en = "Broadband Jamming" },
     ["hextech.rune.broadband_jamming.desc"] = { zh = "敌方全体单位射程降低 25%%。", en = "All enemy units lose 25%% range." },
     ["hextech.rune.divine_intervention.name"] = { zh = "神圣干预", en = "Divine Intervention" },
-    ["hextech.rune.divine_intervention.desc"] = { zh = "己方全体单位和建筑每 30 秒获得 5 秒铁幕。", en = "All allied units and structures gain Iron Curtain for 5 seconds every 30 seconds." },
+    ["hextech.rune.divine_intervention.desc"] = { zh = "己方全体单位和建筑每 30 秒获得 3 秒铁幕。", en = "All allied units and structures gain Iron Curtain for 3 seconds every 30 seconds." },
     ["hextech.rune.five_thunder.name"] = { zh = "五雷天罚", en = "Five-Thunder Judgment" },
     ["hextech.rune.five_thunder.desc"] = { zh = "每 5 回合获得一次五雷天罚。", en = "Gain one Five-Thunder Judgment every 5 rounds." },
     ["hextech.rune.tower_defense_expert.name"] = { zh = "塔防专家", en = "Tower Defense Expert" },
