@@ -37,6 +37,21 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.quality_transformation.desc",
         Effect = "quality_transformation", UpgradeRarity = 2,
         Icon = "CAAT4_Transform" },
+    { Id = "silver_export_domestic", Rarity = 3,
+        NameKey = "hextech.rune.export_domestic.name",
+        DescKey = "hextech.rune.export_domestic.desc",
+        Effect = "upgrade_tachi_cruiser", RequiredFaction = 3,
+        Icon = "Button_JapanAntiNavyShipTech3" },
+    { Id = "silver_dual_purpose", Rarity = 3,
+        NameKey = "hextech.rune.dual_purpose.name",
+        DescKey = "hextech.rune.dual_purpose.desc",
+        Effect = "upgrade_bullfrog", RequiredFaction = 2,
+        Icon = "Button_VDVAntiAirVehicleTech1" },
+    { Id = "silver_advanced_artillery", Rarity = 3,
+        NameKey = "hextech.rune.advanced_artillery.name",
+        DescKey = "hextech.rune.advanced_artillery.desc",
+        Effect = "upgrade_vanguard_gunship", RequiredFaction = 1,
+        Icon = "Button_AlliedHarbingerGunship" },
 
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -128,6 +143,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.gambling_addict.name",
         DescKey = "hextech.rune.gambling_addict.desc",
         Effect = "gambling_addict", Icon = "Button_PlayerPower_FreeTrade" },
+    { Id = "prismatic_ultimate_creature", Rarity = 1,
+        NameKey = "hextech.rune.ultimate_creature.name",
+        DescKey = "hextech.rune.ultimate_creature.desc",
+        Effect = "ultimate_creature", Icon = "Button_RedKingOni" },
     { Id = "prismatic_sea_overlord", Rarity = 1,
         NameKey = "hextech.rune.sea_overlord.name",
         DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
@@ -137,13 +156,17 @@ HextechRune.RunePool = {
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
 -- 同一轮三选一仍由 PickThreeRunes 的无放回抽取保证互不重复。
 HextechRune.NonRepeatableRuneIds = {
-    gold_oblivion_bomb = true,
+    silver_export_domestic = true,
+    silver_dual_purpose = true,
+    silver_advanced_artillery = true,
     gold_fortified = true,
+    gold_transcendent_evil = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_combustion_interest = true,
     prismatic_tower_defense_expert = true,
     prismatic_gambling_addict = true,
+    prismatic_ultimate_creature = true,
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}

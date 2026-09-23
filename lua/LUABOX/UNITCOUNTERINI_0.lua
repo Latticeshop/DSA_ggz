@@ -410,6 +410,11 @@ function unitgetcountanddelet (playindex)
                     if not actualUnitIndex then
                         actualUnitIndex = unitindex
                     end
+                    if HextechRune ~= nil
+                        and HextechRune.ResolveCollectedUnitIndex ~= nil then
+                        actualUnitIndex = HextechRune:ResolveCollectedUnitIndex(
+                            playindex, actualUnitIndex)
+                    end
                     -- 检查箱子单位
                     local producer = ObjectGetProducerObject(unitId)
                     local isProducedUnit = producer ~= nil
@@ -548,7 +553,15 @@ function bigshiplimit()
     --exMessageAppendToMessageArea("ACT")
     for i = 1 , 6 , 1 do
         bigshiplimitc[i] = UNITCOUNT[i][step35+4] +  UNITCOUNT[i][step35+1] +  UNITCOUNT[i][step35+2] +  UNITCOUNT[i][step35+3]
-        CAIRTECH4limitc[i] = GetPlayerYaoguangCount(i)
+        -- MONEYINI 的定义偶尔晚于本触发器首次执行；未就绪时先显示 0，
+        -- 后续调用会自动切回只统计玩家实际生产摇光的正式函数。
+        if GetPlayerYaoguangCount ~= nil then
+            CAIRTECH4limitc[i] = GetPlayerYaoguangCount(i)
+        elseif g_PlayerProducedYaoguangCount ~= nil then
+            CAIRTECH4limitc[i] = tonumber(g_PlayerProducedYaoguangCount[i]) or 0
+        else
+            CAIRTECH4limitc[i] = 0
+        end
         --exMessageAppendToMessageArea(" bigshiplimitc[i]".. bigshiplimitc[i])
         exCounterSetByName("bigshiplimit"..i,  bigshiplimitc[i]);
         exCounterSetByName("CAIRTECH4limit"..i,  CAIRTECH4limitc[i]);

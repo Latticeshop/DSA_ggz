@@ -912,6 +912,14 @@ function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
 
 end
 
+function HextechUltimateCreatureOniBorn(createdObjId, createdObjInstanceId,
+    ownerPlayerName)
+    if HextechRune ~= nil
+        and HextechRune.OnUltimateCreatureOniBorn ~= nil then
+        HextechRune:OnUltimateCreatureOniBorn(createdObjId, ownerPlayerName)
+    end
+end
+
 -- 磁暴突袭会附带生成史普尼克勘查车。自走棋不需要这两种核心，
 -- 无论来自人类玩家还是 AI，出生时都立即删除；玩家符文以该出生事件
 -- 作为协议成功释放的信号并立刻进入五回合冷却。
@@ -1048,7 +1056,10 @@ g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIA
 -- 配置坦克统一在射程内优先选择最远目标。
 g_UnitCreateEventFunc[FastHash("PrismTank")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = FarthestTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("JapanMechaX")] = FarthestTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("JapanMechaX")] = {
+    FarthestTargetChooserBorn,
+    HextechUltimateCreatureOniBorn,
+}
 g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiAirVehicleTech3")] = FarthestTargetChooserBorn

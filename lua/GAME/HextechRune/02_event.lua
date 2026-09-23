@@ -1,7 +1,5 @@
 -- 海克斯符文系统：真实候选事件 + 海克斯面板
 --   - 回合监听：RoundLuaManager.CallOnEveryRoundBegin（复用抽卡模式 PureDraw 方案）
---   - 开局真实测试事件（第 1 回合，测试环境专用，不计入配置数量）：
---     - 固定展示指定符文，并按每个符文自身稀有度显示卡框
 --   - 正式海克斯事件（第 3/10/18 回合，按 g_HextechCount 截取）：
 --     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
 --     - 再对每个玩家独立筛池并刷新 3 个不同符文
@@ -27,10 +25,6 @@ HextechRune.RarityFrameImageIds = {
     [2] = g_HextechFrameGoldId,
     [3] = g_HextechFrameSilverId,
 }
-
--- 开局真实测试事件保留供后续开发调用；发版时不接入回合流程。
-HextechRune.EnableOpeningRealTest = true
-HextechRune.OpeningTestTriggered = false
 
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
@@ -69,6 +63,11 @@ HextechRune.SelectionHintTextIndexBase = 900
 HextechRune.SelectionHintCenterX = 683
 HextechRune.SelectionHintY = 82
 HextechRune.SelectionHintFontSize = 16
+-- 拥有待部署湮灭炸弹时，K 键提示固定显示在 J 键提示下方（911~916）。
+HextechRune.OblivionHintTextIndexBase = 910
+HextechRune.OblivionHintCenterX = 683
+HextechRune.OblivionHintY = 104
+HextechRune.OblivionHintFontSize = 16
 
 -- ===== 海克斯面板（按钮 5 展开）布局参数 =====
 -- 横六筒造型：上三玩家（天使 4/5/6）名字 + 符文，下三玩家（恶魔 1/2/3）符文 + 名字
@@ -86,7 +85,7 @@ HextechRune.PanelRuneHeight = 50
 HextechRune.PanelRuneGap = 10
 HextechRune.PanelRuneIconSize = 14
 HextechRune.PanelRuneTitleOffsetX = 5
--- 当前测试最多为开局真实测试 1 个 + 正式事件 3 个。
+-- 总览面板最多展示 4 个符文。
 HextechRune.PanelMaxRuneCount = 4
 -- 面板自定义元素 index 基础（避开已用 index）
 HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*4 + j（401~424）
@@ -418,6 +417,32 @@ function HextechRune:ShowSelectionHint(playerIndex)
     })
 end
 
+function HextechRune:GetOblivionHintTextIndex(playerIndex)
+    return self.OblivionHintTextIndexBase + playerIndex
+end
+
+function HextechRune:RefreshOblivionBombHint(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local textIndex = self:GetOblivionHintTextIndex(playerIndex)
+    exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, 0)
+    if g_HextechOblivionBombCharges == nil
+        or (g_HextechOblivionBombCharges[playerIndex] or 0) <= 0 then
+        return
+    end
+    local hint = Localization.get("hextech.oblivion_bomb.hotkey_hint")
+    exCreateCustomTextForPlayer(playerName, {
+        Index = textIndex,
+        Content = hint,
+        X = self:GetCenteredTextLeftX(self.OblivionHintCenterX, hint,
+            self.OblivionHintFontSize),
+        Y = self.OblivionHintY,
+        Color = 16777215,
+        Size = self.OblivionHintFontSize,
+        AlignX = "left",
+        AlignY = "top",
+    })
+end
+
 function HextechRune:SetSelectionPageVisible(playerIndex, visible)
     if self.PlayerOptions[playerIndex] == nil then
         self.PlayerSelectionVisible[playerIndex] = false
@@ -609,53 +634,6 @@ function HextechRune:ShowRuneEvent(round)
                 self:QueueOrShowRuneEvent(playerIndex, rarity, round)
             else
                 self:GrantRandomRuneToComputer(playerIndex, rarity, round)
-            end
-        end
-    end
-end
-
-function HextechRune:ShowOpeningTestEvent()
-    -- 开局实测固定展示指定符文；正式轮次仍按阶级和个人池随机抽取。
-    local testRuneIds = {
-        "silver_five_tiger_generals",
-        "prismatic_combustion_interest",
-        "prismatic_tesla_air_assault",
-    }
-    for playerIndex = 1, 6, 1 do
-        local playerName = "Player_" .. playerIndex
-        local previous = SetWorldBuilderThisPlayer(1)
-        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
-        SetWorldBuilderThisPlayer(previous)
-        if structureCount > 0 then
-            local options = {}
-            for i = 1, 3, 1 do
-                local template = self:FindRuneById(testRuneIds[i])
-                -- 带兵种的测试符文也在选项生成时确定一个可用兵种，点击时不再重抽。
-                local unitType = nil
-                if template ~= nil and template.NeedsUnitType then
-                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
-                    if getn(availableTypes) > 0 then
-                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
-                    end
-                end
-                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
-                if candidate ~= nil then
-                    tinsert(options, candidate)
-                end
-            end
-            if getn(options) == 3 then
-                self.PlayerOptions[playerIndex] = options
-                self.PlayerRerollUsed[playerIndex] = false
-                for i = 1, 3, 1 do
-                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
-                        self.RarityFrameImageIds[options[i].Rarity], options[i])
-                    self:CreateRerollButton(playerIndex, i)
-                end
-                self.PlayerSelectionVisible[playerIndex] = true
-                self:HideSelectionHint(playerIndex)
-            else
-                exAddTextToPublicBoardForPlayer(playerName,
-                    Localization.get("hextech.error.not_enough_candidates"), 10)
             end
         end
     end
@@ -998,12 +976,6 @@ end
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
     self:OnTeslaAirAssaultRoundBegin(round)
-    -- 开局测试入口：测试阶段启用，不计入正式配置次数。
-    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
-        and not self.OpeningTestTriggered and round == 1 then
-        self.OpeningTestTriggered = true
-        self:ShowOpeningTestEvent()
-    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true
@@ -1029,7 +1001,7 @@ function HextechRune:RegisterRoundBegin()
     RoundLuaManager.CallOnEveryRoundBegin(function(args)
         HextechRune:OnRoundBegin(exCounterGetByName("lvc"))
     end, {})
-    -- 注册成功时若第 1 回合已经开始（lvc>=1），立即补触发一次，避免错过开局测试事件
+    -- 注册成功时若回合已经开始，立即补一次当前回合状态同步。
     local currentRound = exCounterGetByName("lvc")
     if currentRound ~= nil and currentRound >= 1 then
         HextechRune:OnRoundBegin(currentRound)

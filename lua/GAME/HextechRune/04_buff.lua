@@ -99,14 +99,14 @@ HextechRune.PersistentBuffDuration = 9999
 -- Unit 句柄同时用于识别引擎复用 objectId 的情况。
 HextechRune.BattleUnitAssignments = HextechRune.BattleUnitAssignments or {}
 
-if not g_HextechDamageX125Modifier then
-    g_HextechDamageX125Modifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.25 }, 1)
+if not g_HextechDamageX150Modifier then
+    g_HextechDamageX150Modifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.5 }, 1)
 end
-if not g_HextechSpeedX125Modifier then
-    g_HextechSpeedX125Modifier = exAttributeModifierCreate({ SPEED = 1.25 }, 1)
+if not g_HextechSpeedX140Modifier then
+    g_HextechSpeedX140Modifier = exAttributeModifierCreate({ SPEED = 1.4 }, 1)
 end
-if not g_HextechRateOfFireX125Modifier then
-    g_HextechRateOfFireX125Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 1.25 }, 1)
+if not g_HextechRateOfFireX150Modifier then
+    g_HextechRateOfFireX150Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 1.5 }, 1)
 end
 if not g_HextechRangeX115Modifier then
     g_HextechRangeX115Modifier = exAttributeModifierCreate({ RANGE = 1.15 }, 1)
@@ -114,13 +114,13 @@ end
 if not g_HextechRangeX125Modifier then
     g_HextechRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25 }, 1)
 end
-if not g_HextechRangeX135Modifier then
-    g_HextechRangeX135Modifier = exAttributeModifierCreate({ RANGE = 1.35 }, 1)
+if not g_HextechRangeX150Modifier then
+    g_HextechRangeX150Modifier = exAttributeModifierCreate({ RANGE = 1.5 }, 1)
 end
 if not g_HextechAstralBodyModifier then
     g_HextechAstralBodyModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1.5,
-        DAMAGE_MULT = 0.9,
+        HEALTH_MULT = 2.0,
+        DAMAGE_MULT = 0.75,
     }, 1)
 end
 if not g_HextechEnemyRangeX075Modifier then
@@ -180,6 +180,7 @@ g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
 g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
 g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0 }
+g_HextechOblivionBombCharges = g_HextechOblivionBombCharges or { 0, 0, 0, 0, 0, 0 }
 
 -- 在现有经济倍率/苏联大生产修正之后叠加玩家自己的破烂王倍率。
 if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
@@ -655,6 +656,11 @@ function HextechRune:GrantOlympusCarrier(playerIndex)
         "AlliedGaintAirCraftCarrier_B",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, -80), 0)
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "JapanYumiAircraftCarrier",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
 end
 
 function HextechRune:GrantOblivionBomb(playerIndex)
@@ -677,6 +683,36 @@ function HextechRune:GrantOblivionBomb(playerIndex)
         "japanomegaoblivionbomb",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         { X = 3547.06, Y = 3055.49, Z = centerZ }, 0)
+end
+
+function HextechRune:AddOblivionBombCharge(playerIndex)
+    g_HextechOblivionBombCharges[playerIndex] =
+        (g_HextechOblivionBombCharges[playerIndex] or 0) + 1
+    if self.RefreshOblivionBombHint ~= nil then
+        self:RefreshOblivionBombHint(playerIndex)
+    end
+end
+
+function HextechRune:DeployOblivionBomb(playerIndex)
+    local charges = g_HextechOblivionBombCharges[playerIndex] or 0
+    if charges <= 0 then
+        return false
+    end
+    g_HextechOblivionBombCharges[playerIndex] = charges - 1
+    self:GrantOblivionBomb(playerIndex)
+    if self.RefreshOblivionBombHint ~= nil then
+        self:RefreshOblivionBombHint(playerIndex)
+    end
+    return true
+end
+
+function HextechRune:HandleOblivionBombHotKey(playerName)
+    for playerIndex = 1, 6, 1 do
+        if playerName == "Player_" .. playerIndex then
+            return self:DeployOblivionBomb(playerIndex)
+        end
+    end
+    return false
 end
 
 function HextechRune:GrantGigaFortress(playerIndex)
@@ -922,6 +958,28 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     return result
 end
 
+-- 在单位池正式计数前替换回收目标。抽卡单位的获得播报同样读取替换后的槽位，
+-- 因而会直接显示升级单位，而不是先加入原单位再做二次转换。
+function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local sourceType = UNITLIST[unitIndex]
+    local replacementType = nil
+    if sourceType == "JapanAntiNavyShipTech3"
+        and self.PlayerOwnedRuneIds[playerIndex]["silver_export_domestic"] then
+        replacementType = "CelestialSeized_JapanAntiNavyShipTech3"
+    elseif sourceType == "SovietAntiAirShip"
+        and self.PlayerOwnedRuneIds[playerIndex]["silver_dual_purpose"] then
+        replacementType = "VUAntiAirVehicleTech1"
+    elseif sourceType == "AlliedGunshipAircraft"
+        and self.PlayerOwnedRuneIds[playerIndex]["silver_advanced_artillery"] then
+        replacementType = "AlliedAC130GunshipAircraft"
+    end
+    if replacementType == nil or g_UnitNameToUnitIndex == nil then
+        return unitIndex
+    end
+    return g_UnitNameToUnitIndex[replacementType] or unitIndex
+end
+
 function HextechRune:IsUnitInRuneType(unit, rune, typeLookup)
     if rune.UnitType == nil or typeLookup[rune.UnitType] == nil then
         return false
@@ -943,17 +1001,17 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
         return false
     end
     if rune.Effect == "damage" then
-        ObjectLoadAttributeModifier(unit, g_HextechDamageX125Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, g_HextechDamageX150Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "rate_of_fire" then
-        ObjectLoadAttributeModifier(unit, g_HextechRateOfFireX125Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, g_HextechRateOfFireX150Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "speed" then
-        ObjectLoadAttributeModifier(unit, g_HextechSpeedX125Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, g_HextechSpeedX140Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "range_silver" then
         ObjectLoadAttributeModifier(unit, g_HextechRangeX115Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "range_gold" then
         ObjectLoadAttributeModifier(unit, g_HextechRangeX125Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "range_prismatic" then
-        ObjectLoadAttributeModifier(unit, g_HextechRangeX135Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, g_HextechRangeX150Modifier, self.PersistentBuffDuration)
     elseif rune.Effect == "astral_body" then
         ObjectLoadAttributeModifier(unit, g_HextechAstralBodyModifier,
             self.PersistentBuffDuration)
@@ -1011,6 +1069,7 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex, lastP
                 local unit = newUnits[unitPosition]
                 local assignment = {
                     Unit = unit,
+                    UnitIndex = unitIndex,
                     PlayerIndex = playerIndex,
                     AppliedRunes = {},
                 }
@@ -1025,6 +1084,7 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex, lastP
             local unit = newUnits[unitPosition]
             local assignment = {
                 Unit = unit,
+                UnitIndex = unitIndex,
                 PlayerIndex = 0,
                 AppliedRunes = {},
             }
@@ -1124,7 +1184,11 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "brilliant_lights"
                 and rune.Effect ~= "ultimate_refresh"
                 and rune.Effect ~= "quality_transformation"
-                and rune.Effect ~= "gambling_addict" then
+                and rune.Effect ~= "gambling_addict"
+                and rune.Effect ~= "upgrade_tachi_cruiser"
+                and rune.Effect ~= "upgrade_bullfrog"
+                and rune.Effect ~= "upgrade_vanguard_gunship"
+                and rune.Effect ~= "ultimate_creature" then
                 for i = 1, getn(assignments), 1 do
                     local assignment = assignments[i]
                     if assignment.PlayerIndex == playerIndex then
@@ -1311,7 +1375,7 @@ end
 function HextechRune:GetTranscendentEvilModifier(playerIndex, rune)
     local round = tonumber(exCounterGetByName("lvc")) or 0
     local copyCount = self:GetTranscendentEvilCopyCount(playerIndex, rune.UnitType)
-    local bonus = round * 0.02 * copyCount
+    local bonus = round * 0.03 * copyCount
     local cacheKey = tostring(round) .. ":" .. tostring(copyCount)
     if self.TranscendentEvilModifiers[cacheKey] == nil then
         self.TranscendentEvilModifiers[cacheKey] = exAttributeModifierCreate({
@@ -1328,7 +1392,7 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "grant_olympus_carrier" then
         self:GrantOlympusCarrier(playerIndex)
     elseif rune.Effect == "grant_oblivion_bomb" then
-        self:GrantOblivionBomb(playerIndex)
+        self:AddOblivionBombCharge(playerIndex)
     elseif rune.Effect == "grant_giga_fortress" then
         self:GrantGigaFortress(playerIndex)
     elseif rune.Effect == "safety" then
@@ -1343,6 +1407,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyQualityTransformation(playerIndex, rune)
     elseif rune.Effect == "gambling_addict" then
         self:ApplyGamblingAddict(playerIndex)
+    elseif rune.Effect == "ultimate_creature" then
+        self:CreateUltimateCreature(playerIndex)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then
@@ -1371,6 +1437,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:EnsureFiveTigerGeneralsPower(playerIndex)
     elseif rune.Effect == "cash_reward" then
         self:GrantCashRewardProtocol(playerIndex)
+    elseif rune.Effect == "upgrade_tachi_cruiser"
+        or rune.Effect == "upgrade_bullfrog"
+        or rune.Effect == "upgrade_vanguard_gunship" then
+        -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
     else
         self:ApplyPersistentRune(playerIndex, rune)
     end
@@ -1388,6 +1458,7 @@ end
 function HextechRune:ApplyRoundEffects(round)
     local assignments = self:ApplyNewBattleUnitEffects(
         "第" .. tostring(round) .. "回合固定出兵")
+    self:ApplyUltimateCreatures(assignments, round)
     SchedulerModule.delay_call(function(newAssignments)
         HextechRune:ApplyFiveTigerGenerals(newAssignments)
     end, self.FiveTigerGeneralsDelay, { assignments })
