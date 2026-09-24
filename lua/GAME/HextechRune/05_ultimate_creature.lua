@@ -1,4 +1,4 @@
--- 海克斯符文“究极生物”：献祭玩家单位池，并在正常回合出兵时强化一只鬼王X。
+-- 海克斯符文“究极生物”：献祭玩家单位池，并在每回合出兵时强化该玩家 1 只鬼王X。
 
 HextechRune = HextechRune or {}
 
@@ -6,28 +6,8 @@ HextechRune.UltimateCreatureStates = HextechRune.UltimateCreatureStates or {}
 HextechRune.UltimateCreatureEmperorsRageModifier =
     "AttributeModifer_JapanEmperorsResolve_L1"
 HextechRune.UltimateCreatureScale = 1.3
-HextechRune.UltimateCreatureSpawnedOnis =
-    HextechRune.UltimateCreatureSpawnedOnis or { [7] = {}, [8] = {} }
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
-
--- 鬼王X实际出生时记录对象和回合。固定出兵按玩家顺序生成单位，因此这份队列
--- 可以在同阵营混编后仍按 UNITCOUNT 配额准确找到每名玩家本回合的新鬼王X。
-function HextechRune:OnUltimateCreatureOniBorn(createdObjId, ownerPlayerName)
-    local sideIndex = nil
-    if ownerPlayerName == "PlyrCivilian" then
-        sideIndex = 7
-    elseif ownerPlayerName == "PlyrCreeps" then
-        sideIndex = 8
-    end
-    if sideIndex == nil then
-        return
-    end
-    tinsert(self.UltimateCreatureSpawnedOnis[sideIndex], {
-        Id = createdObjId,
-        Round = tonumber(exCounterGetByName("lvc")) or 0,
-    })
-end
 
 -- 使用抽卡模式的显式 T1~T4 表作为权威阶级来源。
 -- 箱子隐藏单位不一定在该表中：优先识别模板名中的 Tech 阶级，再按回收价兜底。
@@ -159,17 +139,33 @@ function HextechRune:IsUltimateCreatureRegistered(unit)
     if not ObjectIsAlive(unit) then
         return false
     end
-    local entry = self.UltimateCreatureRegisteredUnits[ObjectGetId(unit)]
-    return entry ~= nil and entry.Unit == unit
+    local objectId = ObjectGetId(unit)
+    local entry = self.UltimateCreatureRegisteredUnits[objectId]
+    if entry == nil or entry.Unit == nil or not ObjectIsAlive(entry.Unit) then
+        return false
+    end
+    local registeredObjectId = entry.ObjectId or ObjectGetId(entry.Unit)
+    return registeredObjectId == objectId
 end
 
 function HextechRune:CleanupUltimateCreatureRegistrations()
     for objectId, entry in self.UltimateCreatureRegisteredUnits do
         if entry.Unit == nil or not ObjectIsAlive(entry.Unit)
-            or ObjectGetId(entry.Unit) ~= objectId then
+            or (entry.ObjectId or ObjectGetId(entry.Unit)) ~= objectId then
             self.UltimateCreatureRegisteredUnits[objectId] = nil
         end
     end
+end
+
+-- NAMED_SHOW_INFOBOX 与天界守护者使用同一套命名对象信息框机制。
+-- 鬼王X不是地编预命名单位，因此先按对象ID建立唯一单位引用，再显示本地化文案。
+function HextechRune:ShowUltimateCreatureInfoBox(unit)
+    local objectId = ObjectGetId(unit)
+    local unitReference = "HextechUltimateCreature_" .. tostring(objectId)
+    ExecuteAction("SET_UNIT_REFERENCE", unitReference, unit)
+    TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", unitReference,
+        "SCRIPT:UltimateCreature", 0, "")
+    return unitReference
 end
 
 function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
@@ -184,10 +180,9 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     -- 表现为全场唯一或后加载者覆盖前一只。
     local tierCounts = state.TierCounts
     local modifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1 + tierCounts[1] * 0.05,
-        DAMAGE_MULT = 1 + tierCounts[2] * 0.02,
+        HEALTH_MULT = 1 + (tierCounts[1] + tierCounts[4]) * 0.05,
+        DAMAGE_MULT = 1 + tierCounts[2] * 0.02 + tierCounts[4] * 0.10,
         RATE_OF_FIRE = 1 + tierCounts[3] * 0.05,
-        RANGE = 1 + tierCounts[4] * 0.10,
     }, 1)
     ObjectLoadAttributeModifier(unit, modifier,
         self.PersistentBuffDuration)
@@ -197,112 +192,35 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
         self.PersistentBuffDuration)
     -- 复用塔防守护者的固定缩放接口，只放大模型表现。
     exObjectSetFixedScale(ObjectGetId(unit), self.UltimateCreatureScale)
+    -- 与数值BUFF同步，为每只实际进化成功的鬼王X建立自己的常驻信息框。
+    local infoBoxReference = self:ShowUltimateCreatureInfoBox(unit)
     self.UltimateCreatureRegisteredUnits[ObjectGetId(unit)] = {
         Unit = unit,
+        ObjectId = ObjectGetId(unit),
         PlayerIndex = playerIndex,
         Modifier = modifier,
+        InfoBoxReference = infoBoxReference,
     }
     return true
 end
 
--- 每回合按实际出生队列，为每名持有者强化一只本回合新生成的鬼王X。
--- assignments 仅作为出生回调缺失时的兼容兜底，不再承担主要识别职责。
-function HextechRune:ApplyUltimateCreatures(assignments, round)
+-- 复用普通数值BUFF的本轮新单位分配结果。即使普通载具 BUFF 使多只
+-- 鬼王X同时进入 assignments，每名持有者每回合仍只进化其中 1 只。
+-- 普通符文先于本函数加载，因此两个独立 Modifier 会按引擎属性规则叠加。
+function HextechRune:ApplyUltimateCreatures(assignments)
     local oniIndex = g_UnitNameToUnitIndex["JapanMechaX"]
     if oniIndex == nil then
         return
     end
-    local oniInstanceId = FastHash("JapanMechaX")
-    local currentRound = tonumber(round) or tonumber(exCounterGetByName("lvc")) or 0
     local appliedPlayers = {}
-    local appliedObjectIds = {}
     self:CleanupUltimateCreatureRegistrations()
 
-    for sideIndex = 7, 8, 1 do
-        local queue = self.UltimateCreatureSpawnedOnis[sideIndex] or {}
-        local currentUnits = {}
-        local futureEntries = {}
-        for i = 1, getn(queue), 1 do
-            local entry = queue[i]
-            if entry.Round == currentRound and ObjectIsAlive(entry.Id)
-                and ObjectGetInstanceId(entry.Id) == oniInstanceId then
-                tinsert(currentUnits, GetObjectById(entry.Id))
-            elseif entry.Round > currentRound then
-                tinsert(futureEntries, entry)
-            end
-        end
-        -- 当前回合及更早的记录用完即丢弃，避免长期游戏中对象ID复用旧数据。
-        self.UltimateCreatureSpawnedOnis[sideIndex] = futureEntries
-
-        local firstPlayerIndex = 1
-        if sideIndex == 8 then
-            firstPlayerIndex = 4
-        end
-        local cursor = 1
-        for playerIndex = firstPlayerIndex, firstPlayerIndex + 2, 1 do
-            local quota = tonumber(UNITCOUNT[playerIndex][oniIndex]) or 0
-            local last = cursor + quota - 1
-            if last > getn(currentUnits) then
-                last = getn(currentUnits)
-            end
-            local state = self.UltimateCreatureStates[playerIndex]
-            if state ~= nil then
-                for unitPosition = cursor, last, 1 do
-                    local unit = currentUnits[unitPosition]
-                    if self:ApplyUltimateCreatureToUnit(unit, state, playerIndex) then
-                        appliedPlayers[playerIndex] = true
-                        appliedObjectIds[ObjectGetId(unit)] = true
-                        break
-                    end
-                end
-            end
-            cursor = cursor + quota
-        end
-    end
-
-    -- 出生队列未命中时，按用户可见规则直接从场上尚未登记的鬼王X中补选。
-    -- 已进化且仍存活的旧鬼王X均在注册表中，因此不会阻挡新一只获得强化。
-    for sideIndex = 7, 8, 1 do
-        local firstPlayerIndex = 1
-        if sideIndex == 8 then
-            firstPlayerIndex = 4
-        end
-        local unregisteredUnits = {}
-        local units, count = ObjectFindObjects(P[sideIndex], nil,
-            FilterLIST[oniIndex])
-        for i = 1, count, 1 do
-            local unit = units[i]
-            local objectId = ObjectGetId(unit)
-            if not appliedObjectIds[objectId]
-                and not self:IsUltimateCreatureRegistered(unit) then
-                tinsert(unregisteredUnits, unit)
-            end
-        end
-        local candidateIndex = 1
-        for playerIndex = firstPlayerIndex, firstPlayerIndex + 2, 1 do
-            local state = self.UltimateCreatureStates[playerIndex]
-            if state ~= nil and not appliedPlayers[playerIndex] then
-                while candidateIndex <= getn(unregisteredUnits) do
-                    local unit = unregisteredUnits[candidateIndex]
-                    candidateIndex = candidateIndex + 1
-                    if self:ApplyUltimateCreatureToUnit(unit, state, playerIndex) then
-                        appliedPlayers[playerIndex] = true
-                        appliedObjectIds[ObjectGetId(unit)] = true
-                        break
-                    end
-                end
-            end
-        end
-    end
-
-    -- 兼容旧地图加载顺序或出生回调未捕获的情况，仍从本轮新单位分配结果补一次。
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
         local playerIndex = assignment.PlayerIndex
         local state = self.UltimateCreatureStates[playerIndex]
         if state ~= nil and not appliedPlayers[playerIndex]
             and assignment.UnitIndex == oniIndex
-            and not appliedObjectIds[ObjectGetId(assignment.Unit)]
             and self:IsCurrentAssignment(assignment.Unit, assignment) then
             if self:ApplyUltimateCreatureToUnit(assignment.Unit, state,
                 playerIndex) then

@@ -166,7 +166,7 @@ HextechRune.FortifiedTowerState = HextechRune.FortifiedTowerState or {}
 HextechRune.TranscendentEvilModifiers = HextechRune.TranscendentEvilModifiers or {}
 HextechRune.FiveTigerGeneralsPower = "SpecialPower_CelestialCenturionUpgrade"
 HextechRune.FiveTigerGeneralsCommand = "Command_Celestial_CenturionUpgrade"
-HextechRune.FiveTigerGeneralsDelay = 45
+HextechRune.BattleUnitEffectDelay = 45
 HextechRune.FiveTigerPowerGranted = HextechRune.FiveTigerPowerGranted or {}
 HextechRune.CenturionSpellbookFilter = HextechRune.CenturionSpellbookFilter
     or CreateObjectFilter({
@@ -582,11 +582,8 @@ function HextechRune:EnsureCombustionInterestObserver()
 end
 
 function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
-    local assignment = self.BattleUnitAssignments[dyingObjId]
-    if assignment == nil then
-        return
-    end
-    -- 先移除登记，避免同一死亡事件重复结算，也防止 objectId 复用旧记录。
+    -- BUFF 登记只用于防止同一单位重复获得持续效果；
+    -- 炽燃利息直接根据战场 AI 归属和战斗阶段结算，不再要求死亡单位已获得 BUFF。
     self.BattleUnitAssignments[dyingObjId] = nil
     if not self.CombustionInterestCombatActive then
         return
@@ -1036,12 +1033,68 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
 end
 
 function HextechRune:IsCurrentAssignment(unit, assignment)
-    return assignment ~= nil and assignment.Unit == unit and ObjectIsAlive(unit)
+    if assignment == nil or not ObjectIsAlive(unit)
+        or assignment.Unit == nil or not ObjectIsAlive(assignment.Unit) then
+        return false
+    end
+    local objectId = ObjectGetId(unit)
+    local assignedObjectId = assignment.ObjectId
+        or ObjectGetId(assignment.Unit)
+    return assignedObjectId == objectId
 end
 
--- 对一个阵营仅收集尚未登记的新单位，再按“具体单位类型 + 玩家单位池数量”切片。
--- 即使玩家没有持续符文也会登记归属，防止幸存单位在下一次扫描时被当作新单位。
-function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex, lastPlayerIndex)
+function HextechRune:IsPersistentBattleRune(rune)
+    return rune.Effect == "damage" or rune.Effect == "rate_of_fire"
+        or rune.Effect == "speed" or rune.Effect == "range_silver"
+        or rune.Effect == "range_gold" or rune.Effect == "range_prismatic"
+        or rune.Effect == "astral_body" or rune.Effect == "transcendent_evil"
+        or rune.Effect == "infinite_ammo"
+end
+
+-- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
+-- 普通持续 BUFF 使用全配额；究极生物每回合 1 只，五虎上将单独按份数限制名额。
+function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
+    typeLookup)
+    local poolCount = UNITCOUNT[playerIndex][unitIndex] or 0
+    if poolCount <= 0 then
+        return 0
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for runeIndex = 1, getn(owned), 1 do
+        local rune = owned[runeIndex]
+        if self:IsPersistentBattleRune(rune)
+            and self:IsUnitInRuneType(unit, rune, typeLookup) then
+            if rune.Effect ~= "infinite_ammo"
+                or (typeLookup.infiniteAmmoAircraft ~= nil
+                    and typeLookup.infiniteAmmoAircraft[ObjectGetId(unit)]) then
+                return poolCount
+            end
+        end
+    end
+
+    local oniIndex = g_UnitNameToUnitIndex["JapanMechaX"]
+    if self.UltimateCreatureStates ~= nil
+        and self.UltimateCreatureStates[playerIndex] ~= nil
+        and unitIndex == oniIndex then
+        return 1
+    end
+
+    local fiveTigerCount = self:GetFiveTigerGeneralsCopyCount(playerIndex)
+    if fiveTigerCount > 0 and typeLookup.infantry[ObjectGetId(unit)] then
+        local fiveTigerQuota = 5 * fiveTigerCount
+        if fiveTigerQuota < poolCount then
+            return fiveTigerQuota
+        end
+        return poolCount
+    end
+    return 0
+end
+
+-- 对一个阵营仅收集尚无 BUFF 登记的同类单位。按玩家单位池数量取至多 COUNT 个，
+-- 只有该玩家确实有可施加效果时才占用单位；无效果的玩家和额外单位不登记。
+function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
+    lastPlayerIndex, typeLookup)
     local newlyAssigned = {}
     if P == nil or P[sideIndex] == nil then
         return newlyAssigned
@@ -1058,50 +1111,42 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex, lastP
             end
         end
 
-        local cursor = 1
+        local claimed = {}
         for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-            local quota = UNITCOUNT[playerIndex][unitIndex] or 0
-            local last = cursor + quota - 1
-            if last > getn(newUnits) then
-                last = getn(newUnits)
+            local grantedCount = 0
+            for unitPosition = 1, getn(newUnits), 1 do
+                if not claimed[unitPosition] then
+                    local unit = newUnits[unitPosition]
+                    local quota = self:GetPlayerBattleEffectQuota(playerIndex,
+                        unit, unitIndex, typeLookup)
+                    if quota > grantedCount then
+                        local assignment = {
+                            Unit = unit,
+                            ObjectId = ObjectGetId(unit),
+                            UnitIndex = unitIndex,
+                            PlayerIndex = playerIndex,
+                            AppliedRunes = {},
+                        }
+                        self.BattleUnitAssignments[ObjectGetId(unit)] = assignment
+                        claimed[unitPosition] = true
+                        grantedCount = grantedCount + 1
+                        tinsert(newlyAssigned, assignment)
+                    end
+                end
             end
-            for unitPosition = cursor, last, 1 do
-                local unit = newUnits[unitPosition]
-                local assignment = {
-                    Unit = unit,
-                    UnitIndex = unitIndex,
-                    PlayerIndex = playerIndex,
-                    AppliedRunes = {},
-                }
-                self.BattleUnitAssignments[ObjectGetId(unit)] = assignment
-                tinsert(newlyAssigned, assignment)
-            end
-            cursor = cursor + quota
-        end
-
-        -- 超出三名玩家当前总配额的对象也标成“无归属”，避免以后重复纳入。
-        for unitPosition = cursor, getn(newUnits), 1 do
-            local unit = newUnits[unitPosition]
-            local assignment = {
-                Unit = unit,
-                UnitIndex = unitIndex,
-                PlayerIndex = 0,
-                AppliedRunes = {},
-            }
-            self.BattleUnitAssignments[ObjectGetId(unit)] = assignment
-            tinsert(newlyAssigned, assignment)
         end
     end
     return newlyAssigned
 end
 
-function HextechRune:AssignNewBattleUnits()
+function HextechRune:AssignNewBattleUnits(typeLookup)
     local result = {}
     if UNITCOUNT == nil or FilterLIST == nil or unitcountmax == nil then
         return result
     end
-    local left = self:AssignNewSideBattleUnits(7, 1, 3)
-    local right = self:AssignNewSideBattleUnits(8, 4, 6)
+    typeLookup = typeLookup or self:BuildAllBattleUnitTypeLookup()
+    local left = self:AssignNewSideBattleUnits(7, 1, 3, typeLookup)
+    local right = self:AssignNewSideBattleUnits(8, 4, 6, typeLookup)
     for i = 1, getn(left), 1 do
         tinsert(result, left[i])
     end
@@ -1159,8 +1204,8 @@ end
 
 -- 给本次刚登记的新单位应用其归属玩家的全部持续符文。
 function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
-    excludedPlayerIndex, excludedOwnershipId)
-    local typeLookup = self:BuildAllBattleUnitTypeLookup()
+    excludedPlayerIndex, excludedOwnershipId, typeLookup)
+    typeLookup = typeLookup or self:BuildAllBattleUnitTypeLookup()
     for playerIndex = 1, 6, 1 do
         self:EnsurePlayerRuneState(playerIndex)
         local owned = self.PlayerOwnedRunes[playerIndex]
@@ -1238,9 +1283,8 @@ function HextechRune:ApplyFortified(playerIndex)
 end
 
 function HextechRune:ApplyPersistentRune(playerIndex, rune)
-    -- 持续型符文只影响选择之后的新出兵，不追溯强化仍存活的旧单位。
-    -- 这里仍登记当前尚未登记的场上单位，避免它们在下一次出兵扫描时被误判为新单位。
-    self:AssignNewBattleUnits()
+    -- 持续型符文由回合延迟扫描统一处理。选择时不再提前登记场上单位，
+    -- 避免部分出兵尚未生成时占用后续 COUNT 配额。
 end
 
 function HextechRune:GetFiveTigerGeneralsCopyCount(playerIndex)
@@ -1429,7 +1473,6 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "five_thunder" then
         self:GrantFiveThunder(playerIndex)
     elseif rune.Effect == "combustion_interest" then
-        self:AssignNewBattleUnits()
         self:EnsureCombustionInterestObserver()
     elseif rune.Effect == "tesla_air_assault" then
         self:GrantTeslaAirAssault(playerIndex)
@@ -1448,18 +1491,44 @@ end
 
 -- 固定出兵和“补充军队”共用入口：只登记并处理本次新增单位。
 function HextechRune:ApplyNewBattleUnitEffects(sourceName)
-    local assignments = self:AssignNewBattleUnits()
-    self:ApplyOwnedRunesToNewAssignments(assignments, sourceName or "出兵")
+    local typeLookup = self:BuildAllBattleUnitTypeLookup()
+    local assignments = self:AssignNewBattleUnits(typeLookup)
+    self:ApplyOwnedRunesToNewAssignments(assignments, sourceName or "出兵",
+        nil, nil, typeLookup)
     -- 敌方全体类符文不依赖混编配额，固定出兵与补充军队后扫描新对象。
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
     return assignments
 end
 
+function HextechRune:FinalizeBattleUnitAssignments(assignments)
+    for i = 1, getn(assignments), 1 do
+        local assignment = assignments[i]
+        local hasEffect = assignment.UltimateCreatureGranted
+            or assignment.FiveTigerGranted
+        if not hasEffect then
+            for effectInstanceId, applied in assignment.AppliedRunes do
+                if applied then
+                    hasEffect = true
+                    break
+                end
+            end
+        end
+        if not hasEffect
+            and self.BattleUnitAssignments[assignment.ObjectId] == assignment then
+            self.BattleUnitAssignments[assignment.ObjectId] = nil
+        end
+    end
+end
+
 function HextechRune:ApplyRoundEffects(round)
-    local assignments = self:ApplyNewBattleUnitEffects(
-        "第" .. tostring(round) .. "回合固定出兵")
-    self:ApplyUltimateCreatures(assignments, round)
-    SchedulerModule.delay_call(function(newAssignments)
-        HextechRune:ApplyFiveTigerGenerals(newAssignments)
-    end, self.FiveTigerGeneralsDelay, { assignments })
+    -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
+    -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
+    SchedulerModule.delay_call(function(effectRound)
+        local assignments = HextechRune:ApplyNewBattleUnitEffects(
+            "第" .. tostring(effectRound) .. "回合固定出兵")
+        HextechRune:ApplyUltimateCreatures(assignments)
+        HextechRune:ApplyFiveTigerGenerals(assignments)
+        -- 只保留真正获得了 BUFF 的单位登记；其余单位仍可被后续扫描选中。
+        HextechRune:FinalizeBattleUnitAssignments(assignments)
+    end, self.BattleUnitEffectDelay, { round })
 end

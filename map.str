@@ -280,6 +280,12 @@ end
 SCRIPT:CrateEnabled_EN
 "Lucky Crate Enabled"
 end
+SCRIPT:UltimateCreature
+"-------究极生物-------"
+end
+SCRIPT:UltimateCreature_EN
+">>Ultimate Creature<<"
+end
 SCRIPT:PureDrawQuota
 "剩余生产余额（每段围墙代表1点，每3回合补满）"
 end

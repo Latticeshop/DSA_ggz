@@ -7,7 +7,7 @@ g_EnableShrinkMode = 0;
 g_DisableSeaArmy = 0;
 g_DrawMode = 0; -- 0: disabled, 1: original lucky crate, 2: pure draw
 g_LuckyCrateMode = 0; -- compatibility flag used by the existing lucky-crate implementation
-g_HextechCount = 0; -- 海克斯符文发放次数：默认随入局前“开启随机箱子”配置选择 0 或 3
+g_HextechCount = 0; -- 海克斯符文发放次数：可选 0~4，默认随入局前“开启随机箱子”配置选择 0 或 3
 g_HextechCountManuallySet = false; -- 房主是否已手动设置过海克斯次数（开启随机箱子时默认"三个"）
 g_EnableHextechRune = 0; -- 海克斯符文系统是否启用（g_HextechCount > 0 时置 1）
 
@@ -603,7 +603,7 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
                 -- 海克斯符文设置：显示当前状态
                 local hextechName = Localization.get("hextech.option.0")
                 if g_HextechCount ~= nil then
-                    if g_HextechCount >= 1 and g_HextechCount <= 3 then
+                    if g_HextechCount >= 1 and g_HextechCount <= 4 then
                         hextechName = Localization.get("hextech.option." .. tostring(g_HextechCount))
                     end
                 end
@@ -843,15 +843,16 @@ function BtnChoiceDialogEventFunc_ShowHextechModeDialog(playerName)
             Localization.get("hextech.option.1"),
             Localization.get("hextech.option.2"),
             Localization.get("hextech.option.3"),
+            Localization.get("hextech.option.4"),
             Localization.get("hextech.back"),
         }
-        if g_HextechCount >= 0 and g_HextechCount <= 3 then
+        if g_HextechCount >= 0 and g_HextechCount <= 4 then
             self.Choices[g_HextechCount + 1] = self.Choices[g_HextechCount + 1]
                 .. Localization.get("game_mode.selected_suffix")
         end
     end
     dialogData.OnChoice = function(self, buttonIndex)
-        if buttonIndex >= 1 and buttonIndex <= 4 then
+        if buttonIndex >= 1 and buttonIndex <= 5 then
             g_HextechCount = buttonIndex - 1
             g_HextechCountManuallySet = true
             local selectedHextechName = Localization.get("hextech.option." .. g_HextechCount)
@@ -860,7 +861,7 @@ function BtnChoiceDialogEventFunc_ShowHextechModeDialog(playerName)
             self:RefreshData()
             ButtonChoiceDialogManager:ShowDialog(self)
             return
-        elseif buttonIndex == 5 then
+        elseif buttonIndex == 6 then
             BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
             return
         end

@@ -117,6 +117,7 @@ Localization._text_sources = {
     ["hextech.option.1"] = { zh = "本场一个海克斯", en = "One Hextech rune" },
     ["hextech.option.2"] = { zh = "本场二个海克斯", en = "Two Hextech runes" },
     ["hextech.option.3"] = { zh = "本场三个海克斯", en = "Three Hextech runes" },
+    ["hextech.option.4"] = { zh = "本场四个海克斯", en = "Four Hextech runes" },
     ["hextech.back"] = { zh = "返回上一页", en = "Back" },
     ["hextech.rarity.prismatic"] = { zh = "彩色", en = "Prismatic" },
     ["hextech.rarity.gold"] = { zh = "金色", en = "Gold" },
@@ -203,8 +204,8 @@ Localization._text_sources = {
     ["hextech.rune.gambling_addict.desc"] = { zh = "获得两个随机符文。", en = "Gain two random runes." },
     ["hextech.rune.ultimate_creature.name"] = { zh = "究极生物", en = "Ultimate Creature" },
     ["hextech.rune.ultimate_creature.desc"] = {
-        zh = "你的一个鬼王X会进化为一个究极生物！回收你当前的全部单位，每回收一个T1/T2/T3/T4单位，分别增加5%%血量/2%%攻击/5%%攻速/10%%射程。获得一个鬼王X。",
-        en = "One of your King Oni X units evolves into an Ultimate Creature! Recycle all your current units. Each recycled T1/T2/T3/T4 unit respectively grants 5%% health/2%% damage/5%% attack speed/10%% range. Gain 1 King Oni X."
+        zh = "你每回合的一个鬼王X会进化为究极生物！回收你当前的全部单位，每回收一个T1/T2/T3单位，分别增加5%%血量/2%%攻击/5%%攻速；每回收一个T4单位，同时增加5%%血量和10%%攻击。获得一个鬼王X。",
+        en = "One of your King Oni X units evolves into an Ultimate Creature each round! Recycle all your current units. Each recycled T1/T2/T3 unit respectively grants 5%% health/2%% damage/5%% attack speed; each recycled T4 unit grants 5%% health and 10%% damage. Gain 1 King Oni X."
     },
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },

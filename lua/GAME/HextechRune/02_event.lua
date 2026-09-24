@@ -1,6 +1,6 @@
 -- 海克斯符文系统：真实候选事件 + 海克斯面板
 --   - 回合监听：RoundLuaManager.CallOnEveryRoundBegin（复用抽卡模式 PureDraw 方案）
---   - 正式海克斯事件（第 3/10/18 回合，按 g_HextechCount 截取）：
+--   - 正式海克斯事件（第 3/10/18/27 回合，按 g_HextechCount 截取）：
 --     - 先全场抽一个统一稀有度（彩/金/银，按回合概率）
 --     - 再对每个玩家独立筛池并刷新 3 个不同符文
 --   - 海克斯面板（顶部按钮 5 展开）：横六筒造型展示上三/下三玩家的海克斯符文
@@ -80,7 +80,9 @@ HextechRune.PanelCenterX = 563
 -- 标题固定居中于屏幕中央（整体左移后标题保持原位）
 HextechRune.PanelTitleCenterX = 683
 -- 列中心 x：三列（上左/上中/上右 与 下左/下中/下右 对齐）
-HextechRune.PanelColumnGap = 240
+-- 五张 50x50 卡加四段 10 像素间隔共宽 290；列中心间距设为 300，
+-- 保证相邻玩家的五符文行不会互相遮挡。
+HextechRune.PanelColumnGap = 300
 -- 四行 y 坐标
 HextechRune.PanelRowY = { 230, 300, 420, 490 }
 -- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
@@ -89,15 +91,15 @@ HextechRune.PanelRuneHeight = 50
 HextechRune.PanelRuneGap = 10
 HextechRune.PanelRuneIconSize = 14
 HextechRune.PanelRuneTitleOffsetX = 5
--- 总览面板最多展示 4 个符文。
-HextechRune.PanelMaxRuneCount = 4
+-- 第四次正式事件叠加“赌怪”奖励时，玩家最多可能展示 5 个实际符文。
+HextechRune.PanelMaxRuneCount = 5
 -- 面板自定义元素 index 基础（避开已用 index）
-HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*4 + j（401~424）
+HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*5 + j（401~430）
 HextechRune.PanelCloseBtnBase = 500      -- 关闭按钮：玩家 i = 500 + i
 HextechRune.PanelTextIndexBase = 600     -- 名字文字：玩家 i = 600 + i
 HextechRune.PanelTitleTextBase = 610     -- 标题文字：玩家 i = 610 + i
-HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~724
-HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~824
+HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~730
+HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~830
 
 -- 每玩家面板是否展开
 HextechRune.PanelVisible = {}
@@ -109,7 +111,7 @@ HextechRune.PlayerEventQueues = HextechRune.PlayerEventQueues or {}
 HextechRune.PlayerSelectionVisible = HextechRune.PlayerSelectionVisible or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
-HextechRune.FormalRounds = { 3, 10, 18 }
+HextechRune.FormalRounds = { 3, 10, 18, 27 }
 
 -- 计算某玩家某个方框的按钮 index
 function HextechRune:GetOptionBtnIndex(playerIndex, optionIndex)
@@ -268,10 +270,13 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
 end
 
 -- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
--- 第 3 回合（第一次）= 彩 5% / 金 40% / 银 55%；第 10/18 回合 = 彩 10% / 金 45% / 银 45%
+-- 第 3 回合（第一次）= 彩 5% / 金 40% / 银 55%；第 10/18 回合 = 彩 10% / 金 45% / 银 45%；
+-- 可选的第 27 回合单独使用彩 30% / 金 50% / 银 20%。
 function HextechRune:RollFieldRarity(round)
     local weightMap
-    if round <= self.FormalRounds[1] then
+    if round == self.FormalRounds[4] then
+        weightMap = { [1] = 30, [2] = 50, [3] = 20 }
+    elseif round <= self.FormalRounds[1] then
         -- 第一次正式事件：彩 5 / 金 40 / 银 55
         weightMap = { [1] = 5, [2] = 40, [3] = 55 }
     else
@@ -646,8 +651,8 @@ end
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "prismatic_ultimate_creature",
-        "gold_cloudbreaker",
-        "gold_oblivion_bomb",
+        "gold_combustion_interest",
+        "silver_five_tiger_generals",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -741,8 +746,8 @@ end
 -- 面板内容直接读取每名玩家真实拥有的符文。
 
 -- 计算某玩家面板符文按钮 index（slot 1..PanelMaxRuneCount）
--- 注意：每玩家必须预留 PanelMaxRuneCount（4）个 index，否则 4 个符文时
---       玩家 i 的第 4 个符文会与玩家 i+1 的第 1 个符文共用 index（被覆盖）。
+-- 注意：每玩家必须预留 PanelMaxRuneCount（5）个 index，否则第 5 个符文会与
+--       下一名玩家的第 1 个符文共用 index（被覆盖）。
 function HextechRune:GetPanelRuneBtnIndex(playerIndex, slot)
     return self.PanelBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
 end
@@ -847,7 +852,7 @@ function HextechRune:CreatePanelNameText(viewerIndex, targetIndex, x, y)
     })
 end
 
--- 创建某玩家的一行真实符文（当前最多显示 4 个，水平一排并居中于列）。
+-- 创建某玩家的一行真实符文（当前最多显示 5 个，水平一排并居中于列）。
 function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     local viewerName = "Player_" .. viewerIndex
     self:EnsurePlayerRuneState(targetIndex)

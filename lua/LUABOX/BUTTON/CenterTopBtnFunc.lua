@@ -1071,13 +1071,8 @@ function RequestSpawnArmyImmediately(playerIndex)
             UNITSPST_left (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
             exEnableWBScript('PlyrCivilian/attackAIR__7')
             exEnableWBScript('BUFFACTONCE__AIR')
-            -- ShrinkMode_Trigger 位于两段补充出兵之间；末尾再扫一次。
-            -- 海克斯单位标记确保这里只处理后半段尚未登记的新单位。
-            SchedulerModule.delay_call(function()
-                if g_EnableHextechRune == 1 and HextechRune ~= nil then
-                    HextechRune:ApplyNewBattleUnitEffects("补充军队")
-                end
-            end, 1)
+            -- 海克斯由 ShrinkMode_Trigger 统一延迟 45 帧后扫描，
+            -- 此时两段补充出兵都已完成，无需再提前登记后半段单位。
         end, 5)
     else
         SchedulerModule.delay_call(function()
@@ -1099,11 +1094,7 @@ function RequestSpawnArmyImmediately(playerIndex)
             UNITSPST_right (step5+1,step6,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
             exEnableWBScript('PlyrCreeps/attackAIR__8')
             exEnableWBScript('BUFFACTONCE__AIR')
-            SchedulerModule.delay_call(function()
-                if g_EnableHextechRune == 1 and HextechRune ~= nil then
-                    HextechRune:ApplyNewBattleUnitEffects("补充军队")
-                end
-            end, 1)
+            -- 海克斯延迟扫描会在两段补充出兵完成后统一处理。
         end, 5)
     end
 

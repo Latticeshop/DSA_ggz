@@ -9,8 +9,8 @@
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "prismatic_ultimate_creature",
-        "gold_cloudbreaker",
-        "gold_oblivion_bomb",
+        "gold_combustion_interest",
+        "silver_five_tiger_generals",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex

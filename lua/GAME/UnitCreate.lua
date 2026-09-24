@@ -912,14 +912,6 @@ function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
 
 end
 
-function HextechUltimateCreatureOniBorn(createdObjId, createdObjInstanceId,
-    ownerPlayerName)
-    if HextechRune ~= nil
-        and HextechRune.OnUltimateCreatureOniBorn ~= nil then
-        HextechRune:OnUltimateCreatureOniBorn(createdObjId, ownerPlayerName)
-    end
-end
-
 -- 磁暴突袭会附带生成史普尼克勘查车。自走棋不需要这两种核心，
 -- 无论来自人类玩家还是 AI，出生时都立即删除；玩家符文以该出生事件
 -- 作为协议成功释放的信号并立刻进入五回合冷却。
@@ -1056,10 +1048,7 @@ g_UnitCreateEventFunc[FastHash("JapanMissileMechaAdvanced_Enhanced")] = JapanAIA
 -- 配置坦克统一在射程内优先选择最远目标。
 g_UnitCreateEventFunc[FastHash("PrismTank")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedPrismTank_Enhanced")] = FarthestTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("JapanMechaX")] = {
-    FarthestTargetChooserBorn,
-    HextechUltimateCreatureOniBorn,
-}
+g_UnitCreateEventFunc[FastHash("JapanMechaX")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialHeavyAntiAirVehicleTech3")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiVehicleVehicleTech3_EMC")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiAirVehicleTech3")] = FarthestTargetChooserBorn
@@ -1176,28 +1165,22 @@ RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 -- 全模式底层规则：摇光在 T4 解锁前只保留当前回合部署的批次，避免
 -- 单位池每回合刷新造成战场实例持续累积。T4 解锁后取消战场寿命；
 -- 玩家实际生产摇光的独立 3 个限额不受影响。
+g_PlayerT4TechUnlocked = g_PlayerT4TechUnlocked
+    or { false, false, false, false, false, false }
+
 function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
     local firstPlayerIndex = nil
     if ownerPlayerName == "PlyrCivilian" then
         firstPlayerIndex = 1
-        -- 升本模式由购买系统直接维护阵营科技等级，不依赖推塔脚本。
-        if g_evilTechLevel ~= nil and g_evilTechLevel >= 4 then
-            return true
-        end
     elseif ownerPlayerName == "PlyrCreeps" then
         firstPlayerIndex = 4
-        if g_angelTechLevel ~= nil and g_angelTechLevel >= 4 then
-            return true
-        end
     else
         return false
     end
-    -- 标准、死亡等模式由真正的 T4 解锁入口维护这个逐玩家标记。
-    if g_PureDrawT4ShipUnlocked == nil then
-        return false
-    end
+    -- 六个 Player_N/UNLOCK3__N 脚本是所有模式最终的 T4 科技解封入口：
+    -- 标准模式的推塔/自然解锁、死亡模式的开局推塔及升本模式均会执行它。
     for playerIndex = firstPlayerIndex, firstPlayerIndex + 2, 1 do
-        if g_PureDrawT4ShipUnlocked[playerIndex] then
+        if g_PlayerT4TechUnlocked[playerIndex] then
             return true
         end
     end
