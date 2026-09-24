@@ -646,7 +646,7 @@ end
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "prismatic_ultimate_creature",
-        "silver_dual_purpose",
+        "gold_cloudbreaker",
         "gold_oblivion_bomb",
     }
     for playerIndex = 1, 6, 1 do

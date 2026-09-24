@@ -1173,6 +1173,62 @@ end
 RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
 RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
+-- 全模式底层规则：摇光在 T4 解锁前只保留当前回合部署的批次，避免
+-- 单位池每回合刷新造成战场实例持续累积。T4 解锁后取消战场寿命；
+-- 玩家实际生产摇光的独立 3 个限额不受影响。
+function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
+    local firstPlayerIndex = nil
+    if ownerPlayerName == "PlyrCivilian" then
+        firstPlayerIndex = 1
+        -- 升本模式由购买系统直接维护阵营科技等级，不依赖推塔脚本。
+        if g_evilTechLevel ~= nil and g_evilTechLevel >= 4 then
+            return true
+        end
+    elseif ownerPlayerName == "PlyrCreeps" then
+        firstPlayerIndex = 4
+        if g_angelTechLevel ~= nil and g_angelTechLevel >= 4 then
+            return true
+        end
+    else
+        return false
+    end
+    -- 标准、死亡等模式由真正的 T4 解锁入口维护这个逐玩家标记。
+    if g_PureDrawT4ShipUnlocked == nil then
+        return false
+    end
+    for playerIndex = firstPlayerIndex, firstPlayerIndex + 2, 1 do
+        if g_PureDrawT4ShipUnlocked[playerIndex] then
+            return true
+        end
+    end
+    return false
+end
+
+function SetPreT4YaoguangLifetime(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- 玩家生产、箱子和符文赠送的临时 Player_N 实体都不处理；只有实际
+    -- 部署到双方战场 AI 的摇光才进入一回合寿命规则。
+    if ownerPlayerName ~= "PlyrCreeps"
+        and ownerPlayerName ~= "PlyrCivilian" then
+        return
+    end
+    if IsYaoguangBattleSideT4Unlocked(ownerPlayerName) then
+        return
+    end
+    RoundLuaManager.DelayCallOnRoundBegin(function(id, sideOwnerName)
+        if not ObjectIsAlive(id) then
+            return
+        end
+        -- 若这一个回合间隔内刚好解锁 T4，旧的延迟任务也转为永久保留。
+        if IsYaoguangBattleSideT4Unlocked(sideOwnerName) then
+            return
+        end
+        ExecuteAction("NAMED_KILL", GetObjectById(id))
+    end, { createdObjId, ownerPlayerName }, 1)
+end
+
+RegisterUnitCreateCallback("CelestialAdvanceAircraftTech4", SetPreT4YaoguangLifetime)
+RegisterUnitCreateCallback("CelestialAdvanceAircraftTech4_Enhanced", SetPreT4YaoguangLifetime)
+
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
     local registered = g_UnitCreateEventFunc[createdObjInstanceId]
     if type(registered) == "function" then
