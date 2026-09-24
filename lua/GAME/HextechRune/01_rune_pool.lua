@@ -204,7 +204,57 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
     }
 end
 
--- 从玩家自身阵营的回收/单位池中选一个可计数单位，供“买二送一”使用。
+-- “买二送一”目标池筛选
+-- 目标池直接取自回收表（g_RecycleBtnsMapByFaction），但回收表里混有两类
+-- 玩家永远无法自己产出、因而永远无法累计进度的目标，抽到等于一张空符文：
+--   1) 本版本 Corona 尚未实装的预留单位：JapanAntiAirVehicleTech3 /
+--      SovietPineElectronicRadarTruck / CelestialAntiAirVehicleTech3 /
+--      AlliedAirForceDispatchVehicle；
+--   2) 只能由其它符文转换出来的形态：先进火炮的 AlliedAC130GunshipAircraft、
+--      青锋 _B 的形态别名 CelestialLongRangeMissileVehicle。
+-- 因此用抽卡模式的显式生产池 g_PureDrawBuildableUnitPool 作为“可生产”白名单
+function HextechRune:BuildBuyTwoGetOneTargetFilter()
+    if self.BuyTwoGetOneProducibleTypes ~= nil then
+        return self.BuyTwoGetOneProducibleTypes, self.BuyTwoGetOneAliasOnlyTypes
+    end
+    local producible = {}
+    local producibleCount = 0
+    if g_PureDrawBuildableUnitPool ~= nil then
+        for tier = 1, 4, 1 do
+            local tierPool = g_PureDrawBuildableUnitPool[tier]
+            if tierPool ~= nil then
+                for i = 1, getn(tierPool), 1 do
+                    local unitType = tierPool[i].Type
+                    if unitType ~= nil and producible[unitType] == nil then
+                        producible[unitType] = true
+                        producibleCount = producibleCount + 1
+                    end
+                end
+            end
+        end
+    end
+    if producibleCount == 0 then
+        -- 生产池尚未加载或数据缺失：不缓存、不启用白名单，退回原有行为，
+        -- 避免把整个候选池清空导致“买二送一”从三选一里消失。
+        return nil, nil
+    end
+    local aliasOnly = {}
+    if g_PureDrawProductionAliases ~= nil then
+        for baseType, aliases in g_PureDrawProductionAliases do
+            for i = 1, getn(aliases), 1 do
+                local alias = aliases[i]
+                if alias ~= nil and producible[alias] == nil then
+                    aliasOnly[alias] = true
+                end
+            end
+        end
+    end
+    self.BuyTwoGetOneProducibleTypes = producible
+    self.BuyTwoGetOneAliasOnlyTypes = aliasOnly
+    return producible, aliasOnly
+end
+
+-- 从玩家自身阵营的回收/单位池中选一个可计数、且玩家确实能生产的单位，
 function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
         or g_UnitNameToUnitIndex == nil then
@@ -215,28 +265,46 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
     if factionPool == nil then
         return nil
     end
-    local candidates = {}
-    for category = 1, 4, 1 do
-        if category ~= 4 or g_DisableSeaArmy ~= 1 then
-            local units = factionPool[category]
-            for i = 1, getn(units), 1 do
-                local info = units[i]
-                local countType = info.CountType or info.Type
-                local unitIndex = g_UnitNameToUnitIndex[countType]
-                if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false then
-                    tinsert(candidates, {
-                        Type = countType,
-                        UnitIndex = unitIndex,
-                        Name = info.Name or Localization.ObjectsTranslate(countType),
-                    })
-                end
-            end
-        end
+    local producible, aliasOnly = self:BuildBuyTwoGetOneTargetFilter()
+    local candidates = self:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly)
+    if getn(candidates) == 0 and producible ~= nil then
+        -- 保证符文仍然出现在三选一里（宁可目标偏弱，也不要整张符文消失）。
+        candidates = self:CollectBuyTwoGetOneCandidates(factionPool, nil, nil)
     end
     if getn(candidates) == 0 then
         return nil
     end
     return candidates[self:RandomIndex(getn(candidates))]
+end
+
+-- 汇总自身阵营四类回收表里“可计数 + 可生产”的单位，并按单位类型去重
+function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly)
+    local seen = {}
+    local candidates = {}
+    for category = 1, 4, 1 do
+        if category ~= 4 or g_DisableSeaArmy ~= 1 then
+            local units = factionPool[category]
+            if units ~= nil then
+                for i = 1, getn(units), 1 do
+                    local info = units[i]
+                    local countType = info.CountType or info.Type
+                    local unitIndex = g_UnitNameToUnitIndex[countType]
+                    local allowed = producible == nil
+                        or (producible[countType] == true and aliasOnly[countType] == nil)
+                    if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false
+                        and allowed and seen[countType] == nil then
+                        seen[countType] = true
+                        tinsert(candidates, {
+                            Type = countType,
+                            UnitIndex = unitIndex,
+                            Name = info.Name or Localization.ObjectsTranslate(countType),
+                        })
+                    end
+                end
+            end
+        end
+    end
+    return candidates
 end
 
 function HextechRune:IsRuneFactionAvailable(playerIndex, rune)

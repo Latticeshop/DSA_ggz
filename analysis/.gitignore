@@ -4,4 +4,5 @@
 *.ps1
 *.js
 *.bin
+*.md
 luac.exe
