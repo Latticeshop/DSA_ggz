@@ -119,7 +119,7 @@ if not g_HextechRangeX150Modifier then
 end
 if not g_HextechAstralBodyModifier then
     g_HextechAstralBodyModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 2.0,
+        HEALTH_MULT = 1.9,
         DAMAGE_MULT = 0.75,
     }, 1)
 end
@@ -149,11 +149,11 @@ HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
 HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
 HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
-HextechRune.FiveThunderCooldownRounds = 5
+HextechRune.FiveThunderCooldownRounds = 3
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
 HextechRune.TeslaAirAssaultState = HextechRune.TeslaAirAssaultState or {}
-HextechRune.TeslaAirAssaultCooldownRounds = 5
-HextechRune.CombustionInterestMoney = 2
+HextechRune.TeslaAirAssaultCooldownRounds = 3
+HextechRune.CombustionInterestMoney = 6
 HextechRune.CombustionInterestObserverReady =
     HextechRune.CombustionInterestObserverReady or false
 HextechRune.CombustionInterestCombatActive =
@@ -608,7 +608,7 @@ function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
     local previous = SetWorldBuilderThisPlayer(1)
     for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
         self:EnsurePlayerRuneState(playerIndex)
-        if self.PlayerOwnedRuneIds[playerIndex]["prismatic_combustion_interest"] then
+        if self.PlayerOwnedRuneIds[playerIndex]["gold_combustion_interest"] then
             ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex,
                 self.CombustionInterestMoney)
             rewarded = true
@@ -616,7 +616,7 @@ function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
     end
     SetWorldBuilderThisPlayer(previous)
     if rewarded then
-        -- 多名队友各自获得 2，但死亡位置只显示一次与小电厂同款的 +2。
+        -- 多名队友各自获得 6，但死亡位置只显示一次与小电厂同款的 +6。
         exShowFloatingIntAtObject(dyingObjId, self.CombustionInterestMoney)
     end
 end
@@ -858,7 +858,7 @@ function HextechRune:GrantStartingFunds(playerIndex)
     -- 主动回收和青龙船自动回收都在 WorldBuilder 玩家上下文中执行加钱。
     -- 海克斯按钮回调没有这个上下文，必须显式切换后再恢复。
     local previous = SetWorldBuilderThisPlayer(1)
-    ExecuteAction("PLAYER_GIVE_MONEY", playerName, 10000)
+    ExecuteAction("PLAYER_GIVE_MONEY", playerName, 15000)
     SetWorldBuilderThisPlayer(previous)
 end
 

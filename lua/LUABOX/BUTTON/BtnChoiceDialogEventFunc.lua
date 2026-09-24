@@ -94,7 +94,7 @@ end
 
 function BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, basePrice)
     if BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex) then
-        return floor(basePrice * 0.8)
+        return floor(basePrice * 0.5)
     end
     return basePrice
 end
