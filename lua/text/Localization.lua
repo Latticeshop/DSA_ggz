@@ -208,7 +208,9 @@ Localization._text_sources = {
         en = "One of your King Oni X units evolves into an Ultimate Creature each round! Recycle all your current units. Each recycled T1/T2/T3 unit respectively grants 5%% health/2%% damage/5%% attack speed; each recycled T4 unit grants 5%% health and 10%% damage. Gain 1 King Oni X."
     },
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
-    ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车，且不占用建造额度。", en = "Gain 1 Dongfeng ICBM Launcher; it does not use up your build quota." },
+    ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
+    ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
+    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+2%%生命、+1%%伤害、+1%%攻速", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +2%% health, +1%% damage and +1%% attack speed" },
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },
@@ -514,6 +516,7 @@ Localization._text_sources = {
 缩小模式：场上的单位获得缩小BUFF！
 抽卡功能：可以使用抽卡技能获得额外单位。禁止在战场中央抽卡！
 抽卡模式：开局开放抽卡；每3回合内只能生产5个单位，抽卡结果有一半概率替换为全阵营加权生产单位，场地中间会有随机空投！
+海克斯符文：发放回合为第 3/10/18/27 回合，每次全场统一发放稀有度为 棱彩/黄金/白银 的海克斯符文，为战场带来随机可能性！按 J 键可收起/重新展开选择界面，上方技能栏有海克斯面板可查看全场玩家符文。
 可点击下方"更新日志"按钮查看更新内容]],
         en = [[DSA Game Rules:
 This map is a test version developed with assistance from GGZ. It contains many experimental features and may be unstable. Features that pass testing will be updated and merged into the official DSA_XXX map.
@@ -526,6 +529,7 @@ Level-Up Mode: Players spend money to unlock more power plants and higher tech t
 Shrink Mode: Units on the battlefield receive the Shrink buff!
 Lucky Crate Feature: Use the Lucky Crate skill to gain extra units. Do not use it in the central battlefield!
 Pure Draw Mode: Lucky Crates are available from the start. Only 5 units may be produced during each 3-round cycle. Half of all draws are replaced with weighted buildable units from all factions, and random airdrops appear in the center of the battlefield!
+Hextech Runes: Granted on rounds 3/10/18/27, each time with one rarity for the whole field (Prismatic/Gold/Silver), bringing random twists to battle! Press J to hide or restore the selection screen. Use the Hextech Panel in the top button bar to view every player's runes.
 Click the "Update Log" button below to view update details.]]
     },
     ["game.qq_group"] = { 

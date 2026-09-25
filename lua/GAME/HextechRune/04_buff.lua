@@ -165,6 +165,9 @@ HextechRune.TranscendentEvilModifiers = HextechRune.TranscendentEvilModifiers or
 HextechRune.FiveTigerGeneralsPower = "SpecialPower_CelestialCenturionUpgrade"
 HextechRune.FiveTigerGeneralsCommand = "Command_Celestial_CenturionUpgrade"
 HextechRune.BattleUnitEffectDelay = 45
+-- 空军批次补扫：AIRSPACT 节点在出兵 10 秒后才生成 step3+1~step35 的飞机，
+-- 首扫（45 帧）赶不上，这里在飞机出现后再留 3 秒余量。
+HextechRune.AirBatchEffectDelay = 200
 HextechRune.FiveTigerPowerGranted = HextechRune.FiveTigerPowerGranted or {}
 HextechRune.CenturionSpellbookFilter = HextechRune.CenturionSpellbookFilter
     or CreateObjectFilter({
@@ -857,6 +860,7 @@ function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)
 end
 
 -- 在 unitgetcountanddelet 的真实单位回收计数后调用，参考狂热武士“每二赠一”。
+-- 登神转化的单位也会走到这里（见 06_ascension.lua），进度照常累计。
 function HextechRune:OnPlayerUnitCollected(playerIndex, unitIndex)
     local states = g_HextechBuyTwoGetOne[playerIndex]
     if states == nil then
@@ -868,8 +872,13 @@ function HextechRune:OnPlayerUnitCollected(playerIndex, unitIndex)
             state.Progress = state.Progress + 1
             if state.Progress >= 2 then
                 state.Progress = 0
-                ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] + 1
-                UNITCOUNT[playerIndex][unitIndex] = UNITCOUNT[playerIndex][unitIndex] + 1
+                -- 与登神指向同一个单位时，赠送的 1 个转为登神层数，不进入单位池。
+                local absorbed = self.AbsorbBuyTwoGetOneBonus ~= nil
+                    and self:AbsorbBuyTwoGetOneBonus(playerIndex, unitIndex)
+                if not absorbed then
+                    ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] + 1
+                    UNITCOUNT[playerIndex][unitIndex] = UNITCOUNT[playerIndex][unitIndex] + 1
+                end
             end
         end
     end
@@ -1040,6 +1049,13 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
         return 1
     end
 
+    -- 登神：目标单位只保留 1 个，其余已转化为层数。
+    local ascensionRune = self:GetAscensionRune(playerIndex)
+    if ascensionRune ~= nil and unitIndex == ascensionRune.TargetUnitIndex
+        and self:GetAscensionStacks(playerIndex) > 0 then
+        return poolCount
+    end
+
     local fiveTigerCount = self:GetFiveTigerGeneralsCopyCount(playerIndex)
     if fiveTigerCount > 0 and typeLookup.infantry[ObjectGetId(unit)] then
         local fiveTigerQuota = 5 * fiveTigerCount
@@ -1053,8 +1069,10 @@ end
 
 -- 对一个阵营仅收集尚无 BUFF 登记的同类单位。按玩家单位池数量取至多 COUNT 个，
 -- 只有该玩家确实有可施加效果时才占用单位；无效果的玩家和额外单位不登记。
+-- skipObjects 非空时跳过其中的对象（空军补扫用它排除首扫已看过的单位）；
+-- seenObjects 非空时记录本次扫描看到的所有对象，供后续补扫做排除表。
 function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
-    lastPlayerIndex, typeLookup)
+    lastPlayerIndex, typeLookup, skipObjects, seenObjects)
     local newlyAssigned = {}
     if P == nil or P[sideIndex] == nil then
         return newlyAssigned
@@ -1065,8 +1083,12 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
         for i = 1, count, 1 do
             local unit = units[i]
             local objectId = ObjectGetId(unit)
+            if seenObjects ~= nil then
+                seenObjects[objectId] = true
+            end
             local assignment = self.BattleUnitAssignments[objectId]
-            if not self:IsCurrentAssignment(unit, assignment) then
+            if not self:IsCurrentAssignment(unit, assignment)
+                and (skipObjects == nil or skipObjects[objectId] == nil) then
                 tinsert(newUnits, unit)
             end
         end
@@ -1099,14 +1121,16 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
     return newlyAssigned
 end
 
-function HextechRune:AssignNewBattleUnits(typeLookup)
+function HextechRune:AssignNewBattleUnits(typeLookup, skipObjects, seenObjects)
     local result = {}
     if UNITCOUNT == nil or FilterLIST == nil or unitcountmax == nil then
         return result
     end
     typeLookup = typeLookup or self:BuildAllBattleUnitTypeLookup()
-    local left = self:AssignNewSideBattleUnits(7, 1, 3, typeLookup)
-    local right = self:AssignNewSideBattleUnits(8, 4, 6, typeLookup)
+    local left = self:AssignNewSideBattleUnits(7, 1, 3, typeLookup, skipObjects,
+        seenObjects)
+    local right = self:AssignNewSideBattleUnits(8, 4, 6, typeLookup, skipObjects,
+        seenObjects)
     for i = 1, getn(left), 1 do
         tinsert(result, left[i])
     end
@@ -1416,6 +1440,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyGamblingAddict(playerIndex)
     elseif rune.Effect == "ultimate_creature" then
         self:CreateUltimateCreature(playerIndex)
+    elseif rune.Effect == "ascension" then
+        self:GrantAscension(playerIndex, rune)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then
@@ -1441,8 +1467,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantTeslaAirAssault(playerIndex)
     elseif rune.Effect == "five_tiger_generals" then
         self:EnsureFiveTigerGeneralsPower(playerIndex)
-    elseif rune.Effect == "cash_reward" then
-        self:GrantCashRewardProtocol(playerIndex)
+    -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
+    -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目注释。
+    -- elseif rune.Effect == "cash_reward" then
+    --     self:GrantCashRewardProtocol(playerIndex)
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
         or rune.Effect == "upgrade_vanguard_gunship" then
@@ -1453,9 +1481,9 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
 end
 
 -- 固定出兵和“补充军队”共用入口：只登记并处理本次新增单位。
-function HextechRune:ApplyNewBattleUnitEffects(sourceName)
+function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObjects)
     local typeLookup = self:BuildAllBattleUnitTypeLookup()
-    local assignments = self:AssignNewBattleUnits(typeLookup)
+    local assignments = self:AssignNewBattleUnits(typeLookup, skipObjects, seenObjects)
     self:ApplyOwnedRunesToNewAssignments(assignments, sourceName or "出兵",
         nil, nil, typeLookup)
     -- 敌方全体类符文不依赖混编配额，固定出兵与补充军队后扫描新对象。
@@ -1468,6 +1496,7 @@ function HextechRune:FinalizeBattleUnitAssignments(assignments)
         local assignment = assignments[i]
         local hasEffect = assignment.UltimateCreatureGranted
             or assignment.FiveTigerGranted
+            or assignment.AscensionGranted
         if not hasEffect then
             for effectInstanceId, applied in assignment.AppliedRunes do
                 if applied then
@@ -1483,15 +1512,31 @@ function HextechRune:FinalizeBattleUnitAssignments(assignments)
     end
 end
 
+-- 一次完整的符文扫描：登记新单位并依次施加各类符文。
+-- 未被本次扫描看到的对象留给后续扫描，避免重复占用五虎/究极生物的名额。
+function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObjects)
+    local assignments = self:ApplyNewBattleUnitEffects(sourceName, skipObjects,
+        seenObjects)
+    self:ApplyUltimateCreatures(assignments)
+    self:ApplyAscensionUnits(assignments)
+    self:ApplyFiveTigerGenerals(assignments)
+    -- 只保留真正获得了 BUFF 的单位登记；其余单位仍可被后续扫描选中。
+    self:FinalizeBattleUnitAssignments(assignments)
+end
+
 function HextechRune:ApplyRoundEffects(round)
     -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
     -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
     SchedulerModule.delay_call(function(effectRound)
-        local assignments = HextechRune:ApplyNewBattleUnitEffects(
-            "第" .. tostring(effectRound) .. "回合固定出兵")
-        HextechRune:ApplyUltimateCreatures(assignments)
-        HextechRune:ApplyFiveTigerGenerals(assignments)
-        -- 只保留真正获得了 BUFF 的单位登记；其余单位仍可被后续扫描选中。
-        HextechRune:FinalizeBattleUnitAssignments(assignments)
+        -- seenObjects 记录首扫看到的所有对象，作为空军补扫的排除表。
+        local seenObjects = {}
+        HextechRune:ApplyBattleUnitEffectPass(
+            "第" .. tostring(effectRound) .. "回合固定出兵", nil, seenObjects)
+        -- 陆军战机以外的飞机由 AIRSPACT 节点在出兵 10 秒后才生成，
+        -- 赶不上上面这次扫描，这里用排除表只对本轮之后新增的对象补一遍。
+        SchedulerModule.delay_call(function(airRound, seen)
+            HextechRune:ApplyBattleUnitEffectPass(
+                "第" .. tostring(airRound) .. "回合空军批次", seen, nil)
+        end, HextechRune.AirBatchEffectDelay, { effectRound, seenObjects })
     end, self.BattleUnitEffectDelay, { round })
 end

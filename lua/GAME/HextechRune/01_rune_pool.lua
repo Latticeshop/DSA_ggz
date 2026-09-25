@@ -70,10 +70,12 @@ HextechRune.RunePool = {
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
-    { Id = "gold_cash_reward", Rarity = 2,
-        NameKey = "hextech.rune.cash_reward.name",
-        DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
-        RequiredFaction = 2, Icon = "Button_PlayerPower_ProductionKickback" },
+    -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
+    -- 恢复时需同时取消 04_buff.lua 的 cash_reward 派发分支注释。
+    -- { Id = "gold_cash_reward", Rarity = 2,
+    --     NameKey = "hextech.rune.cash_reward.name",
+    --     DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
+    --     RequiredFaction = 2, Icon = "Button_PlayerPower_ProductionKickback" },
     { Id = "gold_safety", Rarity = 2,
         NameKey = "hextech.rune.safety.name",
         DescKey = "hextech.rune.safety.desc", Effect = "safety",
@@ -105,6 +107,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.combustion_interest.name",
         DescKey = "hextech.rune.combustion_interest.desc",
         Effect = "combustion_interest", Icon = "Button_PlayerPower_ProductionKickback" },
+    { Id = "gold_ascension", Rarity = 2,
+        NameKey = "hextech.rune.ascension.name",
+        DescKey = "hextech.rune.ascension.desc",
+        Effect = "ascension", Icon = "JapanAVVT4Heal" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -174,6 +180,7 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_ultimate_creature = true,
     prismatic_five_thunder = true,
     prismatic_dongfeng_express = true,
+    gold_ascension = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -262,8 +269,25 @@ function HextechRune:BuildBuyTwoGetOneTargetFilter()
     return producible, aliasOnly
 end
 
--- 从玩家自身阵营的回收/单位池中选一个可计数、且玩家确实能生产的单位，
-function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
+-- 玩家已持有的“买二送一”指定的单位类型。“买二送一”本身可重复选择，
+-- 但同一玩家的两个买二送一不能圈同一个单位，否则等于把同一份进度叠了两遍。
+function HextechRune:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    local result = {}
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        if rune.Effect == "buy_two_get_one" and rune.TargetUnitType ~= nil then
+            result[rune.TargetUnitType] = true
+        end
+    end
+    return result
+end
+
+-- 从玩家自身阵营的回收/单位池中选一个可计数、且玩家确实能生产的单位。
+-- excluded 里的单位类型会被跳过：只有“买二送一”用它排除已持有的同类符文目标，
+-- 登神不排除，允许与买二送一指向同一个单位。
+function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
         or g_UnitNameToUnitIndex == nil then
         return nil
@@ -274,10 +298,11 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
         return nil
     end
     local producible, aliasOnly = self:BuildBuyTwoGetOneTargetFilter()
-    local candidates = self:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly)
+    local candidates = self:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly,
+        excluded)
     if getn(candidates) == 0 and producible ~= nil then
         -- 保证符文仍然出现在三选一里（宁可目标偏弱，也不要整张符文消失）。
-        candidates = self:CollectBuyTwoGetOneCandidates(factionPool, nil, nil)
+        candidates = self:CollectBuyTwoGetOneCandidates(factionPool, nil, nil, excluded)
     end
     if getn(candidates) == 0 then
         return nil
@@ -286,7 +311,7 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex)
 end
 
 -- 汇总自身阵营四类回收表里“可计数 + 可生产”的单位，并按单位类型去重
-function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly)
+function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly, excluded)
     local seen = {}
     local candidates = {}
     for category = 1, 4, 1 do
@@ -300,7 +325,8 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
                     local allowed = producible == nil
                         or (producible[countType] == true and aliasOnly[countType] == nil)
                     if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false
-                        and allowed and seen[countType] == nil then
+                        and allowed and seen[countType] == nil
+                        and (excluded == nil or excluded[countType] == nil) then
                         seen[countType] = true
                         tinsert(candidates, {
                             Type = countType,
@@ -328,8 +354,14 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
         return nil
     end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
-    if candidate.Effect == "buy_two_get_one" then
-        local target = self:PickBuyTwoGetOneTarget(playerIndex)
+    if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension" then
+        -- “买二送一”可重复选择，但同一个玩家的两个买二送一不能圈同一个单位；
+        -- 登神不做排除，允许与买二送一指向同一个单位。
+        local excluded = nil
+        if candidate.Effect == "buy_two_get_one" then
+            excluded = self:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
+        end
+        local target = self:PickBuyTwoGetOneTarget(playerIndex, excluded)
         if target == nil then
             return nil
         end
@@ -393,7 +425,7 @@ function HextechRune:GetRuneDescription(rune)
     end
     if rune.UnitType ~= nil then
         return Localization.get(rune.DescKey, self:GetRuneUnitTypeLabel(rune))
-    elseif rune.Effect == "buy_two_get_one" then
+    elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
     end
     return Localization.get(rune.DescKey)

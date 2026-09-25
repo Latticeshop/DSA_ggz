@@ -400,6 +400,10 @@ function unitgetcountanddelet (playindex)
     -- 然后再计数
     for unitindex = 1 , unitcountmax , 1 do
         local TAR, count = ObjectFindObjects(P[playindex], nil, FilterLIST[unitindex])
+        -- 海克斯“登神”：目标单位超出种子数量的部分不进入单位池，直接转为层数。
+        if HextechRune ~= nil and HextechRune.FilterAscensionUnits ~= nil then
+            TAR, count = HextechRune:FilterAscensionUnits(playindex, unitindex, TAR, count)
+        end
 
         if count > 0 then
             for i = 1 , count , 1  do
@@ -482,6 +486,10 @@ function unitgetcountanddelet (playindex)
                 ExecuteAction("NAMED_DELETE", TAR[i])
             end
         end
+    end
+    -- 登神：任何来源（赠送、箱子等）挤进单位池的多余目标单位同样转为层数。
+    if HextechRune ~= nil and HextechRune.TrimAscensionPoolSurplus ~= nil then
+        HextechRune:TrimAscensionPoolSurplus(playindex)
     end
     if g_LuckyCrateMode == 1 then
         for unitindex = 1, unitcountmax, 1 do
