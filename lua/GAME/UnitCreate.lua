@@ -19,7 +19,8 @@ function RegisterUnitCreateCallback(unitType, callback)
 end
 
 -- 东风虽然已有建造限制，这里仍每 10 秒按实际归属兜底检查一次。
--- Player_1 至 Player_6 各自只保留找到的第一辆，多出的直接摧毁。
+-- Player_1 至 Player_6 各自只保留找到的第一辆，多出的直接摧毁；
+-- 持有东风速递符文的玩家上限为 2，因为符文赠送的那辆不占建造额度。
 g_CelestialDF41LimitFilter = CreateObjectFilter({
     Rule = "ANY",
     IncludeThing = { "CelestialDF41" },
@@ -27,16 +28,35 @@ g_CelestialDF41LimitFilter = CreateObjectFilter({
 
 function EnforceCelestialDF41PerPlayerLimit()
     local units, count = ObjectFindObjects(nil, nil, g_CelestialDF41LimitFilter)
-    local playerHasDF41 = {}
+    local playerDF41Count = {}
     for i = 1, count, 1 do
         local unit = units[i]
         local ownerPlayerName = ObjectPlayerScriptName(unit)
-        if g_PlayerNameToIndex[ownerPlayerName] ~= nil then
-            if playerHasDF41[ownerPlayerName] then
-                ExecuteAction("NAMED_KILL", unit)
-            else
-                playerHasDF41[ownerPlayerName] = true
+        local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
+        if playerIndex ~= nil then
+            local limit = 1
+            if g_HextechDF41ExtraQuota ~= nil and g_HextechDF41ExtraQuota[playerIndex] then
+                limit = 2
             end
+            playerDF41Count[ownerPlayerName] = (playerDF41Count[ownerPlayerName] or 0) + 1
+            if playerDF41Count[ownerPlayerName] > limit then
+                ExecuteAction("NAMED_KILL", unit)
+            end
+        end
+    end
+    if g_HextechDF41ExtraQuota == nil then
+        return
+    end
+    -- 地编的限造脚本（DF 触发器）只认第一辆东风就会永久禁造，符文赠送的那辆
+    -- 会让符文拥有者再也造不出自己的东风，因此这里按上限重新同步建造按钮。
+    for playerIndex = 1, 6, 1 do
+        if g_HextechDF41ExtraQuota[playerIndex] then
+            local allowBuild = 0
+            if (playerDF41Count["Player_" .. playerIndex] or 0) < 2 then
+                allowBuild = 1
+            end
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playerIndex,
+                "CelestialDF41", allowBuild)
         end
     end
 end
@@ -912,14 +932,8 @@ function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
 
 end
 
--- 磁暴突袭会附带生成史普尼克勘查车。自走棋不需要这两种核心，
--- 无论来自人类玩家还是 AI，出生时都立即删除；玩家符文以该出生事件
--- 作为协议成功释放的信号并立刻进入五回合冷却。
+-- 自走棋不需要史普尼克勘查车（磁暴突袭的附带产物），出生时立即删除。
 function SovietSurveyorBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    if HextechRune ~= nil
-        and HextechRune.OnTeslaAirAssaultSurveyorBorn ~= nil then
-        HextechRune:OnTeslaAirAssaultSurveyorBorn(ownerPlayerName)
-    end
     if PureDrawRemoveKnownPlayerUnit ~= nil then
         PureDrawRemoveKnownPlayerUnit(createdObjId)
     end

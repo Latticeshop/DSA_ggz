@@ -126,10 +126,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.five_thunder.name",
         DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
         Icon = "Button_CelestialPantaOrbitalStrike" },
-    { Id = "prismatic_tesla_air_assault", Rarity = 1,
-        NameKey = "hextech.rune.tesla_air_assault.name",
-        DescKey = "hextech.rune.tesla_air_assault.desc",
-        Effect = "tesla_air_assault", Icon = "Button_SovietTeslaAirAssault" },
+    -- 磁暴突袭符文：暂不启用（实测直接赋予该协议会有0cd问题），代码保留待后续开发。
+    -- { Id = "prismatic_tesla_air_assault", Rarity = 1,
+    --     NameKey = "hextech.rune.tesla_air_assault.name",
+    --     DescKey = "hextech.rune.tesla_air_assault.desc",
+    --     Effect = "tesla_air_assault", Icon = "Button_SovietTeslaAirAssault" },
     { Id = "prismatic_tower_defense_expert", Rarity = 1,
         NameKey = "hextech.rune.tower_defense_expert.name",
         DescKey = "hextech.rune.tower_defense_expert.desc",
@@ -151,6 +152,10 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.sea_overlord.name",
         DescKey = "hextech.rune.sea_overlord.desc", Effect = "grant_olympus_carrier",
         RequiresSea = true, Icon = "Button_AlliedGaintAircraftCarrier" },
+    { Id = "prismatic_dongfeng_express", Rarity = 1,
+        NameKey = "hextech.rune.dongfeng_express.name",
+        DescKey = "hextech.rune.dongfeng_express.desc",
+        Effect = "grant_dongfeng_express", Icon = "Button_CelestialDF41" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -167,6 +172,9 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_tower_defense_expert = true,
     prismatic_gambling_addict = true,
     prismatic_ultimate_creature = true,
+    prismatic_five_thunder = true,
+    prismatic_dongfeng_express = true,
+    -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}

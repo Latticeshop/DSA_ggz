@@ -151,8 +151,6 @@ HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
 HextechRune.FiveThunderCooldownRounds = 3
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
-HextechRune.TeslaAirAssaultState = HextechRune.TeslaAirAssaultState or {}
-HextechRune.TeslaAirAssaultCooldownRounds = 3
 HextechRune.CombustionInterestMoney = 6
 HextechRune.CombustionInterestObserverReady =
     HextechRune.CombustionInterestObserverReady or false
@@ -181,6 +179,9 @@ g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
 g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0 }
 g_HextechOblivionBombCharges = g_HextechOblivionBombCharges or { 0, 0, 0, 0, 0, 0 }
+-- 东风速递符文赠送的东风不占建造额度：拥有符文的玩家保有上限从 1 提高到 2。
+-- UnitCreate.lua 的兜底击杀与 RescueBlockedProductions.lua 的建造门槛都读取本表。
+g_HextechDF41ExtraQuota = g_HextechDF41ExtraQuota or {}
 
 -- 在现有经济倍率/苏联大生产修正之后叠加玩家自己的破烂王倍率。
 if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
@@ -481,71 +482,15 @@ function HextechRune:GrantCashRewardProtocol(playerIndex)
     end, 1, {playerIndex})
 end
 
-function HextechRune:SetTeslaAirAssaultAvailability(playerIndex, availability)
-    local playerName = "Player_" .. playerIndex
-    local previous = SetWorldBuilderThisPlayer(1)
-    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
-        self.TeslaAirAssaultPower, availability)
-    SetWorldBuilderThisPlayer(previous)
-end
-
-function HextechRune:SetTeslaAirAssaultCountdown(playerIndex, seconds)
-    local playerName = "Player_" .. playerIndex
-    local previous = SetWorldBuilderThisPlayer(1)
-    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
-        self.TeslaAirAssaultPower, seconds)
-    SetWorldBuilderThisPlayer(previous)
-end
-
+-- 磁暴突袭符文：暂不启用（实测直接赋予该协议会有0cd问题），代码保留待后续开发。
+-- 取得符文只做两件事：授予协议、解禁按钮；冷却与释放节奏全部交给原版。
 function HextechRune:GrantTeslaAirAssault(playerIndex)
-    if self.TeslaAirAssaultState[playerIndex] == nil then
-        self.TeslaAirAssaultState[playerIndex] = {}
-    end
-    local state = self.TeslaAirAssaultState[playerIndex]
-    state.Owned = true
-    state.Ready = true
-    state.ReadyRound = nil
-
     local playerName = "Player_" .. playerIndex
     local previous = SetWorldBuilderThisPlayer(1)
     ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.TeslaAirAssaultPower, playerName)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.TeslaAirAssaultPower, "Available")
     SetWorldBuilderThisPlayer(previous)
-    self:SetTeslaAirAssaultCountdown(playerIndex, 0)
-    self:SetTeslaAirAssaultAvailability(playerIndex, "Available")
-end
-
--- 磁暴突袭会实际生成史普尼克勘查车。使用产物出生作为本次协议成功释放的
--- 可靠信号，避免 PLAYER_TRIGGERED_SPECIAL_POWER 在此能力上不返回触发态。
-function HextechRune:OnTeslaAirAssaultSurveyorBorn(ownerPlayerName)
-    local playerIndex = nil
-    if g_PlayerNameToIndex ~= nil then
-        playerIndex = g_PlayerNameToIndex[ownerPlayerName]
-    end
-    if playerIndex == nil or playerIndex < 1 or playerIndex > 6 then
-        return
-    end
-    local state = self.TeslaAirAssaultState[playerIndex]
-    if state == nil or not state.Owned or not state.Ready then
-        return
-    end
-    state.Ready = false
-    state.ReadyRound = exCounterGetByName("lvc")
-        + self.TeslaAirAssaultCooldownRounds
-    self:SetTeslaAirAssaultAvailability(playerIndex, "Disabled")
-end
-
-function HextechRune:OnTeslaAirAssaultRoundBegin(round)
-    for playerIndex = 1, 6, 1 do
-        local state = self.TeslaAirAssaultState[playerIndex]
-        if state ~= nil and state.Owned and not state.Ready
-            and state.ReadyRound ~= nil
-            and round >= state.ReadyRound then
-            self:SetTeslaAirAssaultCountdown(playerIndex, 0)
-            self:SetTeslaAirAssaultAvailability(playerIndex, "Available")
-            state.Ready = true
-            state.ReadyRound = nil
-        end
-    end
 end
 
 -- 死亡事件属于全局入口，使用固定函数转发到当前海克斯对象。
@@ -660,26 +605,31 @@ function HextechRune:GrantOlympusCarrier(playerIndex)
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
 end
 
+-- 落点与灯火辉煌正好相反：取敌方最前排防御塔，炸在塔前方（我方这一侧）200 处。
 function HextechRune:GrantOblivionBomb(playerIndex)
-    -- 与抽卡空投使用同一个固定战场圆心；高度沿用 T74/T84 的地面平均值。
-    local centerZ = 0
-    local leftTower = GetObjectByScriptName("T74")
-    local rightTower = GetObjectByScriptName("T84")
-    if ObjectIsAlive(leftTower) and ObjectIsAlive(rightTower) then
-        local lx, ly, lz = ObjectGetPosition(leftTower)
-        local rx, ry, rz = ObjectGetPosition(rightTower)
-        centerZ = (lz + rz) / 2
-    elseif ObjectIsAlive(leftTower) then
-        local lx, ly, lz = ObjectGetPosition(leftTower)
-        centerZ = lz
-    elseif ObjectIsAlive(rightTower) then
-        local rx, ry, rz = ObjectGetPosition(rightTower)
-        centerZ = rz
+    local forwardDirection = 1
+    local enemyTowerPos = { X = 4030, Y = 3102.5, Z = 210 }
+    if playerIndex >= 4 then
+        forwardDirection = -1
+        enemyTowerPos = { X = 3000, Y = 3102.5, Z = 210 }
+    end
+    local enemyIndex = playerIndex + 3
+    if enemyIndex > 6 then
+        enemyIndex = playerIndex - 3
+    end
+    local enemyFrontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(enemyIndex)
+    if ObjectIsAlive(enemyFrontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(enemyFrontTower)
+        enemyTowerPos = { X = towerX, Y = towerY, Z = towerZ }
     end
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "japanomegaoblivionbomb",
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
-        { X = 3547.06, Y = 3055.49, Z = centerZ }, 0)
+        {
+            X = enemyTowerPos.X - forwardDirection * 200,
+            Y = enemyTowerPos.Y,
+            Z = enemyTowerPos.Z,
+        }, 0)
 end
 
 function HextechRune:AddOblivionBombCharge(playerIndex)
@@ -719,6 +669,16 @@ function HextechRune:GrantGigaFortress(playerIndex)
         format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
         self:GetPlayerHomeSpawnPosition(playerIndex, 120, 0), 0)
     -- UnitCreate.lua 已为该核心注册 UnitCountFunc：8 帧后计数并删除实体。
+end
+
+-- 东风速递：赠送的东风不占建造额度，因此先记额度再生成，玩家仍可自产一辆。
+function HextechRune:GrantDongfengExpress(playerIndex)
+    g_HextechDF41ExtraQuota[playerIndex] = true
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "CelestialDF41",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 0), 0)
 end
 
 function HextechRune:GrantSafetyAegisTowers(playerIndex)
@@ -1223,6 +1183,7 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "grant_olympus_carrier"
                 and rune.Effect ~= "grant_oblivion_bomb"
                 and rune.Effect ~= "grant_giga_fortress"
+                and rune.Effect ~= "grant_dongfeng_express"
                 and rune.Effect ~= "safety"
                 and rune.Effect ~= "tower_defense_expert"
                 and rune.Effect ~= "cash_reward"
@@ -1439,6 +1400,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:AddOblivionBombCharge(playerIndex)
     elseif rune.Effect == "grant_giga_fortress" then
         self:GrantGigaFortress(playerIndex)
+    elseif rune.Effect == "grant_dongfeng_express" then
+        self:GrantDongfengExpress(playerIndex)
     elseif rune.Effect == "safety" then
         self:GrantSafetyAegisTowers(playerIndex)
     elseif rune.Effect == "tower_defense_expert" then

@@ -195,7 +195,7 @@ Localization._text_sources = {
     ["hextech.rune.combustion_interest.name"] = { zh = "炽燃利息", en = "Combustion Interest" },
     ["hextech.rune.combustion_interest.desc"] = { zh = "敌方每个死亡单位令你获得 6 资金。", en = "Gain 6 credits whenever an enemy unit dies." },
     ["hextech.rune.tesla_air_assault.name"] = { zh = "磁暴突袭", en = "Tesla Air Assault" },
-    ["hextech.rune.tesla_air_assault.desc"] = { zh = "每 3 回合获得一次磁暴突袭。", en = "Gain one Tesla Air Assault every 3 rounds." },
+    ["hextech.rune.tesla_air_assault.desc"] = { zh = "获得磁暴突袭协议。", en = "Unlock the Tesla Air Assault protocol." },
     ["hextech.rune.tower_defense_expert.name"] = { zh = "塔防专家", en = "Tower Defense Expert" },
     ["hextech.rune.tower_defense_expert.desc"] = { zh = "购买防御塔时无视数量限制，并且价格降低 50%%。", en = "Ignore defense tower limits and pay 50%% less when buying them." },
     ["hextech.rune.ultimate_refresh.name"] = { zh = "终极刷新", en = "Ultimate Refresh" },
@@ -207,6 +207,8 @@ Localization._text_sources = {
         zh = "你每回合的一个鬼王X会进化为究极生物！回收你当前的全部单位，每回收一个T1/T2/T3单位，分别增加5%%血量/2%%攻击/5%%攻速；每回收一个T4单位，同时增加5%%血量和10%%攻击。获得一个鬼王X。",
         en = "One of your King Oni X units evolves into an Ultimate Creature each round! Recycle all your current units. Each recycled T1/T2/T3 unit respectively grants 5%% health/2%% damage/5%% attack speed; each recycled T4 unit grants 5%% health and 10%% damage. Gain 1 King Oni X."
     },
+    ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
+    ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车，且不占用建造额度。", en = "Gain 1 Dongfeng ICBM Launcher; it does not use up your build quota." },
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },

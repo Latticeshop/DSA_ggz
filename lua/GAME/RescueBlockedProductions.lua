@@ -68,11 +68,18 @@ function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
         -- FLAGENPOWER 这玩意在 lua\LUABOX\moneysys\MONEYINI_3.lua 里面
         return FLAGENPOWER[playerIndex] == 1
     elseif unitType == 'CelestialDF41' then
-        if EvaluateCondition('PLAYER_HAS_OBJECT_COMPARISON', 'Player_'..playerIndex, '==', 0, 'CelestialDF41') then
-            return true
-        else
-            return false
+        -- 东风速递符文赠送的那辆不占建造额度：上限从 1 提高到 2。
+        local maxBuildableCount = 0
+        if g_HextechDF41ExtraQuota ~= nil and g_HextechDF41ExtraQuota[playerIndex] then
+            maxBuildableCount = 1
         end
+        for ownedCount = 0, maxBuildableCount, 1 do
+            if EvaluateCondition('PLAYER_HAS_OBJECT_COMPARISON',
+                'Player_'..playerIndex, '==', ownedCount, 'CelestialDF41') then
+                return true
+            end
+        end
+        return false
     elseif unitType == 'CelestialAdvanceAircraftTech4'
         or unitType == 'CelestialAdvanceAircraftTech4_Enhanced' then
         return GetPlayerYaoguangRemainingProductionQuota(playerIndex) > 0
