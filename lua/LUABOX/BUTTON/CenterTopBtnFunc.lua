@@ -56,6 +56,55 @@ function GetBaseRecycleRate(economicMultiplier)
     return g_DefaultRecycleRate
 end
 
+-- 符文数值同样按经济倍率缩放，避免高倍经济下符文收益相对造价缩水。
+g_HextechRecycleBonusRate = {
+    [0.5] = 0.1,
+    [1] = 0.2,
+    [1.5] = 0.3,
+    [2] = 0.4,
+}
+g_DefaultHextechRecycleBonusRate = 0.2
+
+g_CombustionInterestMoney = {
+    [0.5] = 2,
+    [1] = 3,
+    [1.5] = 4,
+    [2] = 6,
+}
+g_DefaultCombustionInterestMoney = 3
+
+g_StartingFundsMoney = {
+    [0.5] = 5000,
+    [1] = 10000,
+    [1.5] = 15000,
+    [2] = 20000,
+}
+g_DefaultStartingFundsMoney = 10000
+
+function GetStartingFundsMoney()
+    local matchedMoney = g_StartingFundsMoney[exModeGetCheatMultiplier()]
+    if matchedMoney ~= nil then
+        return matchedMoney
+    end
+    return g_DefaultStartingFundsMoney
+end
+
+function GetHextechRecycleBonusRate()
+    local matchedRate = g_HextechRecycleBonusRate[exModeGetCheatMultiplier()]
+    if matchedRate ~= nil then
+        return matchedRate
+    end
+    return g_DefaultHextechRecycleBonusRate
+end
+
+function GetCombustionInterestMoney()
+    local matchedMoney = g_CombustionInterestMoney[exModeGetCheatMultiplier()]
+    if matchedMoney ~= nil then
+        return matchedMoney
+    end
+    return g_DefaultCombustionInterestMoney
+end
+
 function GetTeamSovietProductionBonusCount(playerIndex)
     local firstPlayerIndex = 1
     if playerIndex >= 4 then

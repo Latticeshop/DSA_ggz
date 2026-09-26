@@ -414,9 +414,10 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             -- 与埃奎斯护盾发生器使用相同的 9000 生命值。
             Health = 9000
         });
-        -- 樱花井射程增加 150%，最终为基础射程的 2.5 倍。
+        -- 樱花井射程增加 150%，最终为基础射程的 2.5 倍；塔不会移动，视野必须同步放大才能真正打到。
         if not g_JapanKamikazeCommandTowerRangeX25Modifier then
-            g_JapanKamikazeCommandTowerRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
+            g_JapanKamikazeCommandTowerRangeX25Modifier = exAttributeModifierCreate(
+                { RANGE = 2.5, VISION = 2.5 }, 1)
         end
         ObjectLoadAttributeModifier(GetObjectById(id), g_JapanKamikazeCommandTowerRangeX25Modifier)
         if not ignoresLimit then

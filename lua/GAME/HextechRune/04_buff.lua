@@ -108,14 +108,15 @@ end
 if not g_HextechRateOfFireX150Modifier then
     g_HextechRateOfFireX150Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 1.5 }, 1)
 end
+-- VISION 必须与 RANGE 同步，否则单位会在射程边缘停下却看不见目标。
 if not g_HextechRangeX115Modifier then
-    g_HextechRangeX115Modifier = exAttributeModifierCreate({ RANGE = 1.15 }, 1)
+    g_HextechRangeX115Modifier = exAttributeModifierCreate({ RANGE = 1.15, VISION = 1.15 }, 1)
 end
 if not g_HextechRangeX125Modifier then
-    g_HextechRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25 }, 1)
+    g_HextechRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25, VISION = 1.25 }, 1)
 end
 if not g_HextechRangeX150Modifier then
-    g_HextechRangeX150Modifier = exAttributeModifierCreate({ RANGE = 1.5 }, 1)
+    g_HextechRangeX150Modifier = exAttributeModifierCreate({ RANGE = 1.5, VISION = 1.5 }, 1)
 end
 if not g_HextechAstralBodyModifier then
     g_HextechAstralBodyModifier = exAttributeModifierCreate({
@@ -151,7 +152,7 @@ HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
 HextechRune.FiveThunderCooldownRounds = 3
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
-HextechRune.CombustionInterestMoney = 6
+-- 炽燃利息资金由 GetCombustionInterestMoney() 按经济倍率取值。
 HextechRune.CombustionInterestObserverReady =
     HextechRune.CombustionInterestObserverReady or false
 HextechRune.CombustionInterestCombatActive =
@@ -550,19 +551,19 @@ function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
     end
 
     local rewarded = false
+    local interestMoney = GetCombustionInterestMoney()
     local previous = SetWorldBuilderThisPlayer(1)
     for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
         self:EnsurePlayerRuneState(playerIndex)
         if self.PlayerOwnedRuneIds[playerIndex]["gold_combustion_interest"] then
-            ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex,
-                self.CombustionInterestMoney)
+            ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, interestMoney)
             rewarded = true
         end
     end
     SetWorldBuilderThisPlayer(previous)
     if rewarded then
-        -- 多名队友各自获得 6，但死亡位置只显示一次与小电厂同款的 +6。
-        exShowFloatingIntAtObject(dyingObjId, self.CombustionInterestMoney)
+        -- 多名队友各自获得 interestMoney，但死亡位置只显示一次与小电厂同款的飘字。
+        exShowFloatingIntAtObject(dyingObjId, interestMoney)
     end
 end
 
@@ -818,7 +819,7 @@ function HextechRune:GrantStartingFunds(playerIndex)
     -- 主动回收和青龙船自动回收都在 WorldBuilder 玩家上下文中执行加钱。
     -- 海克斯按钮回调没有这个上下文，必须显式切换后再恢复。
     local previous = SetWorldBuilderThisPlayer(1)
-    ExecuteAction("PLAYER_GIVE_MONEY", playerName, 15000)
+    ExecuteAction("PLAYER_GIVE_MONEY", playerName, GetStartingFundsMoney())
     SetWorldBuilderThisPlayer(previous)
 end
 
@@ -1453,7 +1454,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "fortified" then
         self:ApplyFortified(playerIndex)
     elseif rune.Effect == "recycler" then
-        g_HextechRecycleBonus[playerIndex] = (g_HextechRecycleBonus[playerIndex] or 0) + 0.2
+        g_HextechRecycleBonus[playerIndex] = (g_HextechRecycleBonus[playerIndex] or 0)
+            + GetHextechRecycleBonusRate()
     elseif rune.Effect == "broadband_jamming" then
         self:ApplyBroadbandJamming(playerIndex, rune, "选择符文")
     elseif rune.Effect == "divine_intervention" then

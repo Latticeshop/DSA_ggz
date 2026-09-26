@@ -427,6 +427,12 @@ function HextechRune:GetRuneDescription(rune)
         return Localization.get(rune.DescKey, self:GetRuneUnitTypeLabel(rune))
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
+    elseif rune.Effect == "recycler" then
+        return Localization.get(rune.DescKey, floor(GetHextechRecycleBonusRate() * 100 + 0.5))
+    elseif rune.Effect == "combustion_interest" then
+        return Localization.get(rune.DescKey, GetCombustionInterestMoney())
+    elseif rune.Effect == "starting_funds" then
+        return Localization.get(rune.DescKey, GetStartingFundsMoney())
     end
     return Localization.get(rune.DescKey)
 end

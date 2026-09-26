@@ -970,8 +970,9 @@ function SovietCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 g_UnitCreateEventFunc[FastHash("SovietCommandoTech1")] = SovietCommandoBorn
 -- g_AlliedCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("AlliedCommandoTech1", 2)
+-- 射程加成必须同步加索敌视野，否则单位会在射程边缘停下却看不见目标。
 if not g_TanyaRangeX125Modifier then
-    g_TanyaRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25 }, 1)
+    g_TanyaRangeX125Modifier = exAttributeModifierCreate({ RANGE = 1.25, VISION = 1.25 }, 1)
 end
 function AlliedCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- g_AlliedCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
@@ -985,7 +986,7 @@ end
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = AlliedCommandoBorn
 -- g_JapanCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
 if not g_YurikoRangeX25Modifier then
-    g_YurikoRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5 }, 1)
+    g_YurikoRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5, VISION = 2.5 }, 1)
 end
 function JapanCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- g_JapanCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
