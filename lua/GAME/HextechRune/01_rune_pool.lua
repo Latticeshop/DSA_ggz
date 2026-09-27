@@ -162,6 +162,15 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.dongfeng_express.name",
         DescKey = "hextech.rune.dongfeng_express.desc",
         Effect = "grant_dongfeng_express", Icon = "Button_CelestialDF41" },
+    { Id = "prismatic_war_efficiency", Rarity = 1,
+        NameKey = "hextech.rune.war_efficiency.name",
+        DescKey = "hextech.rune.war_efficiency.desc",
+        Effect = "war_efficiency", NeedsUnitType = true,
+        Icon = "Button_CelestialArmybreakerSwordSlash" },
+    { Id = "prismatic_time_rift", Rarity = 1,
+        NameKey = "hextech.rune.time_rift.name",
+        DescKey = "hextech.rune.time_rift.desc",
+        Effect = "time_rift", Icon = "Button_PlayerPower_ChronoRift1" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -181,6 +190,8 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_five_thunder = true,
     prismatic_dongfeng_express = true,
     gold_ascension = true,
+    prismatic_war_efficiency = true,
+    prismatic_time_rift = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 

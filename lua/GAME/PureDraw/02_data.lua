@@ -19,8 +19,11 @@ g_PureDrawConfig = {
 
 -- 显式生产池：只收录玩家实际生产的战斗单位，排除塔卫、赠送单位和运行时变形别名。
 -- Sea 标记供禁海组合使用；IsBigShip 标记用于保留地图原有的大船数量限制。
+-- 数组下标就是单位的科技层，同时决定抽卡权重档位和符文阶级，是唯一权威来源。
+-- 与策划给的《生产单位表》逐条对齐：改动前先核对科技层，不要只改符文侧。
 g_PureDrawBuildableUnitPool = {
     [1] = {
+        -- T1 步兵
         { Type = "AlliedScoutInfantry", CustomDrawCount = 5 },
         { Type = "AlliedAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "AlliedAntiVehicleInfantry", CustomDrawCount = 5 },
@@ -28,6 +31,7 @@ g_PureDrawBuildableUnitPool = {
         { Type = "SovietScoutInfantry", CustomDrawCount = 5 },
         { Type = "SovietAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "SovietAntiVehicleInfantry", CustomDrawCount = 5 },
+        { Type = "SovietMortarCycle", CustomDrawCount = 4, ProductionUnlockRound = 1 },
         { Type = "JapanScoutInfantry", CustomDrawCount = 5 },
         { Type = "JapanAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "JapanAntiVehicleInfantry", CustomDrawCount = 5 },
@@ -35,62 +39,69 @@ g_PureDrawBuildableUnitPool = {
         { Type = "CelestialScoutDrone", CustomDrawCount = 5 },
         { Type = "CelestialAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "CelestialAntiVehicleInfantry", CustomDrawCount = 5 },
+        -- T1 载具
         { Type = "AlliedAntiInfantryVehicle_Ground", CustomDrawCount = 4 },
         { Type = "AlliedAntiAirVehicleTech1", CustomDrawCount = 4 },
-        { Type = "AlliedAntiVehicleVehicleTech1", CustomDrawCount = 3 },
         { Type = "SovietScoutVehicle", CustomDrawCount = 5 },
         { Type = "SovietAntiInfantryVehicle", CustomDrawCount = 3 },
         { Type = "SovietAntiAirShip", CustomDrawCount = 3 }, -- 禁海模式使用的陆地形态仍合法
         { Type = "JapanAntiInfantryVehicle", CustomDrawCount = 4 },
-        { Type = "JapanAntiVehicleVehicleTech1", CustomDrawCount = 2 },
-        { Type = "JapanAntiAirVehicleTech1", CustomDrawCount = 2 },
         { Type = "CelestialAntiInfantryVehicle_B", CustomDrawCount = 3 },
         { Type = "CelestialAntiAirShip", CustomDrawCount = 3 }, -- 禁海模式使用的陆地形态仍合法
-        { Type = "CelestialAntiVehicleVehicleTech1", CustomDrawCount = 3 },
         { Type = "CelestialAntiAirVehicle", CustomDrawCount = 3 },
+        -- T1 空军
         { Type = "AlliedAntiGroundAircraft", CustomDrawCount = 2 },
         { Type = "AlliedFighterAircraft", CustomDrawCount = 3 },
         { Type = "SovietAntiGroundAircraft", CustomDrawCount = 2 },
         { Type = "SovietFighterAircraft", CustomDrawCount = 3 },
         { Type = "CelestialFighterAircraft", CustomDrawCount = 3 },
+        { Type = "CelestialSupportAircraft", CustomDrawCount = 2 },
+        -- T1 舰船
         { Type = "AlliedAntiNavalScout", CustomDrawCount = 4, Sea = true },
         { Type = "AlliedAntiInfantryVehicle", CustomDrawCount = 4, Sea = true },
         { Type = "AlliedAntiAirShip", CustomDrawCount = 3, Sea = true },
         -- 禁海规则下以陆地形态保留，但沿用现有第3回合解锁限制。
         { Type = "SovietAntiNavyShipTech1", CustomDrawCount = 3, NoNavyProductionUnlockRound = 3 },
         { Type = "JapanNavyScoutShip", CustomDrawCount = 4, Sea = true },
-        { Type = "JapanAntiAirShip", CustomDrawCount = 2, Sea = true },
         { Type = "CelestialAntiNavyShipTech1", CustomDrawCount = 4, Sea = true },
     },
     [2] = {
-        { Type = "AlliedCryoLegionnaire", CustomDrawCount = 2 },
-        { Type = "SovietMortarCycle", CustomDrawCount = 4, ProductionUnlockRound = 1 },
+        -- T2 步兵
         { Type = "SovietHeavyAntiVehicleInfantry", CustomDrawCount = 3 },
         { Type = "JapanInfiltrationInfantry", CustomDrawCount = 3 },
         { Type = "CelestialInfiltrationInfantry", CustomDrawCount = 3 },
-        { Type = "CelestialAntiInfantryInfantryAdvanced", CustomDrawCount = 2 },
+        -- T2 载具
+        { Type = "AlliedAntiVehicleVehicleTech1", CustomDrawCount = 3 },
         { Type = "prismtank", CustomDrawCount = 2 },
         { Type = "SovietHeavyAntiVehicleVehicleTech2", CustomDrawCount = 2 },
         { Type = "SovietSledgehammerSPG", CustomDrawCount = 2 },
-        { Type = "SovietAntiVehicleVehicleTech2", CustomDrawCount = 2 },
         { Type = "JapanSentinelVehicle", CustomDrawCount = 2 },
-        { Type = "JapanMissileMechaAdvanced", CustomDrawCount = 2 },
         { Type = "JapanInterceptorAircraft", CustomDrawCount = 3 },
+        { Type = "CelestialAntiVehicleVehicleTech1", CustomDrawCount = 3 },
         { Type = "CelestialLongRangeMissileVehicle_B", CustomDrawCount = 2 },
+        { Type = "JapanAntiVehicleVehicleTech1", CustomDrawCount = 2 },
+        { Type = "JapanAntiAirVehicleTech1", CustomDrawCount = 2 },
+        -- T2 空军
         { Type = "AlliedSupportAircraft", CustomDrawCount = 2 },
         { Type = "SovietTransportAircraft" },
-        { Type = "CelestialSupportAircraft", CustomDrawCount = 2 },
         { Type = "CelestialAttackerAircraft", CustomDrawCount = 2 },
+        -- T2 舰船
         { Type = "AlliedAntiNavyShipTech1", Sea = true },
         { Type = "SovietAntiNavyShipTech2", Sea = true },
         { Type = "JapanAntiVehicleShip", Sea = true },
         { Type = "CelestialAlmightlyShip", Sea = true },
+        { Type = "JapanAntiAirShip", CustomDrawCount = 2, Sea = true },
     },
     [3] = {
+        -- T3 步兵
+        { Type = "AlliedCryoLegionnaire", CustomDrawCount = 2 },
+        { Type = "CelestialAntiInfantryInfantryAdvanced", CustomDrawCount = 2 },
         { Type = "AlliedCommandoTech1" },
         { Type = "SovietCommandoTech1" },
         { Type = "JapanAntiVehicleInfantryTech3", CustomDrawCount = 3 },
         { Type = "JapanCommandoTech1" },
+        -- T3 载具
+        { Type = "JapanMissileMechaAdvanced", CustomDrawCount = 2 },
         { Type = "AlliedAntiStructureVehicle" },
         { Type = "AlliedAntiVehicleVehicleTech3", CustomDrawCount = 2 },
         { Type = "SovietAntiStructureVehicle" },
@@ -100,6 +111,7 @@ g_PureDrawBuildableUnitPool = {
         { Type = "CelestialAntiVehicleVehicleTech3" },
         { Type = "CelestialHeavyAntiAirVehicleTech3" },
         { Type = "CelestialAntiStructureVehicle" },
+        -- T3 空军
         { Type = "AlliedInterceptorAircraft", CustomDrawCount = 2 },
         { Type = "AlliedAntiStructureBomberAircraft" },
         { Type = "AlliedBomberAircraft" },
@@ -107,6 +119,7 @@ g_PureDrawBuildableUnitPool = {
         { Type = "SovietAntiGroundAttacker" },
         { Type = "CelestialInterceptorAircraft", CustomDrawCount = 2 },
         { Type = "CelestialBomberAircraft" },
+        -- T3 舰船
         { Type = "AlliedAntiNavyShipTech3", Sea = true },
         { Type = "SovietAntiNavyShipTech3", Sea = true },
         { Type = "JapanAntiNavyShipTech3", Sea = true },
@@ -185,7 +198,6 @@ g_PureDrawProductionAliases = {
     ["SovietAntiNavyShipTech2"] = { "SovietAntiNavyShipTech2_Enhanced" },
     ["SovietAntiStructureShip"] = { "SovietAntiStructureShip_Enhanced" },
     ["SovietAntiStructureVehicle"] = { "SovietAntiStructureVehicle_Enhanced" },
-    ["SovietAntiVehicleVehicleTech2"] = { "SovietAntiVehicleVehicleTech2_AirAssault", "SovietAntiVehicleVehicleTech2_Enhanced" },
     ["SovietAntiVehicleVehicleTech3"] = { "SovietAntiVehicleVehicleTech3_Enhanced", "SovietAntiVehicleVehicleTech3_WOT" },
     ["SovietAntiVehicleVehicleTech4"] = { "SovietAntiVehicleVehicleTech4_Enhanced" },
     ["SovietBomberAircraft"] = { "SovietBomberAircraft_Movie" },

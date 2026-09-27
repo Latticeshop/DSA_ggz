@@ -153,10 +153,11 @@ HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedu
 HextechRune.FiveThunderCooldownRounds = 3
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
 -- 炽燃利息资金由 GetCombustionInterestMoney() 按经济倍率取值。
-HextechRune.CombustionInterestObserverReady =
-    HextechRune.CombustionInterestObserverReady or false
-HextechRune.CombustionInterestCombatActive =
-    HextechRune.CombustionInterestCombatActive or false
+-- 死亡观察者由炽燃利息与以战养战共用，因此状态名不再绑定单个符文。
+HextechRune.BattleDeathObserverReady =
+    HextechRune.BattleDeathObserverReady or false
+HextechRune.BattleDeathPhaseActive =
+    HextechRune.BattleDeathPhaseActive or false
 -- 现金奖励同时受玩家科技锁和 SpecialPower 可用性两层控制。
 -- 使用日冕协议枚举中的规范 ID，避免只生成按钮但仍因科技锁置灰。
 HextechRune.CashRewardSpecialPower = "SpecialPower_ProductionKickbacks"
@@ -269,16 +270,21 @@ function HextechRune:GetSidePlayerRange(sideIndex)
     return 4, 6
 end
 
-function HextechRune:GetSideOwnedRuneCount(sideIndex, runeId)
+-- 持有键是“符文 ID + 兵种”，带兵种的符文需要按 ownershipId 统计队伍份数。
+function HextechRune:GetSideRuneCopyCount(sideIndex, ownershipId)
     local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
     local count = 0
     for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
         self:EnsurePlayerRuneState(playerIndex)
-        if self.PlayerOwnedRuneIds[playerIndex][runeId] then
+        if self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
             count = count + 1
         end
     end
     return count
+end
+
+function HextechRune:GetSideOwnedRuneCount(sideIndex, runeId)
+    return self:GetSideRuneCopyCount(sideIndex, runeId)
 end
 
 -- 每个玩家的干扰符文实例独立加载一次；同阵营队友也持有时允许效果叠加。
@@ -498,15 +504,21 @@ function HextechRune:GrantTeslaAirAssault(playerIndex)
 end
 
 -- 死亡事件属于全局入口，使用固定函数转发到当前海克斯对象。
-function HextechCombustionInterestUnitDie(dyingObjId, attackerId,
+function HextechBattleUnitDie(dyingObjId, attackerId,
     dyingObjInstanceId, attackerInstanceId, ownerPlayerName)
-    if HextechRune ~= nil and HextechRune.OnCombustionInterestUnitDie ~= nil then
+    if HextechRune == nil then
+        return
+    end
+    if HextechRune.OnCombustionInterestUnitDie ~= nil then
         HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
+    end
+    if HextechRune.OnWarEfficiencyUnitDie ~= nil then
+        HextechRune:OnWarEfficiencyUnitDie(dyingObjInstanceId, ownerPlayerName)
     end
 end
 
-function HextechRune:EnsureCombustionInterestObserver()
-    if self.CombustionInterestObserverReady then
+function HextechRune:EnsureBattleDeathObserver()
+    if self.BattleDeathObserverReady then
         return
     end
     if RegisterUnitDieCallback == nil or UNITLIST == nil or unitcountmax == nil then
@@ -514,27 +526,27 @@ function HextechRune:EnsureCombustionInterestObserver()
     end
     for unitIndex = 1, unitcountmax, 1 do
         RegisterUnitDieCallback(UNITLIST[unitIndex],
-            HextechCombustionInterestUnitDie)
+            HextechBattleUnitDie)
     end
 
     -- 回合结算后的脚本清场不算单位死亡；下一回合开始后重新接受死亡事件。
-    self.CombustionInterestCombatActive = true
+    self.BattleDeathPhaseActive = true
     if RoundLuaManager ~= nil then
         RoundLuaManager.CallOnEveryRoundBegin(function()
-            HextechRune.CombustionInterestCombatActive = true
+            HextechRune.BattleDeathPhaseActive = true
         end)
         RoundLuaManager.CallOnEveryRoundEnd(function()
-            HextechRune.CombustionInterestCombatActive = false
+            HextechRune.BattleDeathPhaseActive = false
         end)
     end
-    self.CombustionInterestObserverReady = true
+    self.BattleDeathObserverReady = true
 end
 
 function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
     -- BUFF 登记只用于防止同一单位重复获得持续效果；
     -- 炽燃利息直接根据战场 AI 归属和战斗阶段结算，不再要求死亡单位已获得 BUFF。
     self.BattleUnitAssignments[dyingObjId] = nil
-    if not self.CombustionInterestCombatActive then
+    if not self.BattleDeathPhaseActive then
         return
     end
 
@@ -1219,7 +1231,9 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "upgrade_tachi_cruiser"
                 and rune.Effect ~= "upgrade_bullfrog"
                 and rune.Effect ~= "upgrade_vanguard_gunship"
-                and rune.Effect ~= "ultimate_creature" then
+                and rune.Effect ~= "ultimate_creature"
+                and rune.Effect ~= "war_efficiency"
+                and rune.Effect ~= "time_rift" then
                 for i = 1, getn(assignments), 1 do
                     local assignment = assignments[i]
                     if assignment.PlayerIndex == playerIndex then
@@ -1464,7 +1478,12 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "five_thunder" then
         self:GrantFiveThunder(playerIndex)
     elseif rune.Effect == "combustion_interest" then
-        self:EnsureCombustionInterestObserver()
+        self:EnsureBattleDeathObserver()
+    elseif rune.Effect == "war_efficiency" then
+        self:EnsureBattleDeathObserver()
+        self:ApplyAllWarEfficiencyBuffs()
+    elseif rune.Effect == "time_rift" then
+        self:EnsureTimeRiftScheduler()
     elseif rune.Effect == "tesla_air_assault" then
         self:GrantTeslaAirAssault(playerIndex)
     elseif rune.Effect == "five_tiger_generals" then
@@ -1490,6 +1509,8 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObje
         nil, nil, typeLookup)
     -- 敌方全体类符文不依赖混编配额，固定出兵与补充军队后扫描新对象。
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
+    -- 以战养战同理：本方兵种全体都要吃到本轮数值，不占单位池配额。
+    self:ApplyAllWarEfficiencyBuffs()
     return assignments
 end
 
@@ -1527,6 +1548,8 @@ function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObje
 end
 
 function HextechRune:ApplyRoundEffects(round)
+    -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
+    self:RollWarEfficiencyCounters()
     -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
     -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
     SchedulerModule.delay_call(function(effectRound)

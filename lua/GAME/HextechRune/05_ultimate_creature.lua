@@ -6,11 +6,91 @@ HextechRune.UltimateCreatureStates = HextechRune.UltimateCreatureStates or {}
 HextechRune.UltimateCreatureEmperorsRageModifier =
     "AttributeModifer_JapanEmperorsResolve_L1"
 HextechRune.UltimateCreatureScale = 1.3
+-- T1~T4 每只献祭单位提供的百分比（血量/伤害/攻速/射程），与播报文案共用一份。
+HextechRune.UltimateCreatureTierPercent = { 5, 3, 5, 5 }
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 
--- 使用抽卡模式的显式 T1~T4 表作为权威阶级来源。
--- 箱子隐藏单位不一定在该表中：优先识别模板名中的 Tech 阶级，再按回收价兜底。
+-- 阶级判定的权威来源分两段：
+--   1. 玩家可生产的单位直接取抽卡池 g_PureDrawBuildableUnitPool 的下标（含生产别名形态）；
+--   2. 下面这张表收录《完整单位表》里不可生产、但会出现在战场或玩家单位池中的模板。
+-- 只有两段都查不到的单位（新增兵种、活动形态）才继续用模板名和回收价兜底。
+-- 表里的 5 表示《完整单位表》的 T5，取值时按 T4 结算：加成表只有 T1~T4 四档。
+HextechRune.NonProductionUnitTier = {
+    -- T1：增援步兵、功能与空投形态
+    JapanKamikazeInfantry = 1,             -- 狂热帝国武士
+    AlliedHumveeVehicle = 1,               -- 机枪悍马
+    AlliedHumveeVehicle_Ranger = 1,
+    AlliedGrizzlyMainBattleTank = 1,       -- 灰熊坦克
+    VUAntiInfantryVehicleTech1 = 1,        -- “蝾螈”步兵战车
+    SovietAntiAirVehicle = 1,              -- 石勒喀河自行高射炮
+    SovietAntiAirVehicle_Transport = 1,
+    CelestialSaluteGun = 1,                -- 神州礼炮
+    CelestialForkLiftVehicle = 1,          -- 神州军用叉车
+    CelestialEngineerRepairDrone = 1,      -- 维修天灯（灯火辉煌召唤 Lv2）
+    CelestialEngineerRepairDroneLv2 = 1,
+    CelestialEngineerRepairDroneLv3 = 1,
+    WinterArmyKoelAttackUAV = 1,           -- 蜂鸟侦查无人机
+    WinterArmyScoutVehicle = 1,            -- 勘察飞轮
+    SovietWeatherBalloon = 1,              -- 民用气象飞艇
+    CelestialShipNearDefenseMissileTurret = 1, -- 磁弩高射炮近防形态
+    CelestialFireworkTrigger = 1,          -- 天眼哨机烟花形态
+    CelestialWaveriderIFV_Water = 1,       -- 凌波护卫战车（水陆形态）
+    CelestialWaveriderIFV_Mortar = 1,      -- 凌波火力支援战车
+    CelestialWaveriderIFV_DragonBreathe = 1, -- 凌波龙息炮重型战车
+    CelestialAntiInfantryVehicle_B_Heavy = 1,
+    CelestialAntiInfantryVehicle_Dropped = 1,
+    CelestialAntiInfantryVehicle_HeavyTransport = 1,
+    CelestialAirDrop_Land = 1,             -- 凌波空投形态
+    JapanLightTransportVehicle = 1,        -- 迅雷运输艇
+    JapanLightTransportVehicle_AntiTank = 1,
+    JapanLightTransportVehicle_Kamikaze = 1,
+    SovietSurveyor = 1,                    -- 史普尼克勘查车
+    SovietSurveyor_Naval = 1,
+    -- T2：不可生产的二线战斗单位
+    AlliedInfiltrationInfantry = 2,        -- 间谍
+    AlliedPacifierFAV = 2,                 -- 平定者
+    AlliedArtilleryVehicle = 2,
+    VUBmptVehicle = 2,                     -- BMPT 坦克支援车
+    SovietHeavyAntiAirVehicleTech2 = 2,    -- ZSU-85 自行防空炮
+    VUAntiAirVehicleTech1 = 2,             -- “偏流”两栖高射炮
+    VUAntiVehicleVehicleTech1 = 2,         -- “章鱼”突击炮
+    WinterArmyReaperHeavyMecha = 2,        -- 收割机甲
+    SovietAntiVehicleVehicleTech2 = 2,     -- 磁爆坦克
+    CelestialWheeledAssaultVehicle = 2,    -- 玄铁歼击车
+    SovietHeavyGrinder = 2,                -- 粉碎者
+    SovietGrinderVehicleCorona = 2,
+    AlliedAvengerAttackAircraft = 2,       -- 复仇者攻击机
+    AlliedLandingCraftAirCushion = 2,      -- 气垫登陆舰
+    AlliedLandingCraftAirCushion_Ranger = 2,
+    CelestialWaveriderIFV_ATGM = 2,        -- 青锋两栖导弹战车
+    -- T3：不可生产的重火力与运输单位
+    VUMissileAntiVehicleVehicleTech1 = 3,  -- “菊花”导弹车
+    SovietHeavyTransportAircraft = 3,      -- 鲁斯兰大型运输机
+    JapanSakuraAttackRocket = 3,           -- 鬼樱特攻机
+    CelestialSeized_JapanAntiNavyShipTech3 = 3, -- 一式磁轨炮重巡
+    -- T4：超级要塞与要塞变体
+    AlliedThetisBattleShip = 4,            -- 忒提斯战列舰
+    Overlordtank = 4,                      -- 联盟重型坦克
+    Overlordtank_SpitfireEngineer = 4,
+    JapanGigaFortressShip = 4,             -- 超级要塞
+    JapanGigaFortress_Land = 4,
+    JapanFortressShip = 4,
+    -- T5：按 T4 结算的超阶单位
+    CelestialMCV = 5,                      -- 青龙战斗核心舰
+    CelestialMCV_Air = 5,
+    CelestialMCV_Ground = 5,
+    CelestialMCV_Naval = 5,
+    CelestialMCV_Enhanced = 5,
+    CelestialMCV_Enhanced_Air = 5,
+    CelestialMCV_Enhanced_Ground = 5,
+    CelestialMCV_Enhanced_Naval = 5,
+    CelestialDF41 = 5,                     -- 东风洲际导弹发射车
+    AlliedGaintAirCraftCarrier_B = 5,      -- 奥林匹斯级航空母舰
+    JapanYumiAircraftCarrier = 5,          -- 千鸟特攻母舰
+}
+
+-- 查回收价：先查阵营回收表，再查箱子模板表。
 function HextechRune:GetUltimateCreatureRecycleMoney(unitType)
     if g_RecycleBtnsMapByFaction ~= nil then
         for faction = 1, 4, 1 do
@@ -45,6 +125,7 @@ function HextechRune:GetUltimateCreatureRecycleMoney(unitType)
     return 0
 end
 
+-- 究极生物与以战养战共用这一个判定入口，优先级见 NonProductionUnitTier 上方的说明。
 function HextechRune:GetUltimateCreatureUnitTier(unitType)
     if g_PureDrawUnitInfoByHash ~= nil then
         local info = g_PureDrawUnitInfoByHash[FastHash(unitType)]
@@ -53,15 +134,12 @@ function HextechRune:GetUltimateCreatureUnitTier(unitType)
         end
     end
 
-    local specialTiers = {
-        AlliedGaintAirCraftCarrier_B = 4,
-        AlliedThetisBattleShip = 4,
-        JapanYumiAircraftCarrier = 4,
-        Overlordtank = 4,
-        WinterArmyReaperHeavyMecha = 3,
-    }
-    if specialTiers[unitType] ~= nil then
-        return specialTiers[unitType]
+    local tier = self.NonProductionUnitTier[unitType]
+    if tier ~= nil then
+        if tier > 4 then
+            return 4
+        end
+        return tier
     end
 
     if string ~= nil and string.find ~= nil then
@@ -122,11 +200,24 @@ function HextechRune:SacrificeUnitPoolForUltimateCreature(playerIndex)
     return tierCounts
 end
 
+-- 回收完成后按以战养战同款格式播报，让持有者看清献祭换到了多少数值。
+function HextechRune:BroadcastUltimateCreature(playerIndex, tierCounts)
+    if tierCounts[1] + tierCounts[2] + tierCounts[3] + tierCounts[4] <= 0 then
+        return
+    end
+    local percents = self.UltimateCreatureTierPercent
+    local text = Localization.get("hextech.rune.ultimate_creature.broadcast",
+        tierCounts[1] * percents[1], tierCounts[2] * percents[2],
+        tierCounts[3] * percents[3], tierCounts[4] * percents[4])
+    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
+end
+
 function HextechRune:CreateUltimateCreature(playerIndex)
     local tierCounts = self:SacrificeUnitPoolForUltimateCreature(playerIndex)
     self.UltimateCreatureStates[playerIndex] = {
         TierCounts = tierCounts,
     }
+    self:BroadcastUltimateCreature(playerIndex, tierCounts)
 
     local oniIndex = g_UnitNameToUnitIndex["JapanMechaX"]
     if oniIndex ~= nil then
@@ -179,10 +270,16 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     -- 每只究极鬼王X使用独立的动态Modifier实例，避免同一实例在不同对象间
     -- 表现为全场唯一或后加载者覆盖前一只。
     local tierCounts = state.TierCounts
+    local percents = self.UltimateCreatureTierPercent
+    -- T1~T4 与血量/伤害/攻速/射程一一对应。射程必须与索敌视野同倍率，
+    -- 否则单位会在射程边缘停下却看不见目标。
+    local rangeBonus = 1 + tierCounts[4] * percents[4] / 100
     local modifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1 + (tierCounts[1] + tierCounts[4]) * 0.05,
-        DAMAGE_MULT = 1 + tierCounts[2] * 0.02 + tierCounts[4] * 0.10,
-        RATE_OF_FIRE = 1 + tierCounts[3] * 0.05,
+        HEALTH_MULT = 1 + tierCounts[1] * percents[1] / 100,
+        DAMAGE_MULT = 1 + tierCounts[2] * percents[2] / 100,
+        RATE_OF_FIRE = 1 + tierCounts[3] * percents[3] / 100,
+        RANGE = rangeBonus,
+        VISION = rangeBonus,
     }, 1)
     ObjectLoadAttributeModifier(unit, modifier,
         self.PersistentBuffDuration)

@@ -18,6 +18,8 @@ files = [
     'lua/GAME/HextechRune/04_buff.lua',
     'lua/GAME/HextechRune/05_ultimate_creature.lua',
     'lua/GAME/HextechRune/06_ascension.lua',
+    'lua/GAME/HextechRune/07_war_efficiency.lua',
+    'lua/GAME/HextechRune/08_time_rift.lua',
 ]
 
 

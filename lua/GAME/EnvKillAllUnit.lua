@@ -4,6 +4,8 @@ unitallEnv = CreateObjectFilter({
     IncludeThing={},
     ExcludeThing={
         "JapanLightTransportVehicle",
+        "JapanLightTransportVehicle_AntiTank",
+        "JapanLightTransportVehicle_Kamikaze",
         "AlliedNightinaleHelicopter",
         "AlliedMCV",
     },

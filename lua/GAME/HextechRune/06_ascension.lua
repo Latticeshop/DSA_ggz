@@ -4,10 +4,10 @@
 HextechRune = HextechRune or {}
 
 -- 每转化 1 个单位提供的乘区加成。
--- 本地化 hextech.rune.ascension.desc 里写死了 2%%/1%%/1%%，改数值时同步改文案。
-HextechRune.AscensionHealthPerUnit = 0.02
-HextechRune.AscensionDamagePerUnit = 0.01
-HextechRune.AscensionRateOfFirePerUnit = 0.01
+-- 本地化 hextech.rune.ascension.desc 里写死了 5%%/3%%/2%%，改数值时同步改文案。
+HextechRune.AscensionHealthPerUnit = 0.05
+HextechRune.AscensionDamagePerUnit = 0.03
+HextechRune.AscensionRateOfFirePerUnit = 0.02
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
