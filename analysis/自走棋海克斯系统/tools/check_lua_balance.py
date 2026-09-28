@@ -15,11 +15,13 @@ files = [
     'lua/GAME/HextechRune/00_assets.lua',
     'lua/GAME/HextechRune/01_rune_pool.lua',
     'lua/GAME/HextechRune/02_event.lua',
+    'lua/GAME/HextechRune/03_text.lua',
     'lua/GAME/HextechRune/04_buff.lua',
     'lua/GAME/HextechRune/05_ultimate_creature.lua',
     'lua/GAME/HextechRune/06_ascension.lua',
     'lua/GAME/HextechRune/07_war_efficiency.lua',
     'lua/GAME/HextechRune/08_time_rift.lua',
+    'lua/GAME/HextechRune/09_shrink_ray.lua',
 ]
 
 
@@ -64,6 +66,21 @@ def check_keywords(text):
     return openers, ends
 
 
+GENERIC_FOR_SINGLE_VAR = re.compile(r'^\s*for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b')
+
+
+def check_lua4_for_loops(text):
+    """Lua 4.0 的泛型 for 必须写两个变量（`for k, v in tbl do`），
+    单变量写法在引擎里报 `'=' or ',' expected ... last token read: 'in'`。"""
+    for lineno, line in enumerate(text.split('\n'), 1):
+        stripped = line.strip()
+        if stripped.startswith('--'):
+            continue
+        if GENERIC_FOR_SINGLE_VAR.match(line):
+            return False, 'line %d 泛型 for 需要两个变量: %s' % (lineno, stripped)
+    return True, 'ok'
+
+
 def main():
     all_ok = True
     for f in files:
@@ -75,6 +92,10 @@ def main():
             kw_hint = ''
             if abs(openers - ends) > 3:
                 kw_hint = ' (注意: openers=%d ends=%d，可能不平衡，需人工确认)' % (openers, ends)
+            for_ok, for_msg = check_lua4_for_loops(content)
+            if not for_ok:
+                ok = False
+                msg = for_msg
             status = 'PASS' if ok else 'FAIL'
             if not ok:
                 all_ok = False
@@ -82,6 +103,31 @@ def main():
         except Exception as e:
             all_ok = False
             print('%s: ERROR %s' % (f, e))
+
+    # 全库扫一遍 Lua 4.0 泛型 for 写法：这份高危语法错误在引擎里是整包加载失败，
+    # 只查固定列表容易漏掉手写文件，所以单独做一次全树检查。
+    lua_root = os.path.join(REPO_ROOT, 'lua')
+    scanned = 0
+    for dirpath, _dirnames, filenames in os.walk(lua_root):
+        for name in filenames:
+            if not name.endswith('.lua'):
+                continue
+            path = os.path.join(dirpath, name)
+            rel = os.path.relpath(path, REPO_ROOT).replace('\\', '/')
+            try:
+                with open(path, 'r', encoding='utf-8-sig') as fh:
+                    content = fh.read()
+            except Exception as e:
+                all_ok = False
+                print('%s: ERROR %s' % (rel, e))
+                continue
+            scanned += 1
+            for_ok, for_msg = check_lua4_for_loops(content)
+            if not for_ok:
+                all_ok = False
+                print('%s: FAIL (%s)' % (rel, for_msg))
+    print('全库 for 语法检查: %d 个 lua 文件' % scanned)
+
     sys.exit(0 if all_ok else 1)
 
 

@@ -451,8 +451,14 @@ function unitgetcountanddelet (playindex)
                         HextechRune:OnPlayerUnitCollected(playindex, actualUnitIndex)
                     end
 
-                    -- 每两个 JapanAntiInfantryInfantry 赠送一个 JapanKamikazeInfantry
-                    if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry" then
+                    -- 每两个 JapanAntiInfantryInfantry 赠送一个 JapanKamikazeInfantry。
+                    -- 海克斯“万岁冲锋”持有者的帝国武士已整体换成狂热武士，
+                    -- 狂热武士同样按武士参与这条赠送计数，否则赠送会随原单位消失而失效。
+                    if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry"
+                        or (UNITLIST[actualUnitIndex] == "JapanKamikazeInfantry"
+                            and HextechRune ~= nil
+                            and HextechRune.IsKamikazeGiftWarrior ~= nil
+                            and HextechRune:IsKamikazeGiftWarrior(playindex)) then
                         local playerGiftState = g_PlayerGiftStates[playindex]
                         local kamikazeState = playerGiftState.GiftJapanKamikazeInfantry or 0
                         kamikazeState = kamikazeState + 1

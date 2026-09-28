@@ -7,7 +7,7 @@ HextechRune.UltimateCreatureEmperorsRageModifier =
     "AttributeModifer_JapanEmperorsResolve_L1"
 HextechRune.UltimateCreatureScale = 1.3
 -- T1~T4 每只献祭单位提供的百分比（血量/伤害/攻速/射程），与播报文案共用一份。
-HextechRune.UltimateCreatureTierPercent = { 5, 3, 5, 5 }
+HextechRune.UltimateCreatureTierPercent = { 5, 3, 3, 5 }
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 

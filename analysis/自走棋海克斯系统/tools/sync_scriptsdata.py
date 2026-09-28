@@ -64,6 +64,7 @@ TARGETS = [  # fmt: skip
     # 海克斯符文系统：由 add_hextech_scripts.py 首次插入 LUABOX/BUTTON 节点，
     # 后续改动用这里的按需回填即可，避免整文件重排与转义噪声。
     ('lua/GAME/HextechRune/00_assets.lua', ['local HextechFrameGold = {', 'g_HextechFrameGoldId']),
+    ('lua/GAME/HextechRune/03_text.lua', ['g_LocalizationExtraText = {', 'hextech.rune.shrink_ray.desc']),
     ('lua/GAME/HextechRune/01_rune_pool.lua', ['HextechRune.RunePool = {', 'PickBuyTwoGetOneTarget']),
     ('lua/GAME/HextechRune/02_event.lua', ['function HextechRune:ShowFormalEvent', 'function HextechRune:OnRoundBegin']),
     ('lua/GAME/HextechRune/04_buff.lua', ['HextechRune.BattleUnitEffectDelay', 'ApplyFiveTigerGenerals']),
@@ -71,6 +72,7 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/06_ascension.lua', ['AscensionRateOfFirePerUnit', 'CreateAscensionModifier']),
     ('lua/GAME/HextechRune/07_war_efficiency.lua', ['WarEfficiencyBonusPerDeath', 'GetSideWarEfficiencyCopies']),
     ('lua/GAME/HextechRune/08_time_rift.lua', ['TimeRiftInterval', 'FreezeSideByTimeRift']),
+    ('lua/GAME/HextechRune/09_shrink_ray.lua', ['ShrinkRayBaseInterval', 'RescanShrinkRay']),
     # 2026-09-28 全树审计（audit_lua_json.py）补登记的两处历史漂移：
     # 该脚本节点内有两条重复的 lua 动作（游戏未启用 IsActive=false），两份一起覆盖，
     # 否则旧的那份会绕过 IsTowerGuardian 保护。

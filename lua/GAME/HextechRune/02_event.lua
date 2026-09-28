@@ -655,9 +655,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "prismatic_divine_intervention",
-        "prismatic_time_rift",
-        "gold_combustion_interest",
+        "prismatic_shrink_ray",
+        "gold_ragnarok",
+        "silver_banzai_charge",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex

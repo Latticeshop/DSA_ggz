@@ -98,6 +98,9 @@ HextechRune.PersistentBuffDuration = 9999
 -- 以战斗单位 objectId 为键，记录该单位按单位池配额归属的玩家及已加载符文。
 -- Unit 句柄同时用于识别引擎复用 objectId 的情况。
 HextechRune.BattleUnitAssignments = HextechRune.BattleUnitAssignments or {}
+-- 诸神黄昏生效中的单位 id 集合。跨帧只认 id：句柄可能指向已被引擎回收的对象，
+-- 真要操作时再 GetObjectById 现取（同时停 sweep 的写法）。
+HextechRune.RagnarokUnits = HextechRune.RagnarokUnits or {}
 
 if not g_HextechDamageX150Modifier then
     g_HextechDamageX150Modifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.5 }, 1)
@@ -122,6 +125,15 @@ if not g_HextechAstralBodyModifier then
     g_HextechAstralBodyModifier = exAttributeModifierCreate({
         HEALTH_MULT = 1.9,
         DAMAGE_MULT = 0.75,
+    }, 1)
+end
+if not g_HextechRagnarokModifier then
+    g_HextechRagnarokModifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.9 }, 1)
+end
+if not g_HextechGoliathModifier then
+    g_HextechGoliathModifier = exAttributeModifierCreate({
+        HEALTH_MULT = 1.9,
+        DAMAGE_MULT = 1.5,
     }, 1)
 end
 if not g_HextechEnemyRangeX075Modifier then
@@ -152,7 +164,7 @@ HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
 HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
 HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
-HextechRune.FiveThunderCooldownRounds = 3
+HextechRune.FiveThunderCooldownRounds = 2
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
 -- 炽燃利息资金由 GetCombustionInterestMoney() 按经济倍率取值。
 -- 死亡观察者由炽燃利息与以战养战共用，因此状态名不再绑定单个符文。
@@ -939,26 +951,58 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     return result
 end
 
+-- 替换型符文：玩家持有后，对应原单位在回收计数时被替换为指定升级单位。
+HextechRune.UnitReplacementRunes = {
+    { RuneId = "silver_export_domestic", SourceType = "JapanAntiNavyShipTech3",
+        ReplacementType = "CelestialSeized_JapanAntiNavyShipTech3" },
+    { RuneId = "silver_dual_purpose", SourceType = "SovietAntiAirShip",
+        ReplacementType = "VUAntiAirVehicleTech1" },
+    { RuneId = "silver_advanced_artillery", SourceType = "AlliedGunshipAircraft",
+        ReplacementType = "AlliedAC130GunshipAircraft" },
+    { RuneId = "silver_banzai_charge", SourceType = "JapanAntiInfantryInfantry",
+        ReplacementType = "JapanKamikazeInfantry" },
+}
+
+-- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池，
+-- 因此这些原单位不能再作为“登神 / 买二送一”的目标（见 01_rune_pool.lua）。
+function HextechRune:GetReplacedSourceTypes(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local result = {}
+    for i = 1, getn(self.UnitReplacementRunes), 1 do
+        local entry = self.UnitReplacementRunes[i]
+        if self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] then
+            result[entry.SourceType] = true
+        end
+    end
+    return result
+end
+
 -- 在单位池正式计数前替换回收目标。抽卡单位的获得播报同样读取替换后的槽位，
 -- 因而会直接显示升级单位，而不是先加入原单位再做二次转换。
 function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
     self:EnsurePlayerRuneState(playerIndex)
     local sourceType = UNITLIST[unitIndex]
     local replacementType = nil
-    if sourceType == "JapanAntiNavyShipTech3"
-        and self.PlayerOwnedRuneIds[playerIndex]["silver_export_domestic"] then
-        replacementType = "CelestialSeized_JapanAntiNavyShipTech3"
-    elseif sourceType == "SovietAntiAirShip"
-        and self.PlayerOwnedRuneIds[playerIndex]["silver_dual_purpose"] then
-        replacementType = "VUAntiAirVehicleTech1"
-    elseif sourceType == "AlliedGunshipAircraft"
-        and self.PlayerOwnedRuneIds[playerIndex]["silver_advanced_artillery"] then
-        replacementType = "AlliedAC130GunshipAircraft"
+    for i = 1, getn(self.UnitReplacementRunes), 1 do
+        local entry = self.UnitReplacementRunes[i]
+        if entry.SourceType == sourceType
+            and self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] then
+            replacementType = entry.ReplacementType
+            break
+        end
     end
     if replacementType == nil or g_UnitNameToUnitIndex == nil then
         return unitIndex
     end
     return g_UnitNameToUnitIndex[replacementType] or unitIndex
+end
+
+-- “万岁冲锋”把帝国武士的产出整体换成狂热武士，底层的
+-- “每两个武士赠送一个狂热武士”规则要跟着走：狂热武士本身也按武士计数，
+-- 否则原单位不再入池，这条赠送会随之失效（赠送分支见 UNITCOUNTERINI_0.lua）。
+function HextechRune:IsKamikazeGiftWarrior(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
 end
 
 function HextechRune:IsUnitInRuneType(unit, rune, typeLookup)
@@ -996,6 +1040,20 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     elseif rune.Effect == "astral_body" then
         ObjectLoadAttributeModifier(unit, g_HextechAstralBodyModifier,
             self.PersistentBuffDuration)
+    elseif rune.Effect == "goliath" then
+        ObjectLoadAttributeModifier(unit, g_HextechGoliathModifier,
+            self.PersistentBuffDuration)
+    elseif rune.Effect == "ragnarok" then
+        local objectId = ObjectGetId(unit)
+        ObjectLoadAttributeModifier(unit, g_HextechRagnarokModifier,
+            self.PersistentBuffDuration)
+        self.RagnarokUnits[objectId] = true
+        -- 出兵当帧先压一次；此后每回合开始由 ApplyAllRagnarokHealthClamps 维持。
+        self:ClampRagnarokUnitHealth(objectId)
+        -- 出兵当帧单位可能还在部署保护中，稍后再确认一次；已达标时该调用直接返回。
+        SchedulerModule.delay_call(function(id)
+            HextechRune:ClampRagnarokUnitHealth(id)
+        end, 60, { objectId })
     elseif rune.Effect == "transcendent_evil" then
         -- 同兵种多份按回合数直接相加，只加载一个合并后的 Modifier。
         if not self:IsPrimaryTranscendentEvilRune(playerIndex, rune) then
@@ -1016,6 +1074,50 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     return true
 end
 
+-- 诸神黄昏：血量高于最大血量一半时压到一半（写入取整）。不足一半的单位不动。
+-- 实测 exObjectSetHealth 对已出场单位无效（血量保持满），因此写入后读回校验，
+-- 没落地就改用脚本伤害扣掉差额。每回合重新调用，差额会被逐步补齐。
+function HextechRune:ClampRagnarokUnitHealth(objectId)
+    if not ObjectIsAlive(objectId) then
+        return
+    end
+    local maxHealth = exObjectGetMaxHealth(objectId)
+    if maxHealth == nil or maxHealth <= 0 then
+        return
+    end
+    local halfHealth = floor(maxHealth * 0.5)
+    if halfHealth < 1 then
+        halfHealth = 1
+    end
+    local currentHealth = exObjectGetCurrentHealth(objectId)
+    if currentHealth == nil or currentHealth <= halfHealth then
+        return
+    end
+    if exObjectSetHealth ~= nil then
+        exObjectSetHealth(objectId, halfHealth)
+        local afterSet = exObjectGetCurrentHealth(objectId)
+        if afterSet ~= nil and afterSet <= halfHealth then
+            return
+        end
+    end
+    local unit = GetObjectById(objectId)
+    if unit ~= nil and ObjectIsAlive(unit) then
+        ExecuteAction("NAMED_DAMAGE", unit, currentHealth - halfHealth)
+    end
+end
+
+-- 每回合开始时重新压血：被治疗、吸血抬回一半以上的单位会再次压回。
+-- 顺带清掉已经阵亡（或 id 已被引擎回收）的登记。
+function HextechRune:ApplyAllRagnarokHealthClamps()
+    for objectId, value in self.RagnarokUnits do
+        if ObjectIsAlive(objectId) then
+            self:ClampRagnarokUnitHealth(objectId)
+        else
+            self.RagnarokUnits[objectId] = nil
+        end
+    end
+end
+
 function HextechRune:IsCurrentAssignment(unit, assignment)
     if assignment == nil or not ObjectIsAlive(unit)
         or assignment.Unit == nil or not ObjectIsAlive(assignment.Unit) then
@@ -1032,7 +1134,8 @@ function HextechRune:IsPersistentBattleRune(rune)
         or rune.Effect == "speed" or rune.Effect == "range_silver"
         or rune.Effect == "range_gold" or rune.Effect == "range_prismatic"
         or rune.Effect == "astral_body" or rune.Effect == "transcendent_evil"
-        or rune.Effect == "infinite_ammo"
+        or rune.Effect == "infinite_ammo" or rune.Effect == "goliath"
+        or rune.Effect == "ragnarok"
 end
 
 -- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
@@ -1233,6 +1336,7 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 and rune.Effect ~= "upgrade_tachi_cruiser"
                 and rune.Effect ~= "upgrade_bullfrog"
                 and rune.Effect ~= "upgrade_vanguard_gunship"
+                and rune.Effect ~= "upgrade_imperial_warrior"
                 and rune.Effect ~= "ultimate_creature"
                 and rune.Effect ~= "war_efficiency"
                 and rune.Effect ~= "time_rift" then
@@ -1487,6 +1591,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "time_rift" then
         self:EnsureTimeRiftScheduler()
         self:ApplyTimeRiftPulse("选择符文")
+    elseif rune.Effect == "shrink_ray" then
+        self:OnShrinkRayChosen(self:GetPlayerSideIndex(playerIndex))
     elseif rune.Effect == "tesla_air_assault" then
         self:GrantTeslaAirAssault(playerIndex)
     elseif rune.Effect == "five_tiger_generals" then
@@ -1497,7 +1603,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     --     self:GrantCashRewardProtocol(playerIndex)
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
-        or rune.Effect == "upgrade_vanguard_gunship" then
+        or rune.Effect == "upgrade_vanguard_gunship"
+        or rune.Effect == "upgrade_imperial_warrior" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
     else
         self:ApplyPersistentRune(playerIndex, rune)
@@ -1514,6 +1621,8 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObje
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
     -- 以战养战同理：本方兵种全体都要吃到本轮数值，不占单位池配额。
     self:ApplyAllWarEfficiencyBuffs()
+    -- 缩小射线同理：本轮处于缩小状态的阵营，新出场的敌方单位也要补上。
+    self:RescanShrinkRay()
     return assignments
 end
 
@@ -1553,6 +1662,10 @@ end
 function HextechRune:ApplyRoundEffects(round)
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
+    -- 诸神黄昏：回合开始时把被治疗抬回一半以上的单位重新压回一半。
+    self:ApplyAllRagnarokHealthClamps()
+    -- 缩小射线：到点的阵营让对手全体单位缩小一回合。
+    self:ApplyShrinkRayPulse(round)
     -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
     -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
     SchedulerModule.delay_call(function(effectRound)

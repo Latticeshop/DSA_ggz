@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """向 ScriptsData.json 的 LUABOX/BUTTON 文件夹添加海克斯符文系统脚本节点。
-执行顺序：资源 -> 符文池 -> 效果层 -> 究极生物 -> 事件/UI -> 登神 -> 以战养战 -> 时间裂隙。
+执行顺序：文案 -> 资源 -> 符文池 -> 效果层 -> 究极生物 -> 事件/UI -> 登神 -> 以战养战 -> 时间裂隙 -> 缩小射线。
 单个 payload 有约 64KB 上限，符文逻辑超出预算时就在这里拆成独立节点。
 用法: python "analysis/自走棋海克斯系统/tools/add_hextech_scripts.py"
 """
@@ -92,6 +92,7 @@ def main():
 
     content = button.get("Content", [])
     specs = [
+        ("HextechRuneText", "GAME/HextechRune/03_text.lua"),
         ("HextechRuneAssets", "GAME/HextechRune/00_assets.lua"),
         ("HextechRunePool", "GAME/HextechRune/01_rune_pool.lua"),
         ("HextechRuneEffects", "GAME/HextechRune/04_buff.lua"),
@@ -100,6 +101,7 @@ def main():
         ("HextechRuneAscension", "GAME/HextechRune/06_ascension.lua"),
         ("HextechRuneWarEfficiency", "GAME/HextechRune/07_war_efficiency.lua"),
         ("HextechRuneTimeRift", "GAME/HextechRune/08_time_rift.lua"),
+        ("HextechRuneShrinkRay", "GAME/HextechRune/09_shrink_ray.lua"),
     ]
     hextech_names = set(name for name, _ in specs)
     existing = {}

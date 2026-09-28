@@ -52,6 +52,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.advanced_artillery.desc",
         Effect = "upgrade_vanguard_gunship", RequiredFaction = 1,
         Icon = "Button_AlliedHarbingerGunship" },
+    { Id = "silver_banzai_charge", Rarity = 3,
+        NameKey = "hextech.rune.banzai_charge.name",
+        DescKey = "hextech.rune.banzai_charge.desc",
+        Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
+        Icon = "Button_JapanKamikazeBonzai" },
 
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -111,6 +116,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.ascension.name",
         DescKey = "hextech.rune.ascension.desc",
         Effect = "ascension", Icon = "JapanAVVT4Heal" },
+    { Id = "gold_ragnarok", Rarity = 2,
+        NameKey = "hextech.rune.ragnarok.name",
+        DescKey = "hextech.rune.ragnarok.desc",
+        Effect = "ragnarok", NeedsUnitType = true,
+        Icon = "CelestialLightningTroop_Lv3" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -171,6 +181,16 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.time_rift.name",
         DescKey = "hextech.rune.time_rift.desc",
         Effect = "time_rift", Icon = "Button_PlayerPower_ChronoRift1" },
+    { Id = "prismatic_shrink_ray", Rarity = 1,
+        NameKey = "hextech.rune.shrink_ray.name",
+        DescKey = "hextech.rune.shrink_ray.desc",
+        Effect = "shrink_ray", ExcludeInShrinkMode = true,
+        Icon = "AUA_Shrink_Beam" },
+    { Id = "prismatic_goliath", Rarity = 1,
+        NameKey = "hextech.rune.goliath.name",
+        DescKey = "hextech.rune.goliath.desc",
+        Effect = "goliath", NeedsUnitType = true,
+        Icon = "Button_JapanMechaKing" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -179,6 +199,7 @@ HextechRune.NonRepeatableRuneIds = {
     silver_export_domestic = true,
     silver_dual_purpose = true,
     silver_advanced_artillery = true,
+    silver_banzai_charge = true,
     gold_fortified = true,
     gold_transcendent_evil = true,
     prismatic_broadband_jamming = true,
@@ -190,8 +211,10 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_five_thunder = true,
     prismatic_dongfeng_express = true,
     gold_ascension = true,
+    gold_ragnarok = true,
     prismatic_war_efficiency = true,
     prismatic_time_rift = true,
+    prismatic_shrink_ray = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -296,8 +319,8 @@ function HextechRune:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
 end
 
 -- 从玩家自身阵营的回收/单位池中选一个可计数、且玩家确实能生产的单位。
--- excluded 里的单位类型会被跳过：只有“买二送一”用它排除已持有的同类符文目标，
--- 登神不排除，允许与买二送一指向同一个单位。
+-- excluded 里的单位类型会被跳过：登神/买二送一用它排除已被替换型符文覆盖的原形态；
+-- 买二送一另外排除已持有的同类符文目标，登神不做这项排除，允许与买二送一指向同一个单位。
 function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
         or g_UnitNameToUnitIndex == nil then
@@ -366,11 +389,16 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
     end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
     if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension" then
+        -- 已被出口内销/高平两用/先进火炮替换的原形态不再作为目标：它们后续生产时
+        -- 一律以升级形态入池，圈了原形态的目标会永远无法累计。
+        local excluded = self:GetReplacedSourceTypes(playerIndex)
         -- “买二送一”可重复选择，但同一个玩家的两个买二送一不能圈同一个单位；
-        -- 登神不做排除，允许与买二送一指向同一个单位。
-        local excluded = nil
+        -- 登神不做这项排除，允许与买二送一指向同一个单位。
         if candidate.Effect == "buy_two_get_one" then
-            excluded = self:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
+            local ownedTargets = self:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
+            for targetType, owned in ownedTargets do
+                excluded[targetType] = true
+            end
         end
         local target = self:PickBuyTwoGetOneTarget(playerIndex, excluded)
         if target == nil then
@@ -517,7 +545,8 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
         local rune = self.RunePool[i]
         local factionAllowed = self:IsRuneFactionAvailable(playerIndex, rune)
         if rune.Rarity == rarity and factionAllowed
-            and (not rune.RequiresSea or g_DisableSeaArmy ~= 1) then
+            and (not rune.RequiresSea or g_DisableSeaArmy ~= 1)
+            and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1) then
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
