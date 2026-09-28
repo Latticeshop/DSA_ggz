@@ -73,6 +73,7 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/07_war_efficiency.lua', ['WarEfficiencyBonusPerDeath', 'GetSideWarEfficiencyCopies']),
     ('lua/GAME/HextechRune/08_time_rift.lua', ['TimeRiftInterval', 'FreezeSideByTimeRift']),
     ('lua/GAME/HextechRune/09_shrink_ray.lua', ['ShrinkRayBaseInterval', 'RescanShrinkRay']),
+    ('lua/GAME/HextechRune/10_recombobulator.lua', ['RecombobulatorHighTierChance', 'RollRecombobulatorTargetIndex']),
     # 2026-09-28 全树审计（audit_lua_json.py）补登记的两处历史漂移：
     # 该脚本节点内有两条重复的 lua 动作（游戏未启用 IsActive=false），两份一起覆盖，
     # 否则旧的那份会绕过 IsTowerGuardian 保护。

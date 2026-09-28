@@ -57,6 +57,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.banzai_charge.desc",
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         Icon = "Button_JapanKamikazeBonzai" },
+    -- 变形重组器可重复获取（不在 NonRepeatableRuneIds 里），每次获取按当前池子重新重组。
+    { Id = "silver_recombobulator", Rarity = 3,
+        NameKey = "hextech.rune.recombobulator.name",
+        DescKey = "hextech.rune.recombobulator.desc",
+        Effect = "recombobulator_same", Icon = "JUA_Nanotech_Upgrade1" },
 
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -120,7 +125,12 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.ragnarok.name",
         DescKey = "hextech.rune.ragnarok.desc",
         Effect = "ragnarok", NeedsUnitType = true,
-        Icon = "CelestialLightningTroop_Lv3" },
+        Icon = "CelestialLightningTroop_Lv2" },
+    -- 升级重组器同样可重复获取；隐性特等奖概率见 10_recombobulator.lua。
+    { Id = "gold_upgrade_recombobulator", Rarity = 2,
+        NameKey = "hextech.rune.upgrade_recombobulator.name",
+        DescKey = "hextech.rune.upgrade_recombobulator.desc",
+        Effect = "recombobulator_upgrade", Icon = "JUA_Nanotech_Upgrade2" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -202,6 +212,7 @@ HextechRune.NonRepeatableRuneIds = {
     silver_banzai_charge = true,
     gold_fortified = true,
     gold_transcendent_evil = true,
+    gold_recycler = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,
@@ -459,7 +470,9 @@ function HextechRune:GetRuneDisplayName(rune)
     return name
 end
 
-function HextechRune:GetRuneDescription(rune)
+-- 动态描述：playerIndex 是“符文详情的视角玩家”。三选一卡传选择者自己（候选符文还没到手），
+-- 面板详情传符文的持有者。只有需要按持有状态算数值的符文会用到它。
+function HextechRune:GetRuneDescription(rune, playerIndex)
     if rune == nil then
         return ""
     end
@@ -473,6 +486,8 @@ function HextechRune:GetRuneDescription(rune)
         return Localization.get(rune.DescKey, GetCombustionInterestMoney())
     elseif rune.Effect == "starting_funds" then
         return Localization.get(rune.DescKey, GetStartingFundsMoney())
+    elseif rune.Effect == "shrink_ray" then
+        return Localization.get(rune.DescKey, self:GetShrinkRayDisplayRounds(playerIndex))
     end
     return Localization.get(rune.DescKey)
 end

@@ -234,7 +234,7 @@ function HextechRune:GetCenteredTextLeftX(centerX, text, fontSize)
 end
 
 -- 实机字体并非严格等宽，中文与纯 ASCII 的字面留白也不同。
--- 四字标题保持已确认的参数；三字中文和纯 ASCII 分开校正。
+-- 四字标题保持已确认的参数；三字中文和纯 ASCII 分开校正；五字标题另列一档。
 function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
     local name = Localization.get(rune.NameKey)
     local characterCount = self:GetTextMaxCharacterCount(name)
@@ -245,6 +245,14 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
             return 9
         end
         return 22
+    end
+    -- 五字标题（变形重组器 / 升级重组器，16px）实测偏左约 2/3 个字，按四字 22px 的
+    -- 每字步进外推右移；带兵种后缀的小字号五字标题（万用瞄准镜）继续用默认值。
+    if characterCount == 5 and rune.UnitType == nil then
+        if isPanel then
+            return 13
+        end
+        return 30
     end
     if characterCount == 4 then
         if isPanel then
@@ -317,7 +325,7 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     local textIndex = self:GetOptionTextIndex(playerIndex, optionIndex)
     local optionText = self:GetRuneCompactTitle(rune)
     local optionTitleSize = self:GetRuneTitleFontSize(rune, self.OptionCardWidth)
-    local optionDesc = self:GetRuneDescription(rune)
+    local optionDesc = self:GetRuneDescription(rune, playerIndex)
     local hoverDesc = format("%s\n%s", self:GetRuneDisplayName(rune), optionDesc)
     -- 3 张竖卡水平紧凑居中排列
     local totalWidth = self.OptionCardWidth * 3 + self.OptionCardSpacing * 2
@@ -655,9 +663,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "prismatic_shrink_ray",
         "gold_ragnarok",
-        "silver_banzai_charge",
+        "silver_recombobulator",
+        "gold_upgrade_recombobulator",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -887,7 +895,8 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
         local runeTitleSize = self:GetRuneTitleFontSize(rune, self.PanelRuneHeight)
         local x = startX + (slot - 1) * (self.PanelRuneWidth + self.PanelRuneGap)
         local topY = y - self.PanelRuneHeight / 2
-        local runeDesc = format("%s\n%s", self:GetRuneDisplayName(rune), self:GetRuneDescription(rune))
+        local runeDesc = format("%s\n%s", self:GetRuneDisplayName(rune),
+            self:GetRuneDescription(rune, targetIndex))
         exCreateCustomButtonForPlayer(viewerName, {
             Index = btnIndex,
             TextureName = self.RarityFrameImageIds[rarity],

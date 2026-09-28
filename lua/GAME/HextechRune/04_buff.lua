@@ -1614,6 +1614,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantTeslaAirAssault(playerIndex)
     elseif rune.Effect == "five_tiger_generals" then
         self:EnsureFiveTigerGeneralsPower(playerIndex)
+    elseif rune.Effect == "recombobulator_same" then
+        self:ApplyRecombobulator(playerIndex, false)
+    elseif rune.Effect == "recombobulator_upgrade" then
+        self:ApplyRecombobulator(playerIndex, true)
     -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
     -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目注释。
     -- elseif rune.Effect == "cash_reward" then

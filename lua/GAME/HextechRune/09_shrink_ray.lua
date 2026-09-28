@@ -22,16 +22,37 @@ function HextechRune:GetOpposingSideIndex(sideIndex)
     return 7
 end
 
-function HextechRune:GetShrinkRayInterval(sideIndex)
-    local copies = self:GetSideOwnedRuneCount(sideIndex, self.ShrinkRayRuneId)
-    if copies <= 0 then
-        return nil
-    end
+-- 份数换算周期：1/2/3 份 → 5/4/3 回合，实际生效与详情文案共用这一份公式。
+function HextechRune:GetShrinkRayIntervalByCopies(copies)
     local interval = self.ShrinkRayBaseInterval - (copies - 1)
     if interval < 1 then
         interval = 1
     end
     return interval
+end
+
+function HextechRune:GetShrinkRayInterval(sideIndex)
+    local copies = self:GetSideOwnedRuneCount(sideIndex, self.ShrinkRayRuneId)
+    if copies <= 0 then
+        return nil
+    end
+    return self:GetShrinkRayIntervalByCopies(copies)
+end
+
+-- 详情文案展示的周期。口径是“这份符文到手后的份数”：三选一卡传选择者自己（候选还没到手，
+-- 按拿到后 +1 份展示），面板详情传持有者（已到手，按当前份数展示）。
+-- 视角缺失时退回单份口径，保证任何调用路径都能拿到一个合法数值。
+function HextechRune:GetShrinkRayDisplayRounds(playerIndex)
+    local copies = 1
+    if playerIndex ~= nil then
+        self:EnsurePlayerRuneState(playerIndex)
+        copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex),
+            self.ShrinkRayRuneId)
+        if not self.PlayerOwnedRuneIds[playerIndex][self.ShrinkRayRuneId] then
+            copies = copies + 1
+        end
+    end
+    return self:GetShrinkRayIntervalByCopies(copies)
 end
 
 -- 不走单位池配额：目标阵营的全体战斗单位都要缩小。

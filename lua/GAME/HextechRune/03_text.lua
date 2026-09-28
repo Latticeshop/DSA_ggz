@@ -37,7 +37,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.strength.desc"] = { zh = "%s单位造成的伤害提高 50%%。", en = "%s units deal 50%% increased damage." },
     ["hextech.rune.swiftness.name"] = { zh = "迅捷", en = "Swiftness" },
     ["hextech.rune.swiftness.desc"] = { zh = "%s单位攻速提高 50%%。", en = "%s units gain 50%% attack speed." },
-    ["hextech.rune.hunt.name"] = { zh = "巡猎", en = "The Hunt" },
+    ["hextech.rune.hunt.name"] = { zh = "神行", en = "Godspeed" },
     ["hextech.rune.hunt.desc"] = { zh = "%s单位移动速度提高 40%%。", en = "%s units gain 40%% movement speed." },
     ["hextech.rune.scope.silver.name"] = { zh = "万用瞄准镜", en = "Universal Scope" },
     ["hextech.rune.scope.silver.desc"] = { zh = "%s单位射程提高 15%%。", en = "%s units gain 15%% range." },
@@ -135,8 +135,17 @@ g_LocalizationExtraText = {
             en = "%s units gain 90%% health and 50%% damage." },
     ["hextech.rune.shrink_ray.name"] = { zh = "缩小射线", en = "Shrink Ray" },
     ["hextech.rune.shrink_ray.desc"] =
-        { zh = "每 5 回合使敌方全体单位缩小一回合。",
-            en = "Every 5 rounds, all enemy units are shrunk for one round." },
+        { zh = "每 %d 回合使敌方全体单位缩小一回合。",
+            en = "Every %d rounds, all enemy units are shrunk for one round." },
+    ["hextech.rune.recombobulator.name"] = { zh = "变形重组器", en = "Recombobulator" },
+    ["hextech.rune.recombobulator.desc"] =
+        { zh = "将你当前单位池中的全部单位随机重组为同一阶的单位。",
+            en = "Reassemble every unit in your pool into a random unit of the same tier." },
+    ["hextech.rune.upgrade_recombobulator.name"] =
+        { zh = "升级重组器", en = "Upgrade Recombobulator" },
+    ["hextech.rune.upgrade_recombobulator.desc"] =
+        { zh = "将你当前单位池中的全部单位随机重组为高一阶的单位。T4单位为随机T4单位。",
+            en = "Reassemble every unit in your pool into a random unit one tier higher. T4 units are reassembled into random T4 units." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },

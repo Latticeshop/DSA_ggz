@@ -22,6 +22,7 @@ files = [
     'lua/GAME/HextechRune/07_war_efficiency.lua',
     'lua/GAME/HextechRune/08_time_rift.lua',
     'lua/GAME/HextechRune/09_shrink_ray.lua',
+    'lua/GAME/HextechRune/10_recombobulator.lua',
 ]
 
 
