@@ -109,7 +109,7 @@ for groupIndex = 1, groupCount, 1 do
         local referenceName = "angelChronosphereUnit" .. tostring(ObjectGetId(unit))
         ExecuteAction("SET_UNIT_REFERENCE", referenceName, unit)
         ExecuteAction("NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY", referenceName, transportName)
-        ObjectLoadAttributeModifier(unit, "AttributeModifier_IronCurtain", 75)
+        g_ApplyIronCurtain(unit, 75)
         ObjectLoadAttributeModifier(unit, "AttributeModifier_DefenseEffect_0", 30)
     end
 

@@ -50,6 +50,25 @@ def payload_size(payload):
     return len(payload.encode("utf-8"))
 
 
+SECTION_MARKER = re.compile(r"^--@([A-Za-z0-9_]+)[ \t]*\r?$", re.M)
+
+
+def split_sections(text):
+    """按 `--@节名` 标记把一个源文件切成多段，供「一个文件回填多个 payload」使用。
+
+    逻辑只差参数的调用段（例如时停的施放/续租/解除）没有各自成文件的必要。
+    没有标记时返回 None；段内容去掉首尾空行，行号与整文件不再一致。
+    """
+    matches = list(SECTION_MARKER.finditer(text))
+    if not matches:
+        return None
+    sections = {}
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections[match.group(1)] = text[match.end():end].strip("\r\n")
+    return sections
+
+
 def strip_lua_comments(text):
     """删除 Lua 行注释与 --[[ ]] 块注释，返回 (新文本, 省下字节数)。
 

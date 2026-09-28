@@ -822,6 +822,135 @@ function RequestDamoclesSword(playerIndex)
     return true
 end
 
+-- 铁幕与时停各有两类来源（技能组按钮 + 海克斯符文），而引擎侧同名 Modifier
+-- 只有一份实例、后加载会改写剩余时长，PARALYZED 更是一个共享布尔位。
+-- 所有施加与解除都必须经过下面两个仲裁函数：铁幕取最长，时停按持有者登记。
+g_IronCurtainExpireFrame = g_IronCurtainExpireFrame or {}
+
+function g_ApplyIronCurtain(unit, duration)
+    local objectId = ObjectGetId(unit)
+    local now = GetFrame()
+    if (g_IronCurtainExpireFrame[objectId] or 0) - now >= duration then
+        return
+    end
+    ObjectLoadAttributeModifier(objectId, "AttributeModifier_IronCurtain", duration)
+    g_IronCurtainExpireFrame[objectId] = now + duration
+end
+
+g_TimeStopHolders = g_TimeStopHolders or {}
+g_TimeStopWatchedList = g_TimeStopWatchedList or {}
+g_TimeStopWatchedMark = g_TimeStopWatchedMark or {}
+g_TimeStopSweepSchedulerId = g_TimeStopSweepSchedulerId or nil
+
+-- 把单位真正放开：清掉 PARALYZED，并让施放时挂的裂缝特效（原生写的是 1e8 帧）立刻过期。
+-- 句柄一律按 id 现取，不缓存：单位阵亡后旧句柄会让引擎拿 nil 去索引它内部的表。
+function g_ReleaseTimeStop(objectId, holders)
+    ExecuteAction("SET_UNIT_REFERENCE", holders.ref, GetObjectById(objectId))
+    ExecuteAction("NAMED_SET_DISABLED", holders.ref, "PARALYZED", "false")
+    ObjectLoadAttributeModifier(objectId, "AttributeMod_ChronoRiftEffect", 1)
+    holders.frozen = nil
+    holders.fx = nil
+end
+
+-- holderKind 只有 native（技能组时停）与 rift（时间裂隙）两种，两个持有者都到期
+-- 才真正放开 PARALYZED，避免任何一方把自己的短时长到期算到对方头上。
+function g_SetTimeStopFrozen(unit, refName, holderKind, frozen, duration, fxDuration)
+    if unit == nil then
+        return
+    end
+    local objectId = ObjectGetId(unit)
+    if objectId == nil then
+        return
+    end
+    local holders = g_TimeStopHolders[objectId]
+    if holders == nil then
+        holders = {}
+        g_TimeStopHolders[objectId] = holders
+    end
+    -- 解除靠调用方自己记得回来补，PARALYZED 却没有定时器，所以每个被冻过的对象
+    -- 都要留下引用名给 sweep 兜底。
+    holders.ref = refName
+    if g_TimeStopWatchedMark[objectId] == nil then
+        g_TimeStopWatchedMark[objectId] = 1
+        tinsert(g_TimeStopWatchedList, objectId)
+    end
+    g_EnsureTimeStopSweep()
+    local now = GetFrame()
+    if frozen then
+        ExecuteAction("SET_UNIT_REFERENCE", refName, unit)
+        if now + duration > (holders[holderKind] or 0) then
+            holders[holderKind] = now + duration
+        end
+        ExecuteAction("NAMED_SET_DISABLED", refName, "PARALYZED", "true")
+        holders.frozen = 1
+        -- 裂隙特效同名也只有一份，只在能延长它的时候才重新加载。
+        if fxDuration > 0 and (holders.fx == nil or fxDuration > holders.fx - now) then
+            ObjectLoadAttributeModifier(objectId, "AttributeMod_ChronoRiftEffect", fxDuration)
+            holders.fx = now + fxDuration
+        end
+    else
+        holders[holderKind] = 0
+        if (holders.native or 0) <= now and (holders.rift or 0) <= now then
+            g_ReleaseTimeStop(objectId, holders)
+        end
+    end
+end
+
+-- 原生时停只在计时器到点的 Else 分支里解除。那个分支一旦没跑到（脚本被禁用、
+-- 中途异常），全体单位就会永久定身。这里每 2 秒复核一次：租约都已过期却还冻着的
+-- 对象替它解除，顺带回收死亡或已解除的登记，避免名单无限增长。
+function g_SweepStuckTimeStopFreeze()
+    local now = GetFrame()
+    local list = g_TimeStopWatchedList
+    local kept = 0
+    for i = 1, getn(list), 1 do
+        local objectId = list[i]
+        local holders = nil
+        if objectId ~= nil then
+            holders = g_TimeStopHolders[objectId]
+        end
+        local keep = false
+        if holders ~= nil then
+            -- 存活判断只认 id，句柄等真要解除时再按 id 现取。
+            if ObjectIsAlive(objectId) then
+                if (holders.native or 0) > now or (holders.rift or 0) > now then
+                    keep = true
+                elseif holders.frozen ~= nil then
+                    g_ReleaseTimeStop(objectId, holders)
+                end
+            end
+            if not keep then
+                g_TimeStopHolders[objectId] = nil
+                g_TimeStopWatchedMark[objectId] = nil
+            end
+        end
+        if keep then
+            kept = kept + 1
+            list[kept] = objectId
+        end
+    end
+    for i = getn(list), kept + 1, -1 do
+        list[i] = nil
+    end
+end
+
+function g_EnsureTimeStopSweep()
+    if g_TimeStopSweepSchedulerId ~= nil then
+        return
+    end
+    g_TimeStopSweepSchedulerId = SchedulerModule.call_every_x_frame(function()
+        g_SweepStuckTimeStopFreeze()
+    end, 30, nil, {})
+end
+
+-- 技能组时停的三段（施放/周期续租/解除）都只差参数，统一收在这里。
+function g_TimeStopFreezeSide(referenceObject, refPrefix, frozen, duration, fxDuration)
+    local units, count = ObjectFindObjects(referenceObject, nil, FilterALLUNIT)
+    for i = 1, count, 1 do
+        g_SetTimeStopFrozen(units[i], refPrefix .. i, "native", frozen, duration, fxDuration)
+    end
+end
+
 function RequestIronCurtain(playerIndex)
     local sideName = Localization.get("side.devil")
     local referenceObject = T74
@@ -833,7 +962,7 @@ function RequestIronCurtain(playerIndex)
     ExecuteAction("PLAY_SOUND_EFFECT", "SOV_IronCurtain_Cast")
     local units, count = ObjectFindObjects(referenceObject, nil, FilterALLUNIT)
     for i = 1, count, 1 do
-        ObjectLoadAttributeModifier(units[i], "AttributeModifier_IronCurtain", 196)
+        g_ApplyIronCurtain(units[i], 196)
     end
     if playerIndex <= 3 then
         tinsert(g_evilButtonClickHistory, RequestIronCurtain)

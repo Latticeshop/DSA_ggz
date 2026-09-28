@@ -1,5 +1,7 @@
 -- 海克斯符文“时间裂隙”：敌方全体单位和建筑每 29 秒被时停 3 秒。
--- 时停沿用地图“时空管理局”技能的实现，释放节奏沿用神圣干预的调度。
+-- 冻结与特效都复用技能组已验证的通道（PARALYZED + AttributeMod_ChronoRiftEffect），
+-- 冲突交给 g_SetTimeStopFrozen 按持有者仲裁：符文只登记 rift 这一份，
+-- native（技能组时停）还在冻结时不放开 PARALYZED，反之亦然。
 
 HextechRune = HextechRune or {}
 
@@ -9,25 +11,19 @@ HextechRune.TimeRiftInterval = 435
 HextechRune.TimeRiftDuration = 45
 HextechRune.TimeRiftSchedulerId = HextechRune.TimeRiftSchedulerId or nil
 HextechRune.TimeRiftRefPrefix = "HextechTimeRift_"
--- 置灰靠 PARALYZED 禁用状态，本 Modifier 只提供时空裂缝的视觉表现。
-HextechRune.TimeRiftFrozenModifier = "AttributeMod_ChronoRiftEffect"
 HextechRune.TimeRiftSound = "ALL_Chronorift_OnOffMS"
 
 function HextechRune:SetTimeRiftFrozen(unit, frozen, refPrefix)
-    local objectId = ObjectGetId(unit)
-    local referenceName = refPrefix .. tostring(objectId)
-    ExecuteAction("SET_UNIT_REFERENCE", referenceName, unit)
+    local referenceName = refPrefix .. tostring(ObjectGetId(unit))
     if frozen then
-        ExecuteAction("NAMED_SET_DISABLED", referenceName, "PARALYZED", "true")
-        ObjectLoadAttributeModifier(objectId, self.TimeRiftFrozenModifier,
-            self.TimeRiftDuration)
+        g_SetTimeStopFrozen(unit, referenceName, "rift", true,
+            self.TimeRiftDuration, self.TimeRiftDuration)
     else
-        ExecuteAction("NAMED_SET_DISABLED", referenceName, "PARALYZED", "false")
-        ObjectLoadAttributeModifier(objectId, self.TimeRiftFrozenModifier, 1)
+        g_SetTimeStopFrozen(unit, referenceName, "rift", false, 0, 0)
     end
 end
 
--- 冻结阵营 sideIndex 的全部单位和建筑，TimeRiftDuration 帧后自动解除。
+-- 冻结阵营 sideIndex 的全部单位和建筑，TimeRiftDuration 帧后解除。
 function HextechRune:FreezeSideByTimeRift(sideIndex)
     if P == nil or P[sideIndex] == nil then
         return
@@ -37,23 +33,24 @@ function HextechRune:FreezeSideByTimeRift(sideIndex)
     if count <= 0 then
         return
     end
-    local frozen = {}
+    local frozenIds = {}
     local refPrefix = self.TimeRiftRefPrefix .. tostring(sideIndex) .. "_"
     for i = 1, count, 1 do
         if ObjectIsAlive(objects[i]) then
             self:SetTimeRiftFrozen(objects[i], true, refPrefix)
-            tinsert(frozen, objects[i])
+            tinsert(frozenIds, ObjectGetId(objects[i]))
         end
     end
     ExecuteAction("PLAY_SOUND_EFFECT", self.TimeRiftSound)
-    -- 只解除本次真正冻结过的对象；期间阵亡的对象直接跳过。
-    SchedulerModule.delay_call(function(units, prefix)
-        for i = 1, getn(units), 1 do
-            if ObjectIsAlive(units[i]) then
-                HextechRune:SetTimeRiftFrozen(units[i], false, prefix)
+    -- 只解除本次真正冻结过的对象；登记的是 id，阵亡的对象直接跳过，
+    -- 活着的再按 id 现取句柄，避免缓存的旧句柄把 nil 喂进引擎。
+    SchedulerModule.delay_call(function(ids, prefix)
+        for i = 1, getn(ids), 1 do
+            if ObjectIsAlive(ids[i]) then
+                HextechRune:SetTimeRiftFrozen(GetObjectById(ids[i]), false, prefix)
             end
         end
-    end, HextechRune.TimeRiftDuration, { frozen, refPrefix })
+    end, HextechRune.TimeRiftDuration, { frozenIds, refPrefix })
 end
 
 -- 持有方冻结的是自己的对手，双方都持有时互相冻结。

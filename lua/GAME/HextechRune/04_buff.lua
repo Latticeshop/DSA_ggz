@@ -145,6 +145,8 @@ HextechRune.DivineInterventionInterval = 450
 -- 基础铁幕 45 帧（3 秒）；同阵营每多一份增加基础时长的一半，22.5 帧向上取 23 帧。
 HextechRune.DivineInterventionBaseDuration = 45
 HextechRune.DivineInterventionExtraDurationPerCopy = 23
+-- 铁幕本体沿用技能组已验证的 AttributeModifier_IronCurtain；同名 Modifier 只有一份
+-- 实例、后加载会改写剩余时长，所以施加统一走 g_ApplyIronCurtain（已有更长铁幕就不覆盖）。
 HextechRune.DivineInterventionSchedulerId = HextechRune.DivineInterventionSchedulerId or nil
 HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
 HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
@@ -336,7 +338,7 @@ function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     local objects, count = ObjectFindObjects(P[sideIndex], nil,
         self.AllSideUnitsAndStructuresFilter)
     for i = 1, count, 1 do
-        ObjectLoadAttributeModifier(objects[i], "AttributeModifier_IronCurtain", duration)
+        g_ApplyIronCurtain(objects[i], duration)
     end
 end
 
@@ -1484,6 +1486,7 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyAllWarEfficiencyBuffs()
     elseif rune.Effect == "time_rift" then
         self:EnsureTimeRiftScheduler()
+        self:ApplyTimeRiftPulse("选择符文")
     elseif rune.Effect == "tesla_air_assault" then
         self:GrantTeslaAirAssault(playerIndex)
     elseif rune.Effect == "five_tiger_generals" then

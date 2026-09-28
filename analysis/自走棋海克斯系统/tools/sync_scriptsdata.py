@@ -4,7 +4,8 @@
 用法: python sync_scriptsdata.py [--check-only]
 
 TARGETS 每一项为 (lua 源文件, [定位用关键字])，可选第三项声明该段逻辑在 JSON 里重复几份
-（默认 1 份），全部写成同一份源内容。
+（默认 1 份），全部写成同一份源内容；可选第四项给出节名，表示源文件按 `--@节名`
+切成多段、每段各回填一个 payload（用于逻辑只差参数的极短调用段，见 time_stop.lua）。
 
 payload 体积受 WorldBuilder 脚本字符串约 64KB 上限限制：超过会被截断并在游戏内
 报 `last token read: '<eof>'` 语法错误。因此本脚本复用 lua_payload.build_payload()：
@@ -19,13 +20,13 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua_payload import (  # noqa: E402
     PAYLOAD_HARD_LIMIT, PAYLOAD_WARN_LIMIT, LuaPayloadError, build_payload,
-    find_repo_root, normalize_crlf,
+    find_repo_root, normalize_crlf, split_sections,
 )
 
 REPO_ROOT = find_repo_root()
 JSON_PATH = os.path.join(REPO_ROOT, 'ScriptsData.json')
 
-TARGETS = [
+TARGETS = [  # fmt: skip
     ('lua/GAME/MIRRORTOWER/unlockT4Ship.lua', ['local enableT4Ship = {', 'Sea3ProtectShip8']),
     ('lua/GAME/MIRRORTOWER/unlockT4Ship22.lua', ['local enableT4Ship = {', 'Sea3ProtectShip7']),
     ('lua/GAME/ShrinkMode_Trigger.lua', ['if g_EnableShrinkMode == 1 then', 'ShrinkMode_Apply()']),
@@ -46,6 +47,13 @@ TARGETS = [
     ('lua/GAME/ExtraCommand.lua', ['g_BanSeaFilter = CreateObjectFilter', 'function MsgCommand_BanInfantry', 'function onUserHotKeyEvent']),
     ('lua/LUABOX/BUTTON/devilASuper_0.lua', ['g_DevilChronosphereTransportIndex', 'devilChronosphereTransport']),
     ('lua/LUABOX/BUTTON/angelASuper_0.lua', ['g_AngelChronosphereTransportIndex', 'angelChronosphereTransport']),
+    ('lua/LUABOX/BUTTON/unit_button_0.lua', ['BOMBID', 'function onUnitTopBtnClickEvent']),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T74, "units", true, 210'], 1, 'angel_cast'),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T74, "units", true, 60'], 1, 'angel_tick'),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T74, "units", false'], 1, 'angel_release'),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T84, "units2", true, 210'], 1, 'devil_cast'),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T84, "units2", true, 60'], 1, 'devil_tick'),
+    ('lua/LUABOX/BUTTON/time_stop.lua', ['T84, "units2", false'], 1, 'devil_release'),
     ('lua/LUABOX/BUTTON/CenterTopBtnFunc.lua', ['g_RecycleEconomicRate', 'function GetBaseRecycleRate', 'RequestDragonShip']),
     # ('lua/GAME/UtilsLuckyCrate.lua', ['-- 启用箱子模式', 'function NoCreatesInCenter']),  # 已拆分，改由 sync_utils_lucky_crate.py 拼接同步
     ('lua/LUABOX/BUTTON/BtnChoiceDialogEventFunc.lua', ['devil_max = 200', 'function BtnChoiceDialogEventFunc_ShowGameModeDialog']),
@@ -95,6 +103,8 @@ def main():
         # 少数脚本节点里同一段逻辑存在多份重复 payload（例如 EnvKillAllUnit），
         # 这类目标显式声明份数，全部写入同一份源内容。
         expect = entry[2] if len(entry) > 2 else 1
+        section = entry[3] if len(entry) > 3 else None
+        label = target_path if section is None else '%s#%s' % (target_path, section)
         candidates = []
         for m in string_matches:
             if not m.group().startswith('"#!ra3luabridge'):
@@ -107,19 +117,25 @@ def main():
                 candidates.append(m)
         if len(candidates) != expect:
             print('ERROR: expected %d ScriptsData payload(s) for %s, found %d' % (
-                expect, target_path, len(candidates)))
+                expect, label, len(candidates)))
             sys.exit(1)
         with open(os.path.join(REPO_ROOT, target_path), 'r', encoding='utf-8', newline='') as f:
             body = f.read()
+        if section is not None:
+            sections = split_sections(body) or {}
+            if section not in sections:
+                print('ERROR: %s 里没有 --@%s 节' % (target_path, section))
+                sys.exit(1)
+            body = sections[section]
         body = normalize_crlf(body)
         body = body.rstrip('\r\n')
         # 放得下就与源文件逐字一致；超过 64KB 上限时自动去掉注释（注释不执行却占预算）。
         try:
-            payload, stripped, size = build_payload(body, target_path)
+            payload, stripped, size = build_payload(body, label)
         except LuaPayloadError as error:
             print('ERROR: %s' % error)
             sys.exit(1)
-        sizes.append((size, target_path, stripped))
+        sizes.append((size, label, stripped))
         for cand in candidates:
             # 沿用该 payload 原有转义风格：海克斯符文节点由 add_hextech_scripts.py
             # 以 UTF-8 原文写入，其余节点是 \uXXXX 转义。
@@ -128,7 +144,7 @@ def main():
             encoded = json.dumps(payload, ensure_ascii=was_escaped)
             replacements.append((target_path, cand.start(), cand.end(), encoded))
             print('matched %-52s %6d B (余 %6d B)%s' % (
-                target_path, size, PAYLOAD_HARD_LIMIT - size,
+                label, size, PAYLOAD_HARD_LIMIT - size,
                 '  已去注释' if stripped else ''))
 
     print()

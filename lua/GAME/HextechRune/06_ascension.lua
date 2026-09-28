@@ -1,13 +1,15 @@
 -- 海克斯符文“登神”：随机指定一种单位，只保留 1 个作为种子，
--- 其余该单位被系统回收时直接转化为永久数值（生命 / 伤害 / 攻速）。
+-- 其余该单位被系统回收时直接转化为永久数值（血量 / 伤害 / 攻速 / 射程）。
 
 HextechRune = HextechRune or {}
 
 -- 每转化 1 个单位提供的乘区加成。
--- 本地化 hextech.rune.ascension.desc 里写死了 5%%/3%%/2%%，改数值时同步改文案。
-HextechRune.AscensionHealthPerUnit = 0.05
-HextechRune.AscensionDamagePerUnit = 0.03
+-- 本地化 hextech.rune.ascension.desc 里写死了 2%%/2%%/2%%/1%%，改数值时同步改文案。
+HextechRune.AscensionHealthPerUnit = 0.02
+HextechRune.AscensionDamagePerUnit = 0.02
 HextechRune.AscensionRateOfFirePerUnit = 0.02
+-- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
+HextechRune.AscensionRangePerUnit = 0.01
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
@@ -166,10 +168,13 @@ end
 
 function HextechRune:CreateAscensionModifier(playerIndex)
     local stacks = self:GetAscensionStacks(playerIndex)
+    local rangeMult = 1 + stacks * self.AscensionRangePerUnit
     return exAttributeModifierCreate({
         HEALTH_MULT = 1 + stacks * self.AscensionHealthPerUnit,
         DAMAGE_MULT = 1 + stacks * self.AscensionDamagePerUnit,
         RATE_OF_FIRE = 1 + stacks * self.AscensionRateOfFirePerUnit,
+        RANGE = rangeMult,
+        VISION = rangeMult,
     }, 1)
 end
 

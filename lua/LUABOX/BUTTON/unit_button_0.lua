@@ -35,7 +35,7 @@ function onUnitTopBtnClickEvent(playerName, unitId)
         ExecuteAction("PLAY_SOUND_EFFECT","SOV_IronCurtain_Cast") 
       local TAR, count = ObjectFindObjects(P[7],nil,FilterALLUNIT)
       for j = 1 , count , 1 do
-        ObjectLoadAttributeModifier(TAR[j], "AttributeModifier_IronCurtain", 600)
+        g_ApplyIronCurtain(TAR[j], 600)
       end
       exObjectDeleteBtnAtTop(unitId);  -- 删除按钮
     end
@@ -70,7 +70,7 @@ function onUnitTopBtnClickEvent(playerName, unitId)
         ExecuteAction("PLAY_SOUND_EFFECT","SOV_IronCurtain_Cast") 
       local TAR, count = ObjectFindObjects(P[8],nil,FilterALLUNIT)
       for j = 1 , count , 1 do
-        ObjectLoadAttributeModifier(TAR[j], "AttributeModifier_IronCurtain", 600)
+        g_ApplyIronCurtain(TAR[j], 600)
       end
       exObjectDeleteBtnAtTop(unitId);  -- 删除按钮
     end

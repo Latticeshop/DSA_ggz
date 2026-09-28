@@ -10,6 +10,7 @@
 
 分类：
   OK          与某个 payload 逐字一致；或 JSON 侧是它的去注释版本（超过安全余量线时正常现象）。
+  SPLIT       按 `--@节名` 分节的源文件（一个文件回填多个 payload），每节都要能对上。
   CONCAT      由 sync_utils_lucky_crate.py 以多分片拼接方式同步的 PureDraw/**。
   LEGACY      文件头部写明「旧版保留 / 历史参考 / 不生效」，本就不参与地图逻辑。
   COSMETIC    差异只在注释与空白，可执行代码逐行相同（不影响运行）。
@@ -23,7 +24,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from lua_payload import find_repo_root, normalize_crlf, strip_lua_comments  # noqa: E402
+from lua_payload import find_repo_root, normalize_crlf, split_sections, strip_lua_comments  # noqa: E402
 
 ROOT = find_repo_root()
 JSON_PATH = os.path.join(ROOT, "ScriptsData.json")
@@ -90,9 +91,15 @@ def main():
         exact.add(norm(uncomment(p)))
         code.add(code_only(p))
 
-    counts = {"OK": 0, "CONCAT": 0, "LEGACY": 0, "COSMETIC": 0, "DRIFT": 0}
+    counts = {"OK": 0, "SPLIT": 0, "CONCAT": 0, "LEGACY": 0, "COSMETIC": 0, "DRIFT": 0}
     report = {"COSMETIC": [], "DRIFT": []}
     total = 0
+
+    def code_match(text):
+        return code_only(text) in code
+
+    def exact_match(text):
+        return norm(text) in exact or norm(uncomment(text)) in exact
 
     for dirpath, _dirs, names in sorted(os.walk(LUA_ROOT)):
         for fn in sorted(names):
@@ -102,14 +109,24 @@ def main():
             rel = repo_rel(path)
             text = io.open(path, encoding="utf-8-sig", errors="replace").read()
             total += 1
-            key = norm(text)
-            if key in exact or norm(uncomment(text)) in exact:
+            # 分节文件：一个源文件按 --@节名 回填多个 payload，逐节校验。
+            sections = split_sections(text)
+            if sections is not None:
+                missing = [name for name in sorted(sections)
+                           if not (exact_match(sections[name]) or code_match(sections[name]))]
+                if missing:
+                    counts["DRIFT"] += 1
+                    report["DRIFT"].append("%s（缺节：%s）" % (rel, ", ".join(missing)))
+                else:
+                    counts["SPLIT"] += 1
+                continue
+            if exact_match(text):
                 counts["OK"] += 1
             elif rel.startswith(CONCAT_DIRS):
                 counts["CONCAT"] += 1
             elif LEGACY_PATTERN.search(text[:800]):
                 counts["LEGACY"] += 1
-            elif code_only(text) in code:
+            elif code_match(text):
                 counts["COSMETIC"] += 1
                 report["COSMETIC"].append(rel)
             else:
@@ -119,6 +136,7 @@ def main():
     print("ScriptsData.json 中的 lua payload = %d 个；lua/ 目录文件 = %d 个" % (
         len(payloads), total))
     print("OK 逐字/去注释一致        = %d" % counts["OK"])
+    print("SPLIT --@节名 分节同步     = %d" % counts["SPLIT"])
     print("CONCAT 分片拼接同步        = %d  (PureDraw/**)" % counts["CONCAT"])
     print("LEGACY 标注旧版保留        = %d" % counts["LEGACY"])
     print("COSMETIC 仅注释/空白差异   = %d" % counts["COSMETIC"])
@@ -126,7 +144,7 @@ def main():
         print("   ~ %s" % rel)
     print("DRIFT 真漂移               = %d" % counts["DRIFT"])
     for rel in report["DRIFT"]:
-        print("   ! %s  (%d B)" % (rel, os.path.getsize(os.path.join(ROOT, rel))))
+        print("   ! %s" % rel)
     print("")
     if counts["DRIFT"]:
         print("结论：以上文件在 ScriptsData.json 中找不到对应逻辑，需要确认以哪一侧为准。")

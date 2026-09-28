@@ -216,7 +216,7 @@ Localization._text_sources = {
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+5%%血量、+3%%伤害、+2%%攻速", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +5%% health, +3%% damage and +2%% attack speed" },
+    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+2%%血量、+2%%伤害、+2%%攻速、+1%%射程", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +2%% health, +2%% damage, +2%% attack speed and +1%% range" },
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },
