@@ -204,6 +204,7 @@ HextechRune.NonRepeatableRuneIds = {
     gold_transcendent_evil = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
+    prismatic_infinite_ammo = true,
     gold_combustion_interest = true,
     prismatic_tower_defense_expert = true,
     prismatic_gambling_addict = true,
