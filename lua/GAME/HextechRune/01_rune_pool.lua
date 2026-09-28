@@ -141,7 +141,7 @@ HextechRune.RunePool = {
     { Id = "prismatic_five_thunder", Rarity = 1,
         NameKey = "hextech.rune.five_thunder.name",
         DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
-        Icon = "Button_CelestialPantaOrbitalStrike" },
+        RequiredFaction = 4, Icon = "Button_CelestialPantaOrbitalStrike" },
     -- 磁暴突袭符文：暂不启用（实测直接赋予该协议会有0cd问题），代码保留待后续开发。
     -- { Id = "prismatic_tesla_air_assault", Rarity = 1,
     --     NameKey = "hextech.rune.tesla_air_assault.name",

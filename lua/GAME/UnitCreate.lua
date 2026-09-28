@@ -1177,9 +1177,39 @@ end
 RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
 RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
--- 全模式底层规则：摇光在 T4 解锁前只保留当前回合部署的批次，避免
--- 单位池每回合刷新造成战场实例持续累积。T4 解锁后取消战场寿命；
--- 玩家实际生产摇光的独立 3 个限额不受影响。
+-- 全模式底层规则：AI 部署到战场的单位默认只存活 4 个回合，到期在回合开始时
+-- 清理，避免双方单位池每回合刷新造成战场实例无限累积。玩家自己生产、符文和
+-- 箱子赠送给 Player_N 的单位不受影响；建筑、标记、箱子类模板直接排除。
+g_BattleUnitLifetimeDefaultRounds = 4
+
+-- 覆盖默认寿命的模板（键为模板哈希）。奥林匹斯只存活 1 回合（原版特判），忒提斯与千鸟 2 回合。
+g_BattleUnitLifetimeRounds = {
+    [FastHash("AlliedGaintAirCraftCarrier_B")] = 1,
+    [FastHash("AlliedThetisBattleShip")] = 2,
+    [FastHash("JapanYumiAircraftCarrier")] = 2,
+}
+
+-- 不参与存活周期清理的非战斗模板。
+g_BattleUnitLifetimeExcludedTypes = {
+    [FastHash("CelestialLaserTower")] = true,
+    [FastHash("CelestialBattery")] = true,
+    [FastHash("CelestialSpaceReinforceMarker")] = true,
+    [FastHash("CelestialCenturionUpgradeObject")] = true,
+    [FastHash("AlliedSuperWeapon")] = true,
+    [FastHash("JapanGigaFortressShipEgg")] = true,
+    [FastHash("JapanKamikazeCommandTower")] = true,
+    [FastHash("JapanPointDefenseDrone")] = true,
+    [FastHash("LuckyUnitCrateSeed")] = true,
+    [FastHash("UnitCrateNew")] = true,
+    [FastHash("UnitCrate")] = true,
+}
+
+-- 摇光：T4 解锁前只保留当前回合部署的批次，解锁后回到默认寿命。
+g_YaoguangUnitTypeHashes = {
+    [FastHash("CelestialAdvanceAircraftTech4")] = true,
+    [FastHash("CelestialAdvanceAircraftTech4_Enhanced")] = true,
+}
+
 g_PlayerT4TechUnlocked = g_PlayerT4TechUnlocked
     or { false, false, false, false, false, false }
 
@@ -1202,32 +1232,69 @@ function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
     return false
 end
 
-function SetPreT4YaoguangLifetime(createdObjId, createdObjInstanceId, ownerPlayerName)
-    -- 玩家生产、箱子和符文赠送的临时 Player_N 实体都不处理；只有实际
-    -- 部署到双方战场 AI 的摇光才进入一回合寿命规则。
+-- 到期清除。引擎会回收对象 id，回调里用模板哈希和归属复核，
+-- 避免误杀复用了同一 id 的新单位。
+function ScheduleBattleUnitLifetimeKill(objectId, expectedInstanceId,
+    ownerPlayerName, rounds, preT4Rule)
+    if RoundLuaManager == nil or RoundLuaManager.DelayCallOnRoundBegin == nil then
+        return
+    end
+    RoundLuaManager.DelayCallOnRoundBegin(
+        function(id, expectedHash, sideOwnerName, isPreT4)
+            if not ObjectIsAlive(id) then
+                return
+            end
+            if ObjectGetInstanceId(id) ~= expectedHash then
+                return
+            end
+            if ObjectPlayerScriptName(id) ~= sideOwnerName then
+                return
+            end
+            -- 寿命到期前刚好解锁 T4 时，摇光转为默认寿命而不是被清除。
+            if isPreT4 and IsYaoguangBattleSideT4Unlocked(sideOwnerName) then
+                ScheduleBattleUnitLifetimeKill(id, expectedHash, sideOwnerName,
+                    g_BattleUnitLifetimeDefaultRounds, false)
+                return
+            end
+            ExecuteAction("NAMED_KILL", GetObjectById(id))
+        end, { objectId, expectedInstanceId, ownerPlayerName, preT4Rule }, rounds)
+end
+
+-- 只登记双方 AI 部署到战场的单位，玩家实际生产/被赠送的单位不处理。
+function RegisterBattleUnitLifetime(createdObjId, createdObjInstanceId, ownerPlayerName)
     if ownerPlayerName ~= "PlyrCreeps"
         and ownerPlayerName ~= "PlyrCivilian" then
         return
     end
-    if IsYaoguangBattleSideT4Unlocked(ownerPlayerName) then
+    if g_BattleUnitLifetimeExcludedTypes[createdObjInstanceId] then
         return
     end
-    RoundLuaManager.DelayCallOnRoundBegin(function(id, sideOwnerName)
-        if not ObjectIsAlive(id) then
-            return
+    if g_YaoguangUnitTypeHashes[createdObjInstanceId] then
+        -- 摇光在 T4 解锁前只保留当前回合部署的批次；玩家实际生产摇光的
+        -- 独立 3 个限额不受影响。
+        if IsYaoguangBattleSideT4Unlocked(ownerPlayerName) then
+            ScheduleBattleUnitLifetimeKill(createdObjId, createdObjInstanceId,
+                ownerPlayerName, g_BattleUnitLifetimeDefaultRounds, false)
+        else
+            ScheduleBattleUnitLifetimeKill(createdObjId, createdObjInstanceId,
+                ownerPlayerName, 1, true)
         end
-        -- 若这一个回合间隔内刚好解锁 T4，旧的延迟任务也转为永久保留。
-        if IsYaoguangBattleSideT4Unlocked(sideOwnerName) then
-            return
-        end
-        ExecuteAction("NAMED_KILL", GetObjectById(id))
-    end, { createdObjId, ownerPlayerName }, 1)
+        return
+    end
+    local rounds = g_BattleUnitLifetimeRounds[createdObjInstanceId]
+    if rounds == nil then
+        rounds = g_BattleUnitLifetimeDefaultRounds
+    end
+    ScheduleBattleUnitLifetimeKill(createdObjId, createdObjInstanceId,
+        ownerPlayerName, rounds, false)
 end
 
-RegisterUnitCreateCallback("CelestialAdvanceAircraftTech4", SetPreT4YaoguangLifetime)
-RegisterUnitCreateCallback("CelestialAdvanceAircraftTech4_Enhanced", SetPreT4YaoguangLifetime)
+-- 强化形态也能触发创建事件；普通形态已由 UNITLIST 统一注册。
+exObjectRegisterCreateEvent("CelestialAdvanceAircraftTech4_Enhanced")
 
 function onUnitCreateEvent(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- 存活周期是全模式底层规则，任何已注册模板的出生都要过一遍。
+    RegisterBattleUnitLifetime(createdObjId, createdObjInstanceId, ownerPlayerName)
     local registered = g_UnitCreateEventFunc[createdObjInstanceId]
     if type(registered) == "function" then
         registered(createdObjId, createdObjInstanceId, ownerPlayerName)

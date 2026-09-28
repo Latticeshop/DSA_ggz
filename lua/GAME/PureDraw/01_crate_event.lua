@@ -1,7 +1,6 @@
 -- PureDraw: 工程师与箱子单位事件注册
 --   - 四阵营工程师统一加速（抽卡工程师）
 --   - 箱子里开出的要塞计入要塞核心计数
---   - 箱子航母/战列舰存活时间、龙船禁止攻击
 
 -- 启用箱子模式：确保箱子技能可用，每个玩家送一个迅雷
 -- 目前由 GiveFreeStructure__2 启用
@@ -92,28 +91,4 @@ function CountAsFortressShipEgg(createdObjId, createdObjInstanceId, ownerPlayerN
 end
 g_UnitCreateEventFunc[FastHash("JapanFortressShip")] = CountAsFortressShipEgg
 g_UnitCreateEventFunc[FastHash("JapanGigaFortress_Land")] = CountAsFortressShipEgg
-
--- 箱子里开出来的航母 / 战列舰有存活时间
-exObjectRegisterCreateEvent("AlliedGaintAirCraftCarrier_B")
-exObjectRegisterCreateEvent("AlliedThetisBattleShip")
-exObjectRegisterCreateEvent("JapanYumiAircraftCarrier")
-function SetCrateShipLifetime(createdObjId, createdObjInstanceId, ownerPlayerName)
-    if ownerPlayerName ~= "PlyrCreeps"
-        and ownerPlayerName ~= "PlyrCivilian" then
-        return
-    end
-    local lifetime = 2
-    if createdObjInstanceId == FastHash("AlliedGaintAirCraftCarrier_B") then
-        lifetime = 1
-    end
-    RoundLuaManager.DelayCallOnRoundBegin(function(id)
-        if not ObjectIsAlive(id) then
-            return
-        end
-        ExecuteAction("NAMED_KILL", GetObjectById(id))
-    end, { createdObjId }, lifetime)
-end
-g_UnitCreateEventFunc[FastHash("AlliedGaintAirCraftCarrier_B")] = SetCrateShipLifetime
-g_UnitCreateEventFunc[FastHash("AlliedThetisBattleShip")] = SetCrateShipLifetime
-g_UnitCreateEventFunc[FastHash("JapanYumiAircraftCarrier")] = SetCrateShipLifetime
 

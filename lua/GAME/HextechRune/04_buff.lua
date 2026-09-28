@@ -1074,9 +1074,13 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     return true
 end
 
--- 诸神黄昏：血量高于最大血量一半时压到一半（写入取整）。不足一半的单位不动。
--- 实测 exObjectSetHealth 对已出场单位无效（血量保持满），因此写入后读回校验，
--- 没落地就改用脚本伤害扣掉差额。每回合重新调用，差额会被逐步补齐。
+-- 诸神黄昏：当前血量高于最大值一半时压到一半（取整，保底 1）。不足一半的单位不动。
+-- 主路径用 UNIT_SET_HEALTH 单目标直写当前血量：UNIT_* 动作可以吃
+-- SET_UNIT_REFERENCE 建的引用（先例 attackT2_0.lua 的 UNIT_SET_TEAM，
+-- unlockT4Ship.lua 用它给新建单位补血）。直写没把血压下来时退回两步写入：
+-- 先把上限和当前血量一起压到一半，再只还原上限；上限没还原或当前血量仍高于
+-- 一半时，用脚本伤害按差额补扣。每步都读回校验；exObjectSetHealth 实测改的是
+-- 上限、不能用来压血，已弃用。每回合重新调用，没补齐的差额会继续收敛。
 function HextechRune:ClampRagnarokUnitHealth(objectId)
     if not ObjectIsAlive(objectId) then
         return
@@ -1093,16 +1097,29 @@ function HextechRune:ClampRagnarokUnitHealth(objectId)
     if currentHealth == nil or currentHealth <= halfHealth then
         return
     end
-    if exObjectSetHealth ~= nil then
-        exObjectSetHealth(objectId, halfHealth)
-        local afterSet = exObjectGetCurrentHealth(objectId)
-        if afterSet ~= nil and afterSet <= halfHealth then
-            return
-        end
-    end
     local unit = GetObjectById(objectId)
-    if unit ~= nil and ObjectIsAlive(unit) then
-        ExecuteAction("NAMED_DAMAGE", unit, currentHealth - halfHealth)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return
+    end
+    local reference = "hextech_ragnarok_" .. objectId
+    ExecuteAction("SET_UNIT_REFERENCE", reference, unit)
+    ExecuteAction("UNIT_SET_HEALTH", reference, halfHealth)
+    local afterHealth = exObjectGetCurrentHealth(objectId)
+    if afterHealth ~= nil and afterHealth <= halfHealth
+        and exObjectGetMaxHealth(objectId) == maxHealth then
+        return
+    end
+    ExecuteAction("NAMED_SET_MAX_HEALTH", reference, halfHealth, "TRUE")
+    ExecuteAction("NAMED_SET_MAX_HEALTH", reference, maxHealth, "FALSE")
+    local afterMax = exObjectGetMaxHealth(objectId)
+    afterHealth = exObjectGetCurrentHealth(objectId)
+    if afterMax ~= maxHealth then
+        -- 上限没还原就强行写回原值；这会把当前血量一起拉满，随后按差额扣掉。
+        ExecuteAction("NAMED_SET_MAX_HEALTH", reference, maxHealth, "TRUE")
+        afterHealth = exObjectGetCurrentHealth(objectId)
+    end
+    if afterHealth ~= nil and afterHealth > halfHealth then
+        ExecuteAction("NAMED_DAMAGE", unit, afterHealth - halfHealth)
     end
 end
 
