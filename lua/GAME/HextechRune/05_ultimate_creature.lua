@@ -11,10 +11,11 @@ HextechRune.UltimateCreatureTierPercent = { 5, 3, 3, 5 }
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 
--- 阶级判定的权威来源分两段：
---   1. 玩家可生产的单位直接取抽卡池 g_PureDrawBuildableUnitPool 的下标（含生产别名形态）；
---   2. 下面这张表收录《完整单位表》里不可生产、但会出现在战场或玩家单位池中的模板。
--- 只有两段都查不到的单位（新增兵种、活动形态）才继续用模板名和回收价兜底。
+-- 阶级判定的权威来源分三段（外加兜底）：
+--   1. 形态覆盖表 ProductionFormTierOverride：不进抽卡池、阶级与来源单位不同的生产别名形态；
+--   2. 玩家可生产的单位直接取抽卡池 g_PureDrawBuildableUnitPool 的下标（含生产别名形态）；
+--   3. 下面这张表收录《完整单位表》里不可生产、但会出现在战场或玩家单位池中的模板。
+-- 三段都查不到的单位（新增兵种、活动形态）才继续用模板名和回收价兜底。
 -- 表里的 5 表示《完整单位表》的 T5，取值时按 T4 结算：加成表只有 T1~T4 四档。
 HextechRune.NonProductionUnitTier = {
     -- T1：增援步兵、功能与空投形态
@@ -97,6 +98,12 @@ HextechRune.NonProductionUnitTier = {
     JapanYumiAircraftCarrier = 5,          -- 千鸟特攻母舰
 }
 
+-- 生产别名形态默认继承来源单位的阶级，重炮纤夫按策划表比来源高一级，
+-- 又不进抽卡池（进池就会被空投抽中），所以在这里覆盖，优先级高于抽卡池。
+HextechRune.ProductionFormTierOverride = {
+    SovietTransportAircraft_HeavyCannon = 4, -- 重炮纤夫（纤夫的武装形态，不可生产）
+}
+
 -- 查回收价：先查阵营回收表，再查箱子模板表。
 function HextechRune:GetUltimateCreatureRecycleMoney(unitType)
     if g_RecycleBtnsMapByFaction ~= nil then
@@ -134,6 +141,14 @@ end
 
 -- 究极生物与以战养战共用这一个判定入口，优先级见 NonProductionUnitTier 上方的说明。
 function HextechRune:GetUltimateCreatureUnitTier(unitType)
+    local override = self.ProductionFormTierOverride[unitType]
+    if override ~= nil then
+        if override > 4 then
+            return 4
+        end
+        return override
+    end
+
     if g_PureDrawUnitInfoByHash ~= nil then
         local info = g_PureDrawUnitInfoByHash[FastHash(unitType)]
         if info ~= nil and info.Tier ~= nil then

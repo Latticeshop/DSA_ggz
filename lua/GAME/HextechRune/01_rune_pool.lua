@@ -126,11 +126,6 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.ragnarok.desc",
         Effect = "ragnarok", NeedsUnitType = true,
         Icon = "CelestialLightningTroop_Lv2" },
-    -- 升级重组器同样可重复获取；隐性特等奖概率见 10_recombobulator.lua。
-    { Id = "gold_upgrade_recombobulator", Rarity = 2,
-        NameKey = "hextech.rune.upgrade_recombobulator.name",
-        DescKey = "hextech.rune.upgrade_recombobulator.desc",
-        Effect = "recombobulator_upgrade", Icon = "JUA_Nanotech_Upgrade2" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -140,6 +135,11 @@ HextechRune.RunePool = {
     { Id = "prismatic_scope", Rarity = 1, NameKey = "hextech.rune.scope.prismatic.name",
         DescKey = "hextech.rune.scope.prismatic.desc", Effect = "range_prismatic", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    -- 可重复获取；稀有池与隐性特等奖概率见 10_recombobulator.lua。
+    { Id = "prismatic_upgrade_recombobulator", Rarity = 1,
+        NameKey = "hextech.rune.upgrade_recombobulator.name",
+        DescKey = "hextech.rune.upgrade_recombobulator.desc",
+        Effect = "recombobulator_upgrade", Icon = "JUA_Nanotech_Upgrade2" },
     { Id = "prismatic_broadband_jamming", Rarity = 1,
         NameKey = "hextech.rune.broadband_jamming.name",
         DescKey = "hextech.rune.broadband_jamming.desc", Effect = "broadband_jamming",

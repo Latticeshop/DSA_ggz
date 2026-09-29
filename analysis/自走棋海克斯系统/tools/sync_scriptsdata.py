@@ -61,8 +61,6 @@ TARGETS = [  # fmt: skip
     ('lua/LUABOX/moneysys/MONEYINI_3.lua', ['LIMITPOWERC = 4', 'function GetPlayerYaoguangCount', 'function LIMITYAOGUANG']),
     ('lua/cams/OpenMode.lua', ['if g_GameMode == 2 or g_EnableDeathModeEffect == 1 then', 'RecycleUnit_Setting()']),
     ('lua/text/Localization.lua', ['Localization = Localization or {}', 'Localization._text_sources']),
-    # 海克斯符文系统：由 add_hextech_scripts.py 首次插入 LUABOX/BUTTON 节点，
-    # 后续改动用这里的按需回填即可，避免整文件重排与转义噪声。
     ('lua/GAME/HextechRune/00_assets.lua', ['local HextechFrameGold = {', 'g_HextechFrameGoldId']),
     ('lua/GAME/HextechRune/03_text.lua', ['g_LocalizationExtraText = {', 'hextech.rune.shrink_ray.desc']),
     ('lua/GAME/HextechRune/01_rune_pool.lua', ['HextechRune.RunePool = {', 'PickBuyTwoGetOneTarget']),
@@ -73,14 +71,9 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/07_war_efficiency.lua', ['WarEfficiencyBonusPerDeath', 'GetSideWarEfficiencyCopies']),
     ('lua/GAME/HextechRune/08_time_rift.lua', ['TimeRiftInterval', 'FreezeSideByTimeRift']),
     ('lua/GAME/HextechRune/09_shrink_ray.lua', ['ShrinkRayBaseInterval', 'RescanShrinkRay']),
-    ('lua/GAME/HextechRune/10_recombobulator.lua', ['RecombobulatorHighTierChance', 'RollRecombobulatorTargetIndex']),
-    # 2026-09-28 全树审计（audit_lua_json.py）补登记的两处历史漂移：
-    # 该脚本节点内有两条重复的 lua 动作（游戏未启用 IsActive=false），两份一起覆盖，
-    # 否则旧的那份会绕过 IsTowerGuardian 保护。
+    ('lua/GAME/HextechRune/10_recombobulator.lua', ['RecombobulatorRareChance', 'RollRecombobulatorTargetIndex']),
     ('lua/GAME/EnvKillAllUnit.lua', ['unitallEnv = CreateObjectFilter',
         'killableNightinale = CreateObjectFilter'], 2),
-    # lua 侧已改用 UNIT_SET_MODELCONDITION_GENERIC/"HIDDEN" 隐藏单位，
-    # JSON 里仍是旧的 AttributeMod_ContainedTurretREALLYDAMAGED 方案。
     ('lua/LUABOX/HIDEINI_0.lua', ['FilterJapanLightTransportVehicle=CreateObjectFilter',
         'function HIDEOBJ ()']),
 ]

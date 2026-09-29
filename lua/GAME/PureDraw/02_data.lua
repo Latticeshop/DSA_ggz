@@ -83,7 +83,6 @@ g_PureDrawBuildableUnitPool = {
         { Type = "JapanAntiAirVehicleTech1", CustomDrawCount = 2 },
         -- T2 空军
         { Type = "AlliedSupportAircraft", CustomDrawCount = 2 },
-        { Type = "SovietTransportAircraft" },
         { Type = "CelestialAttackerAircraft", CustomDrawCount = 2 },
         -- T2 舰船
         { Type = "AlliedAntiNavyShipTech1", Sea = true },
@@ -117,6 +116,9 @@ g_PureDrawBuildableUnitPool = {
         { Type = "AlliedBomberAircraft" },
         { Type = "SovietInterceptorAircraft", CustomDrawCount = 2 },
         { Type = "SovietAntiGroundAttacker" },
+        -- 纤夫按策划表定 T3；其武装形态不可生产，阶级在符文侧单独覆盖
+        -- （见 GAME/HextechRune/05_ultimate_creature.lua 的 ProductionFormTierOverride）。
+        { Type = "SovietTransportAircraft" },
         { Type = "CelestialInterceptorAircraft", CustomDrawCount = 2 },
         { Type = "CelestialBomberAircraft" },
         -- T3 舰船
