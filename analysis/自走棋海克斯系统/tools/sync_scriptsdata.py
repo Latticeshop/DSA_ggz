@@ -68,7 +68,7 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/04_buff.lua', ['HextechRune.BattleUnitEffectDelay', 'ApplyFiveTigerGenerals']),
     ('lua/GAME/HextechRune/05_ultimate_creature.lua', ['ApplyUltimateCreatures', 'UltimateCreatureScale']),
     ('lua/GAME/HextechRune/06_ascension.lua', ['AscensionRateOfFirePerUnit', 'CreateAscensionModifier']),
-    ('lua/GAME/HextechRune/07_war_efficiency.lua', ['WarEfficiencyBonusPerDeath', 'GetSideWarEfficiencyCopies']),
+    ('lua/GAME/HextechRune/07_war_efficiency.lua', ['WarEfficiencyBonusPerDeath', 'ExpireWarEfficiencyBuffs']),
     ('lua/GAME/HextechRune/08_time_rift.lua', ['TimeRiftInterval', 'FreezeSideByTimeRift']),
     ('lua/GAME/HextechRune/09_shrink_ray.lua', ['ShrinkRayBaseInterval', 'RescanShrinkRay']),
     ('lua/GAME/HextechRune/10_recombobulator.lua', ['RecombobulatorRareChance', 'RollRecombobulatorTargetIndex']),

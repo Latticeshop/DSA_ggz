@@ -224,7 +224,7 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_dongfeng_express = true,
     gold_ascension = true,
     gold_ragnarok = true,
-    prismatic_war_efficiency = true,
+    -- 以战养战改为玩家独立且可重复获取：多份只叠加在自己的单位上，故不列入排除。
     prismatic_time_rift = true,
     prismatic_shrink_ray = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
@@ -266,13 +266,14 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
 end
 
 -- “买二送一”目标池筛选
--- 目标池直接取自回收表（g_RecycleBtnsMapByFaction），但回收表里混有两类
+-- 目标池直接取自回收表（g_RecycleBtnsMapByFaction），但回收表里混有三类
 -- 玩家永远无法自己产出、因而永远无法累计进度的目标，抽到等于一张空符文：
 --   1) 本版本 Corona 尚未实装的预留单位：JapanAntiAirVehicleTech3 /
 --      SovietPineElectronicRadarTruck / CelestialAntiAirVehicleTech3 /
 --      AlliedAirForceDispatchVehicle；
 --   2) 只能由其它符文转换出来的形态：先进火炮的 AlliedAC130GunshipAircraft、
---      青锋 _B 的形态别名 CelestialLongRangeMissileVehicle。
+--      青锋 _B 的形态别名 CelestialLongRangeMissileVehicle；
+--   3) 抽卡模式禁用生产的单位（见 BuildLockedTargetUnitTypes）：摇光、超级要塞核心。
 -- 因此用抽卡模式的显式生产池 g_PureDrawBuildableUnitPool 作为“可生产”白名单
 function HextechRune:BuildBuyTwoGetOneTargetFilter()
     if self.BuyTwoGetOneProducibleTypes ~= nil then
@@ -356,8 +357,47 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     return candidates[self:RandomIndex(getn(candidates))]
 end
 
+-- 抽卡模式禁用生产的单位（LockPlayerProduction：摇光、超级要塞核心）连同其生产别名。
+-- 玩家永远无法自行产出这些单位，圈中它们的“买二送一/登神”等于一张空符文，
+-- 因此白名单路径和退回路径都要排除。
+function HextechRune:BuildLockedTargetUnitTypes()
+    if self.LockedTargetUnitTypes ~= nil then
+        return self.LockedTargetUnitTypes
+    end
+    local locked = {}
+    if g_PureDrawBuildableUnitPool ~= nil then
+        for tier = 1, 4, 1 do
+            local tierPool = g_PureDrawBuildableUnitPool[tier]
+            if tierPool ~= nil then
+                for i = 1, getn(tierPool), 1 do
+                    local info = tierPool[i]
+                    if info.LockPlayerProduction then
+                        locked[info.Type] = true
+                        local aliases = nil
+                        if g_PureDrawProductionAliases ~= nil then
+                            aliases = g_PureDrawProductionAliases[info.Type]
+                        end
+                        if aliases ~= nil then
+                            for aliasIndex = 1, getn(aliases), 1 do
+                                locked[aliases[aliasIndex]] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    self.LockedTargetUnitTypes = locked
+    if g_PureDrawBuildableUnitPool == nil then
+        -- 生产池还没加载，这次的结果不作数，留给下次重新构建。
+        self.LockedTargetUnitTypes = nil
+    end
+    return locked
+end
+
 -- 汇总自身阵营四类回收表里“可计数 + 可生产”的单位，并按单位类型去重
 function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly, excluded)
+    local locked = self:BuildLockedTargetUnitTypes()
     local seen = {}
     local candidates = {}
     for category = 1, 4, 1 do
@@ -371,7 +411,8 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
                     local allowed = producible == nil
                         or (producible[countType] == true and aliasOnly[countType] == nil)
                     if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false
-                        and allowed and seen[countType] == nil
+                        and allowed and locked[countType] == nil
+                        and seen[countType] == nil
                         and (excluded == nil or excluded[countType] == nil) then
                         seen[countType] = true
                         tinsert(candidates, {

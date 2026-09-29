@@ -247,9 +247,9 @@ end
 
 function HextechRune:RollGamblingAddictRarity()
     local roll = GetRandomNumber() * 100
-    if roll < 5 then
+    if roll < 10 then
         return 1
-    elseif roll < 35 then
+    elseif roll < 50 then
         return 2
     end
     return 3
@@ -1152,7 +1152,7 @@ function HextechRune:IsPersistentBattleRune(rune)
         or rune.Effect == "range_gold" or rune.Effect == "range_prismatic"
         or rune.Effect == "astral_body" or rune.Effect == "transcendent_evil"
         or rune.Effect == "infinite_ammo" or rune.Effect == "goliath"
-        or rune.Effect == "ragnarok"
+        or rune.Effect == "ragnarok" or rune.Effect == "war_efficiency"
 end
 
 -- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
@@ -1653,6 +1653,7 @@ function HextechRune:FinalizeBattleUnitAssignments(assignments)
         local hasEffect = assignment.UltimateCreatureGranted
             or assignment.FiveTigerGranted
             or assignment.AscensionGranted
+            or assignment.WarEfficiencyGranted
         if not hasEffect then
             for effectInstanceId, applied in assignment.AppliedRunes do
                 if applied then
@@ -1683,6 +1684,10 @@ end
 function HextechRune:ApplyRoundEffects(round)
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
+    -- 登神：与以战养战同一时机播报各自的累计加成。
+    for ascensionPlayerIndex = 1, 6, 1 do
+        self:BroadcastAscension(ascensionPlayerIndex)
+    end
     -- 诸神黄昏：回合开始时把被治疗抬回一半以上的单位重新压回一半。
     self:ApplyAllRagnarokHealthClamps()
     -- 缩小射线：到点的阵营让对手全体单位缩小一回合。

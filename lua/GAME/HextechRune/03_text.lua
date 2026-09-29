@@ -97,7 +97,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.combustion_interest.name"] = { zh = "炽燃利息", en = "Combustion Interest" },
     ["hextech.rune.combustion_interest.desc"] = { zh = "敌方每个死亡单位令你获得 %d 资金。", en = "Gain %d credits whenever an enemy unit dies." },
     ["hextech.rune.war_efficiency.name"] = { zh = "以战养战", en = "War foraging" },
-    ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位都会为下回合的己方全体%s单位提供增益！每一个T1/T2/T3/T4分别提供1%%的血量/伤害/攻速/射程。", en = "Every enemy unit empowers all your %s units next round! Each T1/T2/T3/T4 grants 1%% health/damage/attack speed/range." },
+    ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位死亡都会为下回合 %s 单位提供增益！每一个T1/T2/T3/T4单位分别提供1%%的血量/伤害/攻速/射程。", en = "Every enemy unit death empowers your %s units next round! Each T1/T2/T3/T4 unit grants 1%% health/damage/attack speed/range." },
     ["hextech.rune.war_efficiency.broadcast"] = { zh = "本回合以战养战（%s）加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "This round's War foraging (%s) bonus: %d health%%, %d damage%%, %d attack speed%%, %d range%%" },
     ["hextech.rune.time_rift.name"] = { zh = "时间裂隙", en = "Time Rift" },
     ["hextech.rune.time_rift.desc"] = { zh = "敌方全体单位和建筑每 29 秒获得 3 秒时停。", en = "All enemy units and structures are time-stopped for 3 seconds every 29 seconds." },
@@ -118,7 +118,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+2%%血量、+2%%伤害、+2%%攻速、+1%%射程", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +2%% health, +2%% damage, +2%% attack speed and +1%% range" },
+    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+5%%血量、+3%%伤害、+2%%攻速、+1%%射程", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +5%% health, +3%% damage, +2%% attack speed and +1%% range" },
+    ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
     ["hextech.rune.banzai_charge.name"] = { zh = "万岁冲锋", en = "Banzai Charge" },

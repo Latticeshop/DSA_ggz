@@ -28,6 +28,10 @@ HextechRune.RarityFrameImageIds = {
 
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
+-- 开发测试：第 1 回合固定显示指定的三张符文。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestTriggered = false
+
 -- 正式事件已触发的回合（防止重复触发）
 HextechRune.FormalTriggered = {}
 
@@ -70,9 +74,13 @@ HextechRune.OblivionHintY = 104
 HextechRune.OblivionHintFontSize = 16
 
 -- ===== 海克斯面板（按钮 5 展开）布局参数 =====
--- 横六筒造型：上三玩家（天使 4/5/6）名字 + 符文，下三玩家（恶魔 1/2/3）符文 + 名字
--- 第一行：上三玩家名；第二行：上三玩家符文；第三行：下三玩家符文；第四行：下三玩家名
+-- 横六筒造型：上排三名玩家名字 + 符文，下排三名玩家符文 + 名字
+-- 第一行：上排玩家名；第二行：上排符文；第三行：下排符文；第四行：下排玩家名
 HextechRune.PanelCenterX = 563
+-- 面板两行的成员固定按阵营侧分：上排 = 玩家 4~6（PlyrCreeps），下排 = 玩家 1~3（PlyrCivilian）。
+-- 每行内部的左右顺序不写死，由 GetPanelSeatRows 按各人出生点的真实 X 排，
+-- 换地图或改站位都不用改代码（玩家编号↔地图站位在仓库里查不到，只能实测）。
+HextechRune.PanelSeatRowGroups = { { 4, 5, 6 }, { 1, 2, 3 } }
 -- 标题固定居中于屏幕中央（整体左移后标题保持原位）
 HextechRune.PanelTitleCenterX = 683
 -- 列中心 x：三列（上左/上中/上右 与 下左/下中/下右 对齐）
@@ -274,18 +282,18 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
 end
 
 -- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
--- 第 3 回合（第一次）= 彩 5% / 金 40% / 银 55%；第 10/18 回合 = 彩 10% / 金 45% / 银 45%；
+-- 第 3 回合（第一次）= 彩 10% / 金 40% / 银 50%；第 10/18 回合 = 彩 15% / 金 42% / 银 43%；
 -- 可选的第 27 回合单独使用彩 30% / 金 50% / 银 20%。
 function HextechRune:RollFieldRarity(round)
     local weightMap
     if round == self.FormalRounds[4] then
         weightMap = { [1] = 30, [2] = 50, [3] = 20 }
     elseif round <= self.FormalRounds[1] then
-        -- 第一次正式事件：彩 5 / 金 40 / 银 55
-        weightMap = { [1] = 5, [2] = 40, [3] = 55 }
+        -- 第一次正式事件：彩 10 / 金 40 / 银 50
+        weightMap = { [1] = 10, [2] = 40, [3] = 50 }
     else
-        -- 后续：彩 10 / 金 45 / 银 45
-        weightMap = { [1] = 10, [2] = 45, [3] = 45 }
+        -- 后续：彩 15 / 金 42 / 银 43
+        weightMap = { [1] = 15, [2] = 42, [3] = 43 }
     end
     local totalWeight = weightMap[1] + weightMap[2] + weightMap[3]
     local roll = GetRandomNumber() * totalWeight
@@ -656,6 +664,63 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
+function HextechRune:ShowOpeningTestEvent()
+    local testRuneIds = {
+        "gold_ascension",
+        "prismatic_war_efficiency",
+        "prismatic_upgrade_recombobulator",
+    }
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, 3, 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = nil
+                if template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CopyRuneForCandidate(template, unitType)
+                    if candidate ~= nil and (candidate.Effect == "buy_two_get_one"
+                        or candidate.Effect == "ascension") then
+                        -- “买二送一/登神”的目标在正式事件里由 CreateRuneCandidateForPlayer
+                        -- 随机固定；测试事件若直接复制模板，目标为空，点选后毫无效果。
+                        -- 因此这类符文改走正式路径，保持测试与正式行为一致。
+                        candidate = self:CreateRuneCandidateForPlayer(playerIndex,
+                            template, unitType)
+                    end
+                end
+                if candidate ~= nil then
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) == 3 then
+                self.PlayerOptions[playerIndex] = options
+                self.PlayerRerollUsed[playerIndex] = false
+                for i = 1, 3, 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
+end
+
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     local options = self.PlayerOptions[playerIndex]
@@ -698,8 +763,7 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
 end
 
 -- ===== 海克斯面板（按钮 5 展开）=====
--- 面板显示上三玩家（天使 4/5/6）与下三玩家（恶魔 1/2/3）的海克斯符文。
--- 面板内容直接读取每名玩家真实拥有的符文。
+-- 面板按 GetPanelSeatRows 的座位表展示六名玩家真实拥有的海克斯符文。
 
 -- 计算某玩家面板符文按钮 index（slot 1..PanelMaxRuneCount）
 -- 注意：每玩家必须预留 PanelMaxRuneCount（5）个 index，否则第 5 个符文会与
@@ -740,6 +804,53 @@ function HextechRune:IsPlayerAlive(playerIndex)
     return structureCount > 0
 end
 
+-- 按出生点 `Player_N_Start` 的真实 X 把一行玩家从左到右排好（原地排序）。
+-- Lua 4.0 没有 sort，一行只有三个元素，直接插入排序；取不到坐标返回 nil。
+function HextechRune:SortPanelSeatRowByHomeX(indexes)
+    local positions = {}
+    for i = 1, getn(indexes), 1 do
+        local pos = exWaypointGetPos(format("Player_%d_Start", indexes[i]))
+        if pos == nil then
+            return nil
+        end
+        positions[i] = pos[1]
+    end
+    for i = 2, getn(indexes), 1 do
+        local playerIndex = indexes[i]
+        local playerX = positions[i]
+        local j = i - 1
+        while j >= 1 and positions[j] > playerX do
+            indexes[j + 1] = indexes[j]
+            positions[j + 1] = positions[j]
+            j = j - 1
+        end
+        indexes[j + 1] = playerIndex
+        positions[j + 1] = playerX
+    end
+    return indexes
+end
+
+-- 座位表：行成员按阵营侧，行内左右顺序按出生点 X 现算（地图点位是静态的，结果只算一次）。
+-- 拿不到坐标时退回 PanelSeatRowGroups 的默认顺序，保证面板一定打得开。
+function HextechRune:GetPanelSeatRows()
+    if self.PanelSeatRows ~= nil then
+        return self.PanelSeatRows
+    end
+    local rows = {}
+    for row = 1, getn(self.PanelSeatRowGroups), 1 do
+        local group = {}
+        for col = 1, getn(self.PanelSeatRowGroups[row]), 1 do
+            group[col] = self.PanelSeatRowGroups[row][col]
+        end
+        if self:SortPanelSeatRowByHomeX(group) == nil then
+            return self.PanelSeatRowGroups
+        end
+        rows[row] = group
+    end
+    self.PanelSeatRows = rows
+    return rows
+end
+
 -- 显示面板（对单个玩家），内容为六名玩家真实拥有的符文。
 function HextechRune:ShowPanel(playerIndex)
     local playerName = "Player_" .. playerIndex
@@ -771,22 +882,20 @@ function HextechRune:ShowPanel(playerIndex)
         AlignX = "left",
         AlignY = "top",
     })
-    -- 6 个玩家：上三 = 4,5,6（天使，名字行1 符文行2）；下三 = 1,2,3（恶魔，符文行3 名字行4）
-    -- 列顺序：列1=左，列2=中，列3=右。上三玩家按 4,5,6 对应列1,2,3；下三玩家按 1,2,3 对应列1,2,3
+    -- 六名玩家按座位表排布（行成员按阵营侧、行内按出生点 X）：上排名字行1 符文行2，下排符文行3 名字行4。
+    local seatRows = self:GetPanelSeatRows()
     for col = 1, 3, 1 do
-        -- 上三玩家（天使）：玩家 3 + col → 4,5,6
-        local angelIndex = 3 + col
         local colX = self.PanelCenterX + (col - 2) * self.PanelColumnGap
-        -- 名字行1（上三玩家名）
-        self:CreatePanelNameText(playerIndex, angelIndex, colX, self.PanelRowY[1])
-        -- 符文行2（上三玩家符文）
-        self:CreatePanelRuneRow(playerIndex, angelIndex, colX, self.PanelRowY[2])
-        -- 下三玩家（恶魔）：玩家 col → 1,2,3
-        local devilIndex = col
-        -- 符文行3（下三玩家符文）
-        self:CreatePanelRuneRow(playerIndex, devilIndex, colX, self.PanelRowY[3])
-        -- 名字行4（下三玩家名）
-        self:CreatePanelNameText(playerIndex, devilIndex, colX, self.PanelRowY[4])
+        local topIndex = seatRows[1][col]
+        local bottomIndex = seatRows[2][col]
+        -- 名字行1（上排玩家名）
+        self:CreatePanelNameText(playerIndex, topIndex, colX, self.PanelRowY[1])
+        -- 符文行2（上排玩家符文）
+        self:CreatePanelRuneRow(playerIndex, topIndex, colX, self.PanelRowY[2])
+        -- 符文行3（下排玩家符文）
+        self:CreatePanelRuneRow(playerIndex, bottomIndex, colX, self.PanelRowY[3])
+        -- 名字行4（下排玩家名）
+        self:CreatePanelNameText(playerIndex, bottomIndex, colX, self.PanelRowY[4])
     end
     self.PanelVisible[playerIndex] = true
 end
@@ -989,6 +1098,12 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
+    -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
+        self.OpeningTestTriggered = true
+        self:ShowOpeningTestEvent()
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

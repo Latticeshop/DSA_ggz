@@ -4,9 +4,9 @@
 HextechRune = HextechRune or {}
 
 -- 每转化 1 个单位提供的乘区加成。
--- 本地化 hextech.rune.ascension.desc 里写死了 2%%/2%%/2%%/1%%，改数值时同步改文案。
-HextechRune.AscensionHealthPerUnit = 0.02
-HextechRune.AscensionDamagePerUnit = 0.02
+-- 本地化 hextech.rune.ascension.desc 与 .broadcast 里写死了数值，改这里要同步改文案。
+HextechRune.AscensionHealthPerUnit = 0.05
+HextechRune.AscensionDamagePerUnit = 0.03
 HextechRune.AscensionRateOfFirePerUnit = 0.02
 -- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
 HextechRune.AscensionRangePerUnit = 0.01
@@ -35,6 +35,22 @@ function HextechRune:AddAscensionStacks(playerIndex, count)
         return
     end
     self.AscensionStacks[playerIndex] = self:GetAscensionStacks(playerIndex) + count
+end
+
+-- 每回合播报当前层数换算出的加成，时机与以战养战一致。
+function HextechRune:BroadcastAscension(playerIndex)
+    local rune = self:GetAscensionRune(playerIndex)
+    local stacks = self:GetAscensionStacks(playerIndex)
+    if rune == nil or stacks <= 0 then
+        return
+    end
+    local text = Localization.get("hextech.rune.ascension.broadcast",
+        rune.TargetUnitName or rune.TargetUnitType or "?",
+        floor(stacks * self.AscensionHealthPerUnit * 100),
+        floor(stacks * self.AscensionDamagePerUnit * 100),
+        floor(stacks * self.AscensionRateOfFirePerUnit * 100),
+        floor(stacks * self.AscensionRangePerUnit * 100))
+    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
 -- 目标单位在回收表里的配置项。超级要塞等使用 CountType 独立计数，需要一并匹配。
