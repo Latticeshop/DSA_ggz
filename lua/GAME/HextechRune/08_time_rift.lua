@@ -5,23 +5,26 @@ HextechRune = HextechRune or {}
 HextechRune.TimeRiftRuneId = "prismatic_time_rift"
 -- 15 帧 = 1 秒：29 秒 = 435 帧，3 秒 = 45 帧。
 HextechRune.TimeRiftInterval = 435
-HextechRune.TimeRiftDuration = 45
+-- 基础时停 45 帧（3 秒）；同阵营每多一份增加基础时长的一半，
+-- 22.5 帧向上取 23 帧（与神圣干预同一口径），1/2/3 份 = 45/68/91 帧。
+HextechRune.TimeRiftBaseDuration = 45
+HextechRune.TimeRiftExtraDurationPerCopy = 23
 HextechRune.TimeRiftSchedulerId = HextechRune.TimeRiftSchedulerId or nil
 HextechRune.TimeRiftRefPrefix = "HextechTimeRift_"
 HextechRune.TimeRiftSound = "ALL_Chronorift_OnOffMS"
 
-function HextechRune:SetTimeRiftFrozen(unit, frozen, refPrefix)
+function HextechRune:SetTimeRiftFrozen(unit, frozen, refPrefix, duration)
     local referenceName = refPrefix .. tostring(ObjectGetId(unit))
     if frozen then
         g_SetTimeStopFrozen(unit, referenceName, "rift", true,
-            self.TimeRiftDuration, self.TimeRiftDuration)
+            duration, duration)
     else
         g_SetTimeStopFrozen(unit, referenceName, "rift", false, 0, 0)
     end
 end
 
--- 冻结阵营 sideIndex 的全部单位和建筑，TimeRiftDuration 帧后解除。
-function HextechRune:FreezeSideByTimeRift(sideIndex)
+-- 冻结阵营 sideIndex 的全部单位和建筑，duration 帧后解除。
+function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
     if P == nil or P[sideIndex] == nil then
         return
     end
@@ -34,30 +37,57 @@ function HextechRune:FreezeSideByTimeRift(sideIndex)
     local refPrefix = self.TimeRiftRefPrefix .. tostring(sideIndex) .. "_"
     for i = 1, count, 1 do
         if ObjectIsAlive(objects[i]) then
-            self:SetTimeRiftFrozen(objects[i], true, refPrefix)
+            self:SetTimeRiftFrozen(objects[i], true, refPrefix, duration)
             tinsert(frozenIds, ObjectGetId(objects[i]))
         end
     end
     ExecuteAction("PLAY_SOUND_EFFECT", self.TimeRiftSound)
     -- 只解除本次真正冻结过的对象；登记的是 id，阵亡的对象直接跳过，
     -- 活着的再按 id 现取句柄，避免缓存的旧句柄把 nil 喂进引擎。
-    SchedulerModule.delay_call(function(ids, prefix)
+    -- 本批之后队友又叠加出更长的时停时（租约更长），本次解除让位给那一份，
+    -- 否则短租约到点会按「解除」分支把 PARALYZED 连同长租约一起清掉。
+    local releaseFrame = GetFrame() + duration
+    SchedulerModule.delay_call(function(ids, prefix, endFrame)
         for i = 1, getn(ids), 1 do
             if ObjectIsAlive(ids[i]) then
-                HextechRune:SetTimeRiftFrozen(GetObjectById(ids[i]), false, prefix)
+                local holders = nil
+                if g_TimeStopHolders ~= nil then
+                    holders = g_TimeStopHolders[ids[i]]
+                end
+                if holders == nil or (holders.rift or 0) <= endFrame then
+                    HextechRune:SetTimeRiftFrozen(GetObjectById(ids[i]), false,
+                        prefix)
+                end
             end
         end
-    end, HextechRune.TimeRiftDuration, { frozenIds, refPrefix })
+    end, duration, { frozenIds, refPrefix, releaseFrame })
 end
 
 -- 持有方冻结的是自己的对手，双方都持有时互相冻结。
+-- 份数只增加时停时长（与神圣干预同一口径），29 秒周期不变。
+function HextechRune:ApplyTimeRiftToSide(sideIndex)
+    local copies = self:GetSideOwnedRuneCount(sideIndex, self.TimeRiftRuneId)
+    if copies <= 0 then
+        return
+    end
+    local duration = self.TimeRiftBaseDuration
+        + self.TimeRiftExtraDurationPerCopy * (copies - 1)
+    local targetSideIndex = 8
+    if sideIndex == 8 then
+        targetSideIndex = 7
+    end
+    self:FreezeSideByTimeRift(targetSideIndex, duration)
+end
+
 function HextechRune:ApplyTimeRiftPulse(sourceName)
-    if self:GetSideOwnedRuneCount(7, self.TimeRiftRuneId) > 0 then
-        self:FreezeSideByTimeRift(8)
-    end
-    if self:GetSideOwnedRuneCount(8, self.TimeRiftRuneId) > 0 then
-        self:FreezeSideByTimeRift(7)
-    end
+    self:ApplyTimeRiftToSide(7)
+    self:ApplyTimeRiftToSide(8)
+end
+
+-- 详情文案展示的时停时长：按“这份符文到手后”的本方份数换算（1/2/3 份 = 3/4.5/6 秒）。
+function HextechRune:GetTimeRiftDisplaySeconds(playerIndex)
+    return self:GetRuneBuffDurationText(self:GetRuneDisplayCopyCount(playerIndex,
+        self.TimeRiftRuneId))
 end
 
 function HextechRune:EnsureTimeRiftScheduler()

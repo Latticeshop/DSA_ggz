@@ -87,7 +87,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.broadband_jamming.name"] = { zh = "全频段阻塞干扰", en = "Broadband Jamming" },
     ["hextech.rune.broadband_jamming.desc"] = { zh = "敌方全体单位射程降低 25%%。", en = "All enemy units lose 25%% range." },
     ["hextech.rune.divine_intervention.name"] = { zh = "神圣干预", en = "Divine Intervention" },
-    ["hextech.rune.divine_intervention.desc"] = { zh = "己方全体单位和建筑每 30 秒获得 3 秒铁幕。", en = "All allied units and structures gain Iron Curtain for 3 seconds every 30 seconds." },
+    ["hextech.rune.divine_intervention.desc"] = { zh = "己方全体单位和建筑每 30 秒获得 %s 秒铁幕。", en = "All allied units and structures gain Iron Curtain for %s seconds every 30 seconds." },
     ["hextech.rune.five_thunder.name"] = { zh = "五雷天罚", en = "Five-Thunder Judgment" },
     ["hextech.rune.five_thunder.desc"] = { zh = "每 2 回合获得一次五雷天罚。", en = "Gain one Five-Thunder Judgment every 2 rounds." },
     ["hextech.rune.combustion_interest.name"] = { zh = "炽燃利息", en = "Combustion Interest" },
@@ -96,7 +96,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位死亡都会为下回合 %s 单位提供增益！每一个T1/T2/T3/T4单位分别提供1%%的血量/伤害/攻速/射程。", en = "Every enemy unit death empowers your %s units next round! Each T1/T2/T3/T4 unit grants 1%% health/damage/attack speed/range." },
     ["hextech.rune.war_efficiency.broadcast"] = { zh = "本回合以战养战（%s）加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "This round's War foraging (%s) bonus: %d health%%, %d damage%%, %d attack speed%%, %d range%%" },
     ["hextech.rune.time_rift.name"] = { zh = "时间裂隙", en = "Time Rift" },
-    ["hextech.rune.time_rift.desc"] = { zh = "敌方全体单位和建筑每 29 秒获得 3 秒时停。", en = "All enemy units and structures are time-stopped for 3 seconds every 29 seconds." },
+    ["hextech.rune.time_rift.desc"] = { zh = "敌方全体单位和建筑每 29 秒获得 %s 秒时停。", en = "All enemy units and structures are time-stopped for %s seconds every 29 seconds." },
     ["hextech.rune.tesla_air_assault.name"] = { zh = "磁暴突袭", en = "Tesla Air Assault" },
     ["hextech.rune.tesla_air_assault.desc"] = { zh = "获得磁暴突袭协议。", en = "Unlock the Tesla Air Assault protocol." },
     ["hextech.rune.tower_defense_expert.name"] = { zh = "塔防专家", en = "Tower Defense Expert" },
@@ -114,7 +114,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收并为其加成：+5%%血量、+3%%伤害、+2%%攻速、+1%%射程", en = "Only 1 %s is kept; every extra one is auto-recycled into bonuses: +5%% health, +3%% damage, +2%% attack speed and +1%% range" },
+    ["hextech.rune.ascension.desc"] = { zh = "%s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+15%%血量/+10%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 %s is kept; every extra one is auto-recycled into one random bonus: +15%% health / +10%% damage / +10%% attack speed / +10%% range." },
     ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。

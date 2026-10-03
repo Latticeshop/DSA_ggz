@@ -1089,11 +1089,35 @@ g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG")] = FarthestTargetChooser
 g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("SovietSPG")] = FarthestTargetChooserBorn
 
+-- V4 导弹发射车：出生（回合开始载具出兵）时按概率随机切到散射炮弹形态。
+-- 与超级要塞登场形态同一口径：形态只在出生时随机决定，不做周期性切换。
+-- lua 侧读不到 MIRV 当前形态，所以每台只在自己的出生帧掷一次，避免来回切换。
+g_SovietAntiStructureVehicleScatterShellChance = 0.5
+
+function SovietAntiStructureVehicleScatterShellBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    -- 只处理双方 AI 部署到战场的载具，玩家自己获得的单位不动。
+    if ownerPlayerName ~= "PlyrCreeps" and ownerPlayerName ~= "PlyrCivilian" then
+        return
+    end
+    if GetRandomNumber() >= g_SovietAntiStructureVehicleScatterShellChance then
+        return
+    end
+    -- 等技能组件初始化完成后切换；Command_ToggleMIRVSpecialPower = 切换到散射炮弹。
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id),
+                "Command_ToggleMIRVSpecialPower")
+        end
+    end, 1, {createdObjId})
+end
+
 -- 仅四类 T3 攻城单位叠加 坦克 > 步兵 > 建筑 的优先级。
 g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
-g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle")] =
+    { PrioritySiegeTargetChooserBorn, SovietAntiStructureVehicleScatterShellBorn }
+g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle_Enhanced")] =
+    { PrioritySiegeTargetChooserBorn, SovietAntiStructureVehicleScatterShellBorn }
 g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn

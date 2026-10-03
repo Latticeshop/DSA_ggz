@@ -1,10 +1,8 @@
--- 机制依据、失败记录、字段含义、实测结论：DSA_ggz/analysis/地图注释说明文档.md §1（改之前先读 §1.13 自检清单）。
--- lua 里的注释会原样进 ScriptsData.json 的脚本 payload，所以这里只留指路行，不写说明。
--- 硬约束：兵一律不删（本方战斗单位）；装车只走 g_PLSpawnGarrison；成败只由 g_PLSpawnHold 延迟复核。
+-- 机制依据/失败记录/字段含义/实测结论：analysis/地图注释说明文档.md §1（先读 §1.13 自检清单）。
+-- 说明一律写进文档 §1。
+-- 硬约束：兵不删；只走 g_PLSpawnGarrison；成败由巡收复核。
 
-g_PLSpawnDebug = 1
 g_PLSpawnLastRound = -1
-g_PLSpawnConfigLogged = 0
 
 g_PLSpawnCarsPerSide = 4
 g_PLSpawnHoldDelay = 30
@@ -12,10 +10,13 @@ g_PLSpawnHoldTries = 2
 g_PLSpawnNoEvac = 1
 g_PLSpawnRandScale = 1000000
 
--- 台账条目 { CarId, UnitId, Tag, Retry }：Lua 4 没有 pairs，只能数组 + 整表重建（文档 §1.8）
+-- 两个 AI 阵营的玩家脚本名（§1.15）
+g_PLSpawnSideNames = { [7] = "PlyrCivilian", [8] = "PlyrCreeps" }
+
+-- 台账条目 { CarId, UnitId, Tag, Retry }：只能数组 + 整表重建（§1.8）
 g_PLSpawnEntries = {}
 
--- 载员名单 = 白名单，不写进来的兵种就等于被过滤（剔除原因见文档 §1.6）
+-- 名单即白名单，不写即被过滤（§1.6）
 g_PLSpawnAllInf = {
     "AlliedCryoLegionnaire",
     "AlliedAntiInfantryInfantry",
@@ -23,7 +24,6 @@ g_PLSpawnAllInf = {
     "CelestialAntiInfantryInfantry",
     "CelestialAntiVehicleInfantry",
     "CelestialInfiltrationInfantry",
-    "AlliedRangerInfantry",
     "JapanAntiInfantryInfantry",
     "JapanAntiVehicleInfantry",
     "JapanArcherInfantry",
@@ -34,16 +34,16 @@ g_PLSpawnAllInf = {
     "AlliedAntiVehicleInfantry",
 }
 
--- 两型显示名都叫「联盟重型坦克」，所以日志靠 Tag 区分；牛蛙战车未配置（文档 §1.7）
+-- 两型显示名都叫「联盟重型坦克」，靠 Tag 区分（§1.7）
 g_PLSpawnCars = {
     { Template = "AlliedAntiAirVehicleTech1",     Capacity = 1, Inf = g_PLSpawnAllInf, Tag = "IFV" },
-    -- 要塞登场自带 4 个标枪兵，只补 1 个位置；装满 5 会把自带的挤出去反复抽搐（文档 §1.14）
+    -- 要塞自带 4 个标枪兵，只补 1 位（§1.14）
     { Template = "AlliedBattleFortress",          Capacity = 1, Inf = g_PLSpawnAllInf, Tag = "要塞" },
     { Template = "SovietAntiVehicleVehicleTech4", Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "联盟" },
     { Template = "Overlordtank",                  Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "重型" },
 }
 
--- 下车按钮名按兵种不同，不做查表，全表一起下（文档 §1.5）
+-- 下车按钮名按兵种不同，不做查表，全表一起下（§1.5）
 g_PLSpawnEvacButtons = {
     "Command_Evacuate",
     "Command_SovietBattleBunkerEvacuate",
@@ -53,12 +53,6 @@ g_PLSpawnEvacButtons = {
     "Command_DisguisedEvacuate",
     "Command_SpecialPowerEvacuateShipPassengers",
 }
-
-function g_PLSpawnLog(message)
-    if g_PLSpawnDebug == 1 then
-        _ALERT("PassengerLoadSpawn: " .. message)
-    end
-end
 
 function g_PLSpawnPassengerCount(car)
     local passengers, count = ObjectGetContainedPassengers(car)
@@ -110,7 +104,7 @@ function g_PLSpawnRandomIndex(count)
     if pick > g_PLSpawnRandScale then
         pick = g_PLSpawnRandScale
     end
-    -- Lua 4 没有 % 运算符，取模自己算
+    -- 无 % 运算符，取模自己算
     local index = pick - floor((pick - 1) / count) * count
     if index < 1 then
         index = 1
@@ -125,7 +119,7 @@ function g_PLSpawnInsideGarrison(child)
     if child == nil or not ObjectIsAlive(child) then
         return false
     end
-    -- Lua 里数字 0 是真值，所以只显式比成功值
+    -- 0 是真值，只显式比成功值
     local inside = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", child, "INSIDE_GARRISON")
     if inside == 1 or inside == true then
         return true
@@ -143,70 +137,52 @@ function g_PLSpawnTrackEntry(carId, unitId, tag)
     tinsert(g_PLSpawnEntries, { CarId = carId, UnitId = unitId, Tag = tag, Retry = 0 })
 end
 
+-- 明确跨阵营的车兵配对（§1.15）。
+function g_PLSpawnCrossPair(car, unit)
+    if ObjectPlayerScriptName == nil then
+        return false
+    end
+    local carName = ObjectPlayerScriptName(car)
+    local unitName = ObjectPlayerScriptName(unit)
+    if carName == nil or unitName == nil or carName == unitName then
+        return false
+    end
+    local mine = g_PLSpawnSideNames[7]
+    local theirs = g_PLSpawnSideNames[8]
+    return (carName == mine or carName == theirs)
+        and (unitName == mine or unitName == theirs)
+end
+
 function g_PLSpawnHold()
     local list = g_PLSpawnEntries
     g_PLSpawnEntries = {}
-    local insideCount = 0
-    local goneCount = 0
-    local reloadCount = 0
-    local dropCount = 0
-    local ifvCount = 0
-    local ifvInside = 0
-    local ifvPassengers = 0
 
     for index = 1, getn(list), 1 do
         local item = list[index]
         local car = GetObjectById(item.CarId)
         local unit = GetObjectById(item.UnitId)
-        local inside = false
-        if car == nil or not ObjectIsAlive(car) then
-            dropCount = dropCount + 1
-        elseif unit == nil or not ObjectIsAlive(unit) then
-            goneCount = goneCount + 1
-        elseif g_PLSpawnInsideGarrison(unit) then
-            inside = true
-            insideCount = insideCount + 1
-            item.Retry = 0
-            tinsert(g_PLSpawnEntries, item)
-        else
-            item.Retry = item.Retry + 1
-            if item.Retry > g_PLSpawnHoldTries then
-                dropCount = dropCount + 1
-            else
-                reloadCount = reloadCount + 1
-                g_PLSpawnGarrison(car, unit)
-                tinsert(g_PLSpawnEntries, item)
-            end
+        -- 引擎会复用 ID；配对跨了阵营就整条放手（兵不删）
+        if car ~= nil and unit ~= nil and g_PLSpawnCrossPair(car, unit) then
+            car = nil
         end
-
-        if item.Tag == "IFV" then
-            ifvCount = ifvCount + 1
-            if inside then
-                ifvInside = ifvInside + 1
-            end
-            if ifvPassengers == 0 and car ~= nil and ObjectIsAlive(car) then
-                local now = g_PLSpawnPassengerCount(car)
-                if now ~= nil then
-                    ifvPassengers = now
+        if car ~= nil and ObjectIsAlive(car) and unit ~= nil and ObjectIsAlive(unit) then
+            if g_PLSpawnInsideGarrison(unit) then
+                item.Retry = 0
+                tinsert(g_PLSpawnEntries, item)
+            else
+                item.Retry = item.Retry + 1
+                if item.Retry <= g_PLSpawnHoldTries then
+                    g_PLSpawnGarrison(car, unit)
+                    tinsert(g_PLSpawnEntries, item)
                 end
             end
         end
-    end
-
-    if insideCount + goneCount + reloadCount + dropCount == 0 then
-        return
-    end
-    g_PLSpawnLog("巡收 在=" .. insideCount .. " 没了=" .. goneCount
-        .. " 塞回=" .. reloadCount .. " 放=" .. dropCount)
-    if ifvCount > 0 then
-        g_PLSpawnLog("IFV 台账=" .. ifvCount .. " 在车=" .. ifvInside
-            .. " 车上=" .. ifvPassengers)
     end
 end
 
 function g_PLSpawnLoadCar(car, tag, slots, candidates, candidateCount)
     if candidates == nil or candidateCount == nil or candidateCount < 1 then
-        return 0
+        return
     end
     local loaded = 0
     local carId = ObjectGetId(car)
@@ -223,13 +199,78 @@ function g_PLSpawnLoadCar(car, tag, slots, candidates, candidateCount)
             local unitId = ObjectGetId(unit)
             if not g_PLSpawnInsideGarrison(unit) and not g_PLSpawnTrackedUnit(unitId) then
                 g_PLSpawnGarrison(car, unit)
-                -- 乐观占位：下发就算成了，成败交给 g_PLSpawnHold
+                -- 乐观占位：下发即占槽，成败交给巡收
                 loaded = loaded + 1
                 g_PLSpawnTrackEntry(carId, unitId, tag)
             end
         end
     end
-    return loaded
+end
+
+-- 对面阵营的玩家脚本名；不认识时返回 nil（此时不过滤）。
+function g_PLSpawnOtherSideName(sideIndex)
+    local name = g_PLSpawnSideNames[sideIndex]
+    if name == "PlyrCivilian" then
+        return "PlyrCreeps"
+    end
+    if name == "PlyrCreeps" then
+        return "PlyrCivilian"
+    end
+    return nil
+end
+
+-- 只剔掉明确属于对面的对象（§1.15）。
+function g_PLSpawnKeepOwnSide(objects, count, sideIndex)
+    if objects == nil or count == nil or count < 1 then
+        return objects, 0
+    end
+    local otherName = g_PLSpawnOtherSideName(sideIndex)
+    if otherName == nil or ObjectPlayerScriptName == nil then
+        return objects, count
+    end
+    local kept = {}
+    local keptCount = 0
+    for index = 1, count, 1 do
+        local obj = objects[index]
+        if obj ~= nil and ObjectPlayerScriptName(obj) ~= otherName then
+            keptCount = keptCount + 1
+            kept[keptCount] = obj
+        end
+    end
+    return kept, keptCount
+end
+
+-- 地编预制的 T3 塔守护者不是装车载具（§1.16）
+g_PLSpawnGuardCarNames = { "overlord7", "overlord8" }
+
+function g_PLSpawnIsGuardCar(car)
+    if GetObjectByScriptName == nil then
+        return false
+    end
+    local carId = ObjectGetId(car)
+    for index = 1, getn(g_PLSpawnGuardCarNames), 1 do
+        local guard = GetObjectByScriptName(g_PLSpawnGuardCarNames[index])
+        if guard ~= nil and ObjectGetId(guard) == carId then
+            return true
+        end
+    end
+    return false
+end
+
+function g_PLSpawnDropGuardCars(objects, count)
+    if objects == nil or count == nil or count < 1 then
+        return objects, 0
+    end
+    local kept = {}
+    local keptCount = 0
+    for index = 1, count, 1 do
+        local obj = objects[index]
+        if obj ~= nil and not g_PLSpawnIsGuardCar(obj) then
+            keptCount = keptCount + 1
+            kept[keptCount] = obj
+        end
+    end
+    return kept, keptCount
 end
 
 function g_PLSpawnCandidates(sideIndex, carEntry)
@@ -240,7 +281,8 @@ function g_PLSpawnCandidates(sideIndex, carEntry)
             IncludeThing = carEntry.Inf,
         })
     end
-    return ObjectFindObjects(P[sideIndex], nil, carEntry.InfFilter)
+    local units, count = ObjectFindObjects(P[sideIndex], nil, carEntry.InfFilter)
+    return g_PLSpawnKeepOwnSide(units, count, sideIndex)
 end
 
 function g_PLSpawnDisableEvac(car)
@@ -262,16 +304,16 @@ function g_PLSpawnFindCars(sideIndex, carEntry)
             IncludeThing = { carEntry.Template },
         })
     end
-    return ObjectFindObjects(P[sideIndex], nil, carEntry.Filter)
+    local cars, count = ObjectFindObjects(P[sideIndex], nil, carEntry.Filter)
+    cars, count = g_PLSpawnKeepOwnSide(cars, count, sideIndex)
+    return g_PLSpawnDropGuardCars(cars, count)
 end
 
 function g_PLSpawnFillType(sideIndex, carEntry)
-    local loaded = 0
     local filled = 0
-    local short = 0
     local cars, count = g_PLSpawnFindCars(sideIndex, carEntry)
     if cars == nil or count == nil then
-        return 0, 0, 0
+        return 0
     end
     for index = 1, count, 1 do
         if filled >= g_PLSpawnCarsPerSide then
@@ -283,52 +325,32 @@ function g_PLSpawnFillType(sideIndex, carEntry)
             if slots > 0 then
                 g_PLSpawnDisableEvac(car)
                 local candidates, candidateCount = g_PLSpawnCandidates(sideIndex, carEntry)
-                local made = g_PLSpawnLoadCar(car, carEntry.Tag, slots,
-                    candidates, candidateCount)
-                loaded = loaded + made
+                g_PLSpawnLoadCar(car, carEntry.Tag, slots, candidates, candidateCount)
                 filled = filled + 1
-                if made < slots then
-                    short = short + 1
-                end
             end
         end
     end
-    return loaded, filled, short
+    return filled
 end
 
-function g_PLSpawnSide(sideIndex, sideName)
+-- 按阵营不按座位：三名队友的场上单位同属 7/8
+function g_PLSpawnSide(sideIndex)
     if P == nil or P[sideIndex] == nil then
-        g_PLSpawnLog("P[" .. sideIndex .. "] 未就绪，跳过 " .. sideName)
-        return 0
+        return
     end
 
-    local total = 0
     local cars = 0
-    local short = 0
     for index = 1, getn(g_PLSpawnCars), 1 do
         if cars >= g_PLSpawnCarsPerSide then
             break
         end
-        local loaded, filled, notEnough = g_PLSpawnFillType(sideIndex, g_PLSpawnCars[index])
-        total = total + loaded
-        cars = cars + filled
-        short = short + notEnough
+        cars = cars + g_PLSpawnFillType(sideIndex, g_PLSpawnCars[index])
     end
-
-    g_PLSpawnLog(sideName .. " 下发 " .. total .. " 名 车=" .. cars .. " 缺兵=" .. short)
-    return total
 end
 
 function g_PLSpawnTry()
-    local totalA = g_PLSpawnSide(7, "PlyrCivilian")
-    local totalB = g_PLSpawnSide(8, "PlyrCreeps")
-    return totalA + totalB
-end
-
-function g_PLSpawnDumpConfig()
-    g_PLSpawnLog("配置 来源=自有兵 每阵营车数=" .. g_PLSpawnCarsPerSide
-        .. " 兵池=" .. getn(g_PLSpawnAllInf) .. " 车种=" .. getn(g_PLSpawnCars)
-        .. " 禁下车=" .. g_PLSpawnNoEvac)
+    g_PLSpawnSide(7)
+    g_PLSpawnSide(8)
 end
 
 function g_PLSpawnExecute(roundArg)
@@ -345,13 +367,7 @@ function g_PLSpawnExecute(roundArg)
     end
     g_PLSpawnLastRound = round
 
-    if g_PLSpawnConfigLogged ~= 1 then
-        g_PLSpawnConfigLogged = 1
-        g_PLSpawnDumpConfig()
-    end
-
-    local total = g_PLSpawnTry()
-    g_PLSpawnLog("回合 " .. round .. " 共下发 " .. total .. " 名")
+    g_PLSpawnTry()
 
     if SchedulerModule ~= nil and SchedulerModule.delay_call ~= nil then
         SchedulerModule.delay_call(g_PLSpawnHold, g_PLSpawnHoldDelay, {})

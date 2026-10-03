@@ -361,6 +361,12 @@ function HextechRune:ApplyDivineInterventionPulse(sourceName)
     self:ApplyDivineInterventionToSide(8, sourceName)
 end
 
+-- 详情文案展示的铁幕时长：按“这份符文到手后”的本方份数换算（1/2/3 份 = 3/4.5/6 秒）。
+function HextechRune:GetDivineInterventionDisplaySeconds(playerIndex)
+    return self:GetRuneBuffDurationText(self:GetRuneDisplayCopyCount(playerIndex,
+        "prismatic_divine_intervention"))
+end
+
 function HextechRune:EnsureDivineInterventionScheduler()
     if self.DivineInterventionSchedulerId ~= nil then
         return

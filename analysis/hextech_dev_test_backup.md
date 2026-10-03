@@ -5,7 +5,9 @@
 
 > **当前状态（2026-09-29 深夜，第四次删除，准备发版）**：本轮改动实测全部通过（面板座位改为**按出生点坐标自动排序**、买二送一/登神排除 `LockPlayerProduction`、登神 5/3/2/1 + 每回合播报、以战养战改玩家独立可重复、彩卡概率上调、赌怪概率改为首轮口径），第 1 节的开局三选一测试事件**已整段删除**：`lua/` 与 `ScriptsData.json` 里 `EnableOpeningRealTest` / `OpeningTestTriggered` / `ShowOpeningTestEvent` / `testRuneIds` 计数均为 0，`02_event.lua` payload 回落到 45729 B（余 19807 B）。需要再复测时按本节贴回，**改完记得重跑 sync**。
 >
-> 本轮实测用的组合：`{ "gold_ascension", "prismatic_war_efficiency", "prismatic_upgrade_recombobulator" }`（登神 / 以战养战 / 升级重组器；登神与买二送一同属“选目标单位”型，需要 §1 里那个 `buy_two_get_one` / `ascension` 专属分支）。上一轮（重组器第三次调整）用的是 `{ "gold_ragnarok", "silver_recombobulator", "prismatic_upgrade_recombobulator" }`，当时 `02_event.lua` 曾回落到 43861 B。
+> **2026-10-03 更新**：本节代码**目前又在 `lua/` 里并且已启用**（`HextechRune.EnableOpeningRealTest = true`、`OpeningTestTriggered = false`，见 `lua/GAME/HextechRune/02_event.lua` 顶部与 `OnRoundBegin`），当前组合为「登神 / 时间裂隙 / 升级重组器」，`02_event.lua` payload 48423 B（余 17113 B）。发版前仍按上文说明整段删除。
+>
+> 本轮实测用的组合：`{ "gold_ascension", "prismatic_time_rift", "prismatic_upgrade_recombobulator" }`（登神 / 时间裂隙 / 升级重组器，2026-10-03 起；上一轮为 登神 / 以战养战 / 升级重组器；登神与买二送一同属“选目标单位”型，需要 §1 里那个 `buy_two_get_one` / `ascension` 专属分支）。上一轮（重组器第三次调整）用的是 `{ "gold_ragnarok", "silver_recombobulator", "prismatic_upgrade_recombobulator" }`，当时 `02_event.lua` 曾回落到 43861 B。
 >
 > **还原时注意保留 `tools/sync_scriptsdata.py` 的 needle**：`02_event.lua` 的定位关键字是 `function HextechRune:ShowFormalEvent` + `function HextechRune:OnRoundBegin`，删测试代码不影响（两个函数都在）；`10_recombobulator` 的定位关键字现为 `RecombobulatorRareChance` + `RollRecombobulatorTargetIndex`（历史值 `RecombobulatorHighTierChance` → `RecombobulatorCarrierChance` 都已不存在）；`07_war_efficiency.lua` 的定位关键字因 2026-09-29 玩家独立化删掉了旧符号 `GetSideWarEfficiencyCopies`，已改为 `WarEfficiencyBonusPerDeath` + `ExpireWarEfficiencyBuffs`（needle 必须同时存在于 JSON 的旧内容与 lua 新内容里，否则 sync 报 found 0）。needle 未提交，`git restore .` 会一并还原掉。
 
@@ -28,9 +30,9 @@ HextechRune.OpeningTestTriggered = false
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "gold_ragnarok",
-        "silver_recombobulator",
-        "gold_upgrade_recombobulator",
+        "gold_ascension",
+        "prismatic_time_rift",
+        "prismatic_upgrade_recombobulator",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -94,7 +96,7 @@ end
     end
 ```
 
-**复测用的固定三选一**：改 `testRuneIds` 即可。买二送一用 `"gold_buy_two_get_one"`、登神用 `"gold_ascension"`（目标由 `CreateRuneCandidateForPlayer` 随机固定，悬浮详情会显示具体单位）；固若金汤用 `"gold_fortified"`。
+**复测用的固定三选一**：改 `testRuneIds` 即可。买二送一用 `"gold_buy_two_get_one"`、登神用 `"gold_ascension"`（目标由 `CreateRuneCandidateForPlayer` 随机固定，悬浮详情会显示具体单位）；固若金汤用 `"gold_fortified"`；时间裂隙用 `"prismatic_time_rift"`（无 `NeedsUnitType`，走 `CopyRuneForCandidate` 普通路径）。
 
 **注意**：`testRuneIds` 里出现两个 `gold_buy_two_get_one` 时，三次 `CreateRuneCandidateForPlayer` 是各自独立随机的，不去重（实测正常，两张卡会指向不同单位；若撞到同一单位属小概率）。
 
@@ -116,12 +118,19 @@ function HextechRune:AscensionLog(msg)
 end
 
 -- 当前层数对应的乘区数值，配合叠加日志确认 BUFF 数值是否在增长。
+-- 2026-10-03 登神改随机单项后：常量由 Ascension*PerUnit 改为 Ascension*PerStack，
+-- 四维次数分开记（AscensionBonusCounts[playerIndex]）。
 function HextechRune:GetAscensionBuffText(playerIndex)
     local stacks = self:GetAscensionStacks(playerIndex)
     return "层数" .. stacks
-        .. "，生命x" .. (1 + stacks * self.AscensionHealthPerUnit)
-        .. "，伤害x" .. (1 + stacks * self.AscensionDamagePerUnit)
-        .. "，攻速x" .. (1 + stacks * self.AscensionRateOfFirePerUnit)
+        .. "，生命x" .. (1 + self:GetAscensionBonusCount(playerIndex, "Health")
+            * self.AscensionHealthPerStack)
+        .. "，伤害x" .. (1 + self:GetAscensionBonusCount(playerIndex, "Damage")
+            * self.AscensionDamagePerStack)
+        .. "，攻速x" .. (1 + self:GetAscensionBonusCount(playerIndex, "RateOfFire")
+            * self.AscensionRateOfFirePerStack)
+        .. "，射程x" .. (1 + self:GetAscensionBonusCount(playerIndex, "Range")
+            * self.AscensionRangePerStack)
 end
 ```
 

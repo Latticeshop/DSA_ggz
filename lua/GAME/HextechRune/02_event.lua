@@ -660,7 +660,7 @@ end
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "gold_ascension",
-        "prismatic_war_efficiency",
+        "prismatic_time_rift",
         "prismatic_upgrade_recombobulator",
     }
     for playerIndex = 1, 6, 1 do

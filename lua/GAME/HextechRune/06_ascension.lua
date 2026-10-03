@@ -1,16 +1,24 @@
 -- 海克斯符文“登神”：随机指定一种单位，只保留 1 个作为种子，
--- 其余该单位被系统回收时直接转化为永久数值（血量 / 伤害 / 攻速 / 射程）。
+-- 其余该单位被系统回收时，每回收 1 个随机获得一项永久高数值加成
+-- （血量 / 伤害 / 攻速 / 射程，概率见下方常量）。
 
 HextechRune = HextechRune or {}
 
--- 每转化 1 个单位提供的乘区加成。
--- 本地化 hextech.rune.ascension.desc 与 .broadcast 里写死了数值，改这里要同步改文案。
-HextechRune.AscensionHealthPerUnit = 0.05
-HextechRune.AscensionDamagePerUnit = 0.03
-HextechRune.AscensionRateOfFirePerUnit = 0.02
+-- 每回收 1 个单位只加其中一项，数值与概率是用户定的期望模型。
+-- 本地化 hextech.rune.ascension.desc 里写死了数值与概率文案，改这里要同步改文案。
+HextechRune.AscensionHealthPerStack = 0.15
+HextechRune.AscensionDamagePerStack = 0.10
+HextechRune.AscensionRateOfFirePerStack = 0.10
 -- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
-HextechRune.AscensionRangePerUnit = 0.01
+HextechRune.AscensionRangePerStack = 0.10
+-- 掷骰概率：血量 40% / 伤害 30% / 攻速 20% / 射程 10%
+-- （累计区间 0.40 / 0.70 / 0.90 / 1.00，最后一段就是射程）。
+HextechRune.AscensionHealthChance = 0.40
+HextechRune.AscensionDamageChance = 0.30
+HextechRune.AscensionRateOfFireChance = 0.20
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
+-- playerIndex → { Health, Damage, RateOfFire, Range }，各维已掷到的次数。
+HextechRune.AscensionBonusCounts = HextechRune.AscensionBonusCounts or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
 
@@ -30,11 +38,45 @@ function HextechRune:GetAscensionStacks(playerIndex)
     return self.AscensionStacks[playerIndex] or 0
 end
 
+-- 回收 1 个单位掷一次加成种类：血量 / 伤害 / 攻速 / 射程。
+function HextechRune:RollAscensionBonusKind()
+    local roll = GetRandomNumber()
+    if roll < self.AscensionHealthChance then
+        return "Health"
+    end
+    if roll < self.AscensionHealthChance + self.AscensionDamageChance then
+        return "Damage"
+    end
+    if roll < self.AscensionHealthChance + self.AscensionDamageChance
+        + self.AscensionRateOfFireChance then
+        return "RateOfFire"
+    end
+    return "Range"
+end
+
+function HextechRune:GetAscensionBonusCount(playerIndex, kind)
+    local counts = self.AscensionBonusCounts[playerIndex]
+    if counts == nil or counts[kind] == nil then
+        return 0
+    end
+    return counts[kind]
+end
+
+-- 同一批回收的每个单位各自掷一次，可能掷到不同项。
 function HextechRune:AddAscensionStacks(playerIndex, count)
     if count == nil or count <= 0 then
         return
     end
     self.AscensionStacks[playerIndex] = self:GetAscensionStacks(playerIndex) + count
+    local counts = self.AscensionBonusCounts[playerIndex]
+    if counts == nil then
+        counts = { Health = 0, Damage = 0, RateOfFire = 0, Range = 0 }
+        self.AscensionBonusCounts[playerIndex] = counts
+    end
+    for i = 1, count, 1 do
+        local kind = self:RollAscensionBonusKind()
+        counts[kind] = (counts[kind] or 0) + 1
+    end
 end
 
 -- 每回合播报当前层数换算出的加成，时机与以战养战一致。
@@ -44,12 +86,18 @@ function HextechRune:BroadcastAscension(playerIndex)
     if rune == nil or stacks <= 0 then
         return
     end
+    -- 播报各维累计到现在的加成；加 0.5 再取整，避免 0.15/0.10 这类二进制浮点
+    -- 在 3 层血量（3×0.15 = 44.999…%）时报成 44%。
     local text = Localization.get("hextech.rune.ascension.broadcast",
         rune.TargetUnitName or rune.TargetUnitType or "?",
-        floor(stacks * self.AscensionHealthPerUnit * 100),
-        floor(stacks * self.AscensionDamagePerUnit * 100),
-        floor(stacks * self.AscensionRateOfFirePerUnit * 100),
-        floor(stacks * self.AscensionRangePerUnit * 100))
+        floor(self:GetAscensionBonusCount(playerIndex, "Health")
+            * self.AscensionHealthPerStack * 100 + 0.5),
+        floor(self:GetAscensionBonusCount(playerIndex, "Damage")
+            * self.AscensionDamagePerStack * 100 + 0.5),
+        floor(self:GetAscensionBonusCount(playerIndex, "RateOfFire")
+            * self.AscensionRateOfFirePerStack * 100 + 0.5),
+        floor(self:GetAscensionBonusCount(playerIndex, "Range")
+            * self.AscensionRangePerStack * 100 + 0.5))
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
@@ -183,12 +231,15 @@ function HextechRune:FilterAscensionUnits(playerIndex, unitIndex, units, count)
 end
 
 function HextechRune:CreateAscensionModifier(playerIndex)
-    local stacks = self:GetAscensionStacks(playerIndex)
-    local rangeMult = 1 + stacks * self.AscensionRangePerUnit
+    local rangeCount = self:GetAscensionBonusCount(playerIndex, "Range")
+    local rangeMult = 1 + rangeCount * self.AscensionRangePerStack
     return exAttributeModifierCreate({
-        HEALTH_MULT = 1 + stacks * self.AscensionHealthPerUnit,
-        DAMAGE_MULT = 1 + stacks * self.AscensionDamagePerUnit,
-        RATE_OF_FIRE = 1 + stacks * self.AscensionRateOfFirePerUnit,
+        HEALTH_MULT = 1 + self:GetAscensionBonusCount(playerIndex, "Health")
+            * self.AscensionHealthPerStack,
+        DAMAGE_MULT = 1 + self:GetAscensionBonusCount(playerIndex, "Damage")
+            * self.AscensionDamagePerStack,
+        RATE_OF_FIRE = 1 + self:GetAscensionBonusCount(playerIndex, "RateOfFire")
+            * self.AscensionRateOfFirePerStack,
         RANGE = rangeMult,
         VISION = rangeMult,
     }, 1)

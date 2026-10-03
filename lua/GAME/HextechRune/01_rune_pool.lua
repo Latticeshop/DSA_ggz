@@ -516,8 +516,39 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         return Localization.get(rune.DescKey, GetStartingFundsMoney())
     elseif rune.Effect == "shrink_ray" then
         return Localization.get(rune.DescKey, self:GetShrinkRayDisplayRounds(playerIndex))
+    elseif rune.Effect == "divine_intervention" then
+        return Localization.get(rune.DescKey,
+            self:GetDivineInterventionDisplaySeconds(playerIndex))
+    elseif rune.Effect == "time_rift" then
+        return Localization.get(rune.DescKey,
+            self:GetTimeRiftDisplaySeconds(playerIndex))
     end
     return Localization.get(rune.DescKey)
+end
+
+-- 神圣干预与时间裂隙共用：份数 → 文案里的名义秒数（1/2/3 份 = 3/4.5/6 秒）。
+-- 实际帧数各自按「基础 45 帧 + 每份 23 帧」向上取整（45/68/91 帧），文案只写名义值。
+function HextechRune:GetRuneBuffDurationText(copies)
+    local seconds = 3 + 1.5 * (copies - 1)
+    if seconds == floor(seconds) then
+        return format("%d", seconds)
+    end
+    return format("%.1f", seconds)
+end
+
+-- 详情视角换算份数：三选一卡传选择者（候选还没到手，按拿到后 +1 份展示），
+-- 面板详情传持有者（已到手，按当前份数展示）。视角缺失时退回单份口径。
+function HextechRune:GetRuneDisplayCopyCount(playerIndex, runeId)
+    if playerIndex == nil then
+        return 1
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex),
+        runeId)
+    if not self.PlayerOwnedRuneIds[playerIndex][runeId] then
+        copies = copies + 1
+    end
+    return copies
 end
 
 -- 带兵种标题拆成两行；事件卡与缩小后的总览卡都可避免标题越界。
