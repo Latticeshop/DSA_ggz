@@ -19,7 +19,6 @@ g_PureDrawBuildableUnitPool = {
         { Type = "AlliedScoutInfantry", CustomDrawCount = 5 },
         { Type = "AlliedAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "AlliedAntiVehicleInfantry", CustomDrawCount = 5 },
-        { Type = "AlliedRangerInfantry", CustomDrawCount = 5 },
         { Type = "SovietScoutInfantry", CustomDrawCount = 5 },
         { Type = "SovietAntiInfantryInfantry", CustomDrawCount = 5 },
         { Type = "SovietAntiVehicleInfantry", CustomDrawCount = 5 },
@@ -40,7 +39,6 @@ g_PureDrawBuildableUnitPool = {
         { Type = "JapanAntiInfantryVehicle", CustomDrawCount = 4 },
         { Type = "CelestialAntiInfantryVehicle_B", CustomDrawCount = 3 },
         { Type = "CelestialAntiAirShip", CustomDrawCount = 3 }, -- 禁海模式使用的陆地形态仍合法
-        { Type = "CelestialAntiAirVehicle", CustomDrawCount = 3 },
         -- T1 空军
         { Type = "AlliedAntiGroundAircraft", CustomDrawCount = 2 },
         { Type = "AlliedFighterAircraft", CustomDrawCount = 3 },
@@ -138,8 +136,9 @@ g_PureDrawBuildableUnitPool = {
     },
 }
 
--- 这些模板是同一生产按钮产生的强化/环境形态。它们不重复进入抽取池，
--- 但必须共用生产额度，防止协议强化或水陆形态绕过限制。
+-- 这些模板是同一生产按钮产生的强化/环境形态，以及同一单位的运行时变形形态
+-- （例如磁弩防空系统↔磁弩高射炮）。它们不重复进入抽取池，也不作为符文目标，
+-- 但必须共用生产额度，防止协议强化、水陆形态或变形形态绕过限制。
 g_PureDrawProductionAliases = {
     ["AlliedAntiAirShip"] = { "AlliedAntiAirShip_Enhanced" },
     ["AlliedAntiInfantryVehicle"] = { "AlliedAntiInfantryVehicle_Ground", "AlliedAntiInfantryVehicle_Transport" },
@@ -154,11 +153,10 @@ g_PureDrawProductionAliases = {
     ["AlliedFighterAircraft"] = { "AlliedFighterAircraft_Enhanced", "AlliedFighterAircraft_WithTrailSomke" },
     ["AlliedGunshipAircraft"] = { "AlliedAC130GunshipAircraft", "AlliedGunshipAircraft_Enhanced" },
     ["AlliedInterceptorAircraft"] = { "AlliedInterceptorAircraft_Enhanced" },
-    ["AlliedRangerInfantry"] = { "AlliedRangerInfantry_AirAssault" },
     ["AlliedSupportAircraft"] = { "AlliedSupportAircraft_Enhanced" },
     ["CelestialAdvanceAircraftTech4"] = { "CelestialAdvanceAircraftTech4_Enhanced" },
     ["CelestialAlmightlyShip"] = { "CelestialAlmightlyShip_AA", "CelestialAlmightlyShip_Enhanced", "CelestialAlmightlyShip_FireWork", "CelestialAlmightlyShip_Old" },
-    ["CelestialAntiAirShip"] = { "CelestialAntiAirShip_Enhanced", "CelestialAntiAirShip_Enhanced_Water", "CelestialAntiAirShip_Water" },
+    ["CelestialAntiAirShip"] = { "CelestialAntiAirVehicle", "CelestialAntiAirShip_Enhanced", "CelestialAntiAirShip_Enhanced_Water", "CelestialAntiAirShip_Water" },
     ["CelestialAntiInfantryVehicle_B"] = { "CelestialAntiInfantryVehicle" },
     ["CelestialAntiNavyShipTech3"] = { "CelestialAntiNavyShipTech3_EMC", "CelestialAntiNavyShipTech3_Enhanced", "CelestialAntiNavyShipTech3_Firework", "CelestialAntiNavyShipTech3_Old" },
     ["CelestialAntiStructureShip"] = { "CelestialAntiStructureShip_Enhanced", "CelestialAntiStructureShip_Firework", "CelestialAntiStructureShip_Firework_2024A", "CelestialAntiStructureShip_Firework_2024B", "CelestialAntiStructureShip_Firework_2024C", "CelestialAntiStructureShip_Firework_2024D", "CelestialAntiStructureShip_Old" },

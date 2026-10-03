@@ -76,6 +76,10 @@ g_PlayerDragonShipTypes = {
     "CelestialMCV_Enhanced_Air",
 }
 g_PlayerDragonShipRecyclePrice = 5000
+-- 伏龙殿落点相对基地出生点的偏移：出生点正好压在右下方帝国 MCV 的出口上，
+-- 所以生成后统一往地图右上方（世界坐标 +X/+Y，六名玩家方向一致）挪开。
+g_PlayerDragonShipYardOffsetX = 100
+g_PlayerDragonShipYardOffsetY = 100
 g_PendingPlayerDragonShips = {}
 g_PlayerDragonShipAcquireCount = { 0, 0, 0, 0, 0, 0 }
 
@@ -110,6 +114,19 @@ function GetPlayerCelestialConstructionYardName(playerIndex)
     return "PlayerDragonShipConstructionYard_" .. playerIndex
 end
 
+-- 生成通道继续用已验证的航点生成（归属与朝向由它保证），落点再单独挪一次：
+-- 出生点是基地中心，伏龙殿会压住右下方的帝国 MCV 出口，生成后往右上方让开。
+-- 航点创建与 GetObjectByScriptName 是同步的，与余额展示墙同一套做法。
+function OffsetPlayerDragonShipYard(playerIndex)
+    local yard = GetObjectByScriptName(GetPlayerCelestialConstructionYardName(playerIndex))
+    if yard == nil then
+        return
+    end
+    local x, y, z = ObjectGetPosition(yard)
+    ObjectSetPosition(yard, x + g_PlayerDragonShipYardOffsetX,
+        y + g_PlayerDragonShipYardOffsetY, z)
+end
+
 function ProcessPlayerDragonShip(createdObjId, ownerPlayerName)
     g_PendingPlayerDragonShips[createdObjId] = nil
     if not ObjectIsAlive(createdObjId) then
@@ -142,6 +159,7 @@ function ProcessPlayerDragonShip(createdObjId, ownerPlayerName)
         ownerPlayerName .. "/team" .. ownerPlayerName,
         "Player_" .. playerIndex .. "_Start",
         -3.1415926 / 4)
+    OffsetPlayerDragonShipYard(playerIndex)
     SetWorldBuilderThisPlayer(previous)
     exAddTextToPublicBoardForPlayer(ownerPlayerName,
         Localization.get("player_dragonship.converted"), 8)
