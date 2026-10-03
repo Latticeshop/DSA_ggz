@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.18
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.18、A.30
 
 HextechRune = HextechRune or {}
 
@@ -48,10 +48,6 @@ function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
         return
     end
     ExecuteAction("PLAY_SOUND_EFFECT", self.TimeRiftSound)
-    -- 只解除本次真正冻结过的对象；登记的是 id，阵亡的对象直接跳过，
-    -- 活着的再按 id 现取句柄，避免缓存的旧句柄把 nil 喂进引擎。
-    -- 本批之后队友又叠加出更长的时停时（租约更长），本次解除让位给那一份，
-    -- 否则短租约到点会按「解除」分支把 PARALYZED 连同长租约一起清掉。
     local releaseFrame = GetFrame() + duration
     SchedulerModule.delay_call(function(ids, prefix, endFrame)
         for i = 1, getn(ids), 1 do

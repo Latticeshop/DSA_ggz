@@ -659,7 +659,7 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "gold_poach",
+        "prismatic_drain",
         "prismatic_lethal_tempo",
         "gold_ten_pull",
     }

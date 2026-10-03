@@ -1627,6 +1627,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantTenPull(playerIndex)
     elseif rune.Effect == "lethal_tempo" then
         self:ApplyAllLethalTempoBuffs()
+    elseif rune.Effect == "drain" then
+        self:ApplyDrainToPlayer(playerIndex)
     -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
     -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目注释。
     -- elseif rune.Effect == "cash_reward" then

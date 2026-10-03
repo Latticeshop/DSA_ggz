@@ -145,8 +145,8 @@ g_LocalizationExtraText = {
             en = "Reassemble every unit in your pool into a random unit one tier higher. T4 units are reassembled into random T4 units." },
     ["hextech.rune.poach.name"] = { zh = "挖角", en = "Poach" },
     ["hextech.rune.poach.desc"] =
-        { zh = "每回合结束时，随机获得 1 个敌方拥有的单位。",
-            en = "At the end of each round, gain 1 unit owned by the enemy." },
+        { zh = "回合结束时，随机生成 1 个敌方拥有的单位。",
+            en = "At the end of each round, randomly generate 1 unit owned by the enemy." },
     ["hextech.rune.poach.broadcast"] =
         { zh = "挖角：本次获得一个 %s 单位。", en = "Poach: gained one %s this round." },
     ["hextech.rune.investment.name"] = { zh = "投资", en = "Investment" },
@@ -168,6 +168,10 @@ g_LocalizationExtraText = {
     ["hextech.rune.poach.no_source"] =
         { zh = "挖角：敌方卡池为空，本次未获得单位。",
             en = "Poach: the enemy pool is empty, no unit gained." },
+    ["hextech.rune.drain.name"] = { zh = "吸星大法", en = "Star Drain" },
+    ["hextech.rune.drain.desc"] =
+        { zh = "随机获得敌对玩家的 10 个单位。",
+            en = "Randomly gain 10 units from enemy players." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },

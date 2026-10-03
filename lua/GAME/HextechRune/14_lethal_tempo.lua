@@ -1,7 +1,4 @@
--- 海克斯符文「致命节奏」（彩色，每人唯一）：持有者的全部兵种单位都获得神州
--- 「祝融速射」修正器（AttributeModifier_CelestialZhuRongRapidFire，大幅射速加成）。
--- 与以战养战同一手法：不走单位池配额，按阵营扫描本方单位逐个加载；
--- 固定出兵与「补充军队」之后由 ApplyNewBattleUnitEffects 补扫本轮新单位。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.28
 
 HextechRune = HextechRune or {}
 

@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.31
+
 -- 海克斯符文「十连」（金色，可重复）：一次获得 10 个随机可回收单位，
 -- 其中至少 1 个为 T3 及以上。先把 10 个结果一次抽好（缺保底则替换第 1 个），
 -- 再逐个生成给玩家，由 unitregenerate 的周期回收折算进单位池。
@@ -16,10 +18,6 @@ HextechRune.TenPullSideStep = 60
 -- 方阵以出生点前方 120 为中心向两侧铺开。
 HextechRune.TenPullForwardBase = 120
 
--- 结果池 = 抽卡生产池（含生产别名）+ 箱子模板，与重组器共用同一份白名单，
--- 因此“可回收单位”的生产单位与抽卡单位都在池内（含稀有单位）；
--- 禁海模式剔除海军段（UNITLIST 的 step35+1..step4）。
--- 禁海配置在开局前定稿，本池按局缓存一次即可。
 function HextechRune:GetTenPullPool()
     if self.TenPullPool ~= nil then
         return self.TenPullPool

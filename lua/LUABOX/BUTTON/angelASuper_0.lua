@@ -1,20 +1,4 @@
--- 旧版超时空突袭逻辑（保留备查）：
--- 1. 在 angel-ASuper1 至 angel-ASuper4 四个固定路径点生成运输载具和传送特效。
--- 2. 将全部 T2tank 按总数量的四分之一平均分配给四辆载具。
--- 3. 驻军完成后依次放出单位，再删除四辆运输载具。
--- 旧版固定落点在单位数量较多时容易让大量单位聚团，因此不再执行。
--- 旧版分组核心代码如下（仅保留，不执行）：
--- for i = 1, count do
---     if i <= 1 / 4 * count then
---         ExecuteAction("NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY", "Unit1" .. i, "angelchar1")
---     elseif i <= 1 / 2 * count then
---         ExecuteAction("NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY", "Unit1" .. i, "angelchar2")
---     elseif i <= 3 / 4 * count then
---         ExecuteAction("NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY", "Unit1" .. i, "angelchar3")
---     else
---         ExecuteAction("NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY", "Unit1" .. i, "angelchar4")
---     end
--- end
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.6
 
 local groupSize = 8 -- 每组8个。
 local sourceTower = T84

@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.27
+
 devil_max = 200
 angel_max = 200
 
@@ -11,10 +13,6 @@ g_HextechCount = 0; -- 海克斯符文发放次数：可选 0~4，默认随局�
 g_HextechCountManuallySet = false; -- 房主是否在选项 5 手动设置过海克斯次数（设置过就不再被随机箱子默认值覆盖）
 g_EnableHextechRune = 0; -- 海克斯符文系统是否启用（g_HextechCount > 0 时置 1）
 
--- 海克斯开关的唯一折算入口：只读「海克斯符文设置」（选项 5）的 g_HextechCount。
--- 抽卡模式选择（选项 4）与海克斯完全解耦，两边互不改写对方的变量；
--- 局外勾选「开启随机箱子」时由 UtilsLuckyCrate 的箱子检测写入默认次数（默认三个），
--- 检测发生在开局对话确认之后，所以那边也要回调本函数重新折算一次启用标志。
 function BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
     g_EnableHextechRune = 0
     if g_HextechCount ~= nil and g_HextechCount > 0 then

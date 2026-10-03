@@ -1,7 +1,4 @@
--- 海克斯符文“登神”：随机指定一种单位，只保留 1 个作为种子，
--- 其余该单位被系统回收时，每回收 1 个随机获得一项永久高数值加成
--- （血量 / 伤害 / 攻速 / 射程，概率见下方常量）。
--- 体积是固定加成、不参与掷骰
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.24
 
 HextechRune = HextechRune or {}
 
@@ -24,6 +21,8 @@ HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 HextechRune.AscensionBonusCounts = HextechRune.AscensionBonusCounts or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
+-- playerIndex → 已播报过的回合号，保证同一回合只播报一次（见 BroadcastAscension）。
+HextechRune.AscensionBroadcastRound = HextechRune.AscensionBroadcastRound or {}
 
 function HextechRune:GetAscensionRune(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
@@ -82,8 +81,14 @@ function HextechRune:AddAscensionStacks(playerIndex, count)
     end
 end
 
--- 每回合播报当前层数换算出的加成，时机与以战养战一致。
 function HextechRune:BroadcastAscension(playerIndex)
+    local round = tonumber(exCounterGetByName("lvc")) or 0
+    if round >= 1 then
+        if self.AscensionBroadcastRound[playerIndex] == round then
+            return
+        end
+        self.AscensionBroadcastRound[playerIndex] = round
+    end
     local rune = self:GetAscensionRune(playerIndex)
     local stacks = self:GetAscensionStacks(playerIndex)
     if rune == nil or stacks <= 0 then

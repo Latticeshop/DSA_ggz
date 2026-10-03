@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.15
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.15、A.26
 
 HextechRune = HextechRune or {}
 
@@ -10,6 +10,8 @@ HextechRune.WarEfficiencyPending = HextechRune.WarEfficiencyPending or {}
 HextechRune.WarEfficiencyActive = HextechRune.WarEfficiencyActive or {}
 HextechRune.WarEfficiencyApplied = HextechRune.WarEfficiencyApplied or {}
 HextechRune.WarEfficiencyModifiers = HextechRune.WarEfficiencyModifiers or {}
+-- 本回合计已滚存过的回合号，保证同一回合只结算一次（见 RollWarEfficiencyCounters）。
+HextechRune.WarEfficiencyRolledRound = HextechRune.WarEfficiencyRolledRound or nil
 
 function HextechRune:EnsureWarEfficiencyPlayerState(playerIndex)
     if self.WarEfficiencyPending[playerIndex] == nil then
@@ -84,8 +86,14 @@ function HextechRune:OnWarEfficiencyUnitDie(dyingObjInstanceId, ownerPlayerName)
     end
 end
 
--- 回合开始时把上一回合的敌方死亡数换成该玩家本回合数值，并向持有者本人播报。
 function HextechRune:RollWarEfficiencyCounters()
+    local round = tonumber(exCounterGetByName("lvc")) or 0
+    if round >= 1 then
+        if self.WarEfficiencyRolledRound == round then
+            return
+        end
+        self.WarEfficiencyRolledRound = round
+    end
     for playerIndex = 1, 6, 1 do
         self:EnsureWarEfficiencyPlayerState(playerIndex)
         self:ExpireWarEfficiencyBuffs(playerIndex)

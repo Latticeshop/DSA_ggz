@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.16
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)
@@ -62,10 +62,6 @@ SchedulerModule.delay_call(function()
         g_DrawMode = 1
         g_LuckyCrateMode = 1
     end
-    -- 海克斯与抽卡解耦：这里只负责把默认次数写成本场三个，
-    -- 房主在「海克斯符文设置」（选项 5）手动设置过就完全按房主的选择走。
-    -- 开局对话确认发生在本检测之前，g_EnableHextechRune 已经按当时的次数写过一次，
-    -- 因此这里改完次数必须重新折算一次，否则次数是 3、开关却还是 0。
     if not g_HextechCountManuallySet then
         g_HextechCount = 3
         if BtnChoiceDialogEventFunc_ApplyHostHextechSetting ~= nil then

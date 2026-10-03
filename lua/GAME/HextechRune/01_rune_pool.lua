@@ -138,7 +138,7 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.poach.desc",
         Effect = "poach", Icon = "Portrait_CelestialSaluteGun" },
 
-    { Id = "gold_ten_pull", Rarity = 2,
+    { Id = "gold_ten_pull", Rarity = 1,
         NameKey = "hextech.rune.ten_pull.name",
         DescKey = "hextech.rune.ten_pull.desc",
         Effect = "ten_pull", Icon = "JUA_Archer_Barrage" },
@@ -155,6 +155,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.lethal_tempo.name",
         DescKey = "hextech.rune.lethal_tempo.desc",
         Effect = "lethal_tempo", Icon = "Portrait_CelestialAntiVehicleVehicleTech3" },
+    -- 可重复获取：每获得一次就立刻吸取一次。
+    { Id = "prismatic_drain", Rarity = 1,
+        NameKey = "hextech.rune.drain.name",
+        DescKey = "hextech.rune.drain.desc",
+        Effect = "drain", Icon = "Button_PlayerPower_MagneticSingularity" },
     -- 可重复获取；稀有池与隐性特等奖概率见 10_recombobulator.lua。
     { Id = "prismatic_upgrade_recombobulator", Rarity = 1,
         NameKey = "hextech.rune.upgrade_recombobulator.name",
