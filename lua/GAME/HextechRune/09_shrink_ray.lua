@@ -1,8 +1,4 @@
--- 海克斯符文“缩小射线”：每 N 回合让对手阵营的全体单位缩小一回合。
--- 效果本体复用缩小模式已验证的 AttributeMod_AlliedSupportAircraftShrinkRay_HighTechnology；
--- 该 Modifier 同名只有一份实例、后加载会改写剩余时长，所以必须按对象登记，
--- 下一回合开始时用 1 帧时长覆盖解除（与以战养战同一手法）。
--- 缩小模式（g_EnableShrinkMode == 1）下本符文不进候选池，见 01_rune_pool.lua。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.14
 
 HextechRune = HextechRune or {}
 

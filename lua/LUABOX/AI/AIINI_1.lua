@@ -13,11 +13,11 @@ function spinfantlv1 ()
       end
      -- --exMessageAppendToMessageArea("unitindex:"..unitindexget)
       if AI[playindex] == 1 then
-         -- --exMessageAppendToMessageArea("AI造兵")
-  --local actindex = floor100(AIFAKEMONEY[playindex])
-  ----exMessageAppendToMessageArea("actindex"..actindex)
-  ---------------------------------------------------------------
-     -- --exMessageAppendToMessageArea("actindex"..actindex)
+       -- --exMessageAppendToMessageArea("AI造兵")
+--local actindex = floor100(AIFAKEMONEY[playindex])
+----exMessageAppendToMessageArea("actindex"..actindex)
+---------------------------------------------------------------
+   -- --exMessageAppendToMessageArea("actindex"..actindex)
       UNITCOUNT[playindex][unitindexget] =   UNITCOUNT[playindex][unitindexget] + 1 ;
       ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
     -- --exMessageAppendToMessageArea("playindex:"..playindex)
@@ -42,11 +42,11 @@ function spinfantlv1 ()
       end
      -- --exMessageAppendToMessageArea("unitindex:"..unitindexget)
       if AI[playindex] == 1 then
-         -- --exMessageAppendToMessageArea("AI造兵")
-  --local actindex = floor100(AIFAKEMONEY[playindex])
-  ----exMessageAppendToMessageArea("actindex"..actindex)
-  ---------------------------------------------------------------
-     -- --exMessageAppendToMessageArea("actindex"..actindex)
+       -- --exMessageAppendToMessageArea("AI造兵")
+--local actindex = floor100(AIFAKEMONEY[playindex])
+----exMessageAppendToMessageArea("actindex"..actindex)
+---------------------------------------------------------------
+   -- --exMessageAppendToMessageArea("actindex"..actindex)
       UNITCOUNT[playindex][unitindexget] =   UNITCOUNT[playindex][unitindexget] + 1 ;
       ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
      -- --exMessageAppendToMessageArea("playindex:"..playindex)
@@ -71,11 +71,11 @@ function spinfantlv1 ()
           end
          -- --exMessageAppendToMessageArea("unitindex:"..unitindexget)
           if AI[playindex] == 1 then
-             -- --exMessageAppendToMessageArea("AI造兵")
-      --local actindex = floor100(AIFAKEMONEY[playindex])
-      ----exMessageAppendToMessageArea("actindex"..actindex)
-      ---------------------------------------------------------------
-         -- --exMessageAppendToMessageArea("actindex"..actindex)
+           -- --exMessageAppendToMessageArea("AI造兵")
+    --local actindex = floor100(AIFAKEMONEY[playindex])
+    ----exMessageAppendToMessageArea("actindex"..actindex)
+    ---------------------------------------------------------------
+       -- --exMessageAppendToMessageArea("actindex"..actindex)
           UNITCOUNT[playindex][unitindexget] =   UNITCOUNT[playindex][unitindexget] + 1 ;
           ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
          -- --exMessageAppendToMessageArea("playindex:"..playindex)
@@ -101,11 +101,11 @@ function spinfantlv1 ()
       end
      -- --exMessageAppendToMessageArea("unitindex:"..unitindexget)
       if AI[playindex] == 1 then
-         -- --exMessageAppendToMessageArea("AI造兵")
-  --local actindex = floor100(AIFAKEMONEY[playindex])
-  ----exMessageAppendToMessageArea("actindex"..actindex)
-  ---------------------------------------------------------------
-     -- --exMessageAppendToMessageArea("actindex"..actindex)
+               -- --exMessageAppendToMessageArea("AI造兵")
+        --local actindex = floor100(AIFAKEMONEY[playindex])
+        ----exMessageAppendToMessageArea("actindex"..actindex)
+        ---------------------------------------------------------------
+           -- --exMessageAppendToMessageArea("actindex"..actindex)
       UNITCOUNT[playindex][unitindexget] =   UNITCOUNT[playindex][unitindexget] + 1 ;
       ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
      -- --exMessageAppendToMessageArea("playindex:"..playindex)

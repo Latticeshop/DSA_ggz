@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.10
+
 angel_money = 0
 devil_money = 0
 devil_surrender = 0
@@ -211,10 +213,6 @@ function CenterTopBtnFunc_InitializeAutoSurrender()
                 -- 自动发起一次投降
                 if g_AutoSurrender.DidPlayerAutoSurrender[i] ~= 1 then
                     g_AutoSurrender.DidPlayerAutoSurrender[i] = 1
-                    -- 但假如是游戏即将正常结束那就不投降了
-                    -- 检查 PlyrCivilian 和 PlyrCreeps 里是否还有建筑
-                    -- 如果没有了说明游戏即将结束了，就不投降了
-                    -- 只有在它们都还有建筑的情况下才自动投降
                     local previous2 = SetWorldBuilderThisPlayer(1)
                     local civilianStructures, civilianStructureCount = CopyPlayerRegisteredObjectSet("PlyrCivilian", "STRUCTURES")
                     local creepStructures, creepStructureCount = CopyPlayerRegisteredObjectSet("PlyrCreeps", "STRUCTURES")
@@ -396,11 +394,6 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
     ButtonManager:SetButton(buttons[2])
 end
 
--- 兼容化的第三个阵营技能按钮：不再强制使用玩家自身阵营技能。
--- 玩家可能拥有多个技能判定（盟军超武 / 帝国生产协议 / 神洲超武），选择规则：
---   技能组为空（未解锁任何阵营技能）→ 不创建按钮，玩家继续使用已拥有的技能；
---   只解锁一个阵营技能 → 直接使用该已拥有的技能；
---   解锁多个阵营技能 → 以自身阵营为主。
 function CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
     local playerSide = g_PlayerSide[playerIndex]
     local hasAllied = g_AlliedSuperWeaponBuilt[playerIndex] == 1
@@ -627,24 +620,24 @@ function CreateRepeatEnemySpecialPowerButton(playerIndex)
     return CreateButton(buttonData)
 end
 
---function CreateBuyOverButton(playerIndex)
---    local buttonData = {
---        PlayerName = "Player_" .. playerIndex,
---        PlayerIndex = playerIndex,
---        ButtonIndex = 1,
---        IconId = 'Button_AlliedInfiltrationInfantry_on',
---        Title = '策反',
---        Description = '策反中间区域附近的陆军和空军',
---        IsEnabled = true,
---        MaxUseCount = 1,
---        SharedCooldownId = "buyover",
---        SharedCooldownSeconds = 10,
---        OnClick = function(self)
---            return RequestBuyOver(self.PlayerIndex)
---        end,
---    }
---    return CreateButton(buttonData)
---end
+    --function CreateBuyOverButton(playerIndex)
+    --    local buttonData = {
+    --        PlayerName = "Player_" .. playerIndex,
+    --        PlayerIndex = playerIndex,
+    --        ButtonIndex = 1,
+    --        IconId = 'Button_AlliedInfiltrationInfantry_on',
+    --        Title = '策反',
+    --        Description = '策反中间区域附近的陆军和空军',
+    --        IsEnabled = true,
+    --        MaxUseCount = 1,
+    --        SharedCooldownId = "buyover",
+    --        SharedCooldownSeconds = 10,
+    --        OnClick = function(self)
+    --            return RequestBuyOver(self.PlayerIndex)
+    --        end,
+    --    }
+    --    return CreateButton(buttonData)
+    --end
 
 function CreateNanoMaintainHiveButton(playerIndex)
     local buttonData = {

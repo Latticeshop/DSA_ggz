@@ -4,7 +4,6 @@
 *.ps1
 *.js
 *.bin
-*.md
 __pycache__/
 luac.exe
 # 工具链随仓库上传（其余 .py 仍忽略）

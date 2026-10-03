@@ -1,15 +1,4 @@
--- 海克斯符文“重组器”两档：
---   银色 变形重组器（recombobulator_same）：把单位池里的每个普通单位重滚成同一阶的随机单位；
---   彩色 升级重组器（recombobulator_upgrade）：重滚成高一阶的随机单位（T4 来源为随机 T4）。
--- 结果池只取生产单位与箱子单位（UNITLIST 里的可参战战斗单位，含已实装的别名形态），
--- 矿车、工程师、MCV 与尚未实装的预留单位由白名单排除。
--- 稀有单位（T5 双母舰 + T4 特等奖九台）合并成一个无视阶级的稀有池：
---   · 稀有来源 50% 抽整个稀有池（母舰与特等奖可互相转换，转回自身也算正常结果），
---     50% 当成普通单位继续走下面的普通规则；
---   · 普通来源只要目标档位落在 T4，就有 3% 抽进稀有池，即变形重组器的 T4 来源、
---     升级重组器的 T3 与 T4 来源；T5 在阶级表里按 T4 结算，双母舰也吃这条。
--- 稀有单位不进普通结果池，只能通过上面的概率抽中。
--- 禁海模式时海军（UNITLIST 的舰船与海上箱子段）从全部结果池中剔除。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.1
 
 HextechRune = HextechRune or {}
 
@@ -148,10 +137,6 @@ function HextechRune:PickRecombobulatorPoolIndex(pool)
     return pool[self:RandomIndex(getn(pool))]
 end
 
--- 单次重滚的目标下标。isUpgrade=false 为同阶（变形重组器），true 为升一阶（升级重组器）。
--- 稀有来源先抽 50%：中了就从无视阶级的稀有池里取一台（可能取回自身），
--- 没中则当普通单位继续走下面的普通规则。
--- 普通来源按目标档位重滚，目标落在 T4 时先抽 3% 稀有池。sourceIndex 缺失时按普通来源处理。
 function HextechRune:RollRecombobulatorTargetIndex(sourceTier, isUpgrade, sourceIndex)
     local targetTier = sourceTier
     if isUpgrade and targetTier < 4 then

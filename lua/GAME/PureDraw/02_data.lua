@@ -1,8 +1,4 @@
--- PureDraw: 抽卡模式数据定义
---   - g_PureDrawConfig 抽卡配置（Tier 权重合计必须为 100）
---   - g_PureDrawBuildableUnitPool 显式生产池（按科技 1-4 层）
---   - g_PureDrawProductionAliases 生产别名（强化/水陆形态共用额度）
---   - 状态变量、空投阵型、池索引构建
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.9
 
 -- 纯抽卡模式配置。Tier 权重合计必须为 100。
 g_PureDrawConfig = {
@@ -17,10 +13,6 @@ g_PureDrawConfig = {
     TierWeights = { 37, 50, 10, 3 },
 }
 
--- 显式生产池：只收录玩家实际生产的战斗单位，排除塔卫、赠送单位和运行时变形别名。
--- Sea 标记供禁海组合使用；IsBigShip 标记用于保留地图原有的大船数量限制。
--- 数组下标就是单位的科技层，同时决定抽卡权重档位和符文阶级，是唯一权威来源。
--- 与策划给的《生产单位表》逐条对齐：改动前先核对科技层，不要只改符文侧。
 g_PureDrawBuildableUnitPool = {
     [1] = {
         -- T1 步兵

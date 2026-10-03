@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3
+
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
 
@@ -152,11 +154,6 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.five_thunder.name",
         DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
         RequiredFaction = 4, Icon = "Button_CelestialPantaOrbitalStrike" },
-    -- 磁暴突袭符文：暂不启用（实测直接赋予该协议会有0cd问题），代码保留待后续开发。
-    -- { Id = "prismatic_tesla_air_assault", Rarity = 1,
-    --     NameKey = "hextech.rune.tesla_air_assault.name",
-    --     DescKey = "hextech.rune.tesla_air_assault.desc",
-    --     Effect = "tesla_air_assault", Icon = "Button_SovietTeslaAirAssault" },
     { Id = "prismatic_tower_defense_expert", Rarity = 1,
         NameKey = "hextech.rune.tower_defense_expert.name",
         DescKey = "hextech.rune.tower_defense_expert.desc",
@@ -265,16 +262,6 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
     }
 end
 
--- “买二送一”目标池筛选
--- 目标池直接取自回收表（g_RecycleBtnsMapByFaction），但回收表里混有三类
--- 玩家永远无法自己产出、因而永远无法累计进度的目标，抽到等于一张空符文：
---   1) 本版本 Corona 尚未实装的预留单位：JapanAntiAirVehicleTech3 /
---      SovietPineElectronicRadarTruck / CelestialAntiAirVehicleTech3 /
---      AlliedAirForceDispatchVehicle；
---   2) 只能由其它符文转换出来的形态：先进火炮的 AlliedAC130GunshipAircraft、
---      青锋 _B 的形态别名 CelestialLongRangeMissileVehicle；
---   3) 抽卡模式禁用生产的单位（见 BuildLockedTargetUnitTypes）：摇光、超级要塞核心。
--- 因此用抽卡模式的显式生产池 g_PureDrawBuildableUnitPool 作为“可生产”白名单
 function HextechRune:BuildBuyTwoGetOneTargetFilter()
     if self.BuyTwoGetOneProducibleTypes ~= nil then
         return self.BuyTwoGetOneProducibleTypes, self.BuyTwoGetOneAliasOnlyTypes

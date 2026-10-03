@@ -1,13 +1,5 @@
--- PureDraw: 箱子种子/物理箱与空投
---   - 跟踪 LuckyUnitCrateSeed / 物理箱
---   - 禁海时把海里抽卡结果替换为陆地单位
---   - 空投十连（命中概率后随机阵型，统一挂到玩家队伍）
---   - 每 3 回合刷新生产配额
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.5
 
--- 日冕引擎的“幸运单位箱子”技能直接创建可拾取的 LuckyUnitCrateSeed 对象，
--- 而不会再有第二段 UnitCrateNew 物理箱（原版可正常工作的实现就是直接跟踪
--- LuckyUnitCrateSeed）。因此拦截逻辑直接跟踪种子对象本身；
--- UnitCrateNew / UnitCrate 的创建回调仅作兼容备份，以防某些途径确实生成物理箱。
 function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
     -- 系统空投在生成前预登记对象 ID，因此不会进入玩家自定义抽卡检测。
@@ -102,10 +94,6 @@ for i = 1, getn(g_SeaCrateUnits), 1 do
     RegisterUnitCreateCallback(g_SeaCrateUnits[i], PureDrawReplaceNativeSeaResult)
 end
 
--- 生成一个空投箱子。箱子使用引擎同款 LuckyUnitCrateSeed 类型（技能创建的
--- 可拾取箱子就是它，而不是 UnitCrateNew）。成功时记录实际对象 ID 并返回 true。
--- 注意：RA3LuaBridge 方言（Lua 4.0）不支持闭包访问外层局部变量，因此
--- 序列号、中心坐标等全部通过参数显式传入，函数体内不使用任何外层局部变量。
 function PureDrawFindAirdropOwnerTeam()
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex

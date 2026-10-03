@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.19
+
 g_CurrentRecycleType = {
     [1] = 0,
     [2] = 0,
@@ -373,13 +375,6 @@ function getCrateUnitsInfoFromTemplate(crateType)
         if unitMoney == nil then
             -- 从箱子单位的最大获取数量中获取价格
             local maxCount = unitInfo.Count or 1
-            -- 玩家可以获取(1~maxCount)个单位，期望数量是 (1 + maxCount) / 2
-            -- 我们希望玩家在回收“期望数量”的单位时能拿回 1500
-            -- 所以依据这个：
-            -- 最大数量1： 1500
-            -- 最大数量2： 1500 / 1.5 = 1000
-            -- 最大数量3： 1500 / 2 = 750
-            -- 最大数量4： 1500 / 2.5 = 600
             if maxCount == 1 then
                 unitMoney = 1500
             elseif maxCount == 2 then
@@ -404,12 +399,12 @@ for i = 1, 4 do
     g_CrateUnits[i] = getCrateUnitsInfoFromTemplate(i)
 end
 
---g_RecycleBtnsMap = {
---    [1] = g_Infantry,
---    [2] = g_Vehicle,
---    [3] = g_AirCraft,
---    [4] = g_Ship,
---}
+  --g_RecycleBtnsMap = {
+  --    [1] = g_Infantry,
+  --    [2] = g_Vehicle,
+  --    [3] = g_AirCraft,
+  --    [4] = g_Ship,
+  --}
 
 g_RecycleBtnsMapByFaction = {
     [1] = {
@@ -596,10 +591,10 @@ function RecycleUnit_Setting()
 end
 
 function RecycleUnitBtnsClear(playerName)
-    --local playerIndex = g_PlayerNameToIndex[playerName];
-    --for i = 1, getn(g_RecycleBtnsShowed[playerIndex]) do
-    --    exCustomBtnRemove(g_RecycleBtnsShowed[playerIndex][i]);
-    --end
+        --local playerIndex = g_PlayerNameToIndex[playerName];
+        --for i = 1, getn(g_RecycleBtnsShowed[playerIndex]) do
+        --    exCustomBtnRemove(g_RecycleBtnsShowed[playerIndex][i]);
+        --end
 
     local playerIndex = g_PlayerNameToIndex[playerName]
     local playerButtons = g_RecycleBtnsShowed[playerIndex]

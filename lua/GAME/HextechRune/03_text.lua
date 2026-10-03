@@ -1,9 +1,5 @@
--- 海克斯符文文案统一登记表。
--- Localization.lua 的 payload 预算已用满（新增文案会被截断），因此海克斯符文相关的
--- 全部文案都登记在这里：模式名、入口/对话框、面板与阶级、单位类型、全部符文名称与描述、
--- 重随提示、广播话术以及面板按钮文案。
--- Localization.get 先在自身 _text_sources 里查，查不到再回退读本表（读表发生在运行时，
--- 与节点加载顺序无关）。新增符文文案一律追加本文件，不要再写进 Localization.lua。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.13
+
 g_LocalizationExtraText = {
     -- === 模式与入口 ===
     ["game_mode.hextech_name"] = { zh = "海克斯符文", en = "Hextech Rune" },

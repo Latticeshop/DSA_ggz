@@ -1,7 +1,4 @@
--- 海克斯符文“时间裂隙”：敌方全体单位和建筑每 29 秒被时停 3 秒。
--- 冻结与特效都复用技能组已验证的通道（PARALYZED + AttributeMod_ChronoRiftEffect），
--- 冲突交给 g_SetTimeStopFrozen 按持有者仲裁：符文只登记 rift 这一份，
--- native（技能组时停）还在冻结时不放开 PARALYZED，反之亦然。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.18
 
 HextechRune = HextechRune or {}
 

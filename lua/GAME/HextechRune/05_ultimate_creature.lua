@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.12
+
 -- 海克斯符文“究极生物”：献祭玩家单位池，并在每回合出兵时强化该玩家 1 只鬼王X。
 
 HextechRune = HextechRune or {}
@@ -11,12 +13,6 @@ HextechRune.UltimateCreatureTierPercent = { 5, 3, 3, 5 }
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 
--- 阶级判定的权威来源分三段（外加兜底）：
---   1. 形态覆盖表 ProductionFormTierOverride：不进抽卡池、阶级与来源单位不同的生产别名形态；
---   2. 玩家可生产的单位直接取抽卡池 g_PureDrawBuildableUnitPool 的下标（含生产别名形态）；
---   3. 下面这张表收录《完整单位表》里不可生产、但会出现在战场或玩家单位池中的模板。
--- 三段都查不到的单位（新增兵种、活动形态）才继续用模板名和回收价兜底。
--- 表里的 5 表示《完整单位表》的 T5，取值时按 T4 结算：加成表只有 T1~T4 四档。
 HextechRune.NonProductionUnitTier = {
     -- T1：增援步兵、功能与空投形态
     JapanKamikazeInfantry = 1,             -- 狂热帝国武士

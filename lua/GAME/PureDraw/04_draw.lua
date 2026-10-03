@@ -1,8 +1,4 @@
--- PureDraw: 抽卡核心逻辑
---   - 生产监听（有生产者消耗余额，无生产者拦截箱子结果）
---   - 加权随机抽卡、生成自定义单位
---   - 箱子跟踪与原生结果拦截
---   - 事件驱动并短时扫描空投点附近新生成的 AI 单位，加入攻击队列
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.8
 
 function PureDrawRegisterKnownPlayerUnit(unitId, instanceId)
     if unitId == nil then
@@ -502,11 +498,6 @@ function PureDrawInterceptNativeResult(createdObjId, playerName, x, y, z,
     PureDrawRemoveTrackedCrate(crateId)
 end
 
--- 把 AI 默认待命队伍中尚未编队的单位加入对应攻击队列。
--- 逐个设置单位队伍，不合并整个源队伍，避免把玩家单位一起带入 AI 阵营。
--- 空投箱挂在实际玩家的 crate 队伍；AI 拾取后单位所有者会变为对应 AI，
--- 但队伍可能仍是引擎赋予的各种名字。因此这里只判断所有者和目标攻击队伍，
--- 当前队伍不是攻击队列，就统一编入对应 AI 阵营的 ATTACK 队列。
 function PureDrawJoinAIAttackTeam(unitId)
     if not ObjectIsAlive(unitId) then
         return

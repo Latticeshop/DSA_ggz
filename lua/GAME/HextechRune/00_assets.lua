@@ -1,9 +1,4 @@
--- 海克斯符文系统：卡框图片资源（透明中心已填充为黑色）
--- 由 analysis/hextech_frames_black.py 自动生成，来源：
---   augmentcard_frame_{gold,silver,prismatic}.png
--- 图片 ID 变量：
---   g_HextechFrameGoldId / g_HextechFrameSilverId / g_HextechFramePrismaticId
--- 用法：作为自定义按钮的 TextureName（接受数字图片 ID）
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.17
 
 -- 自定义图片嵌入（由 analysis/hextech_frames_black.py 自动生成，尺寸 128x128，透明中心已填黑）
 local HextechFrameGold = {

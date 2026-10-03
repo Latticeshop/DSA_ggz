@@ -1,7 +1,4 @@
--- 技能组时停的四个 WorldBuilder 脚本（angelstop / angeltime_stop / devilstop /
--- deviltime_stop）一共有六段 lua 动作。它们只差阵营和参数，真正的逻辑都在
--- CenterTopBtnFunc.lua 的 g_TimeStopFreezeSide 里，所以六段合在本文件，
--- 用 --@节名 标记，由 sync_scriptsdata.py 按节回填到各自的 payload。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.20
 
 --@angel_cast
 -- 施放：冻结本方全体单位 14 秒（210 帧），并挂上常驻裂缝特效。

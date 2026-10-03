@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.4
+
 -- 海克斯符文系统：首批可实测效果。
 
 HextechRune = HextechRune or {}
@@ -1074,13 +1076,6 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     return true
 end
 
--- 诸神黄昏：当前血量高于最大值一半时压到一半（取整，保底 1）。不足一半的单位不动。
--- 主路径用 UNIT_SET_HEALTH 单目标直写当前血量：UNIT_* 动作可以吃
--- SET_UNIT_REFERENCE 建的引用（先例 attackT2_0.lua 的 UNIT_SET_TEAM，
--- unlockT4Ship.lua 用它给新建单位补血）。直写没把血压下来时退回两步写入：
--- 先把上限和当前血量一起压到一半，再只还原上限；上限没还原或当前血量仍高于
--- 一半时，用脚本伤害按差额补扣。每步都读回校验；exObjectSetHealth 实测改的是
--- 上限、不能用来压血，已弃用。每回合重新调用，没补齐的差额会继续收敛。
 function HextechRune:ClampRagnarokUnitHealth(objectId)
     if not ObjectIsAlive(objectId) then
         return
@@ -1202,10 +1197,6 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     return 0
 end
 
--- 对一个阵营仅收集尚无 BUFF 登记的同类单位。按玩家单位池数量取至多 COUNT 个，
--- 只有该玩家确实有可施加效果时才占用单位；无效果的玩家和额外单位不登记。
--- skipObjects 非空时跳过其中的对象（空军补扫用它排除首扫已看过的单位）；
--- seenObjects 非空时记录本次扫描看到的所有对象，供后续补扫做排除表。
 function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
     lastPlayerIndex, typeLookup, skipObjects, seenObjects)
     local newlyAssigned = {}

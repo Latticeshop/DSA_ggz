@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.2
+
 RescueBlockedProductions_UnitList = {
     'JapanPowerPlantEgg',
     'CelestialDF41',
@@ -23,13 +25,6 @@ RescueBlockedProductions_PlayerCanBuildUnitsTables = {
     [5] = {},
     [6] = {},
 }
--- 自动检测并拯救任意被卡住的建造序列（比如说帝国卡电厂，或者神州卡东风导弹车）
--- 但是，这需要遍历玩家所有建造序列里的所有内容，假如频繁调用，我怕有性能问题。
--- 但是！！！！实际上完全没必要每一帧都去检测建造序列：
--- 首先，假如某个单位一直都是可以造的，那么它不可能卡住生产建筑，我们自然没必要为了它去检测各个建造序列
--- 假如某个单位一直都不允许建造，玩家从来没有造它的机会，那它照样无法卡住生产建筑，我们也没必要为了它去检测各个建造序列
--- 只有一种情况需要检测：有单位刚刚从可建造的状态变成了不可建造的状态，此时假如玩家正在生产该单位，生产建筑就会卡住。
--- 所以，只需要在上述的特定情况发生时，再去检测，就可以了~
 SchedulerModule.call_every_x_frame(function()
     for p = 1, 6, 1 do
         local unitHashsNeedUnblock = nil
@@ -115,10 +110,6 @@ function RescueBlockedProductions_DoRescue(playerName, disallowedUnitHashes)
                         -- exMessageAppendToMessageArea(format("Blocked unit %s detected in factory %s for player %s. Attempting rescue.", tostring(item.InstanceId), tostring(factory), tostring(playerName)))
                         -- 正在建造的单位是被禁用的，序列将会卡住!
 
-                        -- 让敌对工程师占领它，这样就能触发建造取消
-                        -- 之后再让它恢复归属
-                        -- 必须是先让敌对工程师占领，再重新改成己方归属。
-                        -- 假如是先把建筑归属改为敌方、用己方工程师占领回来，那么建筑里取消的单位的资金将会归为敌方。
                         local x, y, z = ObjectGetPosition(factory)
                         local engineerName = RescueBlockedProductions_CreateEnemyEngineer(playerName, x, y, z)
                         -- ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", engineerName, "UNSELECTABLE", true)
