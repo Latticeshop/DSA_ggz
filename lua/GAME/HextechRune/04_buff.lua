@@ -1619,6 +1619,14 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyRecombobulator(playerIndex, false)
     elseif rune.Effect == "recombobulator_upgrade" then
         self:ApplyRecombobulator(playerIndex, true)
+    elseif rune.Effect == "poach" then
+        self:EnsurePoachScheduler()
+    elseif rune.Effect == "investment" then
+        self:ApplyInvestment(playerIndex)
+    elseif rune.Effect == "ten_pull" then
+        self:GrantTenPull(playerIndex)
+    elseif rune.Effect == "lethal_tempo" then
+        self:ApplyAllLethalTempoBuffs()
     -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
     -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目注释。
     -- elseif rune.Effect == "cash_reward" then
@@ -1643,6 +1651,8 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObje
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
     -- 以战养战同理：本方兵种全体都要吃到本轮数值，不占单位池配额。
     self:ApplyAllWarEfficiencyBuffs()
+    -- 致命节奏同理：持有者的全部兵种单位都要带上祝融速射。
+    self:ApplyAllLethalTempoBuffs()
     -- 缩小射线同理：本轮处于缩小状态的阵营，新出场的敌方单位也要补上。
     self:RescanShrinkRay()
     return assignments
@@ -1683,6 +1693,8 @@ function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObje
 end
 
 function HextechRune:ApplyRoundEffects(round)
+    -- 投资：到期的投资在这一刻（回合开始/出兵）结算返还两倍。
+    self:ApplyInvestmentPayouts(round)
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
     -- 登神：与以战养战同一时机播报各自的累计加成。

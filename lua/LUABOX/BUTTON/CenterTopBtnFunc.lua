@@ -1096,9 +1096,68 @@ function RequestAirMarshal(playerIndex)
     return true
 end
 
+-- 纳米维修的统一回血口径：按当前上限的 30% 治疗（NAMED_DAMAGE 传负值）。
+-- 塔的血量被地图改过，所以只能用 exObjectGetMaxHealth，不能用 ObjectGetInitialHealth。
+g_NanoRepairHealRate = 0.30
+
+function g_NanoRepairHealTower(tower)
+    if tower == nil or not ObjectIsAlive(tower) then
+        return
+    end
+    local maxHp = exObjectGetMaxHealth(ObjectGetId(tower))
+    if maxHp == nil or maxHp <= 0 then
+        return
+    end
+    ExecuteAction("NAMED_DAMAGE", tower, -(maxHp * g_NanoRepairHealRate))
+end
+
+-- 地编塔按 ID 剔掉：陆地塔 T71~T74 明确不回血（立场本来就盖着它们），海塔已按脚本名单独回血。
+g_NanoRepairTowerTypes = {
+    "JapanPointShieldControlTower",
+    "SovietHeavyAntiAirMissileTurret",
+    "JapanKamikazeCommandTower",
+    "AlliedAegisLargeDefenseBase",
+}
+g_NanoRepairMapTowerNames = {
+    "T71", "T72", "T73", "T74", "T81", "T82", "T83", "T84",
+    "T71F", "T72F", "T73F", "T81F", "T82F", "T83F",
+}
+
+function g_NanoRepairIsMapTower(objectId)
+    for i = 1, getn(g_NanoRepairMapTowerNames), 1 do
+        local mapTower = GetObjectByScriptName(g_NanoRepairMapTowerNames[i])
+        if mapTower ~= nil and ObjectGetId(mapTower) == objectId then
+            return true
+        end
+    end
+    return false
+end
+
+-- 按模板扫本方全部同类建筑塔，比"购买时登记台账"更稳：符文免费送的、塔防专家的复数塔
+function g_NanoRepairHealSideTowers(sideIndex)
+    if P == nil or P[sideIndex] == nil then
+        return
+    end
+    if g_NanoRepairTowerFilter == nil then
+        g_NanoRepairTowerFilter = CreateObjectFilter({
+            Rule = "ANY",
+            Relationship = "SAME_PLAYER",
+            IncludeThing = g_NanoRepairTowerTypes,
+        })
+    end
+    local towers, count = ObjectFindObjects(P[sideIndex], nil, g_NanoRepairTowerFilter)
+    for i = 1, count, 1 do
+        local tower = towers[i]
+        if tower ~= nil and not g_NanoRepairIsMapTower(ObjectGetId(tower)) then
+            g_NanoRepairHealTower(tower)
+        end
+    end
+end
+
 function RequestNanoMaintainHive(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideAIPlayer = "PlyrCivilian"
+    local sideIndex = 7
     local tower = T74
     local seaTowers = { "T71F", "T72F", "T73F" }
     local seaSupportDirection = 1
@@ -1112,6 +1171,7 @@ function RequestNanoMaintainHive(playerIndex)
     if playerIndex >= 4 then
         sideName = Localization.get("side.angel")
         sideAIPlayer = "PlyrCreeps"
+        sideIndex = 8
         tower = T84
         seaTowers = { "T81F", "T82F", "T83F" }
         seaSupportDirection = -1
@@ -1127,15 +1187,10 @@ function RequestNanoMaintainHive(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName))
     -- 给海塔回血 30%
     for i = 1, getn(seaTowers), 1 do
-        local seaTower = GetObjectByScriptName(seaTowers[i])
-        if ObjectIsAlive(seaTower) then
-            local currentHp = ObjectGetCurrentHealth(seaTower)
-            -- 塔的血量被改过因此不适用 ObjectGetInitialHealth
-            local maxHp = exObjectGetMaxHealth(ObjectGetId(seaTower))
-            local healAmount = maxHp * 0.30
-            ExecuteAction("NAMED_DAMAGE", seaTower, -healAmount)
-        end
+        g_NanoRepairHealTower(GetObjectByScriptName(seaTowers[i]))
     end
+    -- 立场覆盖之外的本方建筑塔（买的、符文免费送的）一并回血
+    g_NanoRepairHealSideTowers(sideIndex)
 
     ExecuteAction("CREATE_OBJECT", 'JapanNanoMaintainHive', sideAIPlayer .. "/team" .. sideAIPlayer, positions, 0)
     for j = 1, 4, 1 do

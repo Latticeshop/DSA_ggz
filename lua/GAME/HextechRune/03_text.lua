@@ -143,6 +143,31 @@ g_LocalizationExtraText = {
     ["hextech.rune.upgrade_recombobulator.desc"] =
         { zh = "将你当前单位池中的全部单位随机重组为高一阶的单位。T4单位为随机T4单位。",
             en = "Reassemble every unit in your pool into a random unit one tier higher. T4 units are reassembled into random T4 units." },
+    ["hextech.rune.poach.name"] = { zh = "挖角", en = "Poach" },
+    ["hextech.rune.poach.desc"] =
+        { zh = "每回合结束时，随机获得 1 个敌方拥有的单位。",
+            en = "At the end of each round, gain 1 unit owned by the enemy." },
+    ["hextech.rune.poach.broadcast"] =
+        { zh = "挖角：本次获得一个 %s 单位。", en = "Poach: gained one %s this round." },
+    ["hextech.rune.investment.name"] = { zh = "投资", en = "Investment" },
+    ["hextech.rune.investment.desc"] =
+        { zh = "失去你当前所有的金钱，5 回合后获得两倍的金钱。",
+            en = "Lose all of your current money; 5 rounds later you gain twice that amount." },
+    ["hextech.rune.investment.invested"] =
+        { zh = "投资：投入 %d 金，第 %d 回合返还两倍。",
+            en = "Investment: put in %d money, doubled on round %d." },
+    ["hextech.rune.investment.payout"] =
+        { zh = "投资到期：获得 %d 金。", en = "Investment matured: gained %d money." },
+    ["hextech.rune.ten_pull.name"] = { zh = "十连", en = "Ten-Pull" },
+    ["hextech.rune.ten_pull.desc"] =
+        { zh = "获得 10 个随机单位，其中 1 个必定为 T3 及以上单位。",
+            en = "Gain 10 random units, at least one of which is tier 3 or above." },
+    ["hextech.rune.lethal_tempo.name"] = { zh = "致命节奏", en = "Lethal Tempo" },
+    ["hextech.rune.lethal_tempo.desc"] =
+        { zh = "单位的攻击会越打越快。", en = "Your units keep attacking faster and faster." },
+    ["hextech.rune.poach.no_source"] =
+        { zh = "挖角：敌方卡池为空，本次未获得单位。",
+            en = "Poach: the enemy pool is empty, no unit gained." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },

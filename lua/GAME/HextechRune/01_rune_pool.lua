@@ -65,6 +65,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.recombobulator.desc",
         Effect = "recombobulator_same", Icon = "JUA_Nanotech_Upgrade1" },
 
+    { Id = "silver_investment", Rarity = 3,
+        NameKey = "hextech.rune.investment.name",
+        DescKey = "hextech.rune.investment.desc",
+        Effect = "investment", Icon = "Button_CelestialRefinery" },
+
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
         NameKey = "hextech.rune.oblivion_bomb.name",
@@ -128,6 +133,15 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.ragnarok.desc",
         Effect = "ragnarok", NeedsUnitType = true,
         Icon = "CelestialLightningTroop_Lv2" },
+    { Id = "gold_poach", Rarity = 2,
+        NameKey = "hextech.rune.poach.name",
+        DescKey = "hextech.rune.poach.desc",
+        Effect = "poach", Icon = "Portrait_CelestialSaluteGun" },
+
+    { Id = "gold_ten_pull", Rarity = 2,
+        NameKey = "hextech.rune.ten_pull.name",
+        DescKey = "hextech.rune.ten_pull.desc",
+        Effect = "ten_pull", Icon = "JUA_Archer_Barrage" },
 
     -- 彩色
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -137,6 +151,10 @@ HextechRune.RunePool = {
     { Id = "prismatic_scope", Rarity = 1, NameKey = "hextech.rune.scope.prismatic.name",
         DescKey = "hextech.rune.scope.prismatic.desc", Effect = "range_prismatic", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
+    { Id = "prismatic_lethal_tempo", Rarity = 1,
+        NameKey = "hextech.rune.lethal_tempo.name",
+        DescKey = "hextech.rune.lethal_tempo.desc",
+        Effect = "lethal_tempo", Icon = "Portrait_CelestialAntiVehicleVehicleTech3" },
     -- 可重复获取；稀有池与隐性特等奖概率见 10_recombobulator.lua。
     { Id = "prismatic_upgrade_recombobulator", Rarity = 1,
         NameKey = "hextech.rune.upgrade_recombobulator.name",
@@ -221,6 +239,10 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_dongfeng_express = true,
     gold_ascension = true,
     gold_ragnarok = true,
+    -- 挖角：每人唯一，多份等于每回合多拿单位，故列入排除名单。
+    gold_poach = true,
+    -- 致命节奏：每人唯一，本方全体单位同吃一份修正器，重复没有意义。
+    prismatic_lethal_tempo = true,
     -- 以战养战改为玩家独立且可重复获取：多份只叠加在自己的单位上，故不列入排除。
     prismatic_time_rift = true,
     prismatic_shrink_ray = true,
