@@ -36,10 +36,16 @@ function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
     local frozenIds = {}
     local refPrefix = self.TimeRiftRefPrefix .. tostring(sideIndex) .. "_"
     for i = 1, count, 1 do
-        if ObjectIsAlive(objects[i]) then
+        -- 已经处于时停（技能组原生时停或上一批时间裂隙）的对象直接跳过：
+        -- 符文的时停不该去改写已有的租约，解除交给原来那条租约。
+        if ObjectIsAlive(objects[i]) and not g_IsTimeStopActive(objects[i]) then
             self:SetTimeRiftFrozen(objects[i], true, refPrefix, duration)
             tinsert(frozenIds, ObjectGetId(objects[i]))
         end
+    end
+    -- 整批都被过滤掉时本批没有任何实际效果，不再播裂缝音效，避免误导。
+    if getn(frozenIds) <= 0 then
+        return
     end
     ExecuteAction("PLAY_SOUND_EFFECT", self.TimeRiftSound)
     -- 只解除本次真正冻结过的对象；登记的是 id，阵亡的对象直接跳过，

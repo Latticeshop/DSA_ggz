@@ -352,7 +352,11 @@ function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     local objects, count = ObjectFindObjects(P[sideIndex], nil,
         self.AllSideUnitsAndStructuresFilter)
     for i = 1, count, 1 do
-        g_ApplyIronCurtain(objects[i], duration)
+        -- 已经有铁幕的单位直接跳过：符文的铁幕不该改写技能组（或上一批符文）留下的更长期约，
+        -- 真正施加的那批仍走 g_ApplyIronCurtain 的取最长仲裁。
+        if not g_IsIronCurtainActive(objects[i]) then
+            g_ApplyIronCurtain(objects[i], duration)
+        end
     end
 end
 

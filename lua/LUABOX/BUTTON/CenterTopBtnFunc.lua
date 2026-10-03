@@ -820,6 +820,13 @@ end
 -- 所有施加与解除都必须经过下面两个仲裁函数：铁幕取最长，时停按持有者登记。
 g_IronCurtainExpireFrame = g_IronCurtainExpireFrame or {}
 
+-- 符文释放前先按这两个函数过滤：已经有同类效果的单位直接跳过，由原来那条更长的租约负责到期解除。
+function g_IsIronCurtainActive(unit)
+    local objectId = ObjectGetId(unit)
+    return objectId ~= nil
+        and (g_IronCurtainExpireFrame[objectId] or 0) > GetFrame()
+end
+
 function g_ApplyIronCurtain(unit, duration)
     local objectId = ObjectGetId(unit)
     local now = GetFrame()
@@ -834,6 +841,20 @@ g_TimeStopHolders = g_TimeStopHolders or {}
 g_TimeStopWatchedList = g_TimeStopWatchedList or {}
 g_TimeStopWatchedMark = g_TimeStopWatchedMark or {}
 g_TimeStopSweepSchedulerId = g_TimeStopSweepSchedulerId or nil
+
+-- 时停是否还在生效：native（技能组）与 rift（时间裂隙）任一租约未到期即算持有。
+function g_IsTimeStopActive(unit)
+    local objectId = ObjectGetId(unit)
+    if objectId == nil then
+        return false
+    end
+    local holders = g_TimeStopHolders[objectId]
+    if holders == nil then
+        return false
+    end
+    local now = GetFrame()
+    return (holders.native or 0) > now or (holders.rift or 0) > now
+end
 
 -- 把单位真正放开：清掉 PARALYZED，并让施放时挂的裂缝特效（原生写的是 1e8 帧）立刻过期。
 -- 句柄一律按 id 现取，不缓存：单位阵亡后旧句柄会让引擎拿 nil 去索引它内部的表。

@@ -1,6 +1,7 @@
 -- 海克斯符文“登神”：随机指定一种单位，只保留 1 个作为种子，
 -- 其余该单位被系统回收时，每回收 1 个随机获得一项永久高数值加成
 -- （血量 / 伤害 / 攻速 / 射程，概率见下方常量）。
+-- 体积是固定加成、不参与掷骰
 
 HextechRune = HextechRune or {}
 
@@ -11,6 +12,8 @@ HextechRune.AscensionDamagePerStack = 0.10
 HextechRune.AscensionRateOfFirePerStack = 0.10
 -- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
 HextechRune.AscensionRangePerStack = 0.10
+-- 体积加成，
+HextechRune.AscensionScale = 1.3
 -- 掷骰概率：血量 40% / 伤害 30% / 攻速 20% / 射程 10%
 -- （累计区间 0.40 / 0.70 / 0.90 / 1.00，最后一段就是射程）。
 HextechRune.AscensionHealthChance = 0.40
@@ -261,6 +264,9 @@ function HextechRune:ApplyAscensionUnits(assignments)
                 ObjectLoadAttributeModifier(assignment.Unit,
                     self:CreateAscensionModifier(assignment.PlayerIndex),
                     self.PersistentBuffDuration)
+                -- 体积与四维同时生效：固定倍率、永久缩放，不掷骰也不建信息框。
+                exObjectSetFixedScale(ObjectGetId(assignment.Unit),
+                    self.AscensionScale)
                 assignment.AscensionGranted = true
             end
         end

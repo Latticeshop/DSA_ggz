@@ -7,9 +7,23 @@ g_EnableShrinkMode = 0;
 g_DisableSeaArmy = 0;
 g_DrawMode = 0; -- 0: disabled, 1: original lucky crate, 2: pure draw
 g_LuckyCrateMode = 0; -- compatibility flag used by the existing lucky-crate implementation
-g_HextechCount = 0; -- 海克斯符文发放次数：可选 0~4，默认随入局前“开启随机箱子”配置选择 0 或 3
-g_HextechCountManuallySet = false; -- 房主是否已手动设置过海克斯次数（开启随机箱子时默认"三个"）
+g_HextechCount = 0; -- 海克斯符文发放次数：可选 0~4，默认随局外“开启随机箱子”配置选择 0 或 3
+g_HextechCountManuallySet = false; -- 房主是否在选项 5 手动设置过海克斯次数（设置过就不再被随机箱子默认值覆盖）
 g_EnableHextechRune = 0; -- 海克斯符文系统是否启用（g_HextechCount > 0 时置 1）
+
+-- 海克斯开关的唯一折算入口：只读「海克斯符文设置」（选项 5）的 g_HextechCount。
+-- 抽卡模式选择（选项 4）与海克斯完全解耦，两边互不改写对方的变量；
+-- 局外勾选「开启随机箱子」时由 UtilsLuckyCrate 的箱子检测写入默认次数（默认三个），
+-- 检测发生在开局对话确认之后，所以那边也要回调本函数重新折算一次启用标志。
+function BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
+    g_EnableHextechRune = 0
+    if g_HextechCount ~= nil and g_HextechCount > 0 then
+        g_EnableHextechRune = 1
+    end
+    if CenterTopBtnFunc_UpdateHextechPanelButton ~= nil then
+        CenterTopBtnFunc_UpdateHextechPanelButton()
+    end
+end
 
 g_GameModeName = {
     [1] = Localization.get("game_mode.name.1"),
@@ -643,22 +657,10 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             if g_DrawMode == 1 or g_DrawMode == 2 then
                 g_LuckyCrateMode = 1
             end
-            -- 未手动设置海克斯时，始终跟随随机箱子：关闭=不启用，开启=三个。
-            if not g_HextechCountManuallySet then
-                if g_LuckyCrateMode == 1 then
-                    g_HextechCount = 3
-                else
-                    g_HextechCount = 0
-                end
-            end
-            g_EnableHextechRune = 0
-            if g_HextechCount ~= nil and g_HextechCount > 0 then
-                g_EnableHextechRune = 1
-            end
-            -- 海克斯配置确定后刷新按钮 5（海克斯面板）的启用状态
-            if CenterTopBtnFunc_UpdateHextechPanelButton ~= nil then
-                CenterTopBtnFunc_UpdateHextechPanelButton()
-            end
+            -- 海克斯与抽卡解耦：这里不再由随机箱子/抽卡状态推导海克斯次数，
+            -- 只按「海克斯符文设置」（选项 5）当前的 g_HextechCount 折算启用标志。
+            -- 未手动设置时保持初始默认，随后由局外“开启随机箱子”的检测决定是否改为三个。
+            BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
                 g_NoNavyTeslaBoatUnlocked = 0
@@ -802,14 +804,8 @@ function BtnChoiceDialogEventFunc_ShowDrawModeDialog(playerName)
             g_LuckyCrateMode = 0
             if g_DrawMode ~= 0 then
                 g_LuckyCrateMode = 1
-                -- 开启随机箱子时，海克斯默认选中"三个"（若尚未手动设置过）
-                if not g_HextechCountManuallySet then
-                    g_HextechCount = 3
-                end
-            elseif not g_HextechCountManuallySet then
-                -- 关闭抽卡时，未手动配置的海克斯也恢复为“不启用”。
-                g_HextechCount = 0
             end
+            -- 抽卡模式与海克斯符文是两个独立选项：这里只改抽卡，绝不联动 g_HextechCount。
             local selectedDrawModeName = Localization.get("draw_mode.disabled")
             if g_DrawMode == 1 then
                 selectedDrawModeName = Localization.get("draw_mode.original")

@@ -44,21 +44,32 @@ function PureLuckyCrateMode_Setting()
 end
 
 -- 箱子模式：只允许抽卡，不允许在地图上刷随机箱子（万一被 AI 捡了太麻烦）
+-- 这个检测也是「局外「开启随机箱子」→ 默认开启抽卡 / 默认开启海克斯（三个）」的唯一读取入口，
+-- 抽卡的默认设置（g_DrawMode / g_LuckyCrateMode）与海克斯的默认设置复用同一次检测。
 SchedulerModule.delay_call(function()
     local crateFilter = CreateObjectFilter({ IncludeThing = { "GenericCrateSpawner" } })
     local units, count = ObjectFindObjects(nil, nil, crateFilter)
+    if count <= 0 then
+        -- 未检测到随机箱子：抽卡与海克斯都保留初始化的“不启用”。
+        return
+    end
     for j = 1, count, 1 do
         -- 先禁用抽卡技能（后面可以启用）
         ExecuteAction("NAMED_DELETE", units[j])
-        -- 此外假如检测到随机宝箱，就默认启用旧抽卡模式。
-        if g_DrawMode == nil or g_DrawMode == 0 then
-            g_DrawMode = 1
-            g_LuckyCrateMode = 1
-        end
-        -- 入局前勾选“开启随机箱子”时，海克斯默认同步为本场三个；
-        -- 未检测到随机箱子时则保留初始化的“不启用”。
-        if not g_HextechCountManuallySet then
-            g_HextechCount = 3
+    end
+    -- 此外假如检测到随机宝箱，就默认启用旧抽卡模式。
+    if g_DrawMode == nil or g_DrawMode == 0 then
+        g_DrawMode = 1
+        g_LuckyCrateMode = 1
+    end
+    -- 海克斯与抽卡解耦：这里只负责把默认次数写成本场三个，
+    -- 房主在「海克斯符文设置」（选项 5）手动设置过就完全按房主的选择走。
+    -- 开局对话确认发生在本检测之前，g_EnableHextechRune 已经按当时的次数写过一次，
+    -- 因此这里改完次数必须重新折算一次，否则次数是 3、开关却还是 0。
+    if not g_HextechCountManuallySet then
+        g_HextechCount = 3
+        if BtnChoiceDialogEventFunc_ApplyHostHextechSetting ~= nil then
+            BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
         end
     end
 end, 1, {})
