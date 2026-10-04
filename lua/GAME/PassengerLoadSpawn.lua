@@ -1,6 +1,5 @@
 -- 机制依据/失败记录/字段含义/实测结论：analysis/地图注释说明文档.md §1（先读 §1.13 自检清单）。
--- 说明一律写进文档 §1。
--- 硬约束：兵不删；只走 g_PLSpawnGarrison；成败由巡收复核。
+-- 硬约束：装填/巡收不删兵（删只在清要塞自带标枪兵）；只走 g_PLSpawnGarrison；成败由巡收复核。
 
 g_PLSpawnLastRound = -1
 
@@ -37,8 +36,9 @@ g_PLSpawnAllInf = {
 -- 两型显示名都叫「联盟重型坦克」，靠 Tag 区分（§1.7）
 g_PLSpawnCars = {
     { Template = "AlliedAntiAirVehicleTech1",     Capacity = 1, Inf = g_PLSpawnAllInf, Tag = "IFV" },
-    -- 要塞自带 4 个标枪兵，只补 1 位（§1.14）
-    { Template = "AlliedBattleFortress",          Capacity = 1, Inf = g_PLSpawnAllInf, Tag = "要塞" },
+    -- 要塞先清自带兵，再当 5 格空车装（§1.14）
+    { Template = "AlliedBattleFortress",          Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "要塞",
+      BuiltIn = "AlliedAntiVehicleInfantry" },
     { Template = "SovietAntiVehicleVehicleTech4", Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "联盟" },
     { Template = "Overlordtank",                  Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "重型" },
 }
@@ -137,7 +137,7 @@ function g_PLSpawnTrackEntry(carId, unitId, tag)
     tinsert(g_PLSpawnEntries, { CarId = carId, UnitId = unitId, Tag = tag, Retry = 0 })
 end
 
--- 明确跨阵营的车兵配对（§1.15）。
+-- 明确跨阵营的车兵配对（§1.15）
 function g_PLSpawnCrossPair(car, unit)
     if ObjectPlayerScriptName == nil then
         return false
@@ -161,7 +161,7 @@ function g_PLSpawnHold()
         local item = list[index]
         local car = GetObjectById(item.CarId)
         local unit = GetObjectById(item.UnitId)
-        -- 引擎会复用 ID；配对跨了阵营就整条放手（兵不删）
+        -- 配对跨阵营就整条放手（兵不删）
         if car ~= nil and unit ~= nil and g_PLSpawnCrossPair(car, unit) then
             car = nil
         end
@@ -207,7 +207,7 @@ function g_PLSpawnLoadCar(car, tag, slots, candidates, candidateCount)
     end
 end
 
--- 对面阵营的玩家脚本名；不认识时返回 nil（此时不过滤）。
+-- 对面阵营脚本名；认不出返回 nil（不过滤）。
 function g_PLSpawnOtherSideName(sideIndex)
     local name = g_PLSpawnSideNames[sideIndex]
     if name == "PlyrCivilian" then
@@ -273,6 +273,41 @@ function g_PLSpawnDropGuardCars(objects, count)
     return kept, keptCount
 end
 
+-- 只删容器句柄命中本轮要塞的兵（§1.14）。
+function g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
+    if carEntry.BuiltIn == nil or cars == nil or count == nil or count < 1 then
+        return
+    end
+    local carIds = {}
+    for index = 1, count, 1 do
+        local car = cars[index]
+        if car ~= nil and ObjectIsAlive(car) then
+            carIds[ObjectGetId(car)] = true
+        end
+    end
+    if carEntry.CrewFilter == nil then
+        carEntry.CrewFilter = CreateObjectFilter({
+            Rule = "ANY",
+            Relationship = "SAME_PLAYER",
+            IncludeThing = { carEntry.BuiltIn },
+        })
+    end
+    local crew, crewCount = ObjectFindObjects(P[sideIndex], nil, carEntry.CrewFilter)
+    if crew == nil or crewCount == nil then
+        return
+    end
+    for index = 1, crewCount, 1 do
+        local unit = crew[index]
+        if unit ~= nil and ObjectIsAlive(unit) then
+            local container = ObjectGetContainerObject(unit)
+            if container ~= nil and carIds[ObjectGetId(container)] == true then
+                ExecuteAction("NAMED_EXIT_BUILDING", unit)
+                ExecuteAction("NAMED_DELETE", unit)
+            end
+        end
+    end
+end
+
 function g_PLSpawnCandidates(sideIndex, carEntry)
     if carEntry.InfFilter == nil then
         carEntry.InfFilter = CreateObjectFilter({
@@ -315,6 +350,7 @@ function g_PLSpawnFillType(sideIndex, carEntry)
     if cars == nil or count == nil then
         return 0
     end
+    g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
     for index = 1, count, 1 do
         if filled >= g_PLSpawnCarsPerSide then
             break
@@ -333,7 +369,7 @@ function g_PLSpawnFillType(sideIndex, carEntry)
     return filled
 end
 
--- 按阵营不按座位：三名队友的场上单位同属 7/8
+-- 按阵营不按座位：队友单位同属 7/8
 function g_PLSpawnSide(sideIndex)
     if P == nil or P[sideIndex] == nil then
         return

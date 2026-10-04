@@ -21,8 +21,8 @@ HextechRune.PoachWatchedRound = HextechRune.PoachWatchedRound or -1
 HextechRune.PoachRoundStartFrame = HextechRune.PoachRoundStartFrame or 0
 -- 持有判定兼看 Id：Effect 字段意外缺失时也不会漏判。
 HextechRune.PoachRuneId = "gold_poach"
--- 敌方卡池为空时向持有者播报诊断行（排查用；确认无误后置 nil 关闭）。
-HextechRune.PoachDiagnostics = true
+-- 敌方卡池为空时向持有者播报诊断行
+HextechRune.PoachDiagnostics = nil
 -- 生成落点在本方出生点两侧的偏移（本符文每人唯一，正常只有 1 份）。
 HextechRune.PoachSpawnSideStep = 60
 

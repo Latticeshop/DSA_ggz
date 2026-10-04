@@ -385,16 +385,11 @@ function GetDrawnUnitNameFromRecycleList(playindex, unitType)
     return Localization.ObjectsTranslate(unitType)
 end
 
--- 登场即自带载员的载具：扫描回收时自带兵会跟着一起计入单位池，
--- 于是每份车额度实际绑着若干份载员额度。{ Car = 车模板, Type = 自带载员模板, Count = 每辆车几个 }
-g_BuiltInCrew = {
-    { Car = "AlliedBattleFortress", Type = "AlliedAntiVehicleInfantry", Count = 4 },
-}
-
+-- 登场的要塞自带 4 个标枪兵，现在由装车逻辑（PassengerLoadSpawn）在回合开始就清成空车，
+-- 所以它们不会跟着进单位池，回收侧不需要再扣载员额度。
 function unitgetcountanddelet (playindex)
     --exMessageAppendToMessageArea("unitgetcountanddelet")
     local drawnUnitCounts = {}
-    local crewOwed = {}
     -- 先让单位下车
     for unitindex = 1 , unitcountmax , 1 do
         local TAR, count = ObjectFindObjects(P[playindex], nil, FilterLIST[unitindex])
@@ -443,14 +438,6 @@ function unitgetcountanddelet (playindex)
                     end
                     ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
                     UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
-
-                    -- 自带载员的车：记下这批入池数量对应的载员额度，循环结束后统一扣
-                    for crewIndex = 1, getn(g_BuiltInCrew), 1 do
-                        if UNITLIST[actualUnitIndex] == g_BuiltInCrew[crewIndex].Car then
-                            crewOwed[crewIndex] = (crewOwed[crewIndex] or 0)
-                                + g_BuiltInCrew[crewIndex].Count
-                        end
-                    end
 
                     -- 摇光限造 3 个只统计玩家实际生产的单位。
                     -- 海克斯/箱子赠送没有生产者，不增加此独立计数。
@@ -505,16 +492,6 @@ function unitgetcountanddelet (playindex)
                     PureDrawRemoveKnownPlayerUnit(ObjectGetId(TAR[i]))
                 end
                 ExecuteAction("NAMED_DELETE", TAR[i])
-            end
-        end
-    end
-    -- 自带载员的车：把跟着入池的载员额度按数量扣掉（不给钱），否则玩家白赚这部分回收钱
-    if RemoveRecycleUnitCount ~= nil then
-        for crewIndex = 1, getn(g_BuiltInCrew), 1 do
-            local owed = crewOwed[crewIndex]
-            if owed ~= nil and owed > 0 then
-                RemoveRecycleUnitCount(playindex,
-                    { Type = g_BuiltInCrew[crewIndex].Type }, owed)
             end
         end
     end
