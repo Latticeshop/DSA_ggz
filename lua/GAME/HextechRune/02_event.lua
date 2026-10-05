@@ -631,10 +631,10 @@ function HextechRune:ShowNextQueuedRuneEvent(playerIndex)
     return false
 end
 
--- 真实符文事件：先确定全场稀有度，再按玩家身份处理。
 -- 真人独立筛池并无放回抽 3 个进行选择；遭遇战电脑直接随机获得同阶符文 1 个。
 function HextechRune:ShowRuneEvent(round)
     local rarity = self:RollFieldRarity(round)
+    local hasHumanEvent = false
     for playerIndex = 1, 6, 1 do
         -- 仅对存在的玩家触发（有建筑的玩家）
         local playerName = "Player_" .. playerIndex
@@ -644,10 +644,15 @@ function HextechRune:ShowRuneEvent(round)
         if structureCount > 0 then
             if self:IsHumanPlayer(playerIndex) then
                 self:EnqueueRuneEvent(playerIndex, rarity, round)
+                hasHumanEvent = true
             else
                 self:GrantRandomRuneToComputer(playerIndex, rarity, round)
             end
         end
+    end
+    -- 到点不再自动弹面板，只挂提示等玩家按 J；因此全图播报一次提醒查收。
+    if hasHumanEvent then
+        exAddTextToPublicBoard(Localization.get("hextech.selection.ready_broadcast"), 10)
     end
 end
 

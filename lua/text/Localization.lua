@@ -160,8 +160,8 @@ Localization._text_sources = {
     ["market.next_investment.benefit"] = { zh = "\n若回合胜利可获收益\n　", en = "" }, -- 英文写不下就不写了
     ["market.transfer.choice"] = { zh = "向%s%s转移1000资金", en = "1000＄ to %s%s" },
     ["market.back_to_battle"] = { zh = "回到战场", en = "Back to Battle" },
-    ["market.buy_shield_tower"] = { zh = "购买护盾塔(%d)", en = "Buy Shield Tower %d＄" },
-    ["market.buy_poplar_tower"] = { zh = "购买胡杨塔(%d)", en = "Buy AA Tower %d＄" },
+    ["market.buy_shield_tower"] = { zh = "购买护盾投射塔(%d)", en = "Buy Shield Projector Tower %d＄" },
+    ["market.buy_poplar_tower"] = { zh = "购买胡杨防空系统(%d)", en = "Buy Poplar AA System %d＄" },
     ["market.buy_sakura_well"] = { zh = "购买樱花井(%d)", en = "Buy Sakura Well %d＄" },
     ["market.buy_aegis_shield_generator"] = { zh = "购买埃奎斯护盾发生器(%d)", en = "Buy Aegis Shield Generator %d＄" },
     ["market.buy_tianmen_bow"] = { zh = "购买天门神弓(%d)", en = "Buy Tianmen Bow %d＄" },

@@ -976,6 +976,8 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "CelestialSeized_JapanAntiNavyShipTech3" },
     { RuneId = "silver_dual_purpose", SourceType = "SovietAntiAirShip",
         ReplacementType = "VUAntiAirVehicleTech1" },
+    { RuneId = "silver_dragon_breathe", SourceType = "CelestialAntiInfantryVehicle_B",
+        ReplacementType = "CelestialWaveriderIFV_DragonBreathe" },
     { RuneId = "silver_advanced_artillery", SourceType = "AlliedGunshipAircraft",
         ReplacementType = "AlliedAC130GunshipAircraft" },
     { RuneId = "silver_banzai_charge", SourceType = "JapanAntiInfantryInfantry",
@@ -1329,6 +1331,23 @@ function HextechRune:ApplyRuneToAssignment(rune, assignment, typeLookup)
     return false
 end
 
+-- 效果不挂在“本次新出兵”身上的符文：一次性赠送、全局/经济类、被动替换型。
+-- 逐兵施加的循环按这张表跳过，新增符文只需在这里登记一行，不用再改判定条件。
+HextechRune.SkipPerUnitAssignmentEffects = {
+    starting_funds = true, fortified = true, recycler = true,
+    broadband_jamming = true, divine_intervention = true, grant_foreign_mcv = true,
+    grant_yaoguang = true, oil_king = true, buy_two_get_one = true,
+    five_thunder = true, combustion_interest = true, tesla_air_assault = true,
+    grant_olympus_carrier = true, grant_oblivion_bomb = true,
+    grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
+    tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
+    ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
+    upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
+    upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
+    upgrade_imperial_warrior = true, ultimate_creature = true,
+    war_efficiency = true, time_rift = true,
+}
+
 -- 给本次刚登记的新单位应用其归属玩家的全部持续符文。
 function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
     excludedPlayerIndex, excludedOwnershipId, typeLookup)
@@ -1340,31 +1359,8 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
             local rune = owned[runeIndex]
             local isExcluded = playerIndex == excludedPlayerIndex
                 and self:GetRuneEffectInstanceId(rune) == excludedOwnershipId
-            if not isExcluded and rune.Effect ~= "starting_funds" and rune.Effect ~= "fortified"
-                and rune.Effect ~= "recycler" and rune.Effect ~= "broadband_jamming"
-                and rune.Effect ~= "divine_intervention" and rune.Effect ~= "grant_foreign_mcv"
-                and rune.Effect ~= "grant_yaoguang" and rune.Effect ~= "oil_king"
-                and rune.Effect ~= "buy_two_get_one" and rune.Effect ~= "five_thunder"
-                and rune.Effect ~= "combustion_interest"
-                and rune.Effect ~= "tesla_air_assault"
-                and rune.Effect ~= "grant_olympus_carrier"
-                and rune.Effect ~= "grant_oblivion_bomb"
-                and rune.Effect ~= "grant_giga_fortress"
-                and rune.Effect ~= "grant_dongfeng_express"
-                and rune.Effect ~= "safety"
-                and rune.Effect ~= "tower_defense_expert"
-                and rune.Effect ~= "cash_reward"
-                and rune.Effect ~= "brilliant_lights"
-                and rune.Effect ~= "ultimate_refresh"
-                and rune.Effect ~= "quality_transformation"
-                and rune.Effect ~= "gambling_addict"
-                and rune.Effect ~= "upgrade_tachi_cruiser"
-                and rune.Effect ~= "upgrade_bullfrog"
-                and rune.Effect ~= "upgrade_vanguard_gunship"
-                and rune.Effect ~= "upgrade_imperial_warrior"
-                and rune.Effect ~= "ultimate_creature"
-                and rune.Effect ~= "war_efficiency"
-                and rune.Effect ~= "time_rift" then
+            if not isExcluded
+                and not self.SkipPerUnitAssignmentEffects[rune.Effect] then
                 for i = 1, getn(assignments), 1 do
                     local assignment = assignments[i]
                     if assignment.PlayerIndex == playerIndex then
@@ -1645,6 +1641,7 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     --     self:GrantCashRewardProtocol(playerIndex)
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
+        or rune.Effect == "upgrade_waverider_dragon_breathe"
         or rune.Effect == "upgrade_vanguard_gunship"
         or rune.Effect == "upgrade_imperial_warrior" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。

@@ -3,7 +3,7 @@
 HextechRune = HextechRune or {}
 
 -- 普通来源目标落在 T4 时的稀有概率，和稀有来源保住稀有的概率。
-HextechRune.RecombobulatorRareChance = 0.03
+HextechRune.RecombobulatorRareChance = 0.05
 HextechRune.RecombobulatorRareKeepChance = 0.5
 -- 稀有池无视阶级：母舰（T5，阶级表里按 T4 结算）与特等奖混在同一张表里互滚。
 HextechRune.RecombobulatorRareTypes = {
