@@ -1117,6 +1117,7 @@ g_NanoRepairTowerTypes = {
     "SovietHeavyAntiAirMissileTurret",
     "JapanKamikazeCommandTower",
     "AlliedAegisLargeDefenseBase",
+    "CelestialEnergyRailgunBase",
 }
 g_NanoRepairMapTowerNames = {
     "T71", "T72", "T73", "T74", "T81", "T82", "T83", "T84",

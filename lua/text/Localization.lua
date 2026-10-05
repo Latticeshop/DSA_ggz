@@ -164,6 +164,7 @@ Localization._text_sources = {
     ["market.buy_poplar_tower"] = { zh = "购买胡杨塔(%d)", en = "Buy AA Tower %d＄" },
     ["market.buy_sakura_well"] = { zh = "购买樱花井(%d)", en = "Buy Sakura Well %d＄" },
     ["market.buy_aegis_shield_generator"] = { zh = "购买埃奎斯护盾发生器(%d)", en = "Buy Aegis Shield Generator %d＄" },
+    ["market.buy_tianmen_bow"] = { zh = "购买天门神弓(%d)", en = "Buy Tianmen Bow %d＄" },
     ["market.more_defense_buildings"] = { zh = "更多防御建筑", en = "More Defense Buildings" },
     ["market.back_to_main_page"] = { zh = "返回上一页", en = "Back to Previous Page" },
     ["market.transfer.success"] = { zh = "成功转账1000给$p%dName", en = "Successfully transferred 1000＄ to $p%dName" },

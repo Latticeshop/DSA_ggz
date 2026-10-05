@@ -78,6 +78,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.cash_reward.desc"] = { zh = "获得现金奖励协议。", en = "Gain the Cash Bounty protocol." },
     ["hextech.rune.safety.name"] = { zh = "安全感", en = "Sense of Security" },
     ["hextech.rune.safety.desc"] = { zh = "获得 2 个埃奎斯护盾发生器。", en = "Gain 2 Aegis Shield Generators." },
+    ["hextech.rune.railgun_duel.name"] = { zh = "中门对狙", en = "Mid-Door Sniper Duel" },
+    ["hextech.rune.railgun_duel.desc"] = { zh = "获得一个天门神弓。", en = "Gain one Tianmen Bow." },
     ["hextech.rune.fortified.name"] = { zh = "固若金汤", en = "Fortified" },
     ["hextech.rune.fortified.desc"] = { zh = "最前端防御塔回满血量并增加 25%%。", en = "The frontmost defense tower is fully repaired and gains 25%% health." },
     ["hextech.rune.recycler.name"] = { zh = "破烂王", en = "Recycler" },
@@ -151,8 +153,8 @@ g_LocalizationExtraText = {
         { zh = "挖角：本次获得一个 %s 单位。", en = "Poach: gained one %s this round." },
     ["hextech.rune.investment.name"] = { zh = "投资", en = "Investment" },
     ["hextech.rune.investment.desc"] =
-        { zh = "失去你当前所有的金钱，5 回合后获得两倍的金钱。",
-            en = "Lose all of your current money; 5 rounds later you gain twice that amount." },
+        { zh = "失去你当前所有的金钱，4 回合后获得两倍的金钱。",
+            en = "Lose all of your current money; 4 rounds later you gain twice that amount." },
     ["hextech.rune.investment.invested"] =
         { zh = "投资：投入 %d 金，第 %d 回合返还两倍。",
             en = "Investment: put in %d money, doubled on round %d." },

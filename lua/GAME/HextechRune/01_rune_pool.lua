@@ -91,6 +91,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.safety.name",
         DescKey = "hextech.rune.safety.desc", Effect = "safety",
         Icon = "Button_AlliedAegisLargeDefenseBase" },
+    -- 与安全感同类：即时赠送建筑，可重复获取，不占用交易市场的购买名额。
+    { Id = "gold_railgun_duel", Rarity = 2,
+        NameKey = "hextech.rune.railgun_duel.name",
+        DescKey = "hextech.rune.railgun_duel.desc", Effect = "grant_railgun",
+        Icon = "Button_CelestialEnergyRailgunBase" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_CelestialAntiVehicleInfantry_Skill" },

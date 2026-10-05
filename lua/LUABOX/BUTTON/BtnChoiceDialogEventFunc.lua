@@ -90,6 +90,10 @@ g_BuyTowerId = {
         ["angel"] = 0,
         ["evil"] = 0,
     },
+    ["CelestialEnergyRailgunBase"] = {
+        ["angel"] = 0,
+        ["evil"] = 0,
+    },
     ["AlliedAegisLargeDefenseBase"] = {
         ["angel"] = { 0, 0 },
         ["evil"] = { 0, 0 },
@@ -124,7 +128,6 @@ function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
     return nil
 end
 
--- 埃奎斯走廊的槽位分配：slots 按「环 + 左右」展平成一维（0 或已摧毁的对象表示空槽），
 -- 从内圈往外找第一个空槽；scanLimit 以外的外圈槽位只允许塔防专家使用。
 function BtnChoiceDialogEventFunc_AllocateAegisSlot(slots, scanLimit)
     for i = 1, scanLimit, 1 do
@@ -143,6 +146,37 @@ function BtnChoiceDialogEventFunc_GetAegisLateralOffset(slotIndex)
         lateralDirection = -1
     end
     return lateralDirection * (126.75 + ringCount * 60)
+end
+
+-- 天门神弓的取位与加成，市场购买与符文赠送共用：站在樱花井再往后一格（253.5），
+-- 血量与埃奎斯同款 9000，射程与视野同时 ×1.75（塔不会移动，只放射程看不到也打不到）。
+function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
+    local behindDirection = -1;
+    local playerOwn = "PlyrCivilian";
+    local pos = {X = 2646.5, Y = 3102.5, Z = 210};
+    if playerIndex >= 4 then
+        behindDirection = 1;
+        playerOwn = "PlyrCreeps";
+        pos = {X = 4403.5, Y = 3102.5, Z = 210};
+    end
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower);
+        pos = {X = towerX + behindDirection * 253.5, Y = towerY, Z = towerZ};
+    end
+    local id = exCreateObject({
+        ObjectType = FastHash("CelestialEnergyRailgunBase"),
+        TeamName = playerOwn.."/team"..playerOwn,
+        Position = pos,
+        Angle = 0,
+        Health = 9000
+    });
+    if not g_CelestialEnergyRailgunBaseRangeX175Modifier then
+        g_CelestialEnergyRailgunBaseRangeX175Modifier = exAttributeModifierCreate(
+            { RANGE = 1.75, VISION = 1.75 }, 1)
+    end
+    ObjectLoadAttributeModifier(GetObjectById(id), g_CelestialEnergyRailgunBaseRangeX175Modifier)
+    return id
 end
 
 
@@ -210,12 +244,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             local sakuraWellPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 10000)
             local poplarTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 12000)
             local aegisPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 15000)
+            local tianmenBowPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 20000)
             self.Choices = {
                 Localization.get("market.buy_shield_tower", shieldTowerPrice), -- 1
                 Localization.get("market.buy_sakura_well", sakuraWellPrice), -- 2
                 Localization.get("market.buy_poplar_tower", poplarTowerPrice), -- 3
                 Localization.get("market.buy_aegis_shield_generator", aegisPrice), -- 4
-                Localization.get("market.back_to_main_page"), -- 5
+                Localization.get("market.buy_tianmen_bow", tianmenBowPrice), -- 5
+                Localization.get("market.back_to_main_page"), -- 6
             }
         else
             self.Choices = {
@@ -248,6 +284,9 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 self:BuyAlliedAegisLargeDefenseBase()
                 return
             elseif buttonIndex == 5 then
+                self:BuyCelestialEnergyRailgunBase()
+                return
+            elseif buttonIndex == 6 then
                 self.Page = 1
             end
             self:RefreshData()
@@ -459,6 +498,30 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         ObjectLoadAttributeModifier(GetObjectById(id), g_JapanKamikazeCommandTowerRangeX15Modifier)
         if not ignoresLimit then
             g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
+        end
+        ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+    end
+    -- 天门神弓（神州防御塔）：限购 1 座，塔防专家半价且无视数量限制。
+    dialogData.BuyCelestialEnergyRailgunBase = function(self)
+        local sideName = "evil";
+        if self.PlayerIndex >= 4 then
+            sideName = "angel";
+        end
+        local objectId = g_BuyTowerId["CelestialEnergyRailgunBase"][sideName];
+        local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
+        if ObjectIsAlive(objectId) and not ignoresLimit then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
+            return;
+        end
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 20000)
+        local money = exPlayerGetCurrentMoney(self.PlayerName)
+        if money < price then
+            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
+            return;
+        end
+        local id = BtnChoiceDialogEventFunc_CreateCelestialRailgun(self.PlayerIndex)
+        if not ignoresLimit then
+            g_BuyTowerId["CelestialEnergyRailgunBase"][sideName] = id;
         end
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
     end

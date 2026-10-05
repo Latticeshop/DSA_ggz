@@ -1,11 +1,11 @@
 -- 海克斯符文「投资」（银色，可重复）：选择时失去当前全部金钱，
--- 5 个回合后（回合开始结算的那一刻）获得当时投入金额的两倍。
+-- 4 个回合后（回合开始结算的那一刻）获得当时投入金额的两倍。
 -- 每份独立计时，可重复获取叠加多笔互不影响的投资。
 
 HextechRune = HextechRune or {}
 
 -- 到期回合数：选择回合 + 该值。
-HextechRune.InvestmentDueRounds = 5
+HextechRune.InvestmentDueRounds = 4
 -- 回报倍率：2 倍（本金 + 等额收益）。
 HextechRune.InvestmentPayoutMultiplier = 2
 -- 每个玩家一份待结算列表：{ Amount = 投入金额, DueRound = 到期回合 }。

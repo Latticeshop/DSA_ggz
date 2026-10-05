@@ -565,6 +565,52 @@ end
 CAIRTECH4limitc = {}
 bigshiplimitc = {}
 
+-- 四种 T4 大船共用一个限造额度（单位池数量，按玩家个人）。讲解见 analysis/地图注释说明文档.md §3。
+BIGSHIP_LIMIT = 2
+FLAGENBIGSHIP = { 1, 1, 1, 1, 1, 1 }
+BigShipBuildTypes = {
+    "JapanAntiStructureShip",
+    "JapanAntiStructureShip_Enhanced",
+    "SovietAntiStructureShip",
+    "SovietAntiStructureShip_Enhanced",
+    "AlliedAntiStructureShip",
+    "AlliedAntiStructureShip_Enhanced",
+    "CelestialAntiStructureShip",
+    "CelestialAntiStructureShip_Enhanced",
+}
+
+function SetBigShipBuildability(playindex, allowed)
+    for i = 1, getn(BigShipBuildTypes), 1 do
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_"..playindex, BigShipBuildTypes[i], allowed)
+    end
+end
+
+-- 地编的 bigshiplimit__N 触发器是一次性禁造（DeactivateUponSuccess），卖掉船之后没人负责解禁，
+-- 回收后重新开放只能由这里负责；它顺带补上了地编漏掉的 alliedantistructureship_enhanced。
+function LIMITBIGSHIP(playindex, bigShipCount)
+    if bigShipCount >= BIGSHIP_LIMIT then
+        if FLAGENBIGSHIP[playindex] == 1 then
+            SetBigShipBuildability(playindex, 0)
+            FLAGENBIGSHIP[playindex] = 0
+        end
+        return
+    end
+    if FLAGENBIGSHIP[playindex] == 1 then
+        return
+    end
+    FLAGENBIGSHIP[playindex] = 1
+    -- 纯抽卡模式对可造性另有完整规则（科技、禁海、解锁回合），重算交给它自己。
+    if g_DrawMode == 2 and PureDrawReapplyPlayerQuota ~= nil then
+        PureDrawReapplyPlayerQuota(playindex)
+        return
+    end
+    -- 禁海模式海军本就不开放，这里只把状态复位，不替模式解锁。
+    if g_DisableSeaArmy == 1 then
+        return
+    end
+    SetBigShipBuildability(playindex, 1)
+end
+
 function bigshiplimit()
     --exMessageAppendToMessageArea("ACT")
     for i = 1 , 6 , 1 do
@@ -581,5 +627,6 @@ function bigshiplimit()
         --exMessageAppendToMessageArea(" bigshiplimitc[i]".. bigshiplimitc[i])
         exCounterSetByName("bigshiplimit"..i,  bigshiplimitc[i]);
         exCounterSetByName("CAIRTECH4limit"..i,  CAIRTECH4limitc[i]);
+        LIMITBIGSHIP(i, bigshiplimitc[i])
     end
 end

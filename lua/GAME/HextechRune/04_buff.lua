@@ -1574,6 +1574,9 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantDongfengExpress(playerIndex)
     elseif rune.Effect == "safety" then
         self:GrantSafetyAegisTowers(playerIndex)
+    elseif rune.Effect == "grant_railgun" then
+        -- 赠送逻辑与市场购买共用，放在 BtnChoiceDialogEventFunc 的塔族里。
+        BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
     elseif rune.Effect == "tower_defense_expert" then
         self:EnableTowerDefenseExpert(playerIndex)
     elseif rune.Effect == "brilliant_lights" then

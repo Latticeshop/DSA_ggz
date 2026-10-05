@@ -12,7 +12,7 @@
 >
 > 本轮实测组合：`{ "gold_drain", "prismatic_lethal_tempo", "gold_ten_pull" }`（吸星大法 / 致命节奏 / 十连，三个都无 `NeedsUnitType`，走 `CopyRuneForCandidate` 普通路径）。
 >
-> **2026-10-05 更新**：为复测「变形重组器降金 / 吸星大法降金且 10→7 / 塔防专家的埃奎斯槽位动态展开」，三段测试代码**已按本节重新贴回并启用**，当前组合为 `{ "prismatic_tower_defense_expert", "gold_drain", "gold_recombobulator" }`（塔防专家 / 吸星大法 / 变形重组器，三者都无 `NeedsUnitType`，走 `CopyRuneForCandidate` 普通路径）。`02_event.lua` payload 48417 B（余 17119 B）。§1 的备份本体已同步为这份 `testRuneIds`。发版前仍整段删除三段。
+> **2026-10-05 更新**：为复测「变形重组器降金 / 吸星大法降金且 10→7 / 塔防专家的埃奎斯槽位动态展开」，三段测试代码**已按本节重新贴回并启用**，`02_event.lua` payload 48417 B。同日第二轮把第三张卡换成新符文：当前组合为 `{ "prismatic_tower_defense_expert", "gold_drain", "gold_railgun_duel" }`（塔防专家 / 吸星大法 / 中门对狙），`02_event.lua` payload 48543 B（余 16993 B）。发版前仍按上文说明整段删除三段。
 >
 > **还原时注意保留 `tools/sync_scriptsdata.py` 的 needle**：`02_event.lua` 的定位关键字是 `function HextechRune:ShowFormalEvent` + `function HextechRune:OnRoundBegin`，删测试代码不影响（两个函数都在）；`10_recombobulator` 的定位关键字现为 `RecombobulatorRareChance` + `RollRecombobulatorTargetIndex`（历史值 `RecombobulatorHighTierChance` → `RecombobulatorCarrierChance` 都已不存在）；`07_war_efficiency.lua` 的定位关键字因 2026-09-29 玩家独立化删掉了旧符号 `GetSideWarEfficiencyCopies`，已改为 `WarEfficiencyBonusPerDeath` + `ExpireWarEfficiencyBuffs`（needle 必须同时存在于 JSON 的旧内容与 lua 新内容里，否则 sync 报 found 0）。needle 未提交，`git restore .` 会一并还原掉。
 
@@ -37,7 +37,7 @@ function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "prismatic_tower_defense_expert",
         "gold_drain",
-        "gold_recombobulator",
+        "gold_railgun_duel",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -101,7 +101,7 @@ end
     end
 ```
 
-**复测用的固定三选一**：改 `testRuneIds` 即可。买二送一用 `"gold_buy_two_get_one"`、登神用 `"gold_ascension"`（目标由 `CreateRuneCandidateForPlayer` 随机固定，悬浮详情会显示具体单位）；固若金汤用 `"gold_fortified"`；时间裂隙用 `"prismatic_time_rift"`、神圣干预用 `"prismatic_divine_intervention"`（均无 `NeedsUnitType`，走 `CopyRuneForCandidate` 普通路径）；吸星大法用 `"gold_drain"`、变形重组器用 `"gold_recombobulator"`、塔防专家用 `"prismatic_tower_defense_expert"`、致命节奏用 `"prismatic_lethal_tempo"`、十连用 `"gold_ten_pull"`、挖角用 `"gold_poach"`、投资用 `"silver_investment"`。
+**复测用的固定三选一**：改 `testRuneIds` 即可。买二送一用 `"gold_buy_two_get_one"`、登神用 `"gold_ascension"`（目标由 `CreateRuneCandidateForPlayer` 随机固定，悬浮详情会显示具体单位）；固若金汤用 `"gold_fortified"`；时间裂隙用 `"prismatic_time_rift"`、神圣干预用 `"prismatic_divine_intervention"`（均无 `NeedsUnitType`，走 `CopyRuneForCandidate` 普通路径）；吸星大法用 `"gold_drain"`、变形重组器用 `"gold_recombobulator"`、中门对狙用 `"gold_railgun_duel"`（赠送天门神弓，与安全感同族）、塔防专家用 `"prismatic_tower_defense_expert"`、致命节奏用 `"prismatic_lethal_tempo"`、十连用 `"gold_ten_pull"`、挖角用 `"gold_poach"`、投资用 `"silver_investment"`。
 
 **注意**：`testRuneIds` 里出现两个 `gold_buy_two_get_one` 时，三次 `CreateRuneCandidateForPlayer` 是各自独立随机的，不去重（实测正常，两张卡会指向不同单位；若撞到同一单位属小概率）。
 

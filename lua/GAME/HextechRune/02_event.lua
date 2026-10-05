@@ -660,7 +660,7 @@ function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "prismatic_tower_defense_expert",
         "gold_drain",
-        "gold_recombobulator",
+        "gold_railgun_duel",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
