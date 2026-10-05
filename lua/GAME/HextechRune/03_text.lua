@@ -170,8 +170,8 @@ g_LocalizationExtraText = {
             en = "Poach: the enemy pool is empty, no unit gained." },
     ["hextech.rune.drain.name"] = { zh = "吸星大法", en = "Star Drain" },
     ["hextech.rune.drain.desc"] =
-        { zh = "随机获得敌对玩家的 10 个单位。",
-            en = "Randomly gain 10 units from enemy players." },
+        { zh = "随机获得敌对玩家的 7 个单位。",
+            en = "Randomly gain 7 units from enemy players." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },

@@ -96,8 +96,6 @@ g_BuyTowerId = {
     }
 }
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
-g_HextechTowerDefenseExpertAegisSerial = g_HextechTowerDefenseExpertAegisSerial
-    or { 0, 0, 0, 0, 0, 0 }
 
 function BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex)
     return g_HextechTowerDefenseExpert ~= nil
@@ -124,6 +122,27 @@ function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
         end
     end
     return nil
+end
+
+-- 埃奎斯走廊的槽位分配：slots 按「环 + 左右」展平成一维（0 或已摧毁的对象表示空槽），
+-- 从内圈往外找第一个空槽；scanLimit 以外的外圈槽位只允许塔防专家使用。
+function BtnChoiceDialogEventFunc_AllocateAegisSlot(slots, scanLimit)
+    for i = 1, scanLimit, 1 do
+        if not ObjectIsAlive(slots[i]) then
+            return i
+        end
+    end
+    return nil
+end
+
+-- 槽位索引 → 相对走廊中心点的横向偏移：奇数索引在 +Y 侧、偶数索引在 -Y 侧，每外扩一环距离加 60。
+function BtnChoiceDialogEventFunc_GetAegisLateralOffset(slotIndex)
+    local ringCount = floor((slotIndex - 1) / 2)
+    local lateralDirection = 1
+    if slotIndex - ringCount * 2 == 2 then
+        lateralDirection = -1
+    end
+    return lateralDirection * (126.75 + ringCount * 60)
 end
 
 
@@ -382,6 +401,12 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local tower = GetObjectById(id);
         ObjectLoadAttributeModifier(tower,'AttributeModifier_MAP_Area_FireSpeed_Up', 999999)
         ObjectLoadAttributeModifier(tower,'AttributeModifier_JapanNanoEnhanceDroneReinforcement', 999999)
+        -- 胡杨塔射程增加 50%，最终为基础射程的 1.5 倍；塔不会移动，视野必须同步放大才能真正打到。
+        if not g_SovietHeavyAntiAirMissileTurretRangeX15Modifier then
+            g_SovietHeavyAntiAirMissileTurretRangeX15Modifier = exAttributeModifierCreate(
+                { RANGE = 1.5, VISION = 1.5 }, 1)
+        end
+        ObjectLoadAttributeModifier(tower, g_SovietHeavyAntiAirMissileTurretRangeX15Modifier)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"IN_SHIELD_SPHERE", 1)
         ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"UNPACKING", 0)
 
@@ -454,23 +479,23 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             towerPos = {X = towerX + behindDirection * 126.75, Y = towerY, Z = towerZ};
         end
         local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
+        -- 同阵营三名玩家取的是同一组前排塔（T71~T74 / T81~T84），走廊是共享的，所以槽位表按 sideName 存。
         local slots = g_BuyTowerId["AlliedAegisLargeDefenseBase"][sideName];
-        local slotIndex = nil;
-        local expertSerial = 0
-        if ignoresLimit then
-            expertSerial = g_HextechTowerDefenseExpertAegisSerial[self.PlayerIndex] + 1
-            slotIndex = expertSerial - floor((expertSerial - 1) / 2) * 2
-        else
-            for i = 1, 2, 1 do
-                if not ObjectIsAlive(slots[i]) then
-                    slotIndex = i;
-                    break;
-                end
-            end
+        -- 常规配额只有内圈这两个槽，向外扩出去的槽位属于塔防专家专用，否则队友用专家扩出的外圈空位
+        -- 会让没有专家的玩家也突破 2 座上限制。
+        local scanLimit = getn(slots);
+        if not ignoresLimit then
+            scanLimit = 2;
         end
+        local slotIndex = BtnChoiceDialogEventFunc_AllocateAegisSlot(slots, scanLimit)
         if slotIndex == nil then
-            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
-            return;
+            if not ignoresLimit then
+                exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
+                return;
+            end
+            -- 所有槽位都被占用时才向外扩一环（塔防专家无视数量限制）。
+            slotIndex = getn(slots) + 1;
+            slots[slotIndex] = 0;
         end
         local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 15000)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
@@ -478,18 +503,10 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
             return;
         end
-        -- 先取当前最前排存活塔的后方，再在该中心点上下两侧对称填充两个槽位。
-        local lateralDistance = 126.75;
-        if ignoresLimit then
-            lateralDistance = lateralDistance + floor((expertSerial - 1) / 2) * 60
-        end
-        local lateralDirection = 1;
-        if slotIndex == 2 then
-            lateralDirection = -1;
-        end
+        -- 先取当前最前排存活塔的后方作为走廊中心，再按槽位索引对称填充左右两侧。
         local pos = {
             X = towerPos.X,
-            Y = towerPos.Y + lateralDirection * lateralDistance,
+            Y = towerPos.Y + BtnChoiceDialogEventFunc_GetAegisLateralOffset(slotIndex),
             Z = towerPos.Z
         };
         local id = exCreateObject({
@@ -499,11 +516,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             Angle = 0,
             Health = 9000
         });
-        if ignoresLimit then
-            g_HextechTowerDefenseExpertAegisSerial[self.PlayerIndex] = expertSerial
-        else
-            slots[slotIndex] = id;
-        end
+        slots[slotIndex] = id;
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
     end
 

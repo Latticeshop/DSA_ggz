@@ -200,6 +200,8 @@ g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
 g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0 }
 g_HextechOblivionBombCharges = g_HextechOblivionBombCharges or { 0, 0, 0, 0, 0, 0 }
+-- 符文赠送的埃奎斯用独立台账，与市场的两个常规购买名额互不影响（同阵营共用一条走廊）。
+g_HextechGrantAegisSlots = g_HextechGrantAegisSlots or { ["angel"] = { 0, 0 }, ["evil"] = { 0, 0 } }
 -- 东风速递符文赠送的东风不占建造额度：拥有符文的玩家保有上限从 1 提高到 2。
 -- UnitCreate.lua 的兜底击杀与 RescueBlockedProductions.lua 的建造门槛都读取本表。
 g_HextechDF41ExtraQuota = g_HextechDF41ExtraQuota or {}
@@ -724,10 +726,12 @@ function HextechRune:GrantDongfengExpress(playerIndex)
 end
 
 function HextechRune:GrantSafetyAegisTowers(playerIndex)
+    local sideName = "evil"
     local playerOwn = "PlyrCivilian"
     local behindDirection = -1
     local towerPos = { X = 2900, Y = 3102.5, Z = 210 }
     if playerIndex >= 4 then
+        sideName = "angel"
         playerOwn = "PlyrCreeps"
         behindDirection = 1
         towerPos = { X = 4150, Y = 3102.5, Z = 210 }
@@ -741,24 +745,27 @@ function HextechRune:GrantSafetyAegisTowers(playerIndex)
             Z = towerZ,
         }
     end
-    -- 复用交易市场埃奎斯的左右布局，但不写入 g_BuyTowerId：
+    -- 沿用交易市场的「内优先、满了才外扩」槽位规则，但用独立台账：
     -- 符文塔允许重复生成，也不占用市场的两个常规购买名额。
+    local slots = g_HextechGrantAegisSlots[sideName]
     for i = 1, 2, 1 do
-        local lateralDirection = 1
-        if i == 2 then
-            lateralDirection = -1
+        local slotIndex = BtnChoiceDialogEventFunc_AllocateAegisSlot(slots, getn(slots))
+        if slotIndex == nil then
+            slotIndex = getn(slots) + 1
+            slots[slotIndex] = 0
         end
-        exCreateObject({
+        local id = exCreateObject({
             ObjectType = FastHash("AlliedAegisLargeDefenseBase"),
             TeamName = playerOwn .. "/team" .. playerOwn,
             Position = {
                 X = towerPos.X,
-                Y = towerPos.Y + lateralDirection * 126.75,
+                Y = towerPos.Y + BtnChoiceDialogEventFunc_GetAegisLateralOffset(slotIndex),
                 Z = towerPos.Z,
             },
             Angle = 0,
             Health = 9000,
         })
+        slots[slotIndex] = id
     end
 end
 

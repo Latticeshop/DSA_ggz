@@ -18,6 +18,10 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
+-- 开发测试：第 1 回合固定显示指定的三张符文。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestTriggered = false
+
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
@@ -487,8 +491,7 @@ end
 
 function HextechRune:ToggleSelectionPage(playerIndex)
     if self.PlayerOptions[playerIndex] == nil then
-        self:HideSelectionHint(playerIndex)
-        return false
+        return self:ShowNextQueuedRuneEvent(playerIndex)
     end
     return self:SetSelectionPageVisible(playerIndex,
         self.PlayerSelectionVisible[playerIndex] ~= true)
@@ -605,12 +608,10 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
     return true
 end
 
-function HextechRune:QueueOrShowRuneEvent(playerIndex, rarity, round)
-    if self.PlayerOptions[playerIndex] == nil then
-        return self:ShowRuneOptionsForPlayer(playerIndex, rarity)
-    end
+function HextechRune:EnqueueRuneEvent(playerIndex, rarity, round)
     local queue = self:EnsurePlayerEventQueue(playerIndex)
     tinsert(queue, { Rarity = rarity, Round = round })
+    self:ShowSelectionHint(playerIndex)
     return true
 end
 
@@ -625,6 +626,8 @@ function HextechRune:ShowNextQueuedRuneEvent(playerIndex)
             return true
         end
     end
+    -- 队列取空（或候选池不足）后不再留提示，避免玩家反复按 J 却打不开面板。
+    self:HideSelectionHint(playerIndex)
     return false
 end
 
@@ -640,7 +643,7 @@ function HextechRune:ShowRuneEvent(round)
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
             if self:IsHumanPlayer(playerIndex) then
-                self:QueueOrShowRuneEvent(playerIndex, rarity, round)
+                self:EnqueueRuneEvent(playerIndex, rarity, round)
             else
                 self:GrantRandomRuneToComputer(playerIndex, rarity, round)
             end
@@ -650,6 +653,63 @@ end
 
 function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
+end
+
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
+function HextechRune:ShowOpeningTestEvent()
+    local testRuneIds = {
+        "prismatic_tower_defense_expert",
+        "gold_drain",
+        "gold_recombobulator",
+    }
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, 3, 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = nil
+                if template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CopyRuneForCandidate(template, unitType)
+                    if candidate ~= nil and (candidate.Effect == "buy_two_get_one"
+                        or candidate.Effect == "ascension") then
+                        -- “买二送一/登神”的目标在正式事件里由 CreateRuneCandidateForPlayer
+                        -- 随机固定；测试事件若直接复制模板，目标为空，点选后毫无效果。
+                        -- 因此这类符文改走正式路径，保持测试与正式行为一致。
+                        candidate = self:CreateRuneCandidateForPlayer(playerIndex,
+                            template, unitType)
+                    end
+                end
+                if candidate ~= nil then
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) == 3 then
+                self.PlayerOptions[playerIndex] = options
+                self.PlayerRerollUsed[playerIndex] = false
+                for i = 1, 3, 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
 end
 
 -- 处理玩家点击方框（记录选择并关闭方框）
@@ -689,8 +749,10 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         self:HidePanel(playerIndex)
         self:ShowPanel(playerIndex)
     end
-    -- 后续正式事件若已到点，则在当前三选一关闭后立即按先进先出展示。
-    self:ShowNextQueuedRuneEvent(playerIndex)
+    -- 队列里还有到点的事件时继续挂提示，同样等玩家按 J 展开，不自动弹面板。
+    if getn(self:EnsurePlayerEventQueue(playerIndex)) > 0 then
+        self:ShowSelectionHint(playerIndex)
+    end
 end
 
 -- ===== 海克斯面板（按钮 5 展开）=====
@@ -1029,6 +1091,12 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
+    -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
+        self.OpeningTestTriggered = true
+        self:ShowOpeningTestEvent()
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

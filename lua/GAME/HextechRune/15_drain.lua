@@ -3,7 +3,7 @@
 HextechRune = HextechRune or {}
 
 -- 每次获得（可重复获取）吸取的数量上限。
-HextechRune.DrainCount = 10
+HextechRune.DrainCount = 7
 
 HextechRune.DrainRuneGiftUnits = {
     grant_yaoguang = { { "CelestialAdvanceAircraftTech4", 1 } },
@@ -123,7 +123,7 @@ function HextechRune:AddDrainedUnitToPool(playerIndex, unitIndex, isCrate)
 end
 
 -- 每个条目只尝试一次：真拿到才占一个名额，扣不掉的（对面配置里走独立计数槽等）
--- 就换下一个条目继续，直到拿满 DrainCount 或把对面条目试完——对面不足 10 个则全取。
+-- 就换下一个条目继续，直到拿满 DrainCount 或把对面条目试完——对面不足 DrainCount 个则全取。
 function HextechRune:ApplyDrainToPlayer(playerIndex)
     local entries = self:CollectDrainSourceEntries(playerIndex)
     local remaining = getn(entries)

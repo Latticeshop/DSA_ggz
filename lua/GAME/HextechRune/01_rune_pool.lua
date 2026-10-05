@@ -59,12 +59,6 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.banzai_charge.desc",
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         Icon = "Button_JapanKamikazeBonzai" },
-    -- 变形重组器可重复获取（不在 NonRepeatableRuneIds 里），每次获取按当前池子重新重组。
-    { Id = "silver_recombobulator", Rarity = 3,
-        NameKey = "hextech.rune.recombobulator.name",
-        DescKey = "hextech.rune.recombobulator.desc",
-        Effect = "recombobulator_same", Icon = "JUA_Nanotech_Upgrade1" },
-
     { Id = "silver_investment", Rarity = 3,
         NameKey = "hextech.rune.investment.name",
         DescKey = "hextech.rune.investment.desc",
@@ -137,6 +131,16 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.poach.name",
         DescKey = "hextech.rune.poach.desc",
         Effect = "poach", Icon = "Portrait_CelestialSaluteGun" },
+    -- 变形重组器可重复获取（不在 NonRepeatableRuneIds 里），每次获取按当前池子重新重组。
+    { Id = "gold_recombobulator", Rarity = 2,
+        NameKey = "hextech.rune.recombobulator.name",
+        DescKey = "hextech.rune.recombobulator.desc",
+        Effect = "recombobulator_same", Icon = "JUA_Nanotech_Upgrade1" },
+    -- 可重复获取：每获得一次就立刻吸取一次。
+    { Id = "gold_drain", Rarity = 2,
+        NameKey = "hextech.rune.drain.name",
+        DescKey = "hextech.rune.drain.desc",
+        Effect = "drain", Icon = "Button_PlayerPower_MagneticSingularity" },
 
     { Id = "gold_ten_pull", Rarity = 1,
         NameKey = "hextech.rune.ten_pull.name",
@@ -155,11 +159,6 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.lethal_tempo.name",
         DescKey = "hextech.rune.lethal_tempo.desc",
         Effect = "lethal_tempo", Icon = "Portrait_CelestialAntiVehicleVehicleTech3" },
-    -- 可重复获取：每获得一次就立刻吸取一次。
-    { Id = "prismatic_drain", Rarity = 1,
-        NameKey = "hextech.rune.drain.name",
-        DescKey = "hextech.rune.drain.desc",
-        Effect = "drain", Icon = "Button_PlayerPower_MagneticSingularity" },
     -- 可重复获取；稀有池与隐性特等奖概率见 10_recombobulator.lua。
     { Id = "prismatic_upgrade_recombobulator", Rarity = 1,
         NameKey = "hextech.rune.upgrade_recombobulator.name",
