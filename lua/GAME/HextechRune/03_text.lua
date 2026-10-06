@@ -118,7 +118,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+15%%血量/+10%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +15%% health / +10%% damage / +10%% attack speed / +10%% range." },
+    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+20%%血量/+15%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +20%% health / +15%% damage / +10%% attack speed / +10%% range." },
     ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
