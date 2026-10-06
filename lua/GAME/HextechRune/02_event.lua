@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.11
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
@@ -42,6 +42,8 @@ HextechRune.OptionTitleOffsetX = 14
 -- 日冕自定义文字的 X 是文字左边界而不是文字中心；中英文使用不同宽度权重。
 HextechRune.TextWidthScale = 1.65
 HextechRune.AsciiWidthWeight = 0.55
+-- 纯 ASCII 长标题相对估宽需要额外右移的「字母宽度」个数。
+HextechRune.AsciiLongTitleShiftLetters = 1
 HextechRune.PlayerNameEstimatedUnits = 3
 -- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
 -- 回收单位按钮占用 31~230；事件卡改用 251~268，避免同一次点击误入回收处理器。
@@ -230,7 +232,6 @@ function HextechRune:GetCenteredTextLeftX(centerX, text, fontSize)
 end
 
 -- 实机字体并非严格等宽，中文与纯 ASCII 的字面留白也不同。
--- 四字标题保持已确认的参数；三字中文和纯 ASCII 分开校正；五字标题另列一档。
 function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
     local name = Localization.get(rune.NameKey)
     local characterCount = self:GetTextMaxCharacterCount(name)
@@ -241,6 +242,17 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
             return 9
         end
         return 22
+    end
+    -- 纯 ASCII 长标题右移 AsciiLongTitleShiftLetters 个字母宽度，字母宽度与估宽同套系数、按字号换算。
+    if characterCount > 3 and self:IsAsciiText(name) then
+        local letterWidth = self.AsciiWidthWeight * self.TextWidthScale
+            * self:GetRuneTitleFontSize(rune,
+                isPanel and self.PanelRuneHeight or self.OptionCardWidth)
+        local shift = self.AsciiLongTitleShiftLetters * letterWidth
+        if isPanel then
+            return self.PanelRuneTitleOffsetX + shift
+        end
+        return self.OptionTitleOffsetX + shift
     end
     -- 五字标题（变形重组器 / 升级重组器，16px）实测偏左约 2/3 个字，按四字 22px 的
     -- 每字步进外推右移；带兵种后缀的小字号五字标题（万用瞄准镜）继续用默认值。
@@ -663,9 +675,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
+        "prismatic_ultimate_creature",
+        "prismatic_time_rift",
         "prismatic_tower_defense_expert",
-        "gold_drain",
-        "gold_railgun_duel",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -687,10 +699,8 @@ function HextechRune:ShowOpeningTestEvent()
                 if template ~= nil then
                     candidate = self:CopyRuneForCandidate(template, unitType)
                     if candidate ~= nil and (candidate.Effect == "buy_two_get_one"
-                        or candidate.Effect == "ascension") then
-                        -- “买二送一/登神”的目标在正式事件里由 CreateRuneCandidateForPlayer
-                        -- 随机固定；测试事件若直接复制模板，目标为空，点选后毫无效果。
-                        -- 因此这类符文改走正式路径，保持测试与正式行为一致。
+                        or candidate.Effect == "ascension"
+                        or candidate.Effect == "ultimate_creature") then
                         candidate = self:CreateRuneCandidateForPlayer(playerIndex,
                             template, unitType)
                     end

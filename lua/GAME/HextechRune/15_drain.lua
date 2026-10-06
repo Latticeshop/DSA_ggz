@@ -5,18 +5,14 @@ HextechRune = HextechRune or {}
 -- 每次获得（可重复获取）吸取的数量上限。
 HextechRune.DrainCount = 7
 
+-- 吸星只扫对面卡池（UNITLIST/UNITCOUNT），所以这里只登记有槽位的赠予单位。
+-- 超级要塞走独立计数槽、没有槽位，本来就不会被吸，不需要保护条目。
 HextechRune.DrainRuneGiftUnits = {
     grant_yaoguang = { { "CelestialAdvanceAircraftTech4", 1 } },
     grant_olympus_carrier = {
         { "AlliedGaintAirCraftCarrier_B", 1 },
         { "JapanYumiAircraftCarrier", 1 },
     },
-    grant_giga_fortress = {
-        { "JapanGigaFortressShip", 1 },
-        { "JapanFortressShip", 1 },
-        { "JapanGigaFortress_Land", 1 },
-    },
-    ultimate_creature = { { "JapanMechaX", 1 } },
 }
 
 -- 该玩家因符文赠予而需要保留的单位数量（unitType → 个数）。
@@ -27,7 +23,12 @@ function HextechRune:BuildDrainProtectedCounts(playerIndex)
     for i = 1, getn(owned), 1 do
         local effect = owned[i].Effect
         local gifts = nil
-        if effect ~= nil then
+        if effect == "ultimate_creature" then
+            -- 究极生物的种子单位是选符时才随机固定的，只能读候选自己记录的目标。
+            if owned[i].TargetUnitType ~= nil then
+                gifts = { { owned[i].TargetUnitType, 1 } }
+            end
+        elseif effect ~= nil then
             gifts = self.DrainRuneGiftUnits[effect]
         end
         if gifts ~= nil then

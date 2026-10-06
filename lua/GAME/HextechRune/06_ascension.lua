@@ -4,8 +4,8 @@ HextechRune = HextechRune or {}
 
 -- 每回收 1 个单位只加其中一项，数值与概率是用户定的期望模型。
 -- 本地化 hextech.rune.ascension.desc 里写死了数值与概率文案，改这里要同步改文案。
-HextechRune.AscensionHealthPerStack = 0.20
-HextechRune.AscensionDamagePerStack = 0.15
+HextechRune.AscensionHealthPerStack = 0.15
+HextechRune.AscensionDamagePerStack = 0.10
 HextechRune.AscensionRateOfFirePerStack = 0.10
 -- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
 HextechRune.AscensionRangePerStack = 0.10
@@ -95,7 +95,7 @@ function HextechRune:BroadcastAscension(playerIndex)
         return
     end
     -- 播报各维累计到现在的加成；加 0.5 再取整，避免 0.15/0.10 这类二进制浮点
-    -- 在 3 层伤害（3×0.15 = 44.999…%）时报成 44%。
+    -- 在 3 层血量（3×0.15 = 44.999…%）时报成 44%。
     local text = Localization.get("hextech.rune.ascension.broadcast",
         rune.TargetUnitName or rune.TargetUnitType or "?",
         floor(self:GetAscensionBonusCount(playerIndex, "Health")

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.27
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34
 
 devil_max = 200
 angel_max = 200
@@ -148,6 +148,42 @@ function BtnChoiceDialogEventFunc_GetAegisLateralOffset(slotIndex)
     return lateralDirection * (126.75 + ringCount * 60)
 end
 
+g_CelestialTowerShadowFilter = nil
+
+function BtnChoiceDialogEventFunc_GetCelestialTowerShadowFilter()
+    if g_CelestialTowerShadowFilter == nil then
+        g_CelestialTowerShadowFilter = CreateObjectFilter({
+            Rule = "ANY",
+            Relationship = "SAME_PLAYER",
+            IncludeThing = { "CC_ShadowObject", "CC_ShadowParalyzer" },
+        })
+    end
+    return g_CelestialTowerShadowFilter
+end
+
+-- 延迟回调只收 objectId（跨帧不缓存单位句柄）；这几帧里塔被打掉就跳过。
+function BtnChoiceDialogEventFunc_ClearCelestialTowerCore(objectId)
+    if not ObjectIsAlive(objectId) then
+        return
+    end
+    local object = GetObjectById(objectId)
+    local x, y, z = ObjectGetPosition(object)
+    local shadows, count = ObjectFindObjects(object,
+        {X = x, Y = y, Z = z, Radius = 5, DistType = "CENTER_2D"},
+        BtnChoiceDialogEventFunc_GetCelestialTowerShadowFilter())
+    for i = 1, count, 1 do
+        if shadows[i] ~= nil then
+            ExecuteAction("NAMED_DELETE", shadows[i])
+        end
+    end
+end
+
+function BtnChoiceDialogEventFunc_FinishCelestialTower(objectId)
+    ObjectSetObjectStatus(GetObjectById(objectId), "POINT_DEFENSE_DRONE_ATTACHED")
+    SchedulerModule.delay_call(BtnChoiceDialogEventFunc_ClearCelestialTowerCore,
+        3, {objectId})
+end
+
 -- 天门神弓的取位与加成，市场购买与符文赠送共用：站在樱花井再往后一格（253.5），
 -- 血量与埃奎斯同款 9000，射程与视野同时 ×1.75（塔不会移动，只放射程看不到也打不到）。
 function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
@@ -176,6 +212,7 @@ function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
             { RANGE = 1.75, VISION = 1.75 }, 1)
     end
     ObjectLoadAttributeModifier(GetObjectById(id), g_CelestialEnergyRailgunBaseRangeX175Modifier)
+    BtnChoiceDialogEventFunc_FinishCelestialTower(id)
     return id
 end
 

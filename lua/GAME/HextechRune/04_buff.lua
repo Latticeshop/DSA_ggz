@@ -215,15 +215,16 @@ if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
     end
 end
 
--- 奖励符文不再抽到“质变/赌怪”本身，避免奖励链递归展开；其余筛池规则
--- 与正式三选一完全一致（阵营、禁海、兵种版本、不可重复符文）。
-function HextechRune:PickBonusRune(playerIndex, rarity)
+-- 奖励池与正式三选一共用筛池规则，质变/赌怪本身也能作为奖励发出来
+-- （银质变→金质变→彩赌怪→两张随机）。只挡「赌怪发赌怪」：一次发两张，自配会指数展开，
+-- 且一局海克斯上限 5，第二张赌怪只是浪费名额。sourceEffect 由发放方传入。
+function HextechRune:PickBonusRune(playerIndex, rarity, sourceEffect)
     local pool = self:BuildFilteredPool(playerIndex, rarity)
     local candidates = {}
     for i = 1, getn(pool), 1 do
         local rune = pool[i]
-        if rune.Effect ~= "quality_transformation"
-            and rune.Effect ~= "gambling_addict" then
+        if not (sourceEffect == "gambling_addict"
+            and rune.Effect == "gambling_addict") then
             tinsert(candidates, rune)
         end
     end
@@ -233,8 +234,8 @@ function HextechRune:PickBonusRune(playerIndex, rarity)
     return candidates[self:RandomIndex(getn(candidates))]
 end
 
-function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName)
-    local rune = self:PickBonusRune(playerIndex, rarity)
+function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName, sourceEffect)
+    local rune = self:PickBonusRune(playerIndex, rarity, sourceEffect)
     if rune == nil or not self:AddOwnedRune(playerIndex, rune) then
         return false
     end
@@ -246,7 +247,7 @@ end
 
 function HextechRune:ApplyQualityTransformation(playerIndex, rune)
     self:GrantBonusRune(playerIndex, rune.UpgradeRarity,
-        Localization.get("hextech.rune.quality_transformation.name"))
+        Localization.get("hextech.rune.quality_transformation.name"), rune.Effect)
 end
 
 function HextechRune:RollGamblingAddictRarity()
@@ -260,10 +261,10 @@ function HextechRune:RollGamblingAddictRarity()
 end
 
 function HextechRune:ApplyGamblingAddict(playerIndex)
+    local sourceName = Localization.get("hextech.rune.gambling_addict.name")
     for rewardIndex = 1, 2, 1 do
         local rarity = self:RollGamblingAddictRarity()
-        self:GrantBonusRune(playerIndex, rarity,
-            Localization.get("hextech.rune.gambling_addict.name"))
+        self:GrantBonusRune(playerIndex, rarity, sourceName, "gambling_addict")
     end
 end
 
@@ -1191,10 +1192,9 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
         end
     end
 
-    local oniIndex = g_UnitNameToUnitIndex["JapanMechaX"]
-    if self.UltimateCreatureStates ~= nil
-        and self.UltimateCreatureStates[playerIndex] ~= nil
-        and unitIndex == oniIndex then
+    local creature = self.UltimateCreatureStates
+    if creature ~= nil and creature[playerIndex] ~= nil
+        and unitIndex == creature[playerIndex].UnitIndex then
         return 1
     end
 
@@ -1341,6 +1341,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     grant_olympus_carrier = true, grant_oblivion_bomb = true,
     grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
+    grant_cryo_satellite = true, grant_chrono_rift = true,
     ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
     upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
@@ -1584,7 +1585,7 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "gambling_addict" then
         self:ApplyGamblingAddict(playerIndex)
     elseif rune.Effect == "ultimate_creature" then
-        self:CreateUltimateCreature(playerIndex)
+        self:CreateUltimateCreature(playerIndex, rune)
     elseif rune.Effect == "ascension" then
         self:GrantAscension(playerIndex, rune)
     elseif rune.Effect == "grant_foreign_mcv" then
@@ -1639,6 +1640,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目注释。
     -- elseif rune.Effect == "cash_reward" then
     --     self:GrantCashRewardProtocol(playerIndex)
+    -- 协议授予符文（冷冻卫星 / 神威）：机制已实测通过，本轮先不上线。
+    -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目与排除名单注释。
+    -- elseif rune.Effect == "grant_cryo_satellite" or rune.Effect == "grant_chrono_rift" then
+    --     self:GrantProtocol(playerIndex, rune.Effect)
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
         or rune.Effect == "upgrade_waverider_dragon_breathe"

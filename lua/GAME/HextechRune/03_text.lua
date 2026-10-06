@@ -78,6 +78,10 @@ g_LocalizationExtraText = {
     ["hextech.rune.starting_funds.desc"] = { zh = "立即获得 %d 资金。", en = "Immediately gain %d credits." },
     ["hextech.rune.cash_reward.name"] = { zh = "现金奖励", en = "Cash Bounty" },
     ["hextech.rune.cash_reward.desc"] = { zh = "获得现金奖励协议。", en = "Gain the Cash Bounty protocol." },
+    ["hextech.rune.cryo_satellite.name"] = { zh = "冷冻卫星", en = "Cryo Satellite" },
+    ["hextech.rune.cryo_satellite.desc"] = { zh = "获得冷冻卫星协议。", en = "Gain the Cryo Satellite protocol." },
+    ["hextech.rune.divine_might.name"] = { zh = "神威", en = "Divine Might" },
+    ["hextech.rune.divine_might.desc"] = { zh = "获得时空裂缝协议。", en = "Gain the Chrono Rift protocol." },
     ["hextech.rune.safety.name"] = { zh = "安全感", en = "Sense of Security" },
     ["hextech.rune.safety.desc"] = { zh = "获得 2 个埃奎斯护盾发生器。", en = "Gain 2 Aegis Shield Generators." },
     ["hextech.rune.railgun_duel.name"] = { zh = "中门对狙", en = "Mid-Door Sniper Duel" },
@@ -99,7 +103,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.war_efficiency.name"] = { zh = "以战养战", en = "War foraging" },
     ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位死亡都会为下回合你的 %s 单位提供增益！每一个T1/T2/T3/T4单位分别提供1%%的血量/伤害/攻速/射程。", en = "Every enemy unit death empowers your %s units next round! Each T1/T2/T3/T4 unit grants 1%% health/damage/attack speed/range." },
     ["hextech.rune.war_efficiency.broadcast"] = { zh = "本回合以战养战（%s）加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "This round's War foraging (%s) bonus: %d health%%, %d damage%%, %d attack speed%%, %d range%%" },
-    ["hextech.rune.time_rift.name"] = { zh = "时间裂隙", en = "Time Rift" },
+    ["hextech.rune.time_rift.name"] = { zh = "The World", en = "The World" },
     ["hextech.rune.time_rift.desc"] = { zh = "敌方全体单位和建筑每 29 秒获得 %s 秒时停。", en = "All enemy units and structures are time-stopped for %s seconds every 29 seconds." },
     ["hextech.rune.tesla_air_assault.name"] = { zh = "磁暴突袭", en = "Tesla Air Assault" },
     ["hextech.rune.tesla_air_assault.desc"] = { zh = "获得磁暴突袭协议。", en = "Unlock the Tesla Air Assault protocol." },
@@ -111,14 +115,14 @@ g_LocalizationExtraText = {
     ["hextech.rune.gambling_addict.desc"] = { zh = "获得两个随机符文。", en = "Gain two random runes." },
     ["hextech.rune.ultimate_creature.name"] = { zh = "究极生物", en = "Ultimate Creature" },
     ["hextech.rune.ultimate_creature.desc"] = {
-        zh = "你每回合的一个鬼王X会进化为究极生物！回收你当前的全部单位，每回收一个T1/T2/T3/T4单位，分别增加5%%血量/3%%伤害/3%%攻速/5%%射程。获得一个鬼王X。",
-        en = "One of your King Oni X units evolves into an Ultimate Creature each round! Recycle all your current units. Each recycled T1/T2/T3/T4 unit respectively grants 5%% health/3%% damage/3%% attack speed/5%% range. Gain 1 King Oni X."
+        zh = "你的一个 %s 单位进化成为究极生物！回收你当前的全部单位，每回收一个T1/T2/T3/T4单位，分别增加5%%血量/5%%伤害/5%%攻速/7%%射程。获得一个 %s 单位。",
+        en = "One of your %s units evolves into an Ultimate Creature! Recycle all your current units. Each recycled T1/T2/T3/T4 unit respectively grants 5%% health/5%% damage/5%% attack speed/7%% range. Gain 1 %s unit."
     },
     ["hextech.rune.ultimate_creature.broadcast"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+20%%血量/+15%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +20%% health / +15%% damage / +10%% attack speed / +10%% range." },
+    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+15%%血量/+10%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +15%% health / +10%% damage / +10%% attack speed / +10%% range." },
     ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
@@ -134,7 +138,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.goliath.desc"] =
         { zh = "你的 %s 单位血量提高 90%%，伤害提高 50%%。",
             en = "Your %s units gain 90%% health and 50%% damage." },
-    ["hextech.rune.shrink_ray.name"] = { zh = "缩小射线", en = "Shrink Ray" },
+    ["hextech.rune.shrink_ray.name"] = { zh = "天堂制造", en = "Made in Heaven" },
     ["hextech.rune.shrink_ray.desc"] =
         { zh = "每 %d 回合使敌方全体单位缩小一回合。",
             en = "Every %d rounds, all enemy units are shrunk for one round." },

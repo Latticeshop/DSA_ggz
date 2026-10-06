@@ -101,6 +101,16 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.railgun_duel.name",
         DescKey = "hextech.rune.railgun_duel.desc", Effect = "grant_railgun",
         Icon = "Button_CelestialEnergyRailgunBase" },
+    -- 协议授予两张金卡（冷冻卫星 / 神威）：地图外钥匙基地 + HELD 禁用的机制已实测跑通，
+    -- 但本轮先不上线。恢复时取消这两条注释，并同步取消 04_buff.lua 的派发分支与本表排除名单的注释。
+    -- { Id = "gold_cryo_satellite", Rarity = 2,
+    --     NameKey = "hextech.rune.cryo_satellite.name",
+    --     DescKey = "hextech.rune.cryo_satellite.desc", Effect = "grant_cryo_satellite",
+    --     Icon = "Button_PlayerPower_CryoSatellite3" },
+    -- { Id = "gold_divine_might", Rarity = 2,
+    --     NameKey = "hextech.rune.divine_might.name",
+    --     DescKey = "hextech.rune.divine_might.desc", Effect = "grant_chrono_rift",
+    --     Icon = "Button_PlayerPower_ChronoRift3" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_CelestialAntiVehicleInfantry_Skill" },
@@ -243,6 +253,9 @@ HextechRune.NonRepeatableRuneIds = {
     gold_fortified = true,
     gold_transcendent_evil = true,
     gold_recycler = true,
+    -- 冷冻卫星 / 神威：重复授予同一协议没有意义，且多份会互相重置冷却（随两张卡一起注释）。
+    -- gold_cryo_satellite = true,
+    -- gold_divine_might = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,
@@ -465,7 +478,8 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
         return nil
     end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
-    if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension" then
+    if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension"
+        or candidate.Effect == "ultimate_creature" then
         -- 已被出口内销/高平两用/先进火炮替换的原形态不再作为目标：它们后续生产时
         -- 一律以升级形态入池，圈了原形态的目标会永远无法累计。
         local excluded = self:GetReplacedSourceTypes(playerIndex)
@@ -477,7 +491,13 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
                 excluded[targetType] = true
             end
         end
-        local target = self:PickBuyTwoGetOneTarget(playerIndex, excluded)
+        -- 究极生物的目标不走阵营回收表，改用策划表 T3/T4 的独立名单，且不分阵营
+        local target
+        if candidate.Effect == "ultimate_creature" then
+            target = self:PickUltimateCreatureTarget(excluded)
+        else
+            target = self:PickBuyTwoGetOneTarget(playerIndex, excluded)
+        end
         if target == nil then
             return nil
         end
@@ -545,6 +565,10 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         return Localization.get(rune.DescKey, self:GetRuneUnitTypeLabel(rune))
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
+    elseif rune.Effect == "ultimate_creature" then
+        -- 简介里“进化为究极生物”与“获得一个单位”共用同一个随机目标，占位两处。
+        local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
+        return Localization.get(rune.DescKey, targetName, targetName)
     elseif rune.Effect == "recycler" then
         return Localization.get(rune.DescKey, floor(GetHextechRecycleBonusRate() * 100 + 0.5))
     elseif rune.Effect == "combustion_interest" then

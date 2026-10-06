@@ -15,7 +15,6 @@ HextechRune.RecombobulatorRareTypes = {
     "JapanAntiStructureShip",         -- 将军
     "CelestialAntiStructureShip",     -- 玄武
     "AlliedThetisBattleShip",         -- 忒提斯战列舰
-    "SovietTransportAircraft_HeavyCannon", -- 重炮纤夫（实测武器过强，按稀有处理）
 }
 
 -- 稀有单位按 UNITLIST 下标登记：摇光的强化形态共用同一个下标，按类型名判定会漏。
