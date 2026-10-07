@@ -1,9 +1,8 @@
--- 机制依据/失败记录/字段含义/实测结论：analysis/地图注释说明文档.md §1（先读 §1.13 自检清单）。
+-- 机制依据/失败记录/实测结论：analysis/地图注释说明文档.md §1（先读 §1.13）。
 -- 硬约束：装填/巡收不删兵（删只在清要塞自带标枪兵）；只走 g_PLSpawnGarrison；成败由巡收复核。
 
 g_PLSpawnLastRound = -1
 
-g_PLSpawnCarsPerSide = 4
 g_PLSpawnHoldDelay = 30
 g_PLSpawnHoldTries = 2
 g_PLSpawnNoEvac = 1
@@ -12,7 +11,7 @@ g_PLSpawnRandScale = 1000000
 -- 两个 AI 阵营的玩家脚本名（§1.15）
 g_PLSpawnSideNames = { [7] = "PlyrCivilian", [8] = "PlyrCreeps" }
 
--- 台账条目 { CarId, UnitId, Tag, Retry }：只能数组 + 整表重建（§1.8）
+-- 台账条目 { CarId, UnitId, Tag, Retry }：只能用数组（§1.8）
 g_PLSpawnEntries = {}
 
 -- 名单即白名单，不写即被过滤（§1.6）
@@ -22,25 +21,38 @@ g_PLSpawnAllInf = {
     "CelestialAntiInfantryInfantryAdvanced",
     "CelestialAntiInfantryInfantry",
     "CelestialAntiVehicleInfantry",
+    "CelestialAntiVehicleInfantry_EMC",
     "CelestialInfiltrationInfantry",
+    "CelestialInfiltrationInfantry_02",
+    "CelestialInfiltrationInfantry_03",
+    "CelestialInfiltrationInfantry_EMC",
     "JapanAntiInfantryInfantry",
     "JapanAntiVehicleInfantry",
+    "JapanAntiVehicleInfantry_Ambush",
     "JapanArcherInfantry",
     "SovietAntiInfantryInfantry",
     "SovietAntiVehicleInfantry",
     "SovietHeavyAntiVehicleInfantry",
+    "SovietHeavyAntiVehicleInfantry_Enhanced",
     "JapanInfiltrationInfantry",
     "AlliedAntiVehicleInfantry",
+    "AlliedRangerInfantry",
+    "AlliedRangerInfantry_AirAssault",
 }
 
--- 两型显示名都叫「联盟重型坦克」，靠 Tag 区分（§1.7）
+-- 特殊载员池：只联盟/重型（进IFV要塞会不开火，§1.17）
+g_PLSpawnSpecialInf = { "SovietMortarCycle", "JapanAntiVehicleInfantryTech3" }
+
+-- 两型显示名重名，靠 Tag 区分（§1.7）
 g_PLSpawnCars = {
     { Template = "AlliedAntiAirVehicleTech1",     Capacity = 1, Inf = g_PLSpawnAllInf, Tag = "IFV" },
-    -- 要塞先清自带兵，再当 5 格空车装（§1.14）
+    -- 要塞先被预扫趟清成 5 格空车（§1.14）
     { Template = "AlliedBattleFortress",          Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "要塞",
       BuiltIn = "AlliedAntiVehicleInfantry" },
-    { Template = "SovietAntiVehicleVehicleTech4", Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "联盟" },
-    { Template = "Overlordtank",                  Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "重型" },
+    { Template = "SovietAntiVehicleVehicleTech4", Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "联盟",
+      SpecialInf = g_PLSpawnSpecialInf },
+    { Template = "Overlordtank",                  Capacity = 5, Inf = g_PLSpawnAllInf, Tag = "重型",
+      SpecialInf = g_PLSpawnSpecialInf },
 }
 
 -- 下车按钮名按兵种不同，不做查表，全表一起下（§1.5）
@@ -273,7 +285,6 @@ function g_PLSpawnDropGuardCars(objects, count)
     return kept, keptCount
 end
 
--- 只删容器句柄命中本轮要塞的兵（§1.14）。
 function g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
     if carEntry.BuiltIn == nil or cars == nil or count == nil or count < 1 then
         return
@@ -300,7 +311,9 @@ function g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
         local unit = crew[index]
         if unit ~= nil and ObjectIsAlive(unit) then
             local container = ObjectGetContainerObject(unit)
-            if container ~= nil and carIds[ObjectGetId(container)] == true then
+            -- 台账里的载员不删，只删要塞自带的（§1.14）
+            if container ~= nil and carIds[ObjectGetId(container)] == true
+                and not g_PLSpawnTrackedUnit(ObjectGetId(unit)) then
                 ExecuteAction("NAMED_EXIT_BUILDING", unit)
                 ExecuteAction("NAMED_DELETE", unit)
             end
@@ -317,6 +330,18 @@ function g_PLSpawnCandidates(sideIndex, carEntry)
         })
     end
     local units, count = ObjectFindObjects(P[sideIndex], nil, carEntry.InfFilter)
+    return g_PLSpawnKeepOwnSide(units, count, sideIndex)
+end
+
+function g_PLSpawnSpecialCandidates(sideIndex, carEntry)
+    if carEntry.SpecialFilter == nil then
+        carEntry.SpecialFilter = CreateObjectFilter({
+            Rule = "ANY",
+            Relationship = "SAME_PLAYER",
+            IncludeThing = carEntry.SpecialInf,
+        })
+    end
+    local units, count = ObjectFindObjects(P[sideIndex], nil, carEntry.SpecialFilter)
     return g_PLSpawnKeepOwnSide(units, count, sideIndex)
 end
 
@@ -344,29 +369,37 @@ function g_PLSpawnFindCars(sideIndex, carEntry)
     return g_PLSpawnDropGuardCars(cars, count)
 end
 
-function g_PLSpawnFillType(sideIndex, carEntry)
-    local filled = 0
+function g_PLSpawnClearAllBuiltIn(sideIndex)
+    for index = 1, getn(g_PLSpawnCars), 1 do
+        local carEntry = g_PLSpawnCars[index]
+        if carEntry.BuiltIn ~= nil then
+            local cars, count = g_PLSpawnFindCars(sideIndex, carEntry)
+            g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
+        end
+    end
+end
+
+function g_PLSpawnFillType(sideIndex, carEntry, useSpecial)
     local cars, count = g_PLSpawnFindCars(sideIndex, carEntry)
     if cars == nil or count == nil then
-        return 0
+        return
     end
-    g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
+    local candidates, candidateCount
+    if useSpecial == 1 then
+        candidates, candidateCount = g_PLSpawnSpecialCandidates(sideIndex, carEntry)
+    else
+        candidates, candidateCount = g_PLSpawnCandidates(sideIndex, carEntry)
+    end
     for index = 1, count, 1 do
-        if filled >= g_PLSpawnCarsPerSide then
-            break
-        end
         local car = cars[index]
         if car ~= nil and ObjectIsAlive(car) then
             local slots = g_PLSpawnFreeSlots(car, carEntry)
             if slots > 0 then
                 g_PLSpawnDisableEvac(car)
-                local candidates, candidateCount = g_PLSpawnCandidates(sideIndex, carEntry)
                 g_PLSpawnLoadCar(car, carEntry.Tag, slots, candidates, candidateCount)
-                filled = filled + 1
             end
         end
     end
-    return filled
 end
 
 -- 按阵营不按座位：队友单位同属 7/8
@@ -375,12 +408,14 @@ function g_PLSpawnSide(sideIndex)
         return
     end
 
-    local cars = 0
+    g_PLSpawnClearAllBuiltIn(sideIndex)
     for index = 1, getn(g_PLSpawnCars), 1 do
-        if cars >= g_PLSpawnCarsPerSide then
-            break
+        if g_PLSpawnCars[index].SpecialInf ~= nil then
+            g_PLSpawnFillType(sideIndex, g_PLSpawnCars[index], 1)
         end
-        cars = cars + g_PLSpawnFillType(sideIndex, g_PLSpawnCars[index])
+    end
+    for index = 1, getn(g_PLSpawnCars), 1 do
+        g_PLSpawnFillType(sideIndex, g_PLSpawnCars[index])
     end
 end
 
