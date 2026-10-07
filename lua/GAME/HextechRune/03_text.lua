@@ -13,9 +13,9 @@ g_LocalizationExtraText = {
     ["hextech.back"] = { zh = "返回上一页", en = "Back" },
 
     -- === 面板与阶级 ===
-    ["hextech.rarity.prismatic"] = { zh = "彩色", en = "Prismatic" },
-    ["hextech.rarity.gold"] = { zh = "金色", en = "Gold" },
-    ["hextech.rarity.silver"] = { zh = "银色", en = "Silver" },
+    ["hextech.rarity.prismatic"] = { zh = "棱彩", en = "Prismatic" },
+    ["hextech.rarity.gold"] = { zh = "黄金", en = "Gold" },
+    ["hextech.rarity.silver"] = { zh = "白银", en = "Silver" },
     ["hextech.picked"] = { zh = "你选择了符文：%s", en = "You picked the rune: %s" },
     ["hextech.panel.title"] = { zh = "海克斯符文面板", en = "Hextech Rune Panel" },
     ["hextech.panel.close"] = { zh = "关闭", en = "Close" },
@@ -182,12 +182,24 @@ g_LocalizationExtraText = {
     ["hextech.rune.drain.desc"] =
         { zh = "随机获得敌对玩家的 7 个单位。",
             en = "Randomly gain 7 units from enemy players." },
+    ["hextech.rune.prepare_backpack.name"] = { zh = "准备背包", en = "Backpack Ready" },
+    ["hextech.rune.prepare_backpack.desc"] =
+        { zh = "你下次符文选择会整体升一阶。",
+            en = "Your next rune selection is raised one full tier." },
+    ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
+    ["hextech.rune.tulip_mortar.desc"] =
+        { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
+            en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },
     ["hextech.bonus.broadcast"] = { zh = "$p%dName通过【%s】获得了符文：%s", en = "$p%dName gained a rune from [%s]: %s" },
+    -- 赌怪一次给两张，合成一条播报，避免同一句话连刷两遍。
+    ["hextech.gambling_addict.broadcast"] = { zh = "$p%dName通过【%s】获得了符文：%s 和符文：%s", en = "$p%dName gained runes from [%s]: %s and %s" },
+    -- 准备背包兑现时播报，%s 为升上去的那一阶（黄金 / 棱彩）。
+    ["hextech.ascend.broadcast"] = { zh = "$p%dName准备背包符文生效：本次符文升到%s", en = "$p%dName's Backpack Ready took effect: this selection is raised to %s" },
     ["hextech.selection.hidden_hint"] = { zh = "当前有未选择的海克斯，按'J'键展开面板", en = "You have an unselected Hextech rune. Press 'J' to open the panel." },
     -- 符文事件到点后不再自动弹面板，改为全图播报一次，提醒玩家按 J 查收。
     ["hextech.selection.ready_broadcast"] = { zh = "获得一个海克斯符文，请查收~", en = "A Hextech rune is ready, press J to claim it~" },

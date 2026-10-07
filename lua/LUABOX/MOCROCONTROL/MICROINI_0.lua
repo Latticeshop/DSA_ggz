@@ -87,6 +87,7 @@ FilterPrioritySiegeVehicle=CreateObjectFilter({
         "SovietAntiStructureVehicle","SovietAntiStructureVehicle_Enhanced",
         "JapanAntiStructureVehicle","JapanAntiStructureVehicle_Enhanced",
         "AlliedAntiStructureVehicle","AlliedAntiStructureVehicle_Enhanced",
+        "SovietHeavyMortarVehicle","VUMissileAntiVehicleVehicleTech1",
         "JapanGigaFortress_Land"
     }
 })

@@ -6,7 +6,7 @@
 HextechRune = HextechRune or {}
 
 HextechRune.RunePool = {
-    -- 银色
+    -- 白银
     { Id = "silver_strength", Rarity = 3, NameKey = "hextech.rune.strength.name",
         DescKey = "hextech.rune.strength.desc", Effect = "damage", NeedsUnitType = true,
         Icon = "Button_PlayerPower_EmperorRage3" },
@@ -73,8 +73,21 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.hunt_rhythm.desc",
         Effect = "hunt_rhythm", NeedsUnitType = true,
         Icon = "Button_CelestialSupportAircraft_Skill" },
+    -- 准备背包：只把「下一次符文选择的筛池阶级」抬高一档，本身不给任何单位加成。
+    -- ExcludeOnLastFormalRound 使它不会出现在本场最后一次选择里（那时已无下一次）。
+    { Id = "silver_prepare_backpack", Rarity = 3,
+        NameKey = "hextech.rune.prepare_backpack.name",
+        DescKey = "hextech.rune.prepare_backpack.desc",
+        Effect = "prepare_backpack", ExcludeOnLastFormalRound = true,
+        Icon = "SUA_Unpack" },
+    -- 花来！：替换型符文，源/目标形态登记在 04_buff.lua 的 UnitReplacementRunes。
+    { Id = "silver_tulip_mortar", Rarity = 3,
+        NameKey = "hextech.rune.tulip_mortar.name",
+        DescKey = "hextech.rune.tulip_mortar.desc",
+        Effect = "upgrade_v4_tulip", RequiredFaction = 2,
+        Icon = "Button_SovietHeavyMortarVehicle" },
 
-    -- 金色
+    -- 黄金
     { Id = "gold_oblivion_bomb", Rarity = 2,
         NameKey = "hextech.rune.oblivion_bomb.name",
         DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
@@ -173,7 +186,7 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.ten_pull.desc",
         Effect = "ten_pull", Icon = "JUA_Archer_Barrage" },
 
-    -- 彩色
+    -- 棱彩
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
         DescKey = "hextech.rune.infinite_ammo.desc", Effect = "infinite_ammo", NeedsUnitType = true,
         UnitTypes = { "aircraft" },
@@ -256,6 +269,10 @@ HextechRune.NonRepeatableRuneIds = {
     silver_dragon_breathe = true,
     silver_advanced_artillery = true,
     silver_banzai_charge = true,
+    -- 花来！：重复持有只是把同一个替换再做一遍，入池替换按持有与否判定，天然无叠加。
+    silver_tulip_mortar = true,
+    -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
+    silver_prepare_backpack = true,
     gold_fortified = true,
     gold_transcendent_evil = true,
     gold_recycler = true,
@@ -690,7 +707,9 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
         local factionAllowed = self:IsRuneFactionAvailable(playerIndex, rune)
         if rune.Rarity == rarity and factionAllowed
             and (not rune.RequiresSea or g_DisableSeaArmy ~= 1)
-            and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1) then
+            and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
+            -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。
+            and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent()) then
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
@@ -722,11 +741,16 @@ end
 
 function HextechRune:PickThreeRunes(playerIndex, rarity)
     local pool = self:BuildFilteredPool(playerIndex, rarity)
-    if getn(pool) < 3 then
+    -- 不足 3 张时按实际张数发（有几张展示几张），只有 0 张才放弃本次事件。
+    if getn(pool) < 1 then
         return nil
     end
     local picked = {}
-    for i = 1, 3, 1 do
+    local drawCount = getn(pool)
+    if drawCount > 3 then
+        drawCount = 3
+    end
+    for i = 1, drawCount, 1 do
         local poolIndex = self:RandomIndex(getn(pool))
         tinsert(picked, pool[poolIndex])
         tremove(pool, poolIndex)

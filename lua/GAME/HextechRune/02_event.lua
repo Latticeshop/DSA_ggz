@@ -27,6 +27,12 @@ HextechRune.OpeningTestTriggered = false
 -- 正式事件已触发的回合（防止重复触发）
 HextechRune.FormalTriggered = {}
 
+-- 最近一次回合开始回调的回合号；准备背包据此判断本场是否还有下一次正式事件。
+HextechRune.CurrentRound = 0
+-- 准备背包：待消费的升阶机会（按玩家），以及本次事件的真实候选张数（1~3 张）。
+HextechRune.PendingRuneAscend = {}
+HextechRune.PlayerOptionCount = {}
+
 -- ===== 屏幕中央 3 个方框的布局参数 =====
 -- 说明：日冕地图逻辑分辨率 1366x768，CenterX/Y 为屏幕中心像素坐标。
 -- 若你的实际画面显示偏右/偏左，请调整 CenterX（减小=左移，增大=右移）。
@@ -325,6 +331,38 @@ function HextechRune:IsFormalRound(round)
     return false
 end
 
+-- ===== 准备背包：按玩家把下一次符文选择的筛池阶级抬高一档 =====
+
+-- 当前回合之后本场是否还有正式海克斯事件。
+function HextechRune:HasNextFormalEvent()
+    local count = g_HextechCount or 0
+    for i = 1, count, 1 do
+        local eventRound = self.FormalRounds[i]
+        if eventRound ~= nil and eventRound > self.CurrentRound then
+            return true
+        end
+    end
+    return false
+end
+
+-- 棱彩已是最高阶：升不动就不该把这次机会花掉。
+function HextechRune:CanAscendRuneRarity(playerIndex, rarity)
+    return self.PendingRuneAscend[playerIndex] == true and rarity > 1
+end
+
+-- 升阶落地后清掉标记并全图播报，播报的是升上去的那一阶。
+function HextechRune:CommitAscendRuneRarity(playerIndex, targetRarity)
+    self.PendingRuneAscend[playerIndex] = nil
+    exAddTextToPublicBoard(Localization.get("hextech.ascend.broadcast", playerIndex,
+        Localization.get("hextech.rarity." .. self.RarityNames[targetRarity])), 10)
+end
+
+-- 本次事件的卡片张数可能少于 3（高一阶筛池候选不足），整排按实际张数居中。
+function HextechRune:GetOptionTotalWidth(playerIndex)
+    local count = self.PlayerOptionCount[playerIndex] or 3
+    return self.OptionCardWidth * count + self.OptionCardSpacing * (count - 1)
+end
+
 -- 创建单个屏幕中央方框（按钮 + 文字）
 function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImageId, rune)
     local playerName = "Player_" .. playerIndex
@@ -335,8 +373,8 @@ function HextechRune:CreateOptionBox(playerIndex, optionIndex, rarity, frameImag
     local optionTitleSize = self:GetRuneTitleFontSize(rune, self.OptionCardWidth)
     local optionDesc = self:GetRuneDescription(rune, playerIndex)
     local hoverDesc = format("%s\n%s", self:GetRuneDisplayName(rune), optionDesc)
-    -- 3 张竖卡水平紧凑居中排列
-    local totalWidth = self.OptionCardWidth * 3 + self.OptionCardSpacing * 2
+    -- 竖卡水平紧凑居中排列（张数取本次事件的实际候选数）
+    local totalWidth = self:GetOptionTotalWidth(playerIndex)
     local startX = self.CenterX - totalWidth / 2
     local x = startX + (optionIndex - 1) * (self.OptionCardWidth + self.OptionCardSpacing)
     local y = self.CenterY - self.OptionCardHeight / 2 - 30
@@ -392,7 +430,7 @@ end
 
 function HextechRune:CreateRerollButton(playerIndex, optionIndex)
     local playerName = "Player_" .. playerIndex
-    local totalWidth = self.OptionCardWidth * 3 + self.OptionCardSpacing * 2
+    local totalWidth = self:GetOptionTotalWidth(playerIndex)
     local startX = self.CenterX - totalWidth / 2
     local cardX = startX + (optionIndex - 1) * (self.OptionCardWidth + self.OptionCardSpacing)
     local cardY = self.CenterY - self.OptionCardHeight / 2 - 30
@@ -579,12 +617,25 @@ end
 
 -- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
 function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
-    local rune = self:PickOneRune(playerIndex, rarity)
+    local rune = nil
+    local shownRarity = rarity
+    if self:CanAscendRuneRarity(playerIndex, rarity) then
+        rune = self:PickOneRune(playerIndex, rarity - 1)
+        if rune ~= nil then
+            shownRarity = rarity - 1
+        end
+    end
+    if rune == nil then
+        rune = self:PickOneRune(playerIndex, rarity)
+    end
     if rune == nil then
         return false
     end
     if not self:AddOwnedRune(playerIndex, rune) then
         return false
+    end
+    if shownRarity ~= rarity then
+        self:CommitAscendRuneRarity(playerIndex, shownRarity)
     end
     self.PlayerOptions[playerIndex] = nil
     self:OnRuneChosen(playerIndex, rune)
@@ -601,18 +652,34 @@ end
 -- 真正展示时才根据玩家最新持有状态筛池，避免排队期间刚选到的唯一符文
 -- 仍残留在后续事件的候选中。
 function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
-    local options = self:PickThreeRunes(playerIndex, rarity)
+    local options = nil
+    local shownRarity = rarity
+    if self:CanAscendRuneRarity(playerIndex, rarity) then
+        options = self:PickThreeRunes(playerIndex, rarity - 1)
+        if options ~= nil then
+            shownRarity = rarity - 1
+        end
+    end
+    if options == nil then
+        -- 高一阶筛池被阵营/兵种/已持有唯一符文掏空时退回原阶，升阶次数留给下一次：
+        -- 这里丢不起事件，队列是先出队再展示的。
+        options = self:PickThreeRunes(playerIndex, rarity)
+    end
     if options == nil then
         exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
             Localization.get("hextech.error.not_enough_candidates"), 10)
         return false
     end
+    self.PlayerOptionCount[playerIndex] = getn(options)
     self.PlayerOptions[playerIndex] = options
     self.PlayerRerollUsed[playerIndex] = false
-    for i = 1, 3, 1 do
+    if shownRarity ~= rarity then
+        self:CommitAscendRuneRarity(playerIndex, shownRarity)
+    end
+    for i = 1, getn(options), 1 do
         local rune = options[i]
-        self:CreateOptionBox(playerIndex, i, rarity,
-            self.RarityFrameImageIds[rarity], rune)
+        self:CreateOptionBox(playerIndex, i, shownRarity,
+            self.RarityFrameImageIds[shownRarity], rune)
         self:CreateRerollButton(playerIndex, i)
     end
     self.PlayerSelectionVisible[playerIndex] = true
@@ -675,9 +742,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_hunt_rhythm",
+        "silver_prepare_backpack",
+        "silver_tulip_mortar",
         "gold_combustion_interest",
-        "gold_ragnarok",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -1105,6 +1172,7 @@ end
 
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
+    self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
     -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
     if g_EnableHextechRune == 1 and self.EnableOpeningRealTest

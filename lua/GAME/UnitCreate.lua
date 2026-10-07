@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.37
+
 g_UnitCreateEventFunc = {}
 
 -- A unit template may participate in several independent systems. Keep every callback
@@ -18,9 +20,6 @@ function RegisterUnitCreateCallback(unitType, callback)
     end
 end
 
--- 东风虽然已有建造限制，这里仍每 10 秒按实际归属兜底检查一次。
--- Player_1 至 Player_6 各自只保留找到的第一辆，多出的直接摧毁；
--- 持有东风速递符文的玩家上限为 2，因为符文赠送的那辆不占建造额度。
 g_CelestialDF41LimitFilter = CreateObjectFilter({
     Rule = "ANY",
     IncludeThing = { "CelestialDF41" },
@@ -114,9 +113,6 @@ function GetPlayerCelestialConstructionYardName(playerIndex)
     return "PlayerDragonShipConstructionYard_" .. playerIndex
 end
 
--- 生成通道继续用已验证的航点生成（归属与朝向由它保证），落点再单独挪一次：
--- 出生点是基地中心，伏龙殿会压住右下方的帝国 MCV 出口，生成后往右上方让开。
--- 航点创建与 GetObjectByScriptName 是同步的，与余额展示墙同一套做法。
 function OffsetPlayerDragonShipYard(playerIndex)
     local yard = GetObjectByScriptName(GetPlayerCelestialConstructionYardName(playerIndex))
     if yard == nil then
@@ -196,9 +192,6 @@ function ShowTimedHelp(ownerPlayerName, name, localizedText, x, y, z)
     }, 0)
     TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", name, localizedText, 0, "")
     SchedulerModule.delay_call(function(id)
-        -- 这里使用 id 而不是 name 是因为 name 有可能被重复利用
-        -- 我们并不希望删除新的同名对象
-        -- 我们只需要删除之前的这个 id 对应的对象就行了
         if ObjectIsAlive(id) then
             ExecuteAction("NAMED_DELETE", GetObjectById(id))
         end
@@ -527,8 +520,6 @@ function JapanAIAirFormVehicleBorn(createdObjId, createdObjInstanceId, ownerPlay
     end, 1, {createdObjId, commandName})
 end
 
--- 索敌优化全部交给引擎 TargetChooser。
--- 只有白虎、V4、波能炮和雅典娜额外使用 坦克 > 步兵 > 建筑 的类别优先级。
 g_FilterOptimizedGroundEnemy = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "ENEMIES",
@@ -1089,17 +1080,14 @@ g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG")] = FarthestTargetChooser
 g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("SovietSPG")] = FarthestTargetChooserBorn
 
--- V4 导弹发射车：出生（回合开始载具出兵）时按概率随机切到散射炮弹形态。
--- 与超级要塞登场形态同一口径：形态只在出生时随机决定，不做周期性切换。
--- lua 侧读不到 MIRV 当前形态，所以每台只在自己的出生帧掷一次，避免来回切换。
-g_SovietAntiStructureVehicleScatterShellChance = 0.5
+g_ScatterShellBornChance = 0.5
 
-function SovietAntiStructureVehicleScatterShellBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+function ScatterShellFormBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- 只处理双方 AI 部署到战场的载具，玩家自己获得的单位不动。
     if ownerPlayerName ~= "PlyrCreeps" and ownerPlayerName ~= "PlyrCivilian" then
         return
     end
-    if GetRandomNumber() >= g_SovietAntiStructureVehicleScatterShellChance then
+    if GetRandomNumber() >= g_ScatterShellBornChance then
         return
     end
     -- 等技能组件初始化完成后切换；Command_ToggleMIRVSpecialPower = 切换到散射炮弹。
@@ -1111,13 +1099,16 @@ function SovietAntiStructureVehicleScatterShellBorn(createdObjId, createdObjInst
     end, 1, {createdObjId})
 end
 
--- 仅四类 T3 攻城单位叠加 坦克 > 步兵 > 建筑 的优先级。
+-- 阵营攻城车与箱子炮车（郁金香、菊花）叠加 坦克 > 步兵 > 建筑 的优先级。
 g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("CelestialAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle")] =
-    { PrioritySiegeTargetChooserBorn, SovietAntiStructureVehicleScatterShellBorn }
+    { PrioritySiegeTargetChooserBorn, ScatterShellFormBorn }
 g_UnitCreateEventFunc[FastHash("SovietAntiStructureVehicle_Enhanced")] =
-    { PrioritySiegeTargetChooserBorn, SovietAntiStructureVehicleScatterShellBorn }
+    { PrioritySiegeTargetChooserBorn, ScatterShellFormBorn }
+g_UnitCreateEventFunc[FastHash("SovietHeavyMortarVehicle")] =
+    { PrioritySiegeTargetChooserBorn, ScatterShellFormBorn }
+g_UnitCreateEventFunc[FastHash("VUMissileAntiVehicleVehicleTech1")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
@@ -1195,6 +1186,8 @@ exObjectRegisterCreateEvent("CelestialAntiStructureVehicle")
 exObjectRegisterCreateEvent("CelestialAntiStructureVehicle_Enhanced")
 exObjectRegisterCreateEvent("SovietAntiStructureVehicle")
 exObjectRegisterCreateEvent("SovietAntiStructureVehicle_Enhanced")
+exObjectRegisterCreateEvent("SovietHeavyMortarVehicle")
+exObjectRegisterCreateEvent("VUMissileAntiVehicleVehicleTech1")
 exObjectRegisterCreateEvent("JapanAntiStructureVehicle")
 exObjectRegisterCreateEvent("JapanAntiStructureVehicle_Enhanced")
 exObjectRegisterCreateEvent("AlliedAntiStructureVehicle")
@@ -1219,9 +1212,6 @@ end
 RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
 RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
--- 全模式底层规则：AI 部署到战场的单位默认只存活 4 个回合，到期在回合开始时
--- 清理，避免双方单位池每回合刷新造成战场实例无限累积。玩家自己生产、符文和
--- 箱子赠送给 Player_N 的单位不受影响；建筑、标记、箱子类模板直接排除。
 g_BattleUnitLifetimeDefaultRounds = 4
 
 -- 覆盖默认寿命的模板（键为模板哈希）。奥林匹斯只存活 1 回合（原版特判），忒提斯与千鸟 2 回合。

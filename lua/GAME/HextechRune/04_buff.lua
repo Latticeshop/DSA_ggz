@@ -234,15 +234,18 @@ function HextechRune:PickBonusRune(playerIndex, rarity, sourceEffect)
     return candidates[self:RandomIndex(getn(candidates))]
 end
 
-function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName, sourceEffect)
+function HextechRune:GrantBonusRune(playerIndex, rarity, sourceName, sourceEffect,
+    silentBroadcast)
     local rune = self:PickBonusRune(playerIndex, rarity, sourceEffect)
     if rune == nil or not self:AddOwnedRune(playerIndex, rune) then
-        return false
+        return nil
     end
     self:OnRuneChosen(playerIndex, rune)
-    exAddTextToPublicBoard(Localization.get("hextech.bonus.broadcast",
-        playerIndex, sourceName, self:GetRuneDisplayName(rune)), 10)
-    return true
+    if silentBroadcast ~= true then
+        exAddTextToPublicBoard(Localization.get("hextech.bonus.broadcast",
+            playerIndex, sourceName, self:GetRuneDisplayName(rune)), 10)
+    end
+    return rune
 end
 
 function HextechRune:ApplyQualityTransformation(playerIndex, rune)
@@ -262,9 +265,23 @@ end
 
 function HextechRune:ApplyGamblingAddict(playerIndex)
     local sourceName = Localization.get("hextech.rune.gambling_addict.name")
+    local granted = {}
     for rewardIndex = 1, 2, 1 do
         local rarity = self:RollGamblingAddictRarity()
-        self:GrantBonusRune(playerIndex, rarity, sourceName, "gambling_addict")
+        local rune = self:GrantBonusRune(playerIndex, rarity, sourceName,
+            "gambling_addict", true)
+        if rune ~= nil then
+            tinsert(granted, rune)
+        end
+    end
+    -- 两张合起来播一次，避免同一句「通过【赌怪】获得符文」连刷两条。
+    if getn(granted) == 2 then
+        exAddTextToPublicBoard(Localization.get("hextech.gambling_addict.broadcast",
+            playerIndex, sourceName, self:GetRuneDisplayName(granted[1]),
+            self:GetRuneDisplayName(granted[2])), 10)
+    elseif getn(granted) == 1 then
+        exAddTextToPublicBoard(Localization.get("hextech.bonus.broadcast",
+            playerIndex, sourceName, self:GetRuneDisplayName(granted[1])), 10)
     end
 end
 
@@ -910,6 +927,8 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "AlliedAC130GunshipAircraft" },
     { RuneId = "silver_banzai_charge", SourceType = "JapanAntiInfantryInfantry",
         ReplacementType = "JapanKamikazeInfantry" },
+    { RuneId = "silver_tulip_mortar", SourceType = "SovietAntiStructureVehicle",
+        ReplacementType = "SovietHeavyMortarVehicle" },
 }
 
 -- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池，
@@ -1273,7 +1292,9 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
     upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
-    upgrade_imperial_warrior = true, ultimate_creature = true,
+    upgrade_imperial_warrior = true, upgrade_v4_tulip = true,
+    prepare_backpack = true,
+    ultimate_creature = true,
     war_efficiency = true, time_rift = true,
     hunt_rhythm = true,
 }
@@ -1574,11 +1595,15 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目与排除名单注释。
     -- elseif rune.Effect == "grant_cryo_satellite" or rune.Effect == "grant_chrono_rift" then
     --     self:GrantProtocol(playerIndex, rune.Effect)
+    elseif rune.Effect == "prepare_backpack" then
+        -- 升阶只在下一次符文选择的筛池上体现，见 02_event.lua 的 CanAscendRuneRarity。
+        self.PendingRuneAscend[playerIndex] = true
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
         or rune.Effect == "upgrade_waverider_dragon_breathe"
         or rune.Effect == "upgrade_vanguard_gunship"
-        or rune.Effect == "upgrade_imperial_warrior" then
+        or rune.Effect == "upgrade_imperial_warrior"
+        or rune.Effect == "upgrade_v4_tulip" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
     else
         self:ApplyPersistentRune(playerIndex, rune)
