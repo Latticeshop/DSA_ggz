@@ -104,7 +104,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位死亡都会为下回合你的 %s 单位提供增益！每一个T1/T2/T3/T4单位分别提供1%%的血量/伤害/攻速/射程。", en = "Every enemy unit death empowers your %s units next round! Each T1/T2/T3/T4 unit grants 1%% health/damage/attack speed/range." },
     ["hextech.rune.war_efficiency.broadcast"] = { zh = "本回合以战养战（%s）加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "This round's War foraging (%s) bonus: %d health%%, %d damage%%, %d attack speed%%, %d range%%" },
     ["hextech.rune.hunt_rhythm.name"] = { zh = "狩猎律动", en = "Hunt Rhythm" },
-    ["hextech.rune.hunt_rhythm.desc"] = { zh = "敌方每有一个 %s 单位死亡，使场上随机一个你的未满血同兵种单位回复 10%% 血量。", en = "Each enemy %s unit death heals one random damaged unit of yours of the same type on the battlefield for 10%% of its max health." },
+    ["hextech.rune.hunt_rhythm.desc"] = { zh = "敌方每个 %s 死亡单位，使你的一个随机 %s 单位回复 10%% 血量。", en = "Each enemy %s death heals one random %s unit of yours for 10%% of its max health." },
     ["hextech.rune.time_rift.name"] = { zh = "The World", en = "The World" },
     ["hextech.rune.time_rift.desc"] = { zh = "敌方全体单位和建筑每 29 秒获得 %s 秒时停。", en = "All enemy units and structures are time-stopped for %s seconds every 29 seconds." },
     ["hextech.rune.tesla_air_assault.name"] = { zh = "磁暴突袭", en = "Tesla Air Assault" },

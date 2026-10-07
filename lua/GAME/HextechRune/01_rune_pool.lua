@@ -587,7 +587,12 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         return ""
     end
     if rune.UnitType ~= nil then
-        return Localization.get(rune.DescKey, self:GetRuneUnitTypeLabel(rune))
+        local label = self:GetRuneUnitTypeLabel(rune)
+        -- 狩猎律动的敌我两侧各有一个兵种槽。
+        if rune.Effect == "hunt_rhythm" then
+            return Localization.get(rune.DescKey, label, label)
+        end
+        return Localization.get(rune.DescKey, label)
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
     elseif rune.Effect == "ultimate_creature" then
@@ -728,15 +733,6 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
         end
     end
     return filtered
-end
-
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
 end
 
 function HextechRune:PickThreeRunes(playerIndex, rarity)
