@@ -532,81 +532,8 @@ function HextechRune:GrantTeslaAirAssault(playerIndex)
     SetWorldBuilderThisPlayer(previous)
 end
 
--- 死亡事件属于全局入口，使用固定函数转发到当前海克斯对象。
-function HextechBattleUnitDie(dyingObjId, attackerId,
-    dyingObjInstanceId, attackerInstanceId, ownerPlayerName)
-    if HextechRune == nil then
-        return
-    end
-    if HextechRune.OnCombustionInterestUnitDie ~= nil then
-        HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
-    end
-    if HextechRune.OnWarEfficiencyUnitDie ~= nil then
-        HextechRune:OnWarEfficiencyUnitDie(dyingObjInstanceId, ownerPlayerName)
-    end
-end
-
-function HextechRune:EnsureBattleDeathObserver()
-    if self.BattleDeathObserverReady then
-        return
-    end
-    if RegisterUnitDieCallback == nil or UNITLIST == nil or unitcountmax == nil then
-        return
-    end
-    for unitIndex = 1, unitcountmax, 1 do
-        RegisterUnitDieCallback(UNITLIST[unitIndex],
-            HextechBattleUnitDie)
-    end
-
-    -- 回合结算后的脚本清场不算单位死亡；下一回合开始后重新接受死亡事件。
-    self.BattleDeathPhaseActive = true
-    if RoundLuaManager ~= nil then
-        RoundLuaManager.CallOnEveryRoundBegin(function()
-            HextechRune.BattleDeathPhaseActive = true
-        end)
-        RoundLuaManager.CallOnEveryRoundEnd(function()
-            HextechRune.BattleDeathPhaseActive = false
-        end)
-    end
-    self.BattleDeathObserverReady = true
-end
-
-function HextechRune:OnCombustionInterestUnitDie(dyingObjId, ownerPlayerName)
-    -- BUFF 登记只用于防止同一单位重复获得持续效果；
-    -- 炽燃利息直接根据战场 AI 归属和战斗阶段结算，不再要求死亡单位已获得 BUFF。
-    self.BattleUnitAssignments[dyingObjId] = nil
-    if not self.BattleDeathPhaseActive then
-        return
-    end
-
-    local firstPlayerIndex = nil
-    local lastPlayerIndex = nil
-    if ownerPlayerName == "PlyrCivilian" then
-        firstPlayerIndex = 4
-        lastPlayerIndex = 6
-    elseif ownerPlayerName == "PlyrCreeps" then
-        firstPlayerIndex = 1
-        lastPlayerIndex = 3
-    else
-        return
-    end
-
-    local rewarded = false
-    local interestMoney = GetCombustionInterestMoney()
-    local previous = SetWorldBuilderThisPlayer(1)
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-        self:EnsurePlayerRuneState(playerIndex)
-        if self.PlayerOwnedRuneIds[playerIndex]["gold_combustion_interest"] then
-            ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, interestMoney)
-            rewarded = true
-        end
-    end
-    SetWorldBuilderThisPlayer(previous)
-    if rewarded then
-        -- 多名队友各自获得 interestMoney，但死亡位置只显示一次与小电厂同款的飘字。
-        exShowFloatingIntAtObject(dyingObjId, interestMoney)
-    end
-end
+-- 死亡事件的转发与观察者（HextechBattleUnitDie / EnsureBattleDeathObserver）在
+-- 17_death_triggers.lua：04 是全树最紧的 payload，死亡触发类符文集中在 17 这个包。
 
 function HextechRune:GetPlayerHomeSpawnPosition(playerIndex, forwardOffset, sideOffset)
     local p = exWaypointGetPos(format("Player_%d_Start", playerIndex))
@@ -1118,7 +1045,8 @@ function HextechRune:ClampRagnarokUnitHealth(objectId)
     end
     local reference = "hextech_ragnarok_" .. objectId
     ExecuteAction("SET_UNIT_REFERENCE", reference, unit)
-    ExecuteAction("UNIT_SET_HEALTH", reference, halfHealth)
+    -- UNIT_SET_HEALTH 收百分比（实测结论见 17_death_triggers.lua），按上限换算后再写。
+    ExecuteAction("UNIT_SET_HEALTH", reference, halfHealth / maxHealth * 100)
     local afterHealth = exObjectGetCurrentHealth(objectId)
     if afterHealth ~= nil and afterHealth <= halfHealth
         and exObjectGetMaxHealth(objectId) == maxHealth then
@@ -1347,6 +1275,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
     upgrade_imperial_warrior = true, ultimate_creature = true,
     war_efficiency = true, time_rift = true,
+    hunt_rhythm = true,
 }
 
 -- 给本次刚登记的新单位应用其归属玩家的全部持续符文。
@@ -1608,7 +1537,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyDivineInterventionToSide(self:GetPlayerSideIndex(playerIndex), "选择符文")
     elseif rune.Effect == "five_thunder" then
         self:GrantFiveThunder(playerIndex)
-    elseif rune.Effect == "combustion_interest" then
+    elseif rune.Effect == "combustion_interest" or rune.Effect == "hunt_rhythm" then
+        -- 死亡奖励符文：取符文时只挂上死亡观察者，触发时才读持有状态。
         self:EnsureBattleDeathObserver()
     elseif rune.Effect == "war_efficiency" then
         self:EnsureBattleDeathObserver()

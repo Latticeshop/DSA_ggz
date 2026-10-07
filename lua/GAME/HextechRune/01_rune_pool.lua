@@ -68,6 +68,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.investment.name",
         DescKey = "hextech.rune.investment.desc",
         Effect = "investment", Icon = "Button_CelestialRefinery" },
+    { Id = "silver_hunt_rhythm", Rarity = 3,
+        NameKey = "hextech.rune.hunt_rhythm.name",
+        DescKey = "hextech.rune.hunt_rhythm.desc",
+        Effect = "hunt_rhythm", NeedsUnitType = true,
+        Icon = "Button_CelestialSupportAircraft_Skill" },
 
     -- 金色
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -138,6 +143,7 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.combustion_interest.name",
         DescKey = "hextech.rune.combustion_interest.desc",
         Effect = "combustion_interest", Icon = "Button_PlayerPower_ProductionKickback" },
+    -- 死亡触发类：与炽燃利息共用一条死亡转发。
     { Id = "gold_ascension", Rarity = 2,
         NameKey = "hextech.rune.ascension.name",
         DescKey = "hextech.rune.ascension.desc",
@@ -274,6 +280,8 @@ HextechRune.NonRepeatableRuneIds = {
     -- 以战养战改为玩家独立且可重复获取：多份只叠加在自己的单位上，故不列入排除。
     prismatic_time_rift = true,
     prismatic_shrink_ray = true,
+    -- 狩猎律动：每个兵种各限一份（带兵种，判重键是 Id:兵种；同一兵种重复等于每次死亡多治一只）。
+    silver_hunt_rhythm = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
