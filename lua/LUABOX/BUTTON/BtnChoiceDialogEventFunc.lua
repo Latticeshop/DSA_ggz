@@ -185,7 +185,7 @@ function BtnChoiceDialogEventFunc_FinishCelestialTower(objectId)
 end
 
 -- 天门神弓的取位与加成，市场购买与符文赠送共用：站在樱花井再往后一格（253.5），
--- 血量与埃奎斯同款 9000，射程与视野同时 ×1.75（塔不会移动，只放射程看不到也打不到）。
+-- 血量与埃奎斯同款 9000，只加射程 ×1.75、不带视野（带视野会使天弓推塔）。
 function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
     local behindDirection = -1;
     local playerOwn = "PlyrCivilian";
@@ -209,7 +209,7 @@ function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
     });
     if not g_CelestialEnergyRailgunBaseRangeX175Modifier then
         g_CelestialEnergyRailgunBaseRangeX175Modifier = exAttributeModifierCreate(
-            { RANGE = 1.75, VISION = 1.75 }, 1)
+            { RANGE = 1.75 }, 1)
     end
     ObjectLoadAttributeModifier(GetObjectById(id), g_CelestialEnergyRailgunBaseRangeX175Modifier)
     BtnChoiceDialogEventFunc_FinishCelestialTower(id)
