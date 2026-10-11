@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
@@ -109,6 +109,9 @@ HextechRune.PlayerRerollUsed = HextechRune.PlayerRerollUsed or {}
 HextechRune.PlayerEventQueues = HextechRune.PlayerEventQueues or {}
 -- 当前三选一是否实际显示；隐藏时 PlayerOptions 仍保留，J 键可原样恢复。
 HextechRune.PlayerSelectionVisible = HextechRune.PlayerSelectionVisible or {}
+-- 每名玩家已完成过多少次正式符文选择（点下某张卡，或遭遇战电脑直接获得符文）。
+-- 与回合号无关：只用来回答「这是不是这名玩家的第一次选择」，见 IsFirstFormalSelection。
+HextechRune.PlayerFormalSelectionCount = HextechRune.PlayerFormalSelectionCount or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 3, 10, 18, 27 }
@@ -339,6 +342,15 @@ function HextechRune:HasNextFormalEvent()
         end
     end
     return false
+end
+
+function HextechRune:IsFirstFormalSelection(playerIndex)
+    return (self.PlayerFormalSelectionCount[playerIndex] or 0) == 0
+end
+
+function HextechRune:MarkFormalSelectionReceived(playerIndex)
+    self.PlayerFormalSelectionCount[playerIndex] =
+        (self.PlayerFormalSelectionCount[playerIndex] or 0) + 1
 end
 
 -- 棱彩已是最高阶：升不动就不该把这次机会花掉。
@@ -635,6 +647,9 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     end
     self.PlayerOptions[playerIndex] = nil
     self:OnRuneChosen(playerIndex, rune)
+    -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
+    -- 现发的奖励符文仍按第一次选择筛池。
+    self:MarkFormalSelectionReceived(playerIndex)
     return true
 end
 
@@ -749,6 +764,9 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     self.PlayerSelectionVisible[playerIndex] = false
     self:HideSelectionHint(playerIndex)
     self:OnRuneChosen(playerIndex, rune)
+    -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
+    -- 现发的奖励符文仍按第一次选择筛池。
+    self:MarkFormalSelectionReceived(playerIndex)
     -- 移除该玩家的 3 个方框按钮和文字。
     -- 注意：先隐藏按钮（exCustomBtnSetVisibilityForPlayer 0）再移除，
     -- 否则引擎的原生悬浮详情窗（Desc 文本）会在按钮移除后残留。

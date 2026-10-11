@@ -99,6 +99,14 @@ g_BuyTowerId = {
         ["evil"] = { 0, 0 },
     }
 }
+-- 市场氪金塔原价：按钮显示与扣款校验共用这一份，改价只改这里。
+-- 对应关系：shield=护盾投射塔 JapanPointShieldControlTower、sakura=樱花井
+-- JapanKamikazeCommandTower、poplar=胡杨防空系统 SovietHeavyAntiAirMissileTurret、
+-- aegis=埃奎斯护盾发生器 AlliedAegisLargeDefenseBase、railgun=天门神弓 CelestialEnergyRailgunBase。
+-- 塔防专家的半价由 GetTowerPrice 在运行时算（floor(原价 × 0.5)），不写死。
+g_MarketTowerBasePrice = {
+    shield = 10000, sakura = 10000, poplar = 10000, aegis = 12000, railgun = 15000,
+}
 g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
 
 function BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex)
@@ -277,11 +285,11 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         nextInvestmentText = nextInvestmentText .. Localization.get("market.next_investment.benefit")
 
         if self.Page == 2 then
-            local shieldTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 10000)
-            local sakuraWellPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 10000)
-            local poplarTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 12000)
-            local aegisPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 15000)
-            local tianmenBowPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, 20000)
+            local shieldTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, g_MarketTowerBasePrice.shield)
+            local sakuraWellPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, g_MarketTowerBasePrice.sakura)
+            local poplarTowerPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, g_MarketTowerBasePrice.poplar)
+            local aegisPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, g_MarketTowerBasePrice.aegis)
+            local tianmenBowPrice = BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, g_MarketTowerBasePrice.railgun)
             self.Choices = {
                 Localization.get("market.buy_shield_tower", shieldTowerPrice), -- 1
                 Localization.get("market.buy_sakura_well", sakuraWellPrice), -- 2
@@ -418,7 +426,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
-        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 10000)
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, g_MarketTowerBasePrice.shield)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
@@ -458,7 +466,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
-        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 12000)
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, g_MarketTowerBasePrice.poplar)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
@@ -513,7 +521,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
-        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 10000)
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, g_MarketTowerBasePrice.sakura)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
@@ -550,7 +558,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.tower.already_exists"), 10);
             return;
         end
-        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 20000)
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, g_MarketTowerBasePrice.railgun)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);
@@ -597,7 +605,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             slotIndex = getn(slots) + 1;
             slots[slotIndex] = 0;
         end
-        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, 15000)
+        local price = BtnChoiceDialogEventFunc_GetTowerPrice(self.PlayerIndex, g_MarketTowerBasePrice.aegis)
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money < price then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.funds.insufficient"), 10);

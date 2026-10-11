@@ -69,11 +69,11 @@ g_DefaultHextechRecycleBonusRate = 0.2
 
 g_CombustionInterestMoney = {
     [0.5] = 2,
-    [1] = 3,
-    [1.5] = 4,
-    [2] = 6,
+    [1] = 4,
+    [1.5] = 6,
+    [2] = 8,
 }
-g_DefaultCombustionInterestMoney = 3
+g_DefaultCombustionInterestMoney = 4
 
 g_StartingFundsMoney = {
     [0.5] = 5000,

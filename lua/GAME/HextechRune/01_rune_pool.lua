@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -170,11 +170,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.poach.name",
         DescKey = "hextech.rune.poach.desc",
         Effect = "poach", Icon = "Portrait_CelestialSaluteGun" },
-    -- 变形重组器可重复获取（不在 NonRepeatableRuneIds 里），每次获取按当前池子重新重组。
     { Id = "gold_recombobulator", Rarity = 2,
         NameKey = "hextech.rune.recombobulator.name",
         DescKey = "hextech.rune.recombobulator.desc",
-        Effect = "recombobulator_same", Icon = "JUA_Nanotech_Upgrade1" },
+        Effect = "recombobulator_same", ExcludeOnFirstFormalSelection = true,
+        Icon = "JUA_Nanotech_Upgrade1" },
     -- 可重复获取：每获得一次就立刻吸取一次。
     { Id = "gold_drain", Rarity = 2,
         NameKey = "hextech.rune.drain.name",
@@ -199,10 +199,12 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.lethal_tempo.desc",
         Effect = "lethal_tempo", Icon = "Portrait_CelestialAntiVehicleVehicleTech3" },
     -- 可重复获取；稀有池与隐性特等奖概率见 10_recombobulator.lua。
+    -- ExcludeOnFirstFormalSelection：与金色变形重组器同口径，玩家第一次选择不发（见上条注释）。
     { Id = "prismatic_upgrade_recombobulator", Rarity = 1,
         NameKey = "hextech.rune.upgrade_recombobulator.name",
         DescKey = "hextech.rune.upgrade_recombobulator.desc",
-        Effect = "recombobulator_upgrade", Icon = "JUA_Nanotech_Upgrade2" },
+        Effect = "recombobulator_upgrade", ExcludeOnFirstFormalSelection = true,
+        Icon = "JUA_Nanotech_Upgrade2" },
     { Id = "prismatic_broadband_jamming", Rarity = 1,
         NameKey = "hextech.rune.broadband_jamming.name",
         DescKey = "hextech.rune.broadband_jamming.desc", Effect = "broadband_jamming",
@@ -592,6 +594,11 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         if rune.Effect == "hunt_rhythm" then
             return Localization.get(rune.DescKey, label, label)
         end
+        -- 以战养战的每单位百分比随对局经济倍率变化，卡面按当前档位显示 1% 或 0.5%。
+        if rune.Effect == "war_efficiency" then
+            return Localization.get(rune.DescKey, label,
+                self:FormatWarEfficiencyPercent(self:GetWarEfficiencyBonusPerDeath() * 100))
+        end
         return Localization.get(rune.DescKey, label)
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
@@ -714,7 +721,10 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             and (not rune.RequiresSea or g_DisableSeaArmy ~= 1)
             and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
             -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。
-            and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent()) then
+            and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent())
+            -- 玩家的第一次正式选择里，这类「整体改写单位池」的符文不发（与回合数无关）。
+            and (not rune.ExcludeOnFirstFormalSelection
+                or not self:IsFirstFormalSelection(playerIndex)) then
             if rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do

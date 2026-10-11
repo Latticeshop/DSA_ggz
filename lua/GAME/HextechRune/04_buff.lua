@@ -124,8 +124,9 @@ if not g_HextechRangeX150Modifier then
     g_HextechRangeX150Modifier = exAttributeModifierCreate({ RANGE = 1.5, VISION = 1.5 }, 1)
 end
 if not g_HextechAstralBodyModifier then
+    -- 血量 90% → 75%（2026-10-11，用户要求）；伤害 -25% 不变。
     g_HextechAstralBodyModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1.9,
+        HEALTH_MULT = 1.75,
         DAMAGE_MULT = 0.75,
     }, 1)
 end
@@ -133,8 +134,9 @@ if not g_HextechRagnarokModifier then
     g_HextechRagnarokModifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.9 }, 1)
 end
 if not g_HextechGoliathModifier then
+    -- 血量 90% → 75%（2026-10-11，用户要求）；伤害 +50% 不变。
     g_HextechGoliathModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1.9,
+        HEALTH_MULT = 1.75,
         DAMAGE_MULT = 1.5,
     }, 1)
 end
