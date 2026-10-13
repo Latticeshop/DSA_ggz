@@ -79,16 +79,10 @@ function HextechRune:BuildRecombobulatorTypeFilter()
     return allowed
 end
 
--- 禁海模式时海军不能作为结果：UNITLIST 的 step35+1..step4 是舰船与海上箱子段
--- （含海翼、忒提斯、双母舰）。牛蛙等在陆地物资段，不算海军。
+-- 禁用模式时被禁兵种不能作为结果：判定统一走 UNITCOUNTERINI_0.lua 的兵种分类表
+-- （双形态单位需全部兵种都被禁才剔除，见该文件的 g_BanModeTypeOverrides）。
 function HextechRune:IsRecombobulatorNavalIndex(unitIndex)
-    if g_DisableSeaArmy ~= 1 then
-        return false
-    end
-    if step35 == nil or step4 == nil then
-        return false
-    end
-    return unitIndex > step35 and unitIndex <= step4
+    return BanModeIsSlotBanned(unitIndex) == 1
 end
 
 -- 结果池按“类型 + 阶 + 海况”缓存：数据静态，每种组合只构建一次。
@@ -97,10 +91,7 @@ function HextechRune:GetRecombobulatorPool(kind, tier)
     if self.RecombobulatorPools == nil then
         self.RecombobulatorPools = {}
     end
-    local key = kind .. (tier or 0)
-    if g_DisableSeaArmy == 1 then
-        key = key .. "_x"
-    end
+    local key = kind .. (tier or 0) .. BanModePoolKeySuffix()
     if self.RecombobulatorPools[key] == nil then
         self.RecombobulatorPools[key] = self:CollectRecombobulatorPool(kind, tier)
     end

@@ -75,7 +75,8 @@ function PureDrawCanEnableUnit(playerIndex, info)
             "Player_" .. playerIndex, "==", 0, "CelestialTechStructure") then
         return false
     end
-    if g_DisableSeaArmy == 1 and info.Sea then
+    -- 禁用模式：被禁兵种不参与抽卡（双形态需全部兵种被禁，见 UNITCOUNTERINI_0.lua）。
+    if BanModeIsNameBanned(info.Type) == 1 then
         return false
     end
     local round = exCounterGetByName("lvc") or 0

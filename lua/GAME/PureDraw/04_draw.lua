@@ -222,7 +222,7 @@ function PureDrawChooseWeightedUnit()
     local source = g_PureDrawBuildableUnitPool[selectedTier]
     local eligible = {}
     for i = 1, getn(source), 1 do
-        if g_DisableSeaArmy ~= 1 or not source[i].Sea then
+        if BanModeIsNameBanned(source[i].Type) == 0 then
             tinsert(eligible, source[i])
         end
     end

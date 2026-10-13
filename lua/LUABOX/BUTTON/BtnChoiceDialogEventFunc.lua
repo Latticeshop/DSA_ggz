@@ -743,13 +743,10 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
                 end
                 tinsert(self.Choices, Localization.get("hextech.entry", hextechName))
             elseif i == 6 then
-                -- 更多选项：显示缩小/禁海状态
+                -- 更多选项：首页条目只显示缩小模式状态。禁用摘要不放这里：
                 local moreOptionsName = ""
                 if g_EnableShrinkMode == 1 then
                     moreOptionsName = moreOptionsName .. Localization.get("game_mode.shrink_suffix")
-                end
-                if g_DisableSeaArmy == 1 then
-                    moreOptionsName = moreOptionsName .. Localization.get("game_mode.no_navy_suffix")
                 end
                 tinsert(self.Choices, Localization.get("more_options.entry") .. moreOptionsName)
             elseif option.IsSelected then
@@ -781,7 +778,7 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             -- 未手动设置时保持初始默认，随后由局外“开启随机箱子”的检测决定是否改为三个。
             BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
             if g_DisableSeaArmy == 1 then
-                -- 火炮机车同款开局限制：禁海军时磁暴快艇到第 3 回合才允许生产。
+                -- 火炮机车同款开局限制：禁海军时磁暴快艇（陆地形态）到第 3 回合才允许生产。
                 g_NoNavyTeslaBoatUnlocked = 0
                 for i = 1, 6 do
                     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. i, "SovietAntiNavyShipTech1", 0)
@@ -850,7 +847,7 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
     ButtonChoiceDialogManager:ShowDialog(dialogData)
 end
 
--- 更多选项对话框（缩小模式 / 禁止海军）
+-- 更多选项对话框（缩小模式 / 禁用模式）
 function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
     local dialogData = {
         DialogId = MORE_OPTIONS_DIALOG_ID,
@@ -861,7 +858,7 @@ function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
     dialogData.RefreshData = function(self)
         self.Choices = {
             Localization.get("more_options.shrink") .. (g_EnableShrinkMode == 1 and Localization.get("game_mode.selected_suffix") or ""),
-            Localization.get("more_options.no_navy") .. (g_DisableSeaArmy == 1 and Localization.get("game_mode.selected_suffix") or ""),
+            Localization.get("more_options.ban_mode") .. BanModeGetSummarySuffix(),
             Localization.get("more_options.back"),
         }
     end
@@ -878,15 +875,7 @@ function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         elseif buttonIndex == 2 then
-            if g_DisableSeaArmy == 1 then
-                g_DisableSeaArmy = 0
-                exMessageAppendToMessageArea(Localization.get("game_mode.host.canceled", Localization.get("more_options.no_navy")))
-            else
-                g_DisableSeaArmy = 1
-                exMessageAppendToMessageArea(Localization.get("game_mode.host.selected", Localization.get("more_options.no_navy")))
-            end
-            self:RefreshData()
-            ButtonChoiceDialogManager:ShowDialog(self)
+            BtnChoiceDialogEventFunc_ShowBanModeDialog(self.PlayerName)
             return
         elseif buttonIndex == 3 then
             BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
@@ -1208,11 +1197,13 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
         end
         featureText = featureText .. Localization.get("game_mode.shrink_name")
     end
-    if g_DisableSeaArmy == 1 then
-        if featureText ~= '' then
-            featureText = featureText .. Localization.get("game_mode.feature_separator")
+    if g_BanModeOrder ~= nil and BanModeNameOf ~= nil then
+        for banIndex = 1, getn(g_BanModeOrder), 1 do
+            if featureText ~= '' then
+                featureText = featureText .. Localization.get("game_mode.feature_separator")
+            end
+            featureText = featureText .. BanModeNameOf(g_BanModeOrder[banIndex])
         end
-        featureText = featureText .. Localization.get("game_mode.no_navy_name")
     end
     if featureText ~= '' then
         gameModeText = gameModeText .. Localization.get("game_mode.feature_bracket", featureText)

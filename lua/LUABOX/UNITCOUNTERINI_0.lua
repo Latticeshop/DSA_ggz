@@ -346,6 +346,246 @@ if yaoguangIndex ~= nil then
     g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4_Enhanced"] = yaoguangIndex
     g_UnitNameToUnitIndex[FastHash("CelestialAdvanceAircraftTech4_Enhanced")] = yaoguangIndex
 end
+----------------------------------------------------------------
+-- 禁用模式（步兵 / 载具 / 空军 / 海军，最多同时禁 3 项）：兵种分类表与判定。
+-- 抽卡池 g_PureDrawBuildableUnitPool 的注释分段、双形态表 HextechRune.DualUnitTypeFilters，
+-- 双形态单位登记全部形态：只有「全部兵种都被禁」才不上场（AI 会自行切形态索敌）。
+g_BanModeInfantry = g_BanModeInfantry or 0
+g_BanModeVehicle = g_BanModeVehicle or 0
+g_BanModeAir = g_BanModeAir or 0
+g_BanModeOrder = g_BanModeOrder or {}
+g_BanModeTypesReady = 0
+g_BanModeSlotTypes = {}
+g_BanModeNameTypes = {}
+-- 与 g_BanModeIds 同序，供 ExtraCommand.lua 的禁用模式子页使用。
+g_BanModeIds = { "infantry", "vehicle", "aircraft", "navy" }
+-- 回收表 g_RecycleBtnsMapByFaction 的 1..4 类，顺序与 g_BanModeIds 一致。
+g_BanModeCategoryTypes = { "infantry", "vehicle", "aircraft", "navy" }
+
+-- 兵种分类的来源：RecycleUnit.lua 的回收按钮表 g_RecycleBtnsMapByFaction 与箱子模板
+-- g_CrateUnitsTemplate。两张表的 [1..4] 依次是 步兵 / 载具 / 空军 / 海军。
+-- 所以分类直接由回收系统给出，不再按出兵批次分段去猜（分段只在回收系统漏登记时兜底）。
+function BanModeDeriveTypesFromRecycle()
+    local map = {}
+    if g_RecycleBtnsMapByFaction ~= nil then
+        for faction = 1, 4, 1 do
+            local byCategory = g_RecycleBtnsMapByFaction[faction]
+            if byCategory ~= nil then
+                for category = 1, 4, 1 do
+                    local list = byCategory[category]
+                    if list ~= nil then
+                        for i = 1, getn(list), 1 do
+                            local unitName = list[i].Type
+                            if unitName ~= nil and map[unitName] == nil then
+                                map[unitName] = g_BanModeCategoryTypes[category]
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if g_CrateUnitsTemplate ~= nil then
+        for category = 1, 4, 1 do
+            local list = g_CrateUnitsTemplate[category]
+            if list ~= nil then
+                for i = 1, getn(list), 1 do
+                    local unitName = list[i].Type
+                    if unitName ~= nil and map[unitName] == nil then
+                        map[unitName] = g_BanModeCategoryTypes[category]
+                    end
+                end
+            end
+        end
+    end
+    return map
+end
+
+-- 兜底分段：步兵 / 载具 / 飞机 / 海军 / 飞机 / 载具。只在回收系统查不到该名字时使用。
+function BanModeFallbackType(unitIndex)
+    if unitIndex <= step1 then
+        return "infantry"
+    elseif unitIndex <= step3 then
+        return "vehicle"
+    elseif unitIndex <= step35 then
+        return "aircraft"
+    elseif unitIndex <= step4 then
+        return "navy"
+    elseif unitIndex <= step5 then
+        return "aircraft"
+    end
+    return "vehicle"
+end
+
+-- 只登记「真正的例外」：回收系统推导不出来的，或用户明确改判的。
+-- 普通单位的分类一律由 BanModeDeriveTypesFromRecycle() 推出，不要再往这里加。
+g_BanModeTypeOverrides = {
+    -- ① 会变形的单位登记它所有的兵种：只有全部都被禁才不上场。
+    --    AI 会自行切形态索敌，只禁其中一个兵种时它照常上场。
+    --    天狗 / VX / 心神：载具 + 飞机
+    JapanAntiInfantryVehicle = { "vehicle", "aircraft" },
+    JapanAntiInfantryVehicle_Enhanced = { "vehicle", "aircraft" },
+    JapanAntiInfantryVehicle_Enhanced_Water = { "vehicle", "aircraft" },
+    JapanAntiAirVehicleTech1 = { "vehicle", "aircraft" },
+    JapanAntiAirVehicleTech1_Enhanced = { "vehicle", "aircraft" },
+    JapanAntiAirVehicleTech1_Enhanced_Water = { "vehicle", "aircraft" },
+    JapanMissileMechaAdvanced = { "vehicle", "aircraft" },
+    JapanMissileMechaAdvanced_Enhanced = { "vehicle", "aircraft" },
+    JapanMissileMechaAdvanced_Enhanced_Water = { "vehicle", "aircraft" },
+    --    火箭天使：会飞的帝国反装甲步兵 → 步兵 + 飞机
+    JapanAntiVehicleInfantryTech3 = { "infantry", "aircraft" },
+    --    海翼：潜艇与飞机双形态 → 飞机 + 海军
+    JapanAntiAirShip = { "aircraft", "navy" },
+    JapanAntiAirShip_Enhanced = { "aircraft", "navy" },
+    -- ② 回收表把日本截击机放在载具页，但本图走空军批次，按纯空军算
+    JapanInterceptorAircraft = { "aircraft" },
+    -- ③ 超级要塞按纯空军算，只禁空军即被禁用。
+    JapanGigaFortressShipEgg = { "aircraft" },
+    JapanGigaFortressShip = { "aircraft" },
+    JapanFortressShip = { "aircraft" },
+    JapanGigaFortress_Land = { "aircraft" },
+}
+
+function BanModeBuildTypes()
+    if g_BanModeTypesReady == 1 then
+        return
+    end
+    -- 本文件的 step1..step6 / unitcountmax 还没建好时不落 ready 标记，下次调用再建。
+    if unitcountmax == nil or step1 == nil or step6 == nil then
+        return
+    end
+    g_BanModeTypesReady = 1
+    -- 优先用回收系统给的名字→兵种表；查不到再退回分段。
+    local fromRecycle = BanModeDeriveTypesFromRecycle()
+    for unitIndex = 1, unitcountmax, 1 do
+        local unitName = UNITLIST[unitIndex]
+        local types = nil
+        if unitName ~= nil then
+            types = g_BanModeTypeOverrides[unitName]
+            if types == nil then
+                local derived = fromRecycle[unitName]
+                if derived ~= nil then
+                    types = { derived }
+                end
+            end
+        end
+        if types == nil then
+            types = { BanModeFallbackType(unitIndex) }
+        end
+        g_BanModeSlotTypes[unitIndex] = types
+        if unitName ~= nil then
+            g_BanModeNameTypes[unitName] = types
+        end
+    end
+    -- 回收表里有、但没有 UNITLIST 槽的名字（例如超级要塞核心）也要能按名查到。
+    for unitName, derived in fromRecycle do
+        if g_BanModeNameTypes[unitName] == nil then
+            g_BanModeNameTypes[unitName] = { derived }
+        end
+    end
+    -- 例外表放最后，确保它压过推导结果。
+    for unitName, types in g_BanModeTypeOverrides do
+        g_BanModeNameTypes[unitName] = types
+    end
+end
+
+-- 出兵过滤的豁免名单：只作用于「出兵」这一个入口（BanModeSpawnCount）。
+g_BanModeSpawnExempt = {
+    AlliedAntiNavyShipTech3 = 1,
+    SovietAntiNavyShipTech1 = 1,
+}
+
+function BanModeIsTypeBanned(typeName)
+    if typeName == "infantry" then
+        return g_BanModeInfantry
+    elseif typeName == "vehicle" then
+        return g_BanModeVehicle
+    elseif typeName == "aircraft" then
+        return g_BanModeAir
+    elseif typeName == "navy" then
+        return g_DisableSeaArmy
+    end
+    return 0
+end
+
+function BanModeIsTypeEnabled(typeName)
+    if BanModeIsTypeBanned(typeName) == 1 then
+        return 0
+    end
+    return 1
+end
+
+-- 一组兵种里只要还有一个没被禁，单位就正常上场（双形态的核心规则）。
+function BanModeTypesAllBanned(types)
+    if types == nil or getn(types) == 0 then
+        return 0
+    end
+    for i = 1, getn(types), 1 do
+        if BanModeIsTypeBanned(types[i]) ~= 1 then
+            return 0
+        end
+    end
+    return 1
+end
+
+function BanModeGetNameTypes(unitType)
+    if g_BanModeTypesReady ~= 1 then
+        BanModeBuildTypes()
+    end
+    local types = g_BanModeNameTypes[unitType]
+    if types ~= nil then
+        return types
+    end
+    local unitIndex = g_UnitNameToUnitIndex[unitType]
+    if unitIndex == nil then
+        return nil
+    end
+    return g_BanModeSlotTypes[unitIndex]
+end
+
+function BanModeIsSlotBanned(unitIndex)
+    if g_BanModeTypesReady ~= 1 then
+        BanModeBuildTypes()
+    end
+    return BanModeTypesAllBanned(g_BanModeSlotTypes[unitIndex])
+end
+
+-- 按模板名判定；没有 UNITLIST 槽的形态（超级要塞）走 g_BanModeNameTypes。
+function BanModeIsNameBanned(unitType)
+    return BanModeTypesAllBanned(BanModeGetNameTypes(unitType))
+end
+
+-- 出兵函数的内层循环上限：整槽被禁时返回 0，让 for 直接空转（不改铺开逻辑）。
+-- 豁免名单（g_BanModeSpawnExempt）里的模板不受这里的影响。
+function BanModeSpawnCount(unitIndex, baseMax)
+    if BanModeIsSlotBanned(unitIndex) == 1 then
+        if g_BanModeSpawnExempt[UNITLIST[unitIndex]] == nil then
+            return 0
+        end
+    end
+    return baseMax
+end
+
+function BanModeRecycleCategoryEnabled(category)
+    return BanModeIsTypeEnabled(g_BanModeCategoryTypes[category])
+end
+
+-- 未禁用的兵种列表（顺序与 HextechRune.UnitTypeOrder 一致），供符文候选池使用。
+function BanModeEnabledUnitTypes()
+    local result = {}
+    for i = 1, getn(g_BanModeCategoryTypes), 1 do
+        if BanModeIsTypeEnabled(g_BanModeCategoryTypes[i]) == 1 then
+            tinsert(result, g_BanModeCategoryTypes[i])
+        end
+    end
+    return result
+end
+
+-- 结果池缓存键后缀：四种禁用组合各自缓存一份（禁用配置开局前定稿，每局只建一次）。
+function BanModePoolKeySuffix()
+    return format("_%d%d%d%d", g_BanModeInfantry, g_BanModeVehicle, g_BanModeAir,
+        g_DisableSeaArmy or 0)
+end
 --exMessageAppendToMessageArea("过滤器完毕")
 ----------------------------------------------------------------
 function GetDrawnUnitNameFromRecycleList(playindex, unitType)

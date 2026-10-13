@@ -667,6 +667,9 @@ function HextechRune:HandleOblivionBombHotKey(playerName)
 end
 
 function HextechRune:GrantGigaFortress(playerIndex)
+    if BanModeIsTypeEnabled ~= nil and BanModeIsTypeEnabled("aircraft") == 0 then
+        return
+    end
     self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "JapanGigaFortressShipEgg",
@@ -917,12 +920,8 @@ end
 
 function HextechRune:GetAvailableUnitTypes(playerIndex)
     -- 每个兵种版本都是独立符文，即使玩家当前尚未生产该兵种也可选择，
-    -- 让效果覆盖之后生产/刷新的单位。禁海配置下仅排除海军版本。
-    local result = { "infantry", "vehicle", "aircraft" }
-    if g_DisableSeaArmy ~= 1 then
-        tinsert(result, "navy")
-    end
-    return result
+    -- 让效果覆盖之后生产/刷新的单位。被禁用模式的兵种不进候选池。
+    return BanModeEnabledUnitTypes()
 end
 
 -- 构建阵营战斗单位的兵种查找表。战斗复制体属于 P7/P8，不能再按 Player_1..6 所有权扫描。

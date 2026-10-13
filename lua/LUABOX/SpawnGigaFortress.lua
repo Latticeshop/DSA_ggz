@@ -16,6 +16,9 @@ function EnsureGigaFortressAirForm(objectName)
 end
 
 function SpawnRandomGigaFortress(name, team, spawnPos)
+    if BanModeIsNameBanned ~= nil and BanModeIsNameBanned("JapanFortressShip") == 1 then
+        return
+    end
     local isBigHead = GetRandomNumber() < g_GigaFortressBigHeadSpawnChance
     if isBigHead then
         -- JapanGigaFortress_Land 才是大头轰炸形态，使用陆地载具出生点。

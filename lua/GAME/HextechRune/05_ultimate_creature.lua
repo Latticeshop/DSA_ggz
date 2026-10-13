@@ -87,13 +87,12 @@ function HextechRune:PickUltimateCreatureTarget(excluded)
         return nil
     end
     local types = self.UltimateCreatureTargetTypes
-    local sea = self.UltimateCreatureSeaTargetTypes
     local candidates = {}
     for i = 1, getn(types), 1 do
         local unitType = types[i]
         local unitIndex = g_UnitNameToUnitIndex[unitType]
         if unitIndex ~= nil
-            and (g_DisableSeaArmy ~= 1 or sea[unitType] == nil)
+            and BanModeIsNameBanned(unitType) == 0
             and (excluded == nil or excluded[unitType] == nil) then
             tinsert(candidates, {
                 Type = unitType,

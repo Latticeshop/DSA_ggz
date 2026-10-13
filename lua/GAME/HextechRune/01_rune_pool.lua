@@ -29,6 +29,7 @@ HextechRune.RunePool = {
     { Id = "silver_giga_fortress", Rarity = 3,
         NameKey = "hextech.rune.giga_fortress.name",
         DescKey = "hextech.rune.giga_fortress.desc", Effect = "grant_giga_fortress",
+        RequiresType = "aircraft",
         Icon = "Button_JapanGigaFortressShip" },
     { Id = "silver_five_tiger_generals", Rarity = 3,
         NameKey = "hextech.rune.five_tiger_generals.name",
@@ -94,6 +95,8 @@ HextechRune.RunePool = {
         Icon = "Button_PlayerPower_Telekenetic" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
+        -- 摇光是 UNITLIST 槽 103（飞机段），按纯空军算：禁空军时这张符文不入池。
+        RequiresType = "aircraft",
         Icon = "Button_CelestialAdvancedAircraftTech4" },
     { Id = "gold_oil_king", Rarity = 2, NameKey = "hextech.rune.oil_king.name",
         DescKey = "hextech.rune.oil_king.desc", Effect = "oil_king",
@@ -491,7 +494,7 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     local seen = {}
     local candidates = {}
     for category = 1, 4, 1 do
-        if category ~= 4 or g_DisableSeaArmy ~= 1 then
+        if BanModeRecycleCategoryEnabled(category) == 1 then
             local units = factionPool[category]
             if units ~= nil then
                 for i = 1, getn(units), 1 do
@@ -771,7 +774,7 @@ function HextechRune:GetRuneCandidateUnitTypes(playerIndex, rune)
     local result = {}
     for i = 1, getn(rune.UnitTypes), 1 do
         local unitType = rune.UnitTypes[i]
-        if unitType ~= "navy" or g_DisableSeaArmy ~= 1 then
+        if BanModeIsTypeEnabled(unitType) == 1 then
             tinsert(result, unitType)
         end
     end
@@ -798,7 +801,13 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
         local rune = self.RunePool[i]
         local factionAllowed = self:IsRuneFactionAvailable(playerIndex, rune)
         if rune.Rarity == rarity and factionAllowed
-            and (not rune.RequiresSea or g_DisableSeaArmy ~= 1)
+            and (not rune.RequiresSea or BanModeIsTypeEnabled("navy") == 1)
+            -- 通用兵种约束：符文若只对某个兵种有效，该兵种被禁时就不入池。
+            -- 规矩：凡是 Effect 会「直接生成某个单位」的符文（grant_*），只要那个单位
+            -- 属于某个兵种，就必须声明 RequiresType；否则它会绕过整套禁用判定，
+            -- 因为符文赠送走 UNIT_SPAWN_NAMED_LOCATION_ORIENTATION，不过出兵函数。
+            -- 超级要塞（aircraft）与摇光（aircraft）就是这么漏过一次的。
+            and (rune.RequiresType == nil or BanModeIsTypeEnabled(rune.RequiresType) == 1)
             and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
             -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。
             and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent())

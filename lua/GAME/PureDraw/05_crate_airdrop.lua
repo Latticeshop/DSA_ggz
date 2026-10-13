@@ -55,13 +55,19 @@ function PureDrawOnPhysicalCrateBorn(createdObjId, createdObjInstanceId, ownerPl
     end
 end
 
-function PureDrawChooseNativeNonSeaUnit()
+-- 替换池：g_CrateUnitsTemplate 的四类（步兵/载具/空军/海军）里剔除被禁的兵种。
+function PureDrawChooseNativeAllowedUnit()
     local pool = {}
-    for crateType = 1, 3, 1 do
-        local source = g_CrateUnitsTemplate[crateType]
-        for i = 1, getn(source), 1 do
-            tinsert(pool, source[i])
+    for crateType = 1, 4, 1 do
+        if BanModeRecycleCategoryEnabled(crateType) == 1 then
+            local source = g_CrateUnitsTemplate[crateType]
+            for i = 1, getn(source), 1 do
+                tinsert(pool, source[i])
+            end
         end
+    end
+    if getn(pool) == 0 then
+        return nil
     end
     local index = floor(GetRandomNumber() * getn(pool)) + 1
     if index > getn(pool) then
@@ -70,29 +76,75 @@ function PureDrawChooseNativeNonSeaUnit()
     return pool[index]
 end
 
-function PureDrawReplaceNativeSeaResult(createdObjId, createdObjInstanceId, ownerPlayerName)
-    if g_DrawMode ~= 2 or g_DisableSeaArmy ~= 1
-        or g_PlayerNameToIndex[ownerPlayerName] == nil then
+-- 原生箱子结果落在被禁兵种上时，换成另一个未被禁的箱子结果（纯抽卡模式专用）。
+-- 「要不要换」在同步阶段就判定完，delay_call 只带 id 与玩家名（Lua 4.0 无闭包）。
+function PureDrawReplaceNativeBannedResult(createdObjId, createdObjInstanceId, ownerPlayerName, banType)
+    if g_DrawMode ~= 2 or g_PlayerNameToIndex[ownerPlayerName] == nil then
         return
     end
-    SchedulerModule.delay_call(function(id, playerName)
-        if not ObjectIsAlive(id) or ObjectGetProducerObject(id) ~= nil then
-            return
-        end
-        local unit = GetObjectById(id)
-        local x, y, z = ObjectGetPosition(unit)
-        local info = PureDrawChooseNativeNonSeaUnit()
-        ExecuteAction("NAMED_DELETE", unit)
-        local nextObjectId = GetNextObjectId()
-        g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
-        ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "", info.Type,
-            format("%s/team%s", playerName, playerName), { X = x, Y = y, Z = z }, 0)
-    end, 1, { createdObjId, ownerPlayerName })
+    if BanModeIsTypeBanned(banType) ~= 1 then
+        return
+    end
+    SchedulerModule.delay_call(PureDrawApplyNativeBannedReplace, 1,
+        { createdObjId, ownerPlayerName })
 end
 
-for i = 1, getn(g_SeaCrateUnits), 1 do
-    RegisterUnitCreateCallback(g_SeaCrateUnits[i], PureDrawReplaceNativeSeaResult)
+function PureDrawReplaceNativeInfantryResult(id, instId, owner)
+    PureDrawReplaceNativeBannedResult(id, instId, owner, "infantry")
 end
+
+function PureDrawReplaceNativeVehicleResult(id, instId, owner)
+    PureDrawReplaceNativeBannedResult(id, instId, owner, "vehicle")
+end
+
+function PureDrawReplaceNativeAircraftResult(id, instId, owner)
+    PureDrawReplaceNativeBannedResult(id, instId, owner, "aircraft")
+end
+
+function PureDrawReplaceNativeNavyResult(id, instId, owner)
+    PureDrawReplaceNativeBannedResult(id, instId, owner, "navy")
+end
+
+function PureDrawApplyNativeBannedReplace(id, playerName)
+    if not ObjectIsAlive(id) or ObjectGetProducerObject(id) ~= nil then
+        return
+    end
+    local unit = GetObjectById(id)
+    local x, y, z = ObjectGetPosition(unit)
+    local info = PureDrawChooseNativeAllowedUnit()
+    if info == nil then
+        return
+    end
+    ExecuteAction("NAMED_DELETE", unit)
+    local nextObjectId = GetNextObjectId()
+    g_PureDrawScriptCreatedUnitIds[nextObjectId] = true
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "", info.Type,
+        format("%s/team%s", playerName, playerName), { X = x, Y = y, Z = z }, 0)
+end
+
+-- 三类箱子模板逐个登记；同一模板按双形态登记两次，第二次因对象已被删除自动跳过。
+g_PureDrawNativeCrateHandlers = {
+    infantry = PureDrawReplaceNativeInfantryResult,
+    vehicle = PureDrawReplaceNativeVehicleResult,
+    aircraft = PureDrawReplaceNativeAircraftResult,
+    navy = PureDrawReplaceNativeNavyResult,
+}
+
+function PureDrawRegisterNativeCrateBans(list)
+    for i = 1, getn(list), 1 do
+        local unitType = list[i]
+        local types = BanModeGetNameTypes(unitType)
+        if types ~= nil then
+            for t = 1, getn(types), 1 do
+                RegisterUnitCreateCallback(unitType, g_PureDrawNativeCrateHandlers[types[t]])
+            end
+        end
+    end
+end
+
+PureDrawRegisterNativeCrateBans(g_GroundCrateUnits)
+PureDrawRegisterNativeCrateBans(g_AirCrateUnits)
+PureDrawRegisterNativeCrateBans(g_SeaCrateUnits)
 
 function PureDrawFindAirdropOwnerTeam()
     for playerIndex = 1, 6, 1 do

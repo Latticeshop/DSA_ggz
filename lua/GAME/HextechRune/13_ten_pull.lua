@@ -36,29 +36,13 @@ function HextechRune:GetTenPullPool()
     return pool
 end
 
-function HextechRune:IsTenPullSeaType(unitType)
-    -- 没有 UNITLIST 槽的形态（要塞核心）靠抽卡池的 Sea 标记判禁海。
-    if g_PureDrawUnitInfoByHash == nil then
-        return false
-    end
-    local info = g_PureDrawUnitInfoByHash[FastHash(unitType)]
-    return info ~= nil and info.Sea == true
-end
-
 function HextechRune:IsTenPullHighTierType(unitType)
     if unitType == nil then
         return false
     end
-    if g_DisableSeaArmy == 1 then
-        if g_UnitNameToUnitIndex ~= nil then
-            local unitIndex = g_UnitNameToUnitIndex[unitType]
-            if unitIndex ~= nil and self:IsRecombobulatorNavalIndex(unitIndex) then
-                return false
-            end
-        end
-        if self:IsTenPullSeaType(unitType) then
-            return false
-        end
+    -- 被禁兵种不能当保底产出（含没有 UNITLIST 槽的要塞核心，按模板名判定）。
+    if BanModeIsNameBanned(unitType) == 1 then
+        return false
     end
     return self:GetUltimateCreatureUnitTier(unitType) >= self.TenPullGuaranteedTier
 end

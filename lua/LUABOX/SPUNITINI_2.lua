@@ -8,7 +8,8 @@ SHIPTEAM[8] = "PlyrCreeps/SHIPTEAM"
 function UNITSPSHIP (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     local spindex = 1
     for unitindex = unitmin , unitmax , 1 do
-        for playindex = 1 , 6 , 1 do
+        -- 禁用模式：该槽位全部兵种都被禁时整槽不出兵（上限 0 让内层直接空转）。
+        for playindex = 1 , BanModeSpawnCount(unitindex, 6) , 1 do
             local spiunitcount = UNITCOUNT[playindex][unitindex]
             if spiunitcount > 0 then
                 ------------------------------------
@@ -88,7 +89,7 @@ end
 function UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, playerMin, playerMax, teamIndex, angle)
     local spindex = 1
     for unitindex = unitmin, unitmax, 1 do
-        for playindex = playerMin, playerMax, 1 do
+        for playindex = playerMin , BanModeSpawnCount(unitindex, playerMax) , 1 do
             local unitCount = UNITCOUNT[playindex][unitindex]
             for i = 1, unitCount, 1 do
                 local x, y, z = ObjectGetPosition(UNITSP[teamIndex][spindex])
