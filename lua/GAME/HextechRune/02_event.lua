@@ -18,11 +18,6 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
--- 开发测试：第 1 回合固定显示指定的三张符文（发版前删除，备份见
--- analysis/hextech_dev_test_backup.md，清理脚本 analysis/_remove_opening_test.py）。
-HextechRune.EnableOpeningRealTest = true
-HextechRune.OpeningTestTriggered = false
-
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
@@ -755,59 +750,6 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
--- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
-function HextechRune:ShowOpeningTestEvent()
-    local testRuneIds = {
-        "silver_five_tiger_generals",
-        "silver_investment",
-        "silver_mcv",
-    }
-    for playerIndex = 1, 6, 1 do
-        local playerName = "Player_" .. playerIndex
-        local previous = SetWorldBuilderThisPlayer(1)
-        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
-        SetWorldBuilderThisPlayer(previous)
-        if structureCount > 0 then
-            local options = {}
-            for i = 1, 3, 1 do
-                local template = self:FindRuneById(testRuneIds[i])
-                local unitType = nil
-                if template ~= nil and template.NeedsUnitType then
-                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
-                    if getn(availableTypes) > 0 then
-                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
-                    end
-                end
-                local candidate = nil
-                if template ~= nil then
-                    -- 统一走正式入口：兵种、兵种对（等价交换）、以及「买二送一 / 登神 /
-                    -- 究极生物」的目标都在这里一次性定好。测试事件若只复制模板，
-                    -- 这几类点选后会毫无效果。
-                    candidate = self:CreateRuneCandidateForPlayer(playerIndex,
-                        template, unitType)
-                end
-                if candidate ~= nil then
-                    tinsert(options, candidate)
-                end
-            end
-            if getn(options) == 3 then
-                self.PlayerOptions[playerIndex] = options
-                self.PlayerRerollUsed[playerIndex] = false
-                for i = 1, 3, 1 do
-                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
-                        self.RarityFrameImageIds[options[i].Rarity], options[i])
-                    self:CreateRerollButton(playerIndex, i)
-                end
-                self.PlayerSelectionVisible[playerIndex] = true
-                self:HideSelectionHint(playerIndex)
-            else
-                exAddTextToPublicBoardForPlayer(playerName,
-                    Localization.get("hextech.error.not_enough_candidates"), 10)
-            end
-        end
-    end
-end
-
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     local options = self.PlayerOptions[playerIndex]
@@ -1191,12 +1133,6 @@ end
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
-    -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
-    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
-        and not self.OpeningTestTriggered and round == 1 then
-        self.OpeningTestTriggered = true
-        self:ShowOpeningTestEvent()
-    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

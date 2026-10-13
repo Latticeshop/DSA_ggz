@@ -104,12 +104,11 @@ HextechRune.RunePool = {
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
-    -- 现金奖励符文：暂不启用（协议本身有问题，与磁暴突袭同因下架留档）。
-    -- 恢复时需同时取消 04_buff.lua 的 cash_reward 派发分支注释。
-    -- { Id = "gold_cash_reward", Rarity = 2,
-    --     NameKey = "hextech.rune.cash_reward.name",
-    --     DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
-    --     RequiredFaction = 2, Icon = "Button_PlayerPower_ProductionKickback" },
+    -- 其它阵营玩家由符文在地图外补一栋不可使用的苏联基地当协议钥匙。
+    { Id = "gold_cash_reward", Rarity = 2,
+        NameKey = "hextech.rune.cash_reward.name",
+        DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
+        Icon = "Button_PlayerPower_ProductionKickback" },
     { Id = "gold_safety", Rarity = 2,
         NameKey = "hextech.rune.safety.name",
         DescKey = "hextech.rune.safety.desc", Effect = "safety",
@@ -214,7 +213,9 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.divine_intervention.name",
         DescKey = "hextech.rune.divine_intervention.desc", Effect = "divine_intervention",
         Icon = "Button_PlayerPower_IronCurtain" },
-    { Id = "prismatic_five_thunder", Rarity = 1,
+    -- 五雷天罚：2026-10-13 由彩降金（Rarity 1 → 2）。Id 前缀不跟着改（同 gold_ten_pull
+    -- 的先例：改稀有度只动 Rarity，Id 一旦改名要连着排除名单与文档一起动，得不偿失）。
+    { Id = "prismatic_five_thunder", Rarity = 2,
         NameKey = "hextech.rune.five_thunder.name",
         DescKey = "hextech.rune.five_thunder.desc", Effect = "five_thunder",
         RequiredFaction = 4, Icon = "Button_CelestialPantaOrbitalStrike" },
@@ -263,7 +264,6 @@ HextechRune.RunePool = {
         Effect = "goliath", NeedsUnitType = true,
         Icon = "Button_JapanMechaKing" },
     -- 回归基本功：按单位阶级整体加减，不挂任何兵种（详见 18_basics_exchange.lua）。
-    -- ExcludeOnFirstFormalSelection：它整体改写单位强度榜，与变形重组器同口径，
     -- 玩家本场第一次正式选择不发（那时单位池还空着，选了也无从体现）。
     { Id = "prismatic_back_to_basics", Rarity = 1,
         NameKey = "hextech.rune.back_to_basics.name",
@@ -271,7 +271,6 @@ HextechRune.RunePool = {
         Effect = "back_to_basics", ExcludeOnFirstFormalSelection = true,
         Icon = "SUA_Twinblade_Evacuate" },
     -- 等价交换：兵种1 受益、兵种2 受损。两个兵种在生成候选那一刻一次性随机定好
-    -- （见 CreateRuneCandidateForPlayer），整张符文只占 1 个候选，卡面写明是哪一对；
     -- 持有判定按基础 Id（GetRuneOwnershipId），不按兵种对，避免靠重随叠着拿多份。
     { Id = "prismatic_equivalent_exchange", Rarity = 1,
         NameKey = "hextech.rune.equivalent_exchange.name",
@@ -300,6 +299,7 @@ HextechRune.NonRepeatableRuneIds = {
     -- 冷冻卫星 / 神威：重复授予同一协议没有意义，且多份会互相重置冷却（随两张卡一起注释）。
     -- gold_cryo_satellite = true,
     -- gold_divine_might = true,
+    gold_cash_reward = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,
@@ -875,16 +875,4 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
-end
-
--- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
--- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
--- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
 end

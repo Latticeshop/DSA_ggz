@@ -2,7 +2,7 @@
 
 HextechRune = HextechRune or {}
 
--- ============ 协议授予类符文（金·冷冻卫星 / 金·神威）============
+-- ============ 协议授予类符文（金·冷冻卫星 / 金·神威 / 金·现金奖励）============
 -- 键名与符文的 Effect 一致，派发处直接传 Effect。
 HextechRune.ProtocolGrants = {
     grant_cryo_satellite = {
@@ -13,6 +13,11 @@ HextechRune.ProtocolGrants = {
         PlayerTech = "PlayerTech_Allied_ChronoRift_Rank3",
         SpecialPower = "SpecialPowerChronoRiftSelectLvl3",
         Faction = 1, YardType = "AlliedConstructionYard" },
+    -- 金·现金奖励：苏联协议。苏联玩家自己的基地就够解锁、符文不再额外给基地；
+    cash_reward = {
+        PlayerTech = "PlayerTech_Soviet_ProductionKickbacks",
+        SpecialPower = "SpecialPower_ProductionKickbacks",
+        Faction = 2, YardType = "SovietConstructionYard" },
 }
 
 -- 钥匙基地的停泊点，实测确认在地图外。
