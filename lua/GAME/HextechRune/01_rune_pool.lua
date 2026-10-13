@@ -190,6 +190,7 @@ HextechRune.RunePool = {
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
         DescKey = "hextech.rune.infinite_ammo.desc", Effect = "infinite_ammo", NeedsUnitType = true,
         UnitTypes = { "aircraft" },
+        ExcludedFaction = 3,
         Icon = "Button_SovietInterceptorAircraft" },
     { Id = "prismatic_scope", Rarity = 1, NameKey = "hextech.rune.scope.prismatic.name",
         DescKey = "hextech.rune.scope.prismatic.desc", Effect = "range_prismatic", NeedsUnitType = true,
@@ -335,6 +336,7 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         TargetUnitName = rune.TargetUnitName,
         RequiresSea = rune.RequiresSea,
         RequiredFaction = rune.RequiredFaction,
+        ExcludedFaction = rune.ExcludedFaction,
         UpgradeRarity = rune.UpgradeRarity,
     }
 end
@@ -492,7 +494,14 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     return candidates
 end
 
+-- 阵营限制：RequiredFaction 是白名单（只对该阵营入池），ExcludedFaction 是黑名单
+-- （对该阵营不入池）。两者都写时黑名单优先。阵营号见 GAME/PlayerSide.lua：
+-- 1 盟军 / 2 苏联 / 3 帝国 / 4 神州。
 function HextechRune:IsRuneFactionAvailable(playerIndex, rune)
+    if g_PlayerSide ~= nil and rune.ExcludedFaction ~= nil
+        and g_PlayerSide[playerIndex] == rune.ExcludedFaction then
+        return false
+    end
     if rune.RequiredFaction == nil then
         return true
     end

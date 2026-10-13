@@ -3,7 +3,7 @@
 HextechRune = HextechRune or {}
 
 -- 每次获得（可重复获取）吸取的数量上限。
-HextechRune.DrainCount = 7
+HextechRune.DrainCount = 10
 
 -- 吸星只扫对面卡池（UNITLIST/UNITCOUNT），所以这里只登记有槽位的赠予单位。
 -- 超级要塞走独立计数槽、没有槽位，本来就不会被吸，不需要保护条目。

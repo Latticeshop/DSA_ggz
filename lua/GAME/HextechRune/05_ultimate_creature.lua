@@ -1,6 +1,7 @@
 -- 讲解见 analysis/地图注释说明文档.md 附录 A.12、A.32
 
--- 海克斯符文“究极生物”：献祭玩家单位池，并在每回合出兵时强化该玩家 1 只随机 T3/T4 单位。
+-- 海克斯符文“究极生物”：献祭玩家池里的 T1/T2 单位（T3 及以上保留不动），
+-- 并在每回合出兵时强化该玩家 1 只随机 T3/T4 单位。
 
 HextechRune = HextechRune or {}
 
@@ -8,8 +9,12 @@ HextechRune.UltimateCreatureStates = HextechRune.UltimateCreatureStates or {}
 HextechRune.UltimateCreatureEmperorsRageModifier =
     "AttributeModifer_JapanEmperorsResolve_L1"
 HextechRune.UltimateCreatureScale = 1.3
--- 每只献祭单位的加成百分比：T1→血量、T2→伤害、T3→攻速、T4→射程，与播报文案共用一份。
-HextechRune.UltimateCreatureTierPercent = { 5, 5, 5, 7 }
+-- 赋值模式：只回收 T1/T2 单位来强化，T3 及以上原样留在单位池里。
+-- T1 每个 → 血量 +7%、伤害 +3%；T2 每个 → 攻速 +7%、射程 +3%，与播报文案共用这份数值。
+HextechRune.UltimateCreatureT1HealthPercent = 7
+HextechRune.UltimateCreatureT1DamagePercent = 3
+HextechRune.UltimateCreatureT2RateOfFirePercent = 7
+HextechRune.UltimateCreatureT2RangePercent = 3
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 
@@ -274,50 +279,47 @@ function HextechRune:GetUltimateCreatureUnitTier(unitType)
     return 1
 end
 
+-- 只清掉 T1/T2 两种：T3 及以上（含按 T4 结算的超阶单位、超级要塞核心的独立计数槽）
+-- 一律保留不动。返回 { T1 数量, T2 数量 }，并按实际扣掉的数量修正 ANYUNITCOUNT。
 function HextechRune:SacrificeUnitPoolForUltimateCreature(playerIndex)
-    local tierCounts = { 0, 0, 0, 0 }
-    local yaoguangCount = 0
+    local tierCounts = { 0, 0 }
+    local removedTotal = 0
     for unitIndex = 1, unitcountmax, 1 do
         local count = tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0
         if count > 0 then
-            local unitType = UNITLIST[unitIndex]
-            local tier = self:GetUltimateCreatureUnitTier(unitType)
-            tierCounts[tier] = tierCounts[tier] + count
-            if unitType == "CelestialAdvanceAircraftTech4" then
-                yaoguangCount = count
+            local tier = self:GetUltimateCreatureUnitTier(UNITLIST[unitIndex])
+            if tier <= 2 then
+                tierCounts[tier] = tierCounts[tier] + count
+                removedTotal = removedTotal + count
+                UNITCOUNT[playerIndex][unitIndex] = 0
+                if CRATEUNITCOUNT ~= nil and CRATEUNITCOUNT[playerIndex] ~= nil then
+                    CRATEUNITCOUNT[playerIndex][unitIndex] = 0
+                end
             end
-        end
-        UNITCOUNT[playerIndex][unitIndex] = 0
-        if CRATEUNITCOUNT ~= nil and CRATEUNITCOUNT[playerIndex] ~= nil then
-            CRATEUNITCOUNT[playerIndex][unitIndex] = 0
         end
     end
 
-    -- 超级要塞核心使用独立计数槽，不计入 ANYUNITCOUNT，但仍属于玩家单位池。
-    if g_UnitCount ~= nil then
-        local gigaSlot = g_UnitCount[FastHash("JapanGigaFortressShipEgg")]
-        if gigaSlot ~= nil then
-            local gigaCount = tonumber(gigaSlot[playerIndex]) or 0
-            tierCounts[4] = tierCounts[4] + gigaCount
-            gigaSlot[playerIndex] = 0
+    if removedTotal > 0 then
+        local armyTotal = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) - removedTotal
+        if armyTotal < 0 then
+            armyTotal = 0
         end
+        ANYUNITCOUNT[playerIndex] = armyTotal
     end
-    if yaoguangCount > 0 and RemovePlayerProducedYaoguangFromPool ~= nil then
-        RemovePlayerProducedYaoguangFromPool(playerIndex, yaoguangCount)
-    end
-    ANYUNITCOUNT[playerIndex] = 0
     return tierCounts
 end
 
--- 回收完成后按以战养战同款格式播报，让持有者看清献祭换到了多少数值。
+-- 回收完成后按以战养战同款格式播报，让持有者看清献祭换到了多少数值：
+-- 血量/伤害来自 T1 数量，攻速/射程来自 T2 数量。
 function HextechRune:BroadcastUltimateCreature(playerIndex, tierCounts)
-    if tierCounts[1] + tierCounts[2] + tierCounts[3] + tierCounts[4] <= 0 then
+    if tierCounts[1] + tierCounts[2] <= 0 then
         return
     end
-    local percents = self.UltimateCreatureTierPercent
     local text = Localization.get("hextech.rune.ultimate_creature.broadcast",
-        tierCounts[1] * percents[1], tierCounts[2] * percents[2],
-        tierCounts[3] * percents[3], tierCounts[4] * percents[4])
+        tierCounts[1] * self.UltimateCreatureT1HealthPercent,
+        tierCounts[1] * self.UltimateCreatureT1DamagePercent,
+        tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent,
+        tierCounts[2] * self.UltimateCreatureT2RangePercent)
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
@@ -329,10 +331,11 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     }
     self:BroadcastUltimateCreature(playerIndex, tierCounts)
 
-    -- 目标单位在选卡那一刻随机定好（见 CreateRuneCandidateForPlayer 的 minTier 分支），
-    -- 献祭之后只把它作为唯一种子放回单位池。
-    UNITCOUNT[playerIndex][rune.TargetUnitIndex] = 1
-    ANYUNITCOUNT[playerIndex] = 1
+    -- 目标单位在选卡那一刻随机定好（见 CreateRuneCandidateForPlayer 的 minTier 分支）。
+    -- T3 及以上的池子不再清空，所以这里按「加一只」补进池子，而不是清空后重设。
+    local current = tonumber(UNITCOUNT[playerIndex][rune.TargetUnitIndex]) or 0
+    UNITCOUNT[playerIndex][rune.TargetUnitIndex] = current + 1
+    ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
 end
 
 -- 地编把 T3 塔守护者直接摆成了旧联盟坦克模板（PassengerLoadSpawn 的 g_PLSpawnGuardCarNames
@@ -404,14 +407,13 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     -- 每只究极生物使用独立的动态Modifier实例，避免同一实例在不同对象间
     -- 表现为全场唯一或后加载者覆盖前一只。
     local tierCounts = state.TierCounts
-    local percents = self.UltimateCreatureTierPercent
-    -- T1~T4 与血量/伤害/攻速/射程一一对应。射程必须与索敌视野同倍率，
+    -- T1 数量 → 血量/伤害，T2 数量 → 攻速/射程。射程必须与索敌视野同倍率，
     -- 否则单位会在射程边缘停下却看不见目标。
-    local rangeBonus = 1 + tierCounts[4] * percents[4] / 100
+    local rangeBonus = 1 + tierCounts[2] * self.UltimateCreatureT2RangePercent / 100
     local modifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1 + tierCounts[1] * percents[1] / 100,
-        DAMAGE_MULT = 1 + tierCounts[2] * percents[2] / 100,
-        RATE_OF_FIRE = 1 + tierCounts[3] * percents[3] / 100,
+        HEALTH_MULT = 1 + tierCounts[1] * self.UltimateCreatureT1HealthPercent / 100,
+        DAMAGE_MULT = 1 + tierCounts[1] * self.UltimateCreatureT1DamagePercent / 100,
+        RATE_OF_FIRE = 1 + tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent / 100,
         RANGE = rangeBonus,
         VISION = rangeBonus,
     }, 1)

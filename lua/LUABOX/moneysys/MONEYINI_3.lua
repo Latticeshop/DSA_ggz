@@ -10,6 +10,8 @@ YAOGUANG_LIMIT = 3
 FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
 -- 只记录通过玩家生产建筑实际造出、且当前仍保留在单位池中的摇光。
 -- 箱子、海克斯及其他脚本赠送来源仍进入 UNITCOUNT，但不占用限造额度。
+-- 每次结算限造前会与池内实有摇光数对账（ReconcilePlayerProducedYaoguang），
+-- 池子被任何方式减少后额度随即重开。
 g_PlayerProducedYaoguangCount = g_PlayerProducedYaoguangCount or { 0, 0, 0, 0, 0, 0 }
 
 GUARDIAN_TANK_LIMIT = 3
@@ -41,6 +43,32 @@ function RemovePlayerProducedYaoguangFromPool(playindex, removedCount)
     g_PlayerProducedYaoguangCount[playindex] = producedCount - reduceCount
 end
 
+-- 池内实有摇光数量（只读单位池计数；箱子/海克斯赠送与重组器产出的摇光也在里面）。
+function GetPlayerPoolYaoguangCount(playindex)
+    if UNITCOUNT == nil or UNITCOUNT[playindex] == nil or g_UnitNameToUnitIndex == nil then
+        return 0
+    end
+    local unitIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
+    if unitIndex == nil then
+        return 0
+    end
+    return tonumber(UNITCOUNT[playindex][unitIndex]) or 0
+end
+
+-- 限造以池子真实数量为准：把「玩家生产且仍在池中」的计数压回池内实有摇光数。
+-- 计数只会在池子被外部减少后虚高（重组器整体重滚、被吸星大法吸走、回收等，
+-- 以及以后新增的减少路径），压低就等于立刻重新开放生产；只压低不抬高，
+-- 因为赠送的摇光本来就不占限造额度。与 T4 大船「每 tick 从池子现算」同一个口径。
+function ReconcilePlayerProducedYaoguang(playindex)
+    if g_PlayerProducedYaoguangCount == nil then
+        return
+    end
+    local poolCount = GetPlayerPoolYaoguangCount(playindex)
+    if GetPlayerYaoguangCount(playindex) > poolCount then
+        g_PlayerProducedYaoguangCount[playindex] = poolCount
+    end
+end
+
 function GetPlayerYaoguangRemainingProductionQuota(playindex)
     local remaining = YAOGUANG_LIMIT - GetPlayerYaoguangCount(playindex)
     if remaining < 0 then
@@ -53,6 +81,7 @@ end
 
 function LIMITYAOGUANG()
     for playindex = 1, 6, 1 do
+        ReconcilePlayerProducedYaoguang(playindex)
         local remainingQuota = GetPlayerYaoguangRemainingProductionQuota(playindex)
         local playerName = "Player_" .. playindex
         if remainingQuota <= 0 and FLAGENYAOGUANG[playindex] == 1 then

@@ -618,6 +618,9 @@ function bigshiplimit()
         -- MONEYINI 的定义偶尔晚于本触发器首次执行；未就绪时先显示 0，
         -- 后续调用会自动切回只统计玩家实际生产摇光的正式函数。
         if GetPlayerYaoguangCount ~= nil then
+            if ReconcilePlayerProducedYaoguang ~= nil then
+                ReconcilePlayerProducedYaoguang(i)
+            end
             CAIRTECH4limitc[i] = GetPlayerYaoguangCount(i)
         elseif g_PlayerProducedYaoguangCount ~= nil then
             CAIRTECH4limitc[i] = tonumber(g_PlayerProducedYaoguangCount[i]) or 0

@@ -35,7 +35,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.swiftness.desc"] = { zh = "你的 %s 单位攻速提高 50%%。", en = "Your %s units gain 50%% attack speed." },
     ["hextech.rune.hunt.name"] = { zh = "神行", en = "Godspeed" },
     ["hextech.rune.hunt.desc"] = { zh = "你的 %s 单位移动速度提高 40%%。", en = "Your %s units gain 40%% movement speed." },
-    ["hextech.rune.scope.silver.name"] = { zh = "万用瞄准镜", en = "Universal Scope" },
+    ["hextech.rune.scope.silver.name"] = { zh = "通用瞄准镜", en = "Universal Scope" },
     ["hextech.rune.scope.silver.desc"] = { zh = "你的 %s 单位射程提高 15%%。", en = "Your %s units gain 15%% range." },
     ["hextech.rune.astral_body.name"] = { zh = "星界躯体", en = "Astral Body" },
     ["hextech.rune.astral_body.desc"] = { zh = "你的 %s 单位血量提高 75%%，但造成的伤害降低 25%%。", en = "Your %s units gain 75%% health but deal 25%% less damage." },
@@ -47,7 +47,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.transcendent_evil.desc"] = { zh = "你的 %s 单位的血量和造成的伤害按回合数提高3%%。", en = "Your %s units gain 3%% health and damage multiplied by the current round." },
     ["hextech.rune.brilliant_lights.name"] = { zh = "灯火辉煌", en = "Brilliant Lights" },
     ["hextech.rune.brilliant_lights.desc"] = { zh = "在前线防御塔前方召唤 2 个中级天灯。", en = "Summon 2 intermediate repair drones in front of the frontline defense tower." },
-    ["hextech.rune.scope.prismatic.name"] = { zh = "万用瞄准镜", en = "Universal Scope" },
+    ["hextech.rune.scope.prismatic.name"] = { zh = "万能瞄准镜", en = "Universal Scope" },
     ["hextech.rune.scope.prismatic.desc"] = { zh = "你的 %s 单位射程提高 50%%。", en = "Your %s units gain 50%% range." },
     ["hextech.rune.mcv.name"] = { zh = "MCV", en = "MCV" },
     ["hextech.rune.mcv.desc"] = { zh = "获得一个非自身阵营的 MCV。", en = "Gain an MCV from a different faction." },
@@ -117,14 +117,14 @@ g_LocalizationExtraText = {
     ["hextech.rune.gambling_addict.desc"] = { zh = "获得两个随机符文。", en = "Gain two random runes." },
     ["hextech.rune.ultimate_creature.name"] = { zh = "究极生物", en = "Ultimate Creature" },
     ["hextech.rune.ultimate_creature.desc"] = {
-        zh = "你的一个 %s 单位进化成为究极生物！回收你当前的全部单位，每回收一个T1/T2/T3/T4单位，分别增加5%%血量/5%%伤害/5%%攻速/7%%射程。获得一个 %s 单位。",
-        en = "One of your %s units evolves into an Ultimate Creature! Recycle all your current units. Each recycled T1/T2/T3/T4 unit respectively grants 5%% health/5%% damage/5%% attack speed/7%% range. Gain 1 %s unit."
+        zh = "你的一个 %s 单位进化成为究极生物！回收你当前的T1和T2单位，每回收一个T1/T2单位，分别增加7%%血量和3%%伤害/7%%攻速和3%%射程。获得一个 %s 单位。",
+        en = "One of your %s units evolves into an Ultimate Creature! Recycle your current T1 and T2 units; each recycled T1 unit grants 7%% health and 3%% damage, each recycled T2 unit grants 7%% attack speed and 3%% range. Gain 1 %s unit."
     },
     ["hextech.rune.ultimate_creature.broadcast"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
-    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+15%%血量/+10%%伤害/+10%%攻速/+10%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +15%% health / +10%% damage / +10%% attack speed / +10%% range." },
+    ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+50%%血量/+50%%伤害/+50%%攻速/+50%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +50%% health / +50%% damage / +50%% attack speed / +50%% range." },
     ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
@@ -138,8 +138,8 @@ g_LocalizationExtraText = {
             en = "Your %s units have their health reduced to 50%% each round but deal 90%% more damage." },
     ["hextech.rune.goliath.name"] = { zh = "歌莉娅巨人", en = "Goliath Giant" },
     ["hextech.rune.goliath.desc"] =
-        { zh = "你的 %s 单位血量提高 75%%，伤害提高 50%%。",
-            en = "Your %s units gain 75%% health and 50%% damage." },
+        { zh = "你的 %s 单位血量提高 90%%，伤害提高 25%%。",
+            en = "Your %s units gain 90%% health and 25%% damage." },
     ["hextech.rune.shrink_ray.name"] = { zh = "天堂制造", en = "Made in Heaven" },
     ["hextech.rune.shrink_ray.desc"] =
         { zh = "每 %d 回合使敌方全体单位缩小一回合。",
@@ -170,8 +170,8 @@ g_LocalizationExtraText = {
         { zh = "投资到期：获得 %d 金。", en = "Investment matured: gained %d money." },
     ["hextech.rune.ten_pull.name"] = { zh = "十连", en = "Ten-Pull" },
     ["hextech.rune.ten_pull.desc"] =
-        { zh = "获得 10 个随机单位，其中 1 个必定为 T3 及以上单位。",
-            en = "Gain 10 random units, at least one of which is tier 3 or above." },
+        { zh = "获得 10 个随机单位，其中 1 个必定为 T4 及以上单位。",
+            en = "Gain 10 random units, at least one of which is tier 4 or above." },
     ["hextech.rune.lethal_tempo.name"] = { zh = "致命节奏", en = "Lethal Tempo" },
     ["hextech.rune.lethal_tempo.desc"] =
         { zh = "你单位的攻击会越打越快。", en = "Your units keep attacking faster and faster." },
@@ -180,8 +180,8 @@ g_LocalizationExtraText = {
             en = "Poach: the enemy pool is empty, no unit gained." },
     ["hextech.rune.drain.name"] = { zh = "吸星大法", en = "Star Drain" },
     ["hextech.rune.drain.desc"] =
-        { zh = "随机获得敌对玩家的 7 个单位。",
-            en = "Randomly gain 7 units from enemy players." },
+        { zh = "随机获得敌对玩家的 10 个单位。",
+            en = "Randomly gain 10 units from enemy players." },
     ["hextech.rune.prepare_backpack.name"] = { zh = "准备背包", en = "Backpack Ready" },
     ["hextech.rune.prepare_backpack.desc"] =
         { zh = "你下次符文选择会整体升一阶。",

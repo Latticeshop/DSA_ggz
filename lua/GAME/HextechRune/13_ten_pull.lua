@@ -1,14 +1,14 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.31
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.31、A.41
 
 -- 海克斯符文「十连」（黄金，可重复）：一次获得 10 个随机可回收单位，
--- 其中至少 1 个为 T3 及以上。先把 10 个结果一次抽好（缺保底则替换第 1 个），
+-- 其中至少 1 个为 T4 及以上。先把 10 个结果一次抽好（缺保底则替换第 1 个），
 -- 再逐个生成给玩家，由 unitregenerate 的周期回收折算进单位池。
 
 HextechRune = HextechRune or {}
 
 HextechRune.TenPullCount = 10
--- 保底阶级：结果里至少要有一个单位的阶级不低于该值。
-HextechRune.TenPullGuaranteedTier = 3
+-- 保底阶级：结果里至少要有一个单位的阶级不低于该值（4 = T4 及以上，阶级表里 >4 的超阶单位按 4 结算）。
+HextechRune.TenPullGuaranteedTier = 4
 -- 生成落点：2 行 5 列的小方阵，避免十个单位叠在同一个坐标上。
 -- 前方偏移沿用石油王/挖角已验证过的范围（120~180），两侧 ±120。
 HextechRune.TenPullRowCount = 2
@@ -36,24 +36,81 @@ function HextechRune:GetTenPullPool()
     return pool
 end
 
--- 保底用池：阶级不低于 TenPullGuaranteedTier 的那些下标。
-function HextechRune:GetTenPullHighTierPool()
-    if self.TenPullHighTierPool == nil then
-        local pool = self:GetTenPullPool()
-        local high = {}
-        for i = 1, getn(pool), 1 do
-            if self:GetUltimateCreatureUnitTier(UNITLIST[pool[i]])
-                >= self.TenPullGuaranteedTier then
-                tinsert(high, pool[i])
-            end
-        end
-        self.TenPullHighTierPool = high
+function HextechRune:IsTenPullSeaType(unitType)
+    -- 没有 UNITLIST 槽的形态（要塞核心）靠抽卡池的 Sea 标记判禁海。
+    if g_PureDrawUnitInfoByHash == nil then
+        return false
     end
-    return self.TenPullHighTierPool
+    local info = g_PureDrawUnitInfoByHash[FastHash(unitType)]
+    return info ~= nil and info.Sea == true
 end
 
--- 先按全池抽满 10 个；若这 10 个里没有 T3 及以上，再把第 1 个换成保底池的结果。
--- 同一单位可以重复出现，不做去重。
+function HextechRune:IsTenPullHighTierType(unitType)
+    if unitType == nil then
+        return false
+    end
+    if g_DisableSeaArmy == 1 then
+        if g_UnitNameToUnitIndex ~= nil then
+            local unitIndex = g_UnitNameToUnitIndex[unitType]
+            if unitIndex ~= nil and self:IsRecombobulatorNavalIndex(unitIndex) then
+                return false
+            end
+        end
+        if self:IsTenPullSeaType(unitType) then
+            return false
+        end
+    end
+    return self:GetUltimateCreatureUnitTier(unitType) >= self.TenPullGuaranteedTier
+end
+
+function HextechRune:TryAddTenPullHighTierType(types, seen, unitType)
+    if unitType == nil or seen[unitType] then
+        return
+    end
+    seen[unitType] = true
+    if self:IsTenPullHighTierType(unitType) then
+        tinsert(types, unitType)
+    end
+end
+
+function HextechRune:GetTenPullHighTierTypes()
+    if self.TenPullHighTierTypes == nil then
+        local types = {}
+        local seen = {}
+        if g_RecycleBtnsMapByFaction ~= nil then
+            for faction = 1, 4, 1 do
+                local byCategory = g_RecycleBtnsMapByFaction[faction]
+                if byCategory ~= nil then
+                    for category = 1, 4, 1 do
+                        local unitInfos = byCategory[category]
+                        if unitInfos ~= nil then
+                            for i = 1, getn(unitInfos), 1 do
+                                self:TryAddTenPullHighTierType(types, seen,
+                                    unitInfos[i].Type)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if g_CrateUnitsTemplate ~= nil then
+            for category = 1, 4, 1 do
+                local unitInfos = g_CrateUnitsTemplate[category]
+                if unitInfos ~= nil then
+                    for i = 1, getn(unitInfos), 1 do
+                        self:TryAddTenPullHighTierType(types, seen,
+                            unitInfos[i].Type)
+                    end
+                end
+            end
+        end
+        self.TenPullHighTierTypes = types
+    end
+    return self.TenPullHighTierTypes
+end
+
+-- 先按全滚池抽满 10 个（结果统一存模板名）；若这 10 个里没有保底档单位，
+-- 再把第 1 个换成保底名单里的随机一条。同一单位可以重复出现，不做去重。
 function HextechRune:RollTenPullResults()
     local pool = self:GetTenPullPool()
     local poolCount = getn(pool)
@@ -63,15 +120,14 @@ function HextechRune:RollTenPullResults()
     end
     local hasGuaranteed = false
     for i = 1, self.TenPullCount, 1 do
-        local unitIndex = pool[self:RandomIndex(poolCount)]
-        results[i] = unitIndex
-        if self:GetUltimateCreatureUnitTier(UNITLIST[unitIndex])
-            >= self.TenPullGuaranteedTier then
+        local unitType = UNITLIST[pool[self:RandomIndex(poolCount)]]
+        results[i] = unitType
+        if self:IsTenPullHighTierType(unitType) then
             hasGuaranteed = true
         end
     end
     if not hasGuaranteed then
-        local high = self:GetTenPullHighTierPool()
+        local high = self:GetTenPullHighTierTypes()
         if getn(high) > 0 then
             results[1] = high[self:RandomIndex(getn(high))]
         end
@@ -85,7 +141,7 @@ function HextechRune:GrantTenPull(playerIndex)
         return
     end
     for i = 1, getn(results), 1 do
-        local unitType = UNITLIST[results[i]]
+        local unitType = results[i]
         if unitType ~= nil then
             local row = floor((i - 1) / self.TenPullColumnCount)
             local column = (i - 1) - row * self.TenPullColumnCount

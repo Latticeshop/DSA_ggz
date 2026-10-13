@@ -69,11 +69,11 @@ g_DefaultHextechRecycleBonusRate = 0.2
 
 g_CombustionInterestMoney = {
     [0.5] = 2,
-    [1] = 4,
-    [1.5] = 6,
-    [2] = 8,
+    [1] = 3,
+    [1.5] = 4,
+    [2] = 6,
 }
-g_DefaultCombustionInterestMoney = 4
+g_DefaultCombustionInterestMoney = 3
 
 g_StartingFundsMoney = {
     [0.5] = 5000,
@@ -1054,7 +1054,7 @@ function RequestDragonShip(playerIndex, count)
     if round > 18 then
         round = 18
     end
-    local maxHealth = 8000 + max(round - 10, 0) * 3000
+    local maxHealth = 8000 + max(round - 10, 0) * 5000
     local dragonships, dragonshipCount = ObjectFindObjects(tower, nil, CelestialMCV)
     for i = 1, count do
         local index = dragonshipCount - count + i

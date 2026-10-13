@@ -217,6 +217,8 @@ function HextechRune:ApplyRecombobulator(playerIndex, isUpgrade)
 
     -- 先清空全部计数（稀有单位同样被回收，只是走自己的 50% 稀有池规则），
     -- 再写入重组结果；箱子标记按来源数量搬走。
+    -- 摇光/T4 大船的限造由 MONEYINI_3 与 UNITCOUNTERINI_0 每 tick 从池子现算，
+    -- 这里不需要额外释放额度。
     for unitIndex = 1, unitcountmax, 1 do
         UNITCOUNT[playerIndex][unitIndex] = 0
         if CRATEUNITCOUNT ~= nil and CRATEUNITCOUNT[playerIndex] ~= nil then

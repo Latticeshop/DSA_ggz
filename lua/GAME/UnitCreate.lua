@@ -1214,9 +1214,10 @@ RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
 g_BattleUnitLifetimeDefaultRounds = 4
 
--- 覆盖默认寿命的模板（键为模板哈希）。奥林匹斯只存活 1 回合（原版特判），忒提斯与千鸟 2 回合。
+-- 覆盖默认寿命的模板（键为模板哈希）。奥林匹斯 2 回合（2026-10-11 由 1 回合延长，原版特判为 1），
+-- 忒提斯与千鸟 2 回合。
 g_BattleUnitLifetimeRounds = {
-    [FastHash("AlliedGaintAirCraftCarrier_B")] = 1,
+    [FastHash("AlliedGaintAirCraftCarrier_B")] = 2,
     [FastHash("AlliedThetisBattleShip")] = 2,
     [FastHash("JapanYumiAircraftCarrier")] = 2,
 }

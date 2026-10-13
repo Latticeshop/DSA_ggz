@@ -134,10 +134,10 @@ if not g_HextechRagnarokModifier then
     g_HextechRagnarokModifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.9 }, 1)
 end
 if not g_HextechGoliathModifier then
-    -- 血量 90% → 75%（2026-10-11，用户要求）；伤害 +50% 不变。
+    -- 血量 +90%、伤害 +25%（2026-10-11 用户要求：血量由 75% 恢复 90%，伤害由 50% 降到 25%）。
     g_HextechGoliathModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 1.75,
-        DAMAGE_MULT = 1.5,
+        HEALTH_MULT = 1.9,
+        DAMAGE_MULT = 1.25,
     }, 1)
 end
 if not g_HextechEnemyRangeX075Modifier then
@@ -756,8 +756,17 @@ function HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
             local previousApplied = button._hextechUltimateRefreshAppliedCount or 0
             local addCount = copyCount - previousApplied
             if addCount > 0 then
+                -- 加次数前先记下「此前就已经用尽」：这种按钮身上若还挂着冷却计数，
+                -- 只可能是用尽之后被判定的共享冷却（或丢失的回调）留下的死计数，
+                -- 与这次新给的次数无关，必须清掉，否则按钮会一直灰着点不动。
+                local wasExhausted = (button._usedCount or 0) >= button.MaxUseCount
                 button.MaxUseCount = button.MaxUseCount + addCount
                 button._hextechUltimateRefreshAppliedCount = copyCount
+                if wasExhausted and (button._cooldownCount or 0) > 0 then
+                    button._cooldownCount = 0
+                    -- 让已经排队的旧冷却回调失效，免得它在下一段冷却里提前点亮按钮。
+                    button._cooldownGeneration = (button._cooldownGeneration or 0) + 1
+                end
                 if not button.IsLocked and (button._cooldownCount or 0) <= 0
                     and (button._usedCount or 0) < button.MaxUseCount then
                     button.IsEnabled = true

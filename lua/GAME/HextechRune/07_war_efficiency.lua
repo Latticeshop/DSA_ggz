@@ -4,13 +4,13 @@ HextechRune = HextechRune or {}
 
 HextechRune.WarEfficiencyRuneId = "prismatic_war_efficiency"
 HextechRune.WarEfficiencyBonusPerDeathByEconomy = {
-    [0.5] = 0.01,
+    [0.5] = 0.0125,
     [1] = 0.01,
-    [1.5] = 0.005,
+    [1.5] = 0.0075,
     [2] = 0.005,
 }
--- 兜底：认不出的经济倍率按高倍经济口径（默认 0.5%）。
-HextechRune.WarEfficiencyDefaultBonusPerDeath = 0.005
+-- 兜底：认不出的经济倍率按 1% 口径。
+HextechRune.WarEfficiencyDefaultBonusPerDeath = 0.01
 -- 计数（Pending=上一回合累计、Active=本回合生效）与已加载标记都按玩家下标 1~6。
 HextechRune.WarEfficiencyPending = HextechRune.WarEfficiencyPending or {}
 HextechRune.WarEfficiencyActive = HextechRune.WarEfficiencyActive or {}
@@ -19,7 +19,7 @@ HextechRune.WarEfficiencyModifiers = HextechRune.WarEfficiencyModifiers or {}
 -- 本回合计已滚存过的回合号，保证同一回合只结算一次（见 RollWarEfficiencyCounters）。
 HextechRune.WarEfficiencyRolledRound = HextechRune.WarEfficiencyRolledRound or nil
 
--- 本场每个死亡单位提供的基础加成：经济 <= 1 为 1%，1 < x <= 2 为 0.5%。
+-- 本场每个死亡单位提供的基础加成：0.5x=1.25%、1x=1%、1.5x=0.75%、2x=0.5%。
 function HextechRune:GetWarEfficiencyBonusPerDeath()
     local perDeath = self.WarEfficiencyBonusPerDeathByEconomy[exModeGetCheatMultiplier()]
     if perDeath ~= nil then
@@ -28,13 +28,19 @@ function HextechRune:GetWarEfficiencyBonusPerDeath()
     return self.WarEfficiencyDefaultBonusPerDeath
 end
 
--- 百分比文案：0.5% 档会出现 x.5，整数不显示小数位（卡面简介与回合播报共用这一份换算）。
+-- 百分比文案：分档值是 0.25% 的整数倍，所以按百分之一算再消掉多余的零：
+-- 1.25 → "1.25"、0.75 → "0.75"、0.5 → "0.5"、2 → "2"（卡面简介与回合播报共用这一份换算）。
 function HextechRune:FormatWarEfficiencyPercent(percent)
-    local tenths = floor(percent * 10 + 0.5)
-    if mod(tenths, 10) == 0 then
-        return format("%d", tenths / 10)
+    local hundredths = floor(percent * 100 + 0.5)
+    local whole = floor(hundredths / 100)
+    local rest = mod(hundredths, 100)
+    if rest == 0 then
+        return format("%d", whole)
     end
-    return format("%d.%d", floor(tenths / 10), mod(tenths, 10))
+    if mod(rest, 10) == 0 then
+        return format("%d.%d", whole, rest / 10)
+    end
+    return format("%d.%02d", whole, rest)
 end
 
 function HextechRune:EnsureWarEfficiencyPlayerState(playerIndex)
@@ -149,7 +155,7 @@ function HextechRune:BroadcastWarEfficiency(playerIndex)
 end
 
 -- 同一玩家的多份符文直接相加：每份让同一个死亡单位多提供一份基础加成
--- （基础值随经济倍率取 1% 或 0.5%，见 GetWarEfficiencyBonusPerDeath）。
+-- （基础值随经济倍率取 1.25% / 1% / 0.75% / 0.5%，见 GetWarEfficiencyBonusPerDeath）。
 function HextechRune:GetWarEfficiencyModifier(playerIndex, unitType, counts, copies)
     local perDeathPerCopy = self:GetWarEfficiencyBonusPerDeath()
     local cacheKey = tostring(playerIndex) .. ":" .. unitType .. ":"
