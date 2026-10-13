@@ -217,9 +217,9 @@ function CreateButton(buttonData)
             self:FormatText()
             ButtonManager:SetButton(self)
             local generation = self._cooldownGeneration
-            SchedulerModule.delay_call(function(self)
+            SchedulerModule.delay_call(function(self, generation)
                 self:_reActivate(generation)
-            end, self.CooldownSeconds * 15, { self })
+            end, self.CooldownSeconds * 15, { self, generation })
             return
         end
 
@@ -229,9 +229,9 @@ function CreateButton(buttonData)
             self:FormatText()
             ButtonManager:SetButton(self)
             local generation = self._cooldownGeneration
-            RoundLuaManager.DelayCallOnRoundBegin(function(self)
+            RoundLuaManager.DelayCallOnRoundBegin(function(self, generation)
                 self:_reActivate(generation)
-            end, { self }, self.CooldownRounds)
+            end, { self, generation }, self.CooldownRounds)
             return
         end
 
@@ -246,9 +246,9 @@ function CreateButton(buttonData)
             self:FormatText()
             ButtonManager:SetButton(self)
             local generation = self._cooldownGeneration
-            SchedulerModule.delay_call(function(self)
+            SchedulerModule.delay_call(function(self, generation)
                 self:_reActivate(generation)
-            end, self.SharedCooldownSeconds * 15, { self })
+            end, self.SharedCooldownSeconds * 15, { self, generation })
             return
         end
     end

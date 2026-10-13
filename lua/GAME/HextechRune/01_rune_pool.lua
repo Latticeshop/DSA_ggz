@@ -262,6 +262,22 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.goliath.desc",
         Effect = "goliath", NeedsUnitType = true,
         Icon = "Button_JapanMechaKing" },
+    -- 回归基本功：按单位阶级整体加减，不挂任何兵种（详见 18_basics_exchange.lua）。
+    -- ExcludeOnFirstFormalSelection：它整体改写单位强度榜，与变形重组器同口径，
+    -- 玩家本场第一次正式选择不发（那时单位池还空着，选了也无从体现）。
+    { Id = "prismatic_back_to_basics", Rarity = 1,
+        NameKey = "hextech.rune.back_to_basics.name",
+        DescKey = "hextech.rune.back_to_basics.desc",
+        Effect = "back_to_basics", ExcludeOnFirstFormalSelection = true,
+        Icon = "SUA_Twinblade_Evacuate" },
+    -- 等价交换：兵种1 受益、兵种2 受损。两个兵种在生成候选那一刻一次性随机定好
+    -- （见 CreateRuneCandidateForPlayer），整张符文只占 1 个候选，卡面写明是哪一对；
+    -- 持有判定按基础 Id（GetRuneOwnershipId），不按兵种对，避免靠重随叠着拿多份。
+    { Id = "prismatic_equivalent_exchange", Rarity = 1,
+        NameKey = "hextech.rune.equivalent_exchange.name",
+        DescKey = "hextech.rune.equivalent_exchange.desc",
+        Effect = "equivalent_exchange", NeedsUnitTypePair = true,
+        Icon = "Button_PlayerPower_ChronoSwap" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -276,6 +292,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_tulip_mortar = true,
     -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
     silver_prepare_backpack = true,
+    -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
+    silver_five_tiger_generals = true,
     gold_fortified = true,
     gold_transcendent_evil = true,
     gold_recycler = true,
@@ -297,6 +315,10 @@ HextechRune.NonRepeatableRuneIds = {
     gold_poach = true,
     -- 致命节奏：每人唯一，本方全体单位同吃一份修正器，重复没有意义。
     prismatic_lethal_tempo = true,
+    -- 回归基本功：整体改写 T1~T4 的强度榜，多份只会让 T3/T4 被压得更狠，故唯一。
+    prismatic_back_to_basics = true,
+    -- 等价交换：一份就已经把两个兵种分别推到极端，重复只会放大两极分化，故唯一。
+    prismatic_equivalent_exchange = true,
     -- 以战养战改为玩家独立且可重复获取：多份只叠加在自己的单位上，故不列入排除。
     prismatic_time_rift = true,
     prismatic_shrink_ray = true,
@@ -330,6 +352,8 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         DescKey = rune.DescKey,
         Effect = rune.Effect,
         UnitType = unitType,
+        -- 等价交换的第二个兵种（受损方）；其余符文为 nil。
+        UnitType2 = rune.UnitType2,
         Icon = rune.Icon,
         TargetUnitType = rune.TargetUnitType,
         TargetUnitIndex = rune.TargetUnitIndex,
@@ -514,6 +538,22 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
         return nil
     end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
+    if rune.NeedsUnitTypePair then
+        -- 等价交换：候选生成这一刻一次性抽定「受益兵种 + 受损兵种」，两者必然不同；
+        -- 禁海配置下 GetRuneCandidateUnitTypes 已经把海军去掉，所以禁海时只在三种兵种里抽。
+        local types = self:GetRuneCandidateUnitTypes(playerIndex, rune)
+        if getn(types) < 2 then
+            return nil
+        end
+        local buffIndex = self:RandomIndex(getn(types))
+        -- 受损兵种在「去掉受益兵种后的 n-1 个」里抽，保证两个兵种不会撞在一起。
+        local debuffIndex = self:RandomIndex(getn(types) - 1)
+        if debuffIndex >= buffIndex then
+            debuffIndex = debuffIndex + 1
+        end
+        candidate.UnitType = types[buffIndex]
+        candidate.UnitType2 = types[debuffIndex]
+    end
     if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension"
         or candidate.Effect == "ultimate_creature" then
         -- 已被出口内销/高平两用/先进火炮替换的原形态不再作为目标：它们后续生产时
@@ -548,6 +588,12 @@ end
 -- 例如大力（步兵）与大力（载具）可以同时出现在同一次三选一中，
 -- 玩家也可以分别持有它们。
 function HextechRune:GetRuneOwnershipId(rune)
+    -- 等价交换这类「一次圈两个兵种」的符文按基础 Id 判重：兵种对是候选生成时随机抽的，
+    -- 若把兵种写进 Id，同一名玩家就能靠一次重随换出别的组合、把整张符文叠着拿两份。
+    -- 按基础 Id 判重同时让重随与「同一次三选一不重复」都按「一个符文」对待。
+    if rune.UnitType2 ~= nil then
+        return rune.Id
+    end
     if rune.UnitType ~= nil then
         return rune.Id .. ":" .. rune.UnitType
     end
@@ -580,12 +626,26 @@ function HextechRune:GetRuneUnitTypeLabel(rune)
     return Localization.get("hextech.unit_type." .. rune.UnitType)
 end
 
+-- 等价交换的第二个兵种（受损方）；只有一个兵种槽的符文返回空串。
+function HextechRune:GetRuneUnitTypeLabel2(rune)
+    if rune == nil or rune.UnitType2 == nil then
+        return ""
+    end
+    return Localization.get("hextech.unit_type." .. rune.UnitType2)
+end
+
 function HextechRune:GetRuneDisplayName(rune)
     if rune == nil then
         return ""
     end
     local name = Localization.get(rune.NameKey)
     if rune.UnitType ~= nil then
+        if rune.UnitType2 ~= nil then
+            -- 两个兵种一起写进后缀，悬浮详情一眼能看出谁受益、谁受损。
+            name = name .. Localization.get("hextech.unit_type.suffix",
+                self:GetRuneUnitTypeLabel(rune) .. "/" .. self:GetRuneUnitTypeLabel2(rune))
+            return name
+        end
         name = name .. Localization.get("hextech.unit_type.suffix", self:GetRuneUnitTypeLabel(rune))
     end
     return name
@@ -599,6 +659,11 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     end
     if rune.UnitType ~= nil then
         local label = self:GetRuneUnitTypeLabel(rune)
+        -- 等价交换：一段文案里两个兵种槽，受益兵种在前、受损兵种在后。
+        if rune.UnitType2 ~= nil then
+            return Localization.get(rune.DescKey, label,
+                self:GetRuneUnitTypeLabel2(rune))
+        end
         -- 狩猎律动的敌我两侧各有一个兵种槽。
         if rune.Effect == "hunt_rhythm" then
             return Localization.get(rune.DescKey, label, label)
@@ -665,6 +730,12 @@ function HextechRune:GetRuneCompactTitle(rune)
     end
     local name = Localization.get(rune.NameKey)
     if rune.UnitType ~= nil then
+        if rune.UnitType2 ~= nil then
+            -- 等价交换：「兵种1/」占一行、受损兵种另起一行，别合回一行
+            -- （四个全角字会被卡面自动折行，断在兵种名中间）。
+            return name .. "\n" .. self:GetRuneUnitTypeLabel(rune) .. "/\n"
+                .. self:GetRuneUnitTypeLabel2(rune)
+        end
         return name .. "\n" .. self:GetRuneUnitTypeLabel(rune)
     end
     if rune.Effect == "broadband_jamming" then
@@ -734,7 +805,15 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             -- 玩家的第一次正式选择里，这类「整体改写单位池」的符文不发（与回合数无关）。
             and (not rune.ExcludeOnFirstFormalSelection
                 or not self:IsFirstFormalSelection(playerIndex)) then
-            if rune.NeedsUnitType then
+            if rune.NeedsUnitTypePair then
+                -- 等价交换这一类：兵种对在候选里定死，一次事件只出 1 个候选，
+                -- 不像普通兵种符文那样把每个兵种各展开一份（否则会霸占整个棱彩池）。
+                local candidate = self:CreateRuneCandidateForPlayer(playerIndex, rune, nil)
+                if candidate ~= nil and candidate.UnitType2 ~= nil
+                    and self:IsRuneCandidateAvailable(playerIndex, candidate) then
+                    tinsert(filtered, candidate)
+                end
+            elseif rune.NeedsUnitType then
                 local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, rune)
                 for typeIndex = 1, getn(availableTypes), 1 do
                     local candidate = self:CreateRuneCandidateForPlayer(playerIndex, rune,
@@ -796,4 +875,16 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
+end
+
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
+-- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
+-- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
 end

@@ -61,6 +61,17 @@ HextechRune.DualUnitTypeFilters = {
             Exclude = "STRUCTURE DEBRIS"
         }),
     },
+    {
+        Types = { "infantry", "aircraft" },
+        Filter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            IncludeThing = {
+                -- 火箭天使：会飞的帝国反装甲步兵，模板带 AIRCRAFT，地图也按飞机批次登场
+                "JapanAntiVehicleInfantryTech3",
+            },
+            Exclude = "STRUCTURE DEBRIS"
+        }),
+    },
 }
 -- 无限火力（飞机）只开放给指定对空战斗机、摇光巡天炮及其同机型变体。
 -- 轰炸机、天狗、心神等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
@@ -189,6 +200,8 @@ HextechRune.BattleUnitEffectDelay = 45
 -- 首扫（45 帧）赶不上，这里在飞机出现后再留 3 秒余量。
 HextechRune.AirBatchEffectDelay = 200
 HextechRune.FiveTigerPowerGranted = HextechRune.FiveTigerPowerGranted or {}
+-- 百虎上将：objectId → 已下过百夫长命令的回合号，挡住同回合内的重复发放。
+HextechRune.CenturionGranted = HextechRune.CenturionGranted or {}
 HextechRune.CenturionSpellbookFilter = HextechRune.CenturionSpellbookFilter
     or CreateObjectFilter({
         Rule = "ANY", Relationship = "SAME_PLAYER",
@@ -843,9 +856,25 @@ function HextechRune:GrantForeignMCV(playerIndex)
     end
     local targetFaction = candidates[self:RandomIndex(getn(candidates))]
     local playerName = "Player_" .. playerIndex
+    -- 落点同箱子惩罚那套坐标，但只在自己半场的前哨站里挑（基地车不能丢到敌人家里）。
+    local sideName = "PlyrCivilian"
+    if self:GetPlayerSideIndex(playerIndex) == 8 then
+        sideName = "PlyrCreeps"
+    end
+    local position = nil
+    if PureDrawGetOutpostDropPosition ~= nil then
+        position = PureDrawGetOutpostDropPosition(sideName, playerIndex)
+    end
+    if position == nil then
+        position = self:GetPlayerHomeSpawnPosition(playerIndex, 140, 0)
+    end
+    local mcvObjectId = GetNextObjectId()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         mcvTypes[targetFaction], playerName .. "/teamPlayer_" .. playerIndex,
-        self:GetPlayerHomeSpawnPosition(playerIndex, 140, 0), 0)
+        position, 0)
+    -- 挂到新基地车上 15 秒：文本框跟着单位走，玩家一眼就知道该展开哪台车
+    TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", GetObjectById(mcvObjectId),
+        "SCRIPT:ally", 15, "")
 end
 
 function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)
@@ -1000,8 +1029,8 @@ end
 
 -- 给一只已经按单位池配额分配到玩家的战斗单位加载一个持续型符文。
 -- 返回 true 表示兵种匹配且本次确实执行了效果。
-function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLookup)
-    if not self:IsUnitInRuneType(unit, rune, typeLookup) then
+function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLookup, unitIndex)
+    if not self:IsRuneMatchingUnit(rune, unit, typeLookup) then
         return false
     end
     if rune.Effect == "damage" then
@@ -1047,6 +1076,9 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
             return false
         end
         self:ApplyInfiniteAmmoToUnit(unit)
+    elseif rune.Effect == "back_to_basics" or rune.Effect == "equivalent_exchange" then
+        -- 按阶级/双兵种取 Modifier 的细节都在 18_basics_exchange.lua（本 payload 已贴上限）。
+        return self:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitIndex)
     else
         return false
     end
@@ -1126,10 +1158,15 @@ function HextechRune:IsPersistentBattleRune(rune)
         or rune.Effect == "astral_body" or rune.Effect == "transcendent_evil"
         or rune.Effect == "infinite_ammo" or rune.Effect == "goliath"
         or rune.Effect == "ragnarok" or rune.Effect == "war_efficiency"
+        -- 阶级型（回归基本功）与双兵种型（等价交换）同样走单位池配额分配。
+        or rune.Effect == "back_to_basics" or rune.Effect == "equivalent_exchange"
+        -- 百虎上将（步兵）与致命节奏（全兵种）也要走份额分配：战斗复制体属于 P7/P8，
+        -- 只能靠这份登记认归属，按 Player_N 所有权是扫不出来的。
+        or rune.Effect == "five_tiger_generals" or rune.Effect == "lethal_tempo"
 end
 
 -- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
--- 普通持续 BUFF 使用全配额；究极生物每回合 1 只，五虎上将单独按份数限制名额。
+-- 普通持续 BUFF 使用全配额；究极生物每回合 1 只。百虎上将不占配额（见本函数末尾）。
 function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     typeLookup)
     local poolCount = UNITCOUNT[playerIndex][unitIndex] or 0
@@ -1141,7 +1178,7 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     for runeIndex = 1, getn(owned), 1 do
         local rune = owned[runeIndex]
         if self:IsPersistentBattleRune(rune)
-            and self:IsUnitInRuneType(unit, rune, typeLookup) then
+            and self:IsRuneMatchingUnit(rune, unit, typeLookup) then
             if rune.Effect ~= "infinite_ammo"
                 or (typeLookup.infiniteAmmoAircraft ~= nil
                     and typeLookup.infiniteAmmoAircraft[ObjectGetId(unit)]) then
@@ -1163,14 +1200,7 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
         return poolCount
     end
 
-    local fiveTigerCount = self:GetFiveTigerGeneralsCopyCount(playerIndex)
-    if fiveTigerCount > 0 and typeLookup.infantry[ObjectGetId(unit)] then
-        local fiveTigerQuota = 5 * fiveTigerCount
-        if fiveTigerQuota < poolCount then
-            return fiveTigerQuota
-        end
-        return poolCount
-    end
+    -- 百虎上将不再占用单位池名额：它按「名下所有步兵」全量发百夫长，登记与否都不影响发放。
     return 0
 end
 
@@ -1282,7 +1312,8 @@ function HextechRune:ApplyRuneToAssignment(rune, assignment, typeLookup)
     if assignment.AppliedRunes[effectInstanceId] then
         return false
     end
-    if self:ApplyPersistentRuneToUnit(assignment.PlayerIndex, rune, assignment.Unit, typeLookup) then
+    if self:ApplyPersistentRuneToUnit(assignment.PlayerIndex, rune,
+        assignment.Unit, typeLookup, assignment.UnitIndex) then
         assignment.AppliedRunes[effectInstanceId] = true
         return true
     end
@@ -1308,6 +1339,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     ultimate_creature = true,
     war_efficiency = true, time_rift = true,
     hunt_rhythm = true,
+    -- 百虎上将 / 致命节奏：效果由各自的整批扫描负责（同以战养战），不逐单位挂。
+    five_tiger_generals = true, lethal_tempo = true,
 }
 
 -- 给本次刚登记的新单位应用其归属玩家的全部持续符文。
@@ -1419,64 +1452,61 @@ function HextechRune:HasCenturionUpgradeObject(unit)
     return false
 end
 
-function HextechRune:ShuffleAssignments(assignments)
-    for i = getn(assignments), 2, -1 do
-        local j = self:RandomIndex(i)
-        local temporary = assignments[i]
-        assignments[i] = assignments[j]
-        assignments[j] = temporary
+-- 百虎上将：固定出兵完成 3 秒后，给持有者**名下全部步兵**补一层百夫长（旧版只随机挑 5 个新单位，
+-- 现在没有名额上限、也不再只认本回合新登记的单位）；已经带了的跳过（一层就是一层，不叠）。
+-- 归属只认单位池份额分配登记：战斗复制体属于 P7/P8，按 Player_N 所有权扫不到、也分不清队友。
+function HextechRune:GrantCenturionLayer(playerIndex)
+    if P == nil then
+        return
+    end
+    local sideIndex = self:GetPlayerSideIndex(playerIndex)
+    if P[sideIndex] == nil then
+        return
+    end
+    local units, count = ObjectFindObjects(P[sideIndex], nil,
+        self.UnitTypeFilters.infantry)
+    local round = tonumber(exCounterGetByName("lvc")) or 0
+    local targets = {}
+    for i = 1, count, 1 do
+        local unit = units[i]
+        local objectId = ObjectGetId(unit)
+        local assignment = self.BattleUnitAssignments[objectId]
+        -- 同一回合内的多次扫描（固定出兵 / 补兵 / 空军补扫）不重复下命令：
+        -- 百夫长附着物是异步生成的，光靠 HasCenturionUpgradeObject 挡不住同回合的重复发放。
+        if assignment ~= nil and assignment.PlayerIndex == playerIndex
+            and ObjectIsAlive(unit) and not self:HasCenturionUpgradeObject(unit)
+            and self.CenturionGranted[objectId] ~= round then
+            self.CenturionGranted[objectId] = round
+            tinsert(targets, unit)
+        end
+    end
+    local total = getn(targets)
+    if total == 0 then
+        return
+    end
+    self:EnsureFiveTigerGeneralsPower(playerIndex)
+    local spellbooks, spellbookCount = ObjectFindObjects(targets[1], nil,
+        self.CenturionSpellbookFilter)
+    if spellbookCount == 0 or not ObjectIsAlive(spellbooks[1]) then
+        return
+    end
+    local spellbookReference = "HextechFiveTigerSpellbook_" .. playerIndex
+    ExecuteAction("SET_UNIT_REFERENCE", spellbookReference, spellbooks[1])
+    for i = 1, total, 1 do
+        local objectId = ObjectGetId(targets[i])
+        local targetReference = "HextechFiveTigerTarget_" .. tostring(objectId)
+        -- 登记待办：这批百夫长的出生回调要跳过第 9 回合后的千夫长晋升（见 UnitCreate.lua）。
+        g_HextechFiveTigerPendingTargets[objectId] = true
+        ExecuteAction("SET_UNIT_REFERENCE", targetReference, targets[i])
+        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED", spellbookReference,
+            self.FiveTigerGeneralsCommand, targetReference)
     end
 end
 
--- 固定出兵完成 3 秒后，从每名持有者本回合的新步兵中随机选择至多 5 个。
--- 通过 AI 魔导书调用原生协议，以保留百夫长的附着物、模型标记和光环表现。
-function HextechRune:ApplyFiveTigerGenerals(assignments)
-    local typeLookup = self:BuildAllBattleUnitTypeLookup()
+function HextechRune:ApplyFiveTigerGenerals()
     for playerIndex = 1, 6, 1 do
-        local copyCount = self:GetFiveTigerGeneralsCopyCount(playerIndex)
-        if copyCount > 0 then
-            local eligible = {}
-            for i = 1, getn(assignments), 1 do
-                local assignment = assignments[i]
-                local unit = assignment.Unit
-                local objectId = ObjectGetId(unit)
-                if assignment.PlayerIndex == playerIndex
-                    and not assignment.FiveTigerGranted
-                    and self:IsCurrentAssignment(unit, assignment)
-                    and typeLookup.infantry[objectId]
-                    and not self:HasCenturionUpgradeObject(unit) then
-                    tinsert(eligible, assignment)
-                end
-            end
-            if getn(eligible) > 0 then
-                self:ShuffleAssignments(eligible)
-                self:EnsureFiveTigerGeneralsPower(playerIndex)
-                local spellbooks, spellbookCount = ObjectFindObjects(
-                    eligible[1].Unit, nil, self.CenturionSpellbookFilter)
-                if spellbookCount > 0 and ObjectIsAlive(spellbooks[1]) then
-                    local spellbookReference = "HextechFiveTigerSpellbook_"
-                        .. tostring(playerIndex)
-                    ExecuteAction("SET_UNIT_REFERENCE", spellbookReference,
-                        spellbooks[1])
-                    local grantCount = 5 * copyCount
-                    if grantCount > getn(eligible) then
-                        grantCount = getn(eligible)
-                    end
-                    for i = 1, grantCount, 1 do
-                        local assignment = eligible[i]
-                        local unit = assignment.Unit
-                        local objectId = ObjectGetId(unit)
-                        local targetReference = "HextechFiveTigerTarget_"
-                            .. tostring(objectId)
-                        assignment.FiveTigerGranted = true
-                        g_HextechFiveTigerPendingTargets[objectId] = true
-                        ExecuteAction("SET_UNIT_REFERENCE", targetReference, unit)
-                        ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED",
-                            spellbookReference, self.FiveTigerGeneralsCommand,
-                            targetReference)
-                    end
-                end
-            end
+        if self:GetFiveTigerGeneralsCopyCount(playerIndex) > 0 then
+            self:GrantCenturionLayer(playerIndex)
         end
     end
 end
@@ -1631,7 +1661,7 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObje
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
     -- 以战养战同理：本方兵种全体都要吃到本轮数值，不占单位池配额。
     self:ApplyAllWarEfficiencyBuffs()
-    -- 致命节奏同理：持有者的全部兵种单位都要带上祝融速射。
+    -- 致命节奏同理：持有者的全部兵种单位都要带上固定 +50% 攻速与祝融速射。
     self:ApplyAllLethalTempoBuffs()
     -- 缩小射线同理：本轮处于缩小状态的阵营，新出场的敌方单位也要补上。
     self:RescanShrinkRay()
@@ -1642,7 +1672,6 @@ function HextechRune:FinalizeBattleUnitAssignments(assignments)
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
         local hasEffect = assignment.UltimateCreatureGranted
-            or assignment.FiveTigerGranted
             or assignment.AscensionGranted
             or assignment.WarEfficiencyGranted
         if not hasEffect then
@@ -1661,20 +1690,19 @@ function HextechRune:FinalizeBattleUnitAssignments(assignments)
 end
 
 -- 一次完整的符文扫描：登记新单位并依次施加各类符文。
--- 未被本次扫描看到的对象留给后续扫描，避免重复占用五虎/究极生物的名额。
+-- 未被本次扫描看到的对象留给后续扫描，避免重复占用究极生物的名额。
 function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObjects)
     local assignments = self:ApplyNewBattleUnitEffects(sourceName, skipObjects,
         seenObjects)
     self:ApplyUltimateCreatures(assignments)
     self:ApplyAscensionUnits(assignments)
-    self:ApplyFiveTigerGenerals(assignments)
+    self:ApplyFiveTigerGenerals()
     -- 只保留真正获得了 BUFF 的单位登记；其余单位仍可被后续扫描选中。
     self:FinalizeBattleUnitAssignments(assignments)
 end
 
 function HextechRune:ApplyRoundEffects(round)
-    -- 投资：到期的投资在这一刻（回合开始/出兵）结算返还两倍。
-    self:ApplyInvestmentPayouts(round)
+    -- 投资已于 2026-10-13 改成选符当场结算（见 12_investment.lua），回合开始时不再有到期返还。
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
     -- 登神：与以战养战同一时机播报各自的累计加成。

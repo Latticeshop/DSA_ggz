@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29、A.43
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)
@@ -84,6 +84,80 @@ SchedulerModule.delay_call(function()
     end
 end, 45, {})
 
+-- 一座前哨站属于哪一侧：ObjectPlayerScriptName 直接给出 PlyrCivilian / PlyrCreeps 时最省事，
+function PureDrawGetOutpostSideName(outpost)
+    local ownerName = ObjectPlayerScriptName(outpost)
+    if ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps" then
+        return ownerName
+    end
+    local teamName = ObjectTeamName(outpost)
+    if teamName ~= nil then
+        if strfind(teamName, "PlyrCivilian") ~= nil then
+            return "PlyrCivilian"
+        end
+        if strfind(teamName, "PlyrCreeps") ~= nil then
+            return "PlyrCreeps"
+        end
+    end
+    return nil
+end
+
+function PureDrawGetOutpostDropPosition(sideName, playerIndex)
+    if not g_CelestialOutpostsFilter then
+        g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
+    end
+    local outposts, count = ObjectFindObjects(nil, nil, g_CelestialOutpostsFilter)
+    if count <= 0 then
+        return nil
+    end
+    local candidates = {}
+    for i = 1, count, 1 do
+        if sideName == nil or PureDrawGetOutpostSideName(outposts[i]) == sideName then
+            tinsert(candidates, outposts[i])
+        end
+    end
+    if getn(candidates) == 0 then
+        if sideName == nil then
+            return nil
+        end
+        local start = exWaypointGetPos(format("Player_%d_Start", playerIndex))
+        local bestDistance = nil
+        for i = 1, count, 1 do
+            local ox, oy = ObjectGetPosition(outposts[i])
+            local dx = ox - start[1]
+            local dy = oy - start[2]
+            local distance = dx * dx + dy * dy
+            if bestDistance == nil or distance < bestDistance then
+                bestDistance = distance
+                candidates[1] = outposts[i]
+            end
+        end
+    end
+    local total = getn(candidates)
+    if total == 0 then
+        return nil
+    end
+    local index = ceil(GetRandomNumber() * total)
+    if index < 1 then
+        index = 1
+    end
+    if index > total then
+        index = total
+    end
+    local outpost = candidates[index]
+    local RandomInRange = function(min, max)
+        local sign = 1
+        if GetRandomNumber() < 0.5 then
+            sign = -1
+        end
+        return (min + (GetRandomNumber() * (max - min))) * sign
+    end
+    local offsetX = RandomInRange(50, 200)
+    local offsetY = RandomInRange(50, 150)
+    local x, y, z = ObjectGetPosition(outpost)
+    return { X = x + offsetX, Y = y + offsetY, Z = z }
+end
+
 -- 检测箱子是否被扔到中央战场
 function NoCreatesInCenter(id)
     if not ObjectIsAlive(id) then
@@ -104,39 +178,18 @@ function NoCreatesInCenter(id)
         -- 不在中间就没事
         return
     end
-    -- 寻找一个合法的位置
-    if not g_CelestialOutpostsFilter then
-        g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
-    end
-    local outposts, count = ObjectFindObjects(nil, nil, g_CelestialOutpostsFilter)
-    if count <= 0 then
+    -- 寻找一个合法的位置（与 MCV 符文共用同一套前哨站落点口径）
+    local position = PureDrawGetOutpostDropPosition()
+    if position == nil then
         return
     end
-    local index = ceil(GetRandomNumber() * count)
-    if index < 1 then
-        index = 1
-    end
-    if index > count then
-        index = count
-    end
-    local outpost = outposts[index]
-    local RandomInRange = function(min, max)
-        local sign = 1
-        if GetRandomNumber() < 0.5 then
-            sign = -1
-        end
-        return (min + (GetRandomNumber() * (max - min))) * sign
-    end
-    local offsetX = RandomInRange(50, 200)
-    local offsetY = RandomInRange(50, 150)
-    local x, y, z = ObjectGetPosition(outpost)
-    ObjectSetPosition(crate, x + offsetX, y + offsetY, z)
+    ObjectSetPosition(crate, position.X, position.Y, position.Z)
     -- 玩家箱子被中央战场规则搬移后，立即同步其固定匹配坐标。
     local trackedState = g_PureDrawTrackedCrates[id]
     if trackedState ~= nil then
-        trackedState.X = x + offsetX
-        trackedState.Y = y + offsetY
-        trackedState.Z = z
+        trackedState.X = position.X
+        trackedState.Y = position.Y
+        trackedState.Z = position.Z
     end
     -- 发送警告
     ExecuteAction("OBJECT_CREATE_RADAR_EVENT", crate, "Information")

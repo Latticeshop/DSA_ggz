@@ -243,7 +243,7 @@ function CelestialCenturionUpgradeBorn(createdObjId, createdObjInstanceId, owner
             local table, count = ObjectGetAttachees(id)
             if count > 0 and ObjectIsAlive(table[1]) then
                 local centurion = table[1]
-                -- “五虎上将”复用原生百夫长协议来保留完整附着物和视觉效果，
+                -- “百虎上将”复用原生百夫长协议来保留完整附着物和视觉效果，
                 -- 但只授予基础百夫长，不参与本项目第 9 回合后的自动晋升。
                 local centurionId = ObjectGetId(centurion)
                 if g_HextechFiveTigerPendingTargets ~= nil

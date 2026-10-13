@@ -56,8 +56,8 @@ g_LocalizationExtraText = {
     ["hextech.oblivion_bomb.hotkey_hint"] = { zh = "按'K'键部署湮灭炸弹", en = "Press 'K' to deploy an Oblivion Bomb" },
     ["hextech.rune.giga_fortress.name"] = { zh = "超级要塞", en = "Giga Fortress" },
     ["hextech.rune.giga_fortress.desc"] = { zh = "获得 1 个超级要塞核心。", en = "Gain 1 Giga Fortress Core." },
-    ["hextech.rune.five_tiger_generals.name"] = { zh = "五虎上将", en = "Five Tiger Generals" },
-    ["hextech.rune.five_tiger_generals.desc"] = { zh = "每回合随机使最多 5 个己方步兵成为百夫长。", en = "Each round, turn up to 5 random allied infantry into Centurions." },
+    ["hextech.rune.five_tiger_generals.name"] = { zh = "百虎上将", en = "Hundred Tiger Generals" },
+    ["hextech.rune.five_tiger_generals.desc"] = { zh = "回合开始使你的步兵成为百夫长。", en = "At the start of each round, turn your infantry into Centurions." },
     ["hextech.rune.quality_transformation.name"] = { zh = "质变", en = "Quality Transformation" },
     ["hextech.rune.quality_transformation.desc"] = { zh = "获得更高一阶的随机符文。", en = "Gain a random rune of the next higher tier." },
     ["hextech.rune.export_domestic.name"] = { zh = "出口内销", en = "Export for Domestic Sale" },
@@ -161,20 +161,18 @@ g_LocalizationExtraText = {
         { zh = "挖角：本次获得一个 %s 单位。", en = "Poach: gained one %s this round." },
     ["hextech.rune.investment.name"] = { zh = "投资", en = "Investment" },
     ["hextech.rune.investment.desc"] =
-        { zh = "失去你当前所有的金钱，4 回合后获得两倍的金钱。",
-            en = "Lose all of your current money; 4 rounds later you gain twice that amount." },
-    ["hextech.rune.investment.invested"] =
-        { zh = "投资：投入 %d 金，第 %d 回合返还两倍。",
-            en = "Investment: put in %d money, doubled on round %d." },
+        { zh = "失去你当前所有的金钱，获得两倍的金钱。",
+            en = "Lose all of your current money and gain twice that amount." },
     ["hextech.rune.investment.payout"] =
-        { zh = "投资到期：获得 %d 金。", en = "Investment matured: gained %d money." },
+        { zh = "投资：获得 %d 金。", en = "Investment: gained %d money." },
     ["hextech.rune.ten_pull.name"] = { zh = "十连", en = "Ten-Pull" },
     ["hextech.rune.ten_pull.desc"] =
         { zh = "获得 10 个随机单位，其中 1 个必定为 T4 及以上单位。",
             en = "Gain 10 random units, at least one of which is tier 4 or above." },
     ["hextech.rune.lethal_tempo.name"] = { zh = "致命节奏", en = "Lethal Tempo" },
     ["hextech.rune.lethal_tempo.desc"] =
-        { zh = "你单位的攻击会越打越快。", en = "Your units keep attacking faster and faster." },
+        { zh = "你的单位+50%%攻速，且攻击会越打越快。",
+            en = "Your units gain +50% attack speed, and keep attacking faster and faster." },
     ["hextech.rune.poach.no_source"] =
         { zh = "挖角：敌方卡池为空，本次未获得单位。",
             en = "Poach: the enemy pool is empty, no unit gained." },
@@ -190,6 +188,19 @@ g_LocalizationExtraText = {
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
             en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
+    -- 回归基本功：按单位阶级整体加减，卡面文案不带兵种槽（无 %s）。
+    ["hextech.rune.back_to_basics.name"] = { zh = "回归基本功", en = "Back to Basics" },
+    ["hextech.rune.back_to_basics.desc"] = {
+        zh = "你的T1/T2单位血量和伤害提高90%%、攻速和射程提高50%%；你的T3/T4单位血量和伤害降低90%%、攻速和射程降低50%%。",
+        en = "Your T1/T2 units gain 90%% health, 90%% damage, 50%% attack speed and 50%% range; your T3/T4 units lose 90%% health, 90%% damage, 50%% attack speed and 50%% range."
+    },
+    -- 等价交换：两个兵种槽（第一个 %s = 受益兵种，第二个 %s = 受损兵种），
+    -- 兵种对在候选生成时随机定好，见 01_rune_pool.lua 的 CreateRuneCandidateForPlayer。
+    ["hextech.rune.equivalent_exchange.name"] = { zh = "等价交换", en = "Equivalent Exchange" },
+    ["hextech.rune.equivalent_exchange.desc"] = {
+        zh = "你的%s单位血量提高90%%、伤害和攻速和射程提高25%%；你的%s单位血量降低90%%、伤害和攻速和射程降低50%%。",
+        en = "Your %s units gain 90%% health and 25%% damage, attack speed and range; your %s units lose 90%% health and 50%% damage, attack speed and range."
+    },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
