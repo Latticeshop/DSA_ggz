@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.8
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.8、A.53
 
 function PureDrawRegisterKnownPlayerUnit(unitId, instanceId)
     if unitId == nil then
@@ -52,9 +52,6 @@ function PureDrawInitializeKnownPlayerUnits()
     end
 end
 
--- 玩家碰箱子后生成的原生单位没有生产者。任何已注册模板的玩家新单位都会进入
--- 这里：生产单位、工程师、MCV和脚本生成单位立即登记；其余无生产者单位短暂
--- 观察，等待箱子的存活状态先转为已摧毁。
 function PureDrawOnAnyRegisteredUnitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     if g_DrawMode ~= 2 or g_PlayerNameToIndex[ownerPlayerName] == nil then
         return
@@ -368,9 +365,6 @@ function PureDrawRemoveTrackedCrate(id)
     end
 end
 
--- LuckyUnitCrateSeed 刚落地时 ObjectIsAlive 就可能返回 false，不能拿它判断拾取。
--- 箱子不会移动，因此持续检查固定坐标附近的玩家单位；首次接触即视为箱子已被
--- 摧毁。确认接触前记录永久保留，允许玩家在场上囤积任意数量的箱子。
 function PureDrawTrackCustomCrate(id)
     local state = g_PureDrawTrackedCrates[id]
     if state == nil then

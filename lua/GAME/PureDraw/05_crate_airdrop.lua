@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.5
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.5、A.68
 
 function PureDrawOnCrateSeedBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     local x, y, z = ObjectGetPosition(createdObjId)
@@ -196,9 +196,6 @@ function PureDrawSpawnAirdrop()
     if not ObjectIsAlive(leftTower) or not ObjectIsAlive(rightTower) then
         return
     end
-    -- 空投圆心固定为战场中心（玩家从地图编辑器校准：3547.06, 3055.49）。
-    -- 不再依赖 T74/T84 中点，避免塔的位置波动导致圆心漂移（曾出现极端偏右的落点）。
-    -- Z 仍取两塔平均（地面高度）。
     local lx, ly, lz = ObjectGetPosition(leftTower)
     local rx, ry, rz = ObjectGetPosition(rightTower)
     local centerX = 3547.06

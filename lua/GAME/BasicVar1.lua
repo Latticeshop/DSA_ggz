@@ -49,6 +49,13 @@ function IsTowerGuardian(unit)
     return unit ~= nil and g_TowerGuardianUnitIds[ObjectGetId(unit)] ~= nil
 end
 
+-- 删掉/换掉守护者前必须解除登记：引擎会复用对象 id，留下的 id 会让新单位被当成守护者，
+function UnregisterTowerGuardian(unit)
+    if unit ~= nil and g_TowerGuardianUnitIds ~= nil then
+        g_TowerGuardianUnitIds[ObjectGetId(unit)] = nil
+    end
+end
+
 for i = 1, getn(towerGuardianNames), 1 do
     RegisterTowerGuardian(GetObjectByScriptName(towerGuardianNames[i]))
 end
@@ -120,7 +127,7 @@ function ReplaceTowerGuardian(objectName, objectType, sourceTeam, attackTeam,
     if not ObjectIsAlive(displayUnit) then
         return
     end
-    g_TowerGuardianUnitIds[ObjectGetId(displayUnit)] = nil
+    UnregisterTowerGuardian(displayUnit)
     ExecuteAction("NAMED_DELETE", displayUnit)
 
     -- 延迟一帧，确保同名基地展示体已完全删除后再创建战斗单位。

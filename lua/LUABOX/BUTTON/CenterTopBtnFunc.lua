@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.10
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.10、A.51
 
 angel_money = 0
 devil_money = 0
@@ -815,9 +815,6 @@ function RequestDamoclesSword(playerIndex)
     return true
 end
 
--- 铁幕与时停各有两类来源（技能组按钮 + 海克斯符文），而引擎侧同名 Modifier
--- 只有一份实例、后加载会改写剩余时长，PARALYZED 更是一个共享布尔位。
--- 所有施加与解除都必须经过下面两个仲裁函数：铁幕取最长，时停按持有者登记。
 g_IronCurtainExpireFrame = g_IronCurtainExpireFrame or {}
 
 -- 符文释放前先按这两个函数过滤：已经有同类效果的单位直接跳过，由原来那条更长的租约负责到期解除。
@@ -910,9 +907,6 @@ function g_SetTimeStopFrozen(unit, refName, holderKind, frozen, duration, fxDura
     end
 end
 
--- 原生时停只在计时器到点的 Else 分支里解除。那个分支一旦没跑到（脚本被禁用、
--- 中途异常），全体单位就会永久定身。这里每 2 秒复核一次：租约都已过期却还冻着的
--- 对象替它解除，顺带回收死亡或已解除的登记，避免名单无限增长。
 function g_SweepStuckTimeStopFreeze()
     local now = GetFrame()
     local list = g_TimeStopWatchedList

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.9
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.9、A.60
 
 -- 纯抽卡模式配置。Tier 权重合计必须为 100。
 g_PureDrawConfig = {
@@ -136,9 +136,6 @@ g_PureDrawBuildableUnitPool = {
     },
 }
 
--- 这些模板是同一生产按钮产生的强化/环境形态，以及同一单位的运行时变形形态
--- （例如磁弩防空系统↔磁弩高射炮）。它们不重复进入抽取池，也不作为符文目标，
--- 但必须共用生产额度，防止协议强化、水陆形态或变形形态绕过限制。
 g_PureDrawProductionAliases = {
     ["AlliedAntiAirShip"] = { "AlliedAntiAirShip_Enhanced" },
     ["AlliedAntiInfantryVehicle"] = { "AlliedAntiInfantryVehicle_Ground", "AlliedAntiInfantryVehicle_Transport" },

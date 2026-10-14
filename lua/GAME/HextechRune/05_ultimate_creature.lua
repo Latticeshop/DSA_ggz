@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.12、A.32
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.12、A.32、A.54
 
 -- 海克斯符文“究极生物”：献祭玩家池里的 T1/T2 单位（T3 及以上保留不动），
 -- 并在每回合出兵时强化该玩家 1 只随机 T3/T4 单位。
@@ -81,6 +81,20 @@ HextechRune.UltimateCreatureSeaTargetTypes = {
     CelestialAntiStructureShip = true,              -- 玄武级攻击潜艇
 }
 
+-- 卡面单位名兜底：地编 ID 与引擎名称键不一致的单位，ObjectsTranslate 会原样返回 ID
+-- （旧联盟 Overlordtank 就是这种），这里登记回收表已经在用的名称键。
+HextechRune.UnitDisplayNameKeys = {
+    Overlordtank = "unit.SovietOverlordtank",
+}
+
+function HextechRune:PickUltimateCreatureDisplayName(unitType)
+    local nameKey = self.UnitDisplayNameKeys[unitType]
+    if nameKey ~= nil then
+        return Localization.recycle(nameKey)
+    end
+    return Localization.ObjectsTranslate(unitType)
+end
+
 -- 玩家持有出口内销时太刀一律以一式形态入池，圈中原形态就永远进化不出来。
 function HextechRune:PickUltimateCreatureTarget(excluded)
     if g_UnitNameToUnitIndex == nil then
@@ -97,7 +111,7 @@ function HextechRune:PickUltimateCreatureTarget(excluded)
             tinsert(candidates, {
                 Type = unitType,
                 UnitIndex = unitIndex,
-                Name = Localization.ObjectsTranslate(unitType),
+                Name = self:PickUltimateCreatureDisplayName(unitType),
             })
         end
     end
@@ -337,26 +351,36 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
 end
 
--- 地编把 T3 塔守护者直接摆成了旧联盟坦克模板（PassengerLoadSpawn 的 g_PLSpawnGuardCarNames
--- 就是为它们开的）。究极生物每人每回合只进化一只，圈中守卫等于把整层收益花在地图单位上，
--- 所以施加入口按脚本名剔除。判定只比对象 id、不缓存句柄。
-HextechRune.UltimateCreatureGuardScriptNames = {
-    "overlord7", "overlord8",
+HextechRune.PresetMapUnitScriptNames = {
+    "overlord7", "overlord8", "t533", "t534",
+    "Sea3ProtectShip7", "Sea3ProtectShip8",
 }
 
-function HextechRune:IsUltimateCreatureGuardUnit(unit)
-    if unit == nil or GetObjectByScriptName == nil then
+function HextechRune:IsPresetMapUnitId(objectId)
+    if objectId == nil then
         return false
     end
-    local objectId = ObjectGetId(unit)
-    for i = 1, getn(self.UltimateCreatureGuardScriptNames), 1 do
-        local guard = GetObjectByScriptName(
-            self.UltimateCreatureGuardScriptNames[i])
-        if guard ~= nil and ObjectGetId(guard) == objectId then
+    if g_TowerGuardianUnitIds ~= nil
+        and g_TowerGuardianUnitIds[objectId] ~= nil then
+        return true
+    end
+    if GetObjectByScriptName == nil then
+        return false
+    end
+    for i = 1, getn(self.PresetMapUnitScriptNames), 1 do
+        local preset = GetObjectByScriptName(self.PresetMapUnitScriptNames[i])
+        if preset ~= nil and ObjectGetId(preset) == objectId then
             return true
         end
     end
     return false
+end
+
+function HextechRune:IsPresetMapUnit(unit)
+    if unit == nil then
+        return false
+    end
+    return self:IsPresetMapUnitId(ObjectGetId(unit))
 end
 
 function HextechRune:IsUltimateCreatureRegistered(unit)
@@ -396,7 +420,7 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     if not ObjectIsAlive(unit) then
         return false
     end
-    if self:IsUltimateCreatureGuardUnit(unit) then
+    if self:IsPresetMapUnit(unit) then
         return false
     end
     if self:IsUltimateCreatureRegistered(unit) then
@@ -436,9 +460,6 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     return true
 end
 
--- 复用普通数值BUFF的本轮新单位分配结果。即使普通载具 BUFF 使多只目标单位
--- 同时进入 assignments，每名持有者每回合仍只进化其中 1 只。
--- 普通符文先于本函数加载，因此两个独立 Modifier 会按引擎属性规则叠加。
 function HextechRune:ApplyUltimateCreatures(assignments)
     local appliedPlayers = {}
     self:CleanupUltimateCreatureRegistrations()

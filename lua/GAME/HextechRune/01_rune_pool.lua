@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -34,7 +34,8 @@ HextechRune.RunePool = {
     { Id = "silver_five_tiger_generals", Rarity = 3,
         NameKey = "hextech.rune.five_tiger_generals.name",
         DescKey = "hextech.rune.five_tiger_generals.desc",
-        Effect = "five_tiger_generals", Icon = "CelestialCenturion" },
+        Effect = "five_tiger_generals", RequiresType = "infantry",
+        Icon = "CelestialCenturion" },
     { Id = "silver_quality_transformation", Rarity = 3,
         NameKey = "hextech.rune.quality_transformation.name",
         DescKey = "hextech.rune.quality_transformation.desc",
@@ -44,26 +45,31 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.export_domestic.name",
         DescKey = "hextech.rune.export_domestic.desc",
         Effect = "upgrade_tachi_cruiser", RequiredFaction = 3,
+        RequiresType = "navy",
         Icon = "Button_JapanAntiNavyShipTech3" },
     { Id = "silver_dual_purpose", Rarity = 3,
         NameKey = "hextech.rune.dual_purpose.name",
         DescKey = "hextech.rune.dual_purpose.desc",
         Effect = "upgrade_bullfrog", RequiredFaction = 2,
+        RequiresType = "vehicle",
         Icon = "Button_VDVAntiAirVehicleTech1" },
     { Id = "silver_dragon_breathe", Rarity = 3,
         NameKey = "hextech.rune.dragon_breathe.name",
         DescKey = "hextech.rune.dragon_breathe.desc",
         Effect = "upgrade_waverider_dragon_breathe", RequiredFaction = 4,
+        RequiresType = "vehicle",
         Icon = "CelestialHeavyLingboIFV" },
     { Id = "silver_advanced_artillery", Rarity = 3,
         NameKey = "hextech.rune.advanced_artillery.name",
         DescKey = "hextech.rune.advanced_artillery.desc",
         Effect = "upgrade_vanguard_gunship", RequiredFaction = 1,
+        RequiresType = "aircraft",
         Icon = "Button_AlliedHarbingerGunship" },
     { Id = "silver_banzai_charge", Rarity = 3,
         NameKey = "hextech.rune.banzai_charge.name",
         DescKey = "hextech.rune.banzai_charge.desc",
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
+        RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
     { Id = "silver_investment", Rarity = 3,
         NameKey = "hextech.rune.investment.name",
@@ -74,18 +80,17 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.hunt_rhythm.desc",
         Effect = "hunt_rhythm", NeedsUnitType = true,
         Icon = "Button_CelestialSupportAircraft_Skill" },
-    -- 准备背包：只把「下一次符文选择的筛池阶级」抬高一档，本身不给任何单位加成。
     -- ExcludeOnLastFormalRound 使它不会出现在本场最后一次选择里（那时已无下一次）。
     { Id = "silver_prepare_backpack", Rarity = 3,
         NameKey = "hextech.rune.prepare_backpack.name",
         DescKey = "hextech.rune.prepare_backpack.desc",
         Effect = "prepare_backpack", ExcludeOnLastFormalRound = true,
         Icon = "SUA_Unpack" },
-    -- 花来！：替换型符文，源/目标形态登记在 04_buff.lua 的 UnitReplacementRunes。
     { Id = "silver_tulip_mortar", Rarity = 3,
         NameKey = "hextech.rune.tulip_mortar.name",
         DescKey = "hextech.rune.tulip_mortar.desc",
         Effect = "upgrade_v4_tulip", RequiredFaction = 2,
+        RequiresType = "vehicle",
         Icon = "Button_SovietHeavyMortarVehicle" },
 
     -- 黄金
@@ -362,6 +367,9 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         TargetUnitIndex = rune.TargetUnitIndex,
         TargetUnitName = rune.TargetUnitName,
         RequiresSea = rune.RequiresSea,
+        -- 候选只用于展示与判重，兵种约束是在 BuildFilteredPool 里按**原始符文**判的；
+        -- 一并带上只为让候选与定义保持一致（海军的旧写法 RequiresSea 同样如此）。
+        RequiresType = rune.RequiresType,
         RequiredFaction = rune.RequiredFaction,
         ExcludedFaction = rune.ExcludedFaction,
         UpgradeRarity = rune.UpgradeRarity,
@@ -424,9 +432,6 @@ function HextechRune:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
     return result
 end
 
--- 从玩家自身阵营的回收/单位池中选一个可计数、且玩家确实能生产的单位。
--- excluded 里的单位类型会被跳过：登神/买二送一用它排除已被替换型符文覆盖的原形态；
--- 买二送一另外排除已持有的同类符文目标，登神不做这项排除，允许与买二送一指向同一个单位。
 function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
         or g_UnitNameToUnitIndex == nil then
@@ -450,9 +455,6 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     return candidates[self:RandomIndex(getn(candidates))]
 end
 
--- 抽卡模式禁用生产的单位（LockPlayerProduction：摇光、超级要塞核心）连同其生产别名。
--- 玩家永远无法自行产出这些单位，圈中它们的“买二送一/登神”等于一张空符文，
--- 因此白名单路径和退回路径都要排除。
 function HextechRune:BuildLockedTargetUnitTypes()
     if self.LockedTargetUnitTypes ~= nil then
         return self.LockedTargetUnitTypes
@@ -521,9 +523,6 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     return candidates
 end
 
--- 阵营限制：RequiredFaction 是白名单（只对该阵营入池），ExcludedFaction 是黑名单
--- （对该阵营不入池）。两者都写时黑名单优先。阵营号见 GAME/PlayerSide.lua：
--- 1 盟军 / 2 苏联 / 3 帝国 / 4 神州。
 function HextechRune:IsRuneFactionAvailable(playerIndex, rune)
     if g_PlayerSide ~= nil and rune.ExcludedFaction ~= nil
         and g_PlayerSide[playerIndex] == rune.ExcludedFaction then
@@ -587,13 +586,7 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
     return candidate
 end
 
--- 带兵种的符文按“基础符文 + 兵种”视为独立符文。
--- 例如大力（步兵）与大力（载具）可以同时出现在同一次三选一中，
--- 玩家也可以分别持有它们。
 function HextechRune:GetRuneOwnershipId(rune)
-    -- 等价交换这类「一次圈两个兵种」的符文按基础 Id 判重：兵种对是候选生成时随机抽的，
-    -- 若把兵种写进 Id，同一名玩家就能靠一次重随换出别的组合、把整张符文叠着拿两份。
-    -- 按基础 Id 判重同时让重随与「同一次三选一不重复」都按「一个符文」对待。
     if rune.UnitType2 ~= nil then
         return rune.Id
     end
@@ -802,11 +795,8 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
         local factionAllowed = self:IsRuneFactionAvailable(playerIndex, rune)
         if rune.Rarity == rarity and factionAllowed
             and (not rune.RequiresSea or BanModeIsTypeEnabled("navy") == 1)
-            -- 通用兵种约束：符文若只对某个兵种有效，该兵种被禁时就不入池。
-            -- 规矩：凡是 Effect 会「直接生成某个单位」的符文（grant_*），只要那个单位
-            -- 属于某个兵种，就必须声明 RequiresType；否则它会绕过整套禁用判定，
-            -- 因为符文赠送走 UNIT_SPAWN_NAMED_LOCATION_ORIENTATION，不过出兵函数。
-            -- 超级要塞（aircraft）与摇光（aircraft）就是这么漏过一次的。
+            -- 通用兵种约束：只对某个兵种有效的符文（含 grant_* 直接生成单位的），该兵种被禁
+            -- 时就不入池 —— 赠送路径不过出兵函数，漏声明会绕过整套禁用判定（见 §4.5.1）。
             and (rune.RequiresType == nil or BanModeIsTypeEnabled(rune.RequiresType) == 1)
             and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
             -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。

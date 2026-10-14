@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.4
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.4、A.44
 
 -- 海克斯符文系统：首批可实测效果。
 
@@ -230,9 +230,6 @@ if HextechRune_BaseGetRecycleRate == nil and GetRecycleRate ~= nil then
     end
 end
 
--- 奖励池与正式三选一共用筛池规则，质变/赌怪本身也能作为奖励发出来
--- （银质变→金质变→彩赌怪→两张随机）。只挡「赌怪发赌怪」：一次发两张，自配会指数展开，
--- 且一局海克斯上限 5，第二张赌怪只是浪费名额。sourceEffect 由发放方传入。
 function HextechRune:PickBonusRune(playerIndex, rarity, sourceEffect)
     local pool = self:BuildFilteredPool(playerIndex, rarity)
     local candidates = {}
@@ -355,7 +352,8 @@ function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
         local unit = units[i]
         local objectId = ObjectGetId(unit)
         local previous = applied[objectId]
-        if previous == nil or previous ~= unit then
+        if not self:IsPresetMapUnit(unit)
+            and (previous == nil or previous ~= unit) then
             ObjectLoadAttributeModifier(unit, g_HextechEnemyRangeX075Modifier,
                 self.PersistentBuffDuration)
             applied[objectId] = unit
@@ -389,7 +387,8 @@ function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     for i = 1, count, 1 do
         -- 已经有铁幕的单位直接跳过：符文的铁幕不该改写技能组（或上一批符文）留下的更长期约，
         -- 真正施加的那批仍走 g_ApplyIronCurtain 的取最长仲裁。
-        if not g_IsIronCurtainActive(objects[i]) then
+        if not g_IsIronCurtainActive(objects[i])
+            and not self:IsPresetMapUnit(objects[i]) then
             g_ApplyIronCurtain(objects[i], duration)
         end
     end
@@ -481,9 +480,6 @@ function HextechRune:CheckFiveThunderTriggered()
             local repeatTriggered = EvaluateCondition("PLAYER_TRIGGERED_SPECIAL_POWER",
                 playerName, self.FiveThunderRepeatPower)
             if state.WaitingForTriggerClear then
-                -- 只有旧的五雷连发触发态真正结束后才解锁。恢复时不再
-                -- Grant，避免重新授予 0cd 又制造一次瞬时触发；同时把两段
-                -- 的引擎内部倒计时清零，解决图标亮起但仍无法释放。
                 if not firstTriggered and not repeatTriggered then
                     self:SetFiveThunderCountdown(playerIndex, 0)
                     self:SetFiveThunderAvailability(playerIndex, "Available")
@@ -527,9 +523,6 @@ end
 function HextechRune:GrantCashRewardProtocol(playerIndex)
     local playerName = "Player_" .. playerIndex
     local previous = SetWorldBuilderThisPlayer(1)
-    -- PLAYER_GRANT_SPECIAL_POWER 会授予能力及所需科技等级，但不会
-    -- 覆盖 PLAYER_LOCK_PLAYER_TECH 的显式锁。先解锁现金协议科技，
-    -- 再授予并开放 SpecialPower，避免图标已出现但仍置灰。
     ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
         self.CashRewardPlayerTech, 0)
     ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.CashRewardSpecialPower, playerName)
@@ -772,9 +765,6 @@ function HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
             local previousApplied = button._hextechUltimateRefreshAppliedCount or 0
             local addCount = copyCount - previousApplied
             if addCount > 0 then
-                -- 加次数前先记下「此前就已经用尽」：这种按钮身上若还挂着冷却计数，
-                -- 只可能是用尽之后被判定的共享冷却（或丢失的回调）留下的死计数，
-                -- 与这次新给的次数无关，必须清掉，否则按钮会一直灰着点不动。
                 local wasExhausted = (button._usedCount or 0) >= button.MaxUseCount
                 button.MaxUseCount = button.MaxUseCount + addCount
                 button._hextechUltimateRefreshAppliedCount = copyCount
@@ -1004,9 +994,6 @@ function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
     return g_UnitNameToUnitIndex[replacementType] or unitIndex
 end
 
--- “万岁冲锋”把帝国武士的产出整体换成狂热武士，底层的
--- “每两个武士赠送一个狂热武士”规则要跟着走：狂热武士本身也按武士计数，
--- 否则原单位不再入池，这条赠送会随之失效（赠送分支见 UNITCOUNTERINI_0.lua）。
 function HextechRune:IsKamikazeGiftWarrior(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
@@ -1220,6 +1207,7 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
             end
             local assignment = self.BattleUnitAssignments[objectId]
             if not self:IsCurrentAssignment(unit, assignment)
+                and not self:IsPresetMapUnit(unit)
                 and (skipObjects == nil or skipObjects[objectId] == nil) then
                 tinsert(newUnits, unit)
             end
@@ -1451,9 +1439,6 @@ function HextechRune:HasCenturionUpgradeObject(unit)
     return false
 end
 
--- 百虎上将：固定出兵完成 3 秒后，给持有者**名下全部步兵**补一层百夫长（旧版只随机挑 5 个新单位，
--- 现在没有名额上限、也不再只认本回合新登记的单位）；已经带了的跳过（一层就是一层，不叠）。
--- 归属只认单位池份额分配登记：战斗复制体属于 P7/P8，按 Player_N 所有权扫不到、也分不清队友。
 function HextechRune:GrantCenturionLayer(playerIndex)
     if P == nil then
         return
@@ -1474,6 +1459,7 @@ function HextechRune:GrantCenturionLayer(playerIndex)
         -- 百夫长附着物是异步生成的，光靠 HasCenturionUpgradeObject 挡不住同回合的重复发放。
         if assignment ~= nil and assignment.PlayerIndex == playerIndex
             and ObjectIsAlive(unit) and not self:HasCenturionUpgradeObject(unit)
+            and not self:IsPresetMapUnit(unit)
             and self.CenturionGranted[objectId] ~= round then
             self.CenturionGranted[objectId] = round
             tinsert(targets, unit)

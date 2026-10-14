@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.47
+
 FilterLIST = {}
 UNITLIST = {}
 UNITCOUNT = {}
@@ -346,10 +348,6 @@ if yaoguangIndex ~= nil then
     g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4_Enhanced"] = yaoguangIndex
     g_UnitNameToUnitIndex[FastHash("CelestialAdvanceAircraftTech4_Enhanced")] = yaoguangIndex
 end
-----------------------------------------------------------------
--- 禁用模式（步兵 / 载具 / 空军 / 海军，最多同时禁 3 项）：兵种分类表与判定。
--- 抽卡池 g_PureDrawBuildableUnitPool 的注释分段、双形态表 HextechRune.DualUnitTypeFilters，
--- 双形态单位登记全部形态：只有「全部兵种都被禁」才不上场（AI 会自行切形态索敌）。
 g_BanModeInfantry = g_BanModeInfantry or 0
 g_BanModeVehicle = g_BanModeVehicle or 0
 g_BanModeAir = g_BanModeAir or 0
@@ -362,9 +360,6 @@ g_BanModeIds = { "infantry", "vehicle", "aircraft", "navy" }
 -- 回收表 g_RecycleBtnsMapByFaction 的 1..4 类，顺序与 g_BanModeIds 一致。
 g_BanModeCategoryTypes = { "infantry", "vehicle", "aircraft", "navy" }
 
--- 兵种分类的来源：RecycleUnit.lua 的回收按钮表 g_RecycleBtnsMapByFaction 与箱子模板
--- g_CrateUnitsTemplate。两张表的 [1..4] 依次是 步兵 / 载具 / 空军 / 海军。
--- 所以分类直接由回收系统给出，不再按出兵批次分段去猜（分段只在回收系统漏登记时兜底）。
 function BanModeDeriveTypesFromRecycle()
     local map = {}
     if g_RecycleBtnsMapByFaction ~= nil then
@@ -420,9 +415,6 @@ end
 -- 只登记「真正的例外」：回收系统推导不出来的，或用户明确改判的。
 -- 普通单位的分类一律由 BanModeDeriveTypesFromRecycle() 推出，不要再往这里加。
 g_BanModeTypeOverrides = {
-    -- ① 会变形的单位登记它所有的兵种：只有全部都被禁才不上场。
-    --    AI 会自行切形态索敌，只禁其中一个兵种时它照常上场。
-    --    天狗 / VX / 心神：载具 + 飞机
     JapanAntiInfantryVehicle = { "vehicle", "aircraft" },
     JapanAntiInfantryVehicle_Enhanced = { "vehicle", "aircraft" },
     JapanAntiInfantryVehicle_Enhanced_Water = { "vehicle", "aircraft" },
@@ -693,9 +685,6 @@ function unitgetcountanddelet (playindex)
                         HextechRune:OnPlayerUnitCollected(playindex, actualUnitIndex)
                     end
 
-                    -- 每两个 JapanAntiInfantryInfantry 赠送一个 JapanKamikazeInfantry。
-                    -- 海克斯“万岁冲锋”持有者的帝国武士已整体换成狂热武士，
-                    -- 狂热武士同样按武士参与这条赠送计数，否则赠送会随原单位消失而失效。
                     if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry"
                         or (UNITLIST[actualUnitIndex] == "JapanKamikazeInfantry"
                             and HextechRune ~= nil

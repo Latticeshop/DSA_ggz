@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38、A.45
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
@@ -73,15 +73,9 @@ HextechRune.OblivionHintFontSize = 16
 -- 横六筒造型：上排三名玩家名字 + 符文，下排三名玩家符文 + 名字
 -- 第一行：上排玩家名；第二行：上排符文；第三行：下排符文；第四行：下排玩家名
 HextechRune.PanelCenterX = 563
--- 面板两行的成员固定按阵营侧分：上排 = 玩家 4~6（PlyrCreeps），下排 = 玩家 1~3（PlyrCivilian）。
--- 每行内部的左右顺序不写死，由 GetPanelSeatRows 按各人出生点的真实 X 排，
--- 换地图或改站位都不用改代码（玩家编号↔地图站位在仓库里查不到，只能实测）。
 HextechRune.PanelSeatRowGroups = { { 4, 5, 6 }, { 1, 2, 3 } }
 -- 标题固定居中于屏幕中央（整体左移后标题保持原位）
 HextechRune.PanelTitleCenterX = 683
--- 列中心 x：三列（上左/上中/上右 与 下左/下中/下右 对齐）
--- 五张 50x50 卡加四段 10 像素间隔共宽 290；列中心间距设为 300，
--- 保证相邻玩家的五符文行不会互相遮挡。
 HextechRune.PanelColumnGap = 300
 -- 四行 y 坐标
 HextechRune.PanelRowY = { 230, 300, 420, 490 }
@@ -138,9 +132,6 @@ function HextechRune:GetSelectionHintTextIndex(playerIndex)
     return self.SelectionHintTextIndexBase + playerIndex
 end
 
--- 估算自定义文字中最宽一行的视觉宽度单位。
--- 中文等 UTF-8 字符按 1 个全宽字符计算，ASCII 按较窄字符计算；换行分别计宽。
--- $pNName 会在引擎内部展开，Lua 无法预先取得最终昵称，按常见 3 个全宽字符估算。
 function HextechRune:GetTextMaxVisualUnits(text)
     if text == nil then
         return 0
@@ -290,9 +281,6 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
     return self.OptionTitleOffsetX
 end
 
--- 正式事件：按回合抽一个全场统一的稀有度（彩/金/银）。
--- 第 3 回合（第一次）= 彩 10% / 金 40% / 银 50%；第 10/18 回合 = 彩 15% / 金 42% / 银 43%；
--- 可选的第 27 回合单独使用彩 30% / 金 50% / 银 20%。
 function HextechRune:RollFieldRarity(round)
     local weightMap
     if round == self.FormalRounds[4] then
@@ -767,9 +755,6 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
     -- 现发的奖励符文仍按第一次选择筛池。
     self:MarkFormalSelectionReceived(playerIndex)
-    -- 移除该玩家的 3 个方框按钮和文字。
-    -- 注意：先隐藏按钮（exCustomBtnSetVisibilityForPlayer 0）再移除，
-    -- 否则引擎的原生悬浮详情窗（Desc 文本）会在按钮移除后残留。
     for i = 1, 3, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
         local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
@@ -799,9 +784,6 @@ end
 -- ===== 海克斯面板（按钮 5 展开）=====
 -- 面板按 GetPanelSeatRows 的座位表展示六名玩家真实拥有的海克斯符文。
 
--- 计算某玩家面板符文按钮 index（slot 1..PanelMaxRuneCount）
--- 注意：每玩家必须预留 PanelMaxRuneCount（5）个 index，否则第 5 个符文会与
---       下一名玩家的第 1 个符文共用 index（被覆盖）。
 function HextechRune:GetPanelRuneBtnIndex(playerIndex, slot)
     return self.PanelBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
 end
@@ -1140,9 +1122,6 @@ function HextechRune:OnRoundBegin(round)
     end
 end
 
--- 注册到回合开始钩子（复用抽卡模式 PureDraw 的 RoundLuaManager 方案）。
--- RoundLuaManager 由 huihe/spawn（start 计时器到期）定义，本脚本（CONDITION_TRUE）
--- 在地图加载早期执行时其尚未就绪；这里延迟重试直到就绪，成功后不再轮询。
 function HextechRune:RegisterRoundBegin()
     if HextechRune._roundRegistered then
         return

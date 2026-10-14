@@ -57,7 +57,7 @@ g_LocalizationExtraText = {
     ["hextech.rune.giga_fortress.name"] = { zh = "超级要塞", en = "Giga Fortress" },
     ["hextech.rune.giga_fortress.desc"] = { zh = "获得 1 个超级要塞核心。", en = "Gain 1 Giga Fortress Core." },
     ["hextech.rune.five_tiger_generals.name"] = { zh = "百虎上将", en = "Hundred Tiger Generals" },
-    ["hextech.rune.five_tiger_generals.desc"] = { zh = "回合开始使你的步兵成为百夫长。", en = "At the start of each round, turn your infantry into Centurions." },
+    ["hextech.rune.five_tiger_generals.desc"] = { zh = "回合开始给你的步兵一层百夫长。", en = "At the start of each round, give your infantry a layer of Centurion." },
     ["hextech.rune.quality_transformation.name"] = { zh = "质变", en = "Quality Transformation" },
     ["hextech.rune.quality_transformation.desc"] = { zh = "获得更高一阶的随机符文。", en = "Gain a random rune of the next higher tier." },
     ["hextech.rune.export_domestic.name"] = { zh = "出口内销", en = "Export for Domestic Sale" },

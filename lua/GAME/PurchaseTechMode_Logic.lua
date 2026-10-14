@@ -39,9 +39,12 @@ function PurchaseTechMode_Setting()
     ExecuteAction("NAMED_SET_MAX_HEALTH", "T83", 30000, 1)
     ExecuteAction("NAMED_SET_MAX_HEALTH", "T84", 140000, 1)
 
+    -- 删除展示体前必须解除守护者登记：引擎复用对象 id 后，新单位会被当成守护神。
     local object = GetObjectByScriptName("overlord7")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
     object = GetObjectByScriptName("overlord8")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
 
     exDisableWBScript("NATURALUNLOCK__1")

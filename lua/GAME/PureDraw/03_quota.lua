@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.22
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.22、A.65
 
 function PureDrawIsHumanPlayer(playerIndex)
     return EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", "Player_" .. playerIndex, "Human")
@@ -67,9 +67,6 @@ function PureDrawCanEnableUnit(playerIndex, info)
     if info.LockPlayerProduction then
         return false
     end
-    -- 常规模式由 TECHLOCK 开局禁用迅雷天罡，并在玩家拥有天朝科技建筑后解锁。
-    -- 抽卡模式刷新生产余额时会重设整个生产池的可造性，因此必须复用同一科技条件，
-    -- 否则 T1 阶段会覆盖 TECHLOCK，提前开放迅雷天罡按钮。
     if info.Type == "CelestialAntiInfantryInfantryAdvanced"
         and EvaluateCondition("PLAYER_HAS_OBJECT_COMPARISON",
             "Player_" .. playerIndex, "==", 0, "CelestialTechStructure") then

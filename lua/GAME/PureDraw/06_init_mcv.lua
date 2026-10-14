@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29、A.43
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29、A.43、A.48
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)
@@ -36,16 +36,10 @@ function PureLuckyCrateMode_Setting()
     for playerIndex = 1, 6, 1 do
         PureDrawRefreshQuota(playerIndex)
     end
-    -- 开局备份现存迅雷车 ID（出生点占位，模拟出兵用）。
-    -- PureDrawBackupSpawnTransports 会等待开局动画结束（start 计时器出现）后再备份，
-    -- 备份完成后自行启动 NoMCVInCenter，确保击杀逻辑不会误杀出生点迅雷车。
     SchedulerModule.delay_call(PureDrawBackupSpawnTransports, 5, {})
     SchedulerModule.delay_call(PureDrawAirdropCheck, g_PureDrawConfig.AirdropCheckFrames, {})
 end
 
--- 箱子模式：只允许抽卡，不允许在地图上刷随机箱子（万一被 AI 捡了太麻烦）
--- 这个检测也是「局外「开启随机箱子」→ 默认开启抽卡 / 默认开启海克斯（三个）」的唯一读取入口，
--- 抽卡的默认设置（g_DrawMode / g_LuckyCrateMode）与海克斯的默认设置复用同一次检测。
 SchedulerModule.delay_call(function()
     local crateFilter = CreateObjectFilter({ IncludeThing = { "GenericCrateSpawner" } })
     local units, count = ObjectFindObjects(nil, nil, crateFilter)
@@ -217,9 +211,6 @@ g_AIBannedTypes = {
     "JapanLightTransportVehicle_AntiTank",
     "JapanLightTransportVehicle_Kamikaze",
 }
--- 出生点占位单位：JapanLightTransportVehicle（地图初始对象，用于模拟出兵/释放单位）。
--- 开局时备份其 ID，NoMCVInCenter 击杀迅雷车时排除这些 ID，避免误杀出兵点。
--- 空投/抽卡开出的多余迅雷车不在备份中，仍会被正常击杀。
 g_PureDrawReservedTransportIds = {}
 g_PureDrawReservedTransportFilter = nil
 g_PureDrawReservedTransportType = "JapanLightTransportVehicle"
@@ -254,9 +245,6 @@ function IsPureDrawReservedTransport(unit)
     return g_PureDrawReservedTransportIds[ObjectGetId(unit)] == true
 end
 
--- 技能召唤的龙船所属队伍（保留，不击杀）
--- ObjectTeamName 可能返回完整路径（PlyrCivilian/ATTACK）或短名（ATTACK），
--- 两种都识别，避免技能龙船被 NoMCVInCenter 误杀。
 g_DragonShipSkillTeamNames = {
     ["PlyrCivilian/ATTACK"] = true,
     ["PlyrCreeps/ATTACK"] = true,

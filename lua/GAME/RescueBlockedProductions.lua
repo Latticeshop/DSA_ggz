@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.2
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.2、A.64
 
 RescueBlockedProductions_UnitList = {
     'JapanPowerPlantEgg',
@@ -51,9 +51,6 @@ SchedulerModule.call_every_x_frame(function()
     end
 end, 75, nil)
 
--- 关于检测单位是否禁用的代码。。。有点屎山代码，很多关于单位禁止建造的脚本依然在地编脚本里而不是 lua 脚本里
--- 所以这里只能靠这个函数重新检测一下
--- 希望有一天能把下面这个函数 以及其他代码 重新重构成更加优雅的形式
 function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
     if unitType == 'JapanPowerPlantEgg' then
         local units, count = ObjectFindObjects(P[playerIndex], nil, FilterAnyPowerPlantOrEgg)

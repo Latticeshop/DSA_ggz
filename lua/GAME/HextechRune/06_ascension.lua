@@ -1,10 +1,7 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.24
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.24、A.56
 
 HextechRune = HextechRune or {}
 
--- 每回收 1 个单位只加其中一项，数值与概率是用户定的期望模型。
--- 本地化 hextech.rune.ascension.desc 里写死了数值与概率文案，改这里要同步改文案。
--- 四维每层统一 +50%（原为血量 15%、伤害/攻速/射程各 10%），概率不变。
 HextechRune.AscensionHealthPerStack = 0.50
 HextechRune.AscensionDamagePerStack = 0.50
 HextechRune.AscensionRateOfFirePerStack = 0.50
@@ -158,9 +155,6 @@ function HextechRune:GetAscensionPooledCount(playerIndex, rune)
     return tonumber(GetRecycleUnitCount(playerIndex, unitInfo)) or 0
 end
 
--- “买二送一”赠送的 1 个若与登神指同一单位：池内已有种子时，赠送也直接转层，
--- 不写入单位池，否则池内数量会超过 1，违背登神“只保留 1 个”。
--- 返回 true 表示调用方不要再加单位池计数。
 function HextechRune:AbsorbBuyTwoGetOneBonus(playerIndex, unitIndex)
     local rune = self:GetAscensionRune(playerIndex)
     if rune == nil or unitIndex ~= rune.TargetUnitIndex then

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.28
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.28、A.61
 
 HextechRune = HextechRune or {}
 
@@ -32,9 +32,6 @@ function HextechRune:HasLethalTempo(playerIndex)
     return self:GetPlayerLethalTempoCopies(playerIndex) > 0
 end
 
--- 持有者名下**全部兵种**的存活单位，每回合各补一次「固定 +50% 攻速」与「祝融速射」。归属只认
--- 份额分配登记（战斗复制体属于 P7/P8，按 Player_N 所有权扫不到自家单位、也分不清队友），
--- 这里用 ObjectFindObjects 只是按兵种枚举候选。
 function HextechRune:ApplyLethalTempoBuffs(playerIndex, unitType, lookup, round)
     local objects = lookup[unitType]
     if objects == nil then

@@ -38,7 +38,8 @@ function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
     for i = 1, count, 1 do
         -- 已经处于时停（技能组原生时停或上一批时间裂隙）的对象直接跳过：
         -- 符文的时停不该去改写已有的租约，解除交给原来那条租约。
-        if ObjectIsAlive(objects[i]) and not g_IsTimeStopActive(objects[i]) then
+        if ObjectIsAlive(objects[i]) and not g_IsTimeStopActive(objects[i])
+            and not self:IsPresetMapUnit(objects[i]) then
             self:SetTimeRiftFrozen(objects[i], true, refPrefix, duration)
             tinsert(frozenIds, ObjectGetId(objects[i]))
         end

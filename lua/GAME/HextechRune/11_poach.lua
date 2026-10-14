@@ -1,10 +1,7 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.25
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.25、A.62
 
 HextechRune = HextechRune or {}
 
--- 触发点：回合起点之后「本回合预算 − 5 秒」。地图回合由 WorldBuilder 的 start 计时器
--- 定为 60 秒，之后被 lvcadd 逐轮加时（+1~5 秒），所以首个回合按 60 秒算，
--- 之后用上一回合实测到的时长自我校准，始终落在回合结束前 5 秒附近。
 HextechRune.PoachDefaultRoundFrames = 60 * 15
 HextechRune.PoachFireLeadFrames = 5 * 15
 -- 校准值的合法区间（30~180 秒）：投降提前结束等异常观测不参与校准。

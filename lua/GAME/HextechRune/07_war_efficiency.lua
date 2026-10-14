@@ -99,6 +99,11 @@ function HextechRune:OnWarEfficiencyUnitDie(dyingObjInstanceId, ownerPlayerName)
     end
     local unitIndex = g_UnitNameToUnitIndex[dyingObjInstanceId]
     if unitIndex == nil then
+        -- 计数表只登记本体名，强化/水陆/变形形态死者要靠生产别名表并回本体槽，
+        -- 否则协议强化后的单位（例如 VX 的 _Enhanced）死亡会整条丢掉。
+        unitIndex = self:GetVariantPoolIndex()[dyingObjInstanceId]
+    end
+    if unitIndex == nil then
         return
     end
     local tier = self:GetUltimateCreatureUnitTier(UNITLIST[unitIndex])

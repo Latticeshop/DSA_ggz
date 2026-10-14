@@ -1206,7 +1206,9 @@ exObjectRegisterCreateEvent("SovietInterceptorAircraft_Enhanced")
 exObjectRegisterCreateEvent("JapanSakuraAttackRocket")
 exObjectRegisterCreateEvent("JapanKamikazeCommandTower")
 
+g_PlayerDragonShipHashes = {}
 for i = 1, getn(g_PlayerDragonShipTypes), 1 do
+    g_PlayerDragonShipHashes[FastHash(g_PlayerDragonShipTypes[i])] = true
     RegisterUnitCreateCallback(g_PlayerDragonShipTypes[i], PlayerDragonShipBorn)
 end
 RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
@@ -1265,6 +1267,37 @@ function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
     return false
 end
 
+-- 存活周期豁免：六个预设守护神（4 个塔守护者 + 2 个海塔守卫）与技能召唤的龙船。
+g_BattleUnitLifetimeGuardScriptNames = {
+    "overlord7", "overlord8", "t533", "t534",
+    "Sea3ProtectShip7", "Sea3ProtectShip8",
+}
+
+function IsBattleUnitLifetimeExempt(objectId, unit)
+    if unit == nil then
+        return false
+    end
+    if IsTowerGuardian ~= nil and IsTowerGuardian(unit) then
+        return true
+    end
+    for i = 1, getn(g_BattleUnitLifetimeGuardScriptNames), 1 do
+        local guard = GetObjectByScriptName(g_BattleUnitLifetimeGuardScriptNames[i])
+        if guard ~= nil and ObjectGetId(guard) == objectId then
+            return true
+        end
+    end
+    -- 龙船家族 + 电脑方自己的攻击队 = 技能「龙行天下」召唤的船（同 IsSkillDragonShip 口径）。
+    if g_PlayerDragonShipHashes[ObjectGetInstanceId(unit)] then
+        local ownerName = ObjectPlayerScriptName(unit)
+        local teamName = ObjectTeamName(unit)
+        if (ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps")
+            and (teamName == "ATTACK" or teamName == ownerName .. "/ATTACK") then
+            return true
+        end
+    end
+    return false
+end
+
 -- 到期清除。引擎会回收对象 id，回调里用模板哈希和归属复核，
 -- 避免误杀复用了同一 id 的新单位。
 function ScheduleBattleUnitLifetimeKill(objectId, expectedInstanceId,
@@ -1289,7 +1322,12 @@ function ScheduleBattleUnitLifetimeKill(objectId, expectedInstanceId,
                     g_BattleUnitLifetimeDefaultRounds, false)
                 return
             end
-            ExecuteAction("NAMED_KILL", GetObjectById(id))
+            -- 守护神与技能龙船到点也不清（永久存活）。
+            local unit = GetObjectById(id)
+            if IsBattleUnitLifetimeExempt(id, unit) then
+                return
+            end
+            ExecuteAction("NAMED_KILL", unit)
         end, { objectId, expectedInstanceId, ownerPlayerName, preT4Rule }, rounds)
 end
 
@@ -1300,6 +1338,10 @@ function RegisterBattleUnitLifetime(createdObjId, createdObjInstanceId, ownerPla
         return
     end
     if g_BattleUnitLifetimeExcludedTypes[createdObjInstanceId] then
+        return
+    end
+    -- 守护神与技能龙船根本不登记（到期回调里还有一次判定兜底）。
+    if IsBattleUnitLifetimeExempt(createdObjId, GetObjectById(createdObjId)) then
         return
     end
     if g_YaoguangUnitTypeHashes[createdObjInstanceId] then

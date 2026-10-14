@@ -56,14 +56,19 @@ SchedulerModule.delay_call(function()
 end, 12)
 
 SchedulerModule.delay_call(function()
+    -- 删除展示体前必须解除守护者登记：引擎复用对象 id 后，新单位会被当成守护神。
     local object = GetObjectByScriptName("t533")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
     object = GetObjectByScriptName("t534")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
 
     object = GetObjectByScriptName("overlord7")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
     object = GetObjectByScriptName("overlord8")
+    UnregisterTowerGuardian(object)
     ExecuteAction("NAMED_DELETE", object);
 end, 13)
 

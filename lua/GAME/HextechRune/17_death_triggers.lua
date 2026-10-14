@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.36
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.36、A.49
 
 -- 死亡触发类符文：金·炽燃利息（发钱）、银·狩猎律动（回血）。
 HextechRune = HextechRune or {}
@@ -73,9 +73,6 @@ function HextechRune:RegisterFormDeathCallbacks()
     end
 end
 
--- 把一次兵种扫描的结果并进「模板 → 兵种」缓存。死亡瞬间拿不到死者的 category（引擎没有
--- 单对象类别接口，尸体也扫不到），只能靠它生前被扫到过；扫描本身就是本符文要做的，
--- 顺手记一遍几乎免费。
 function HextechRune:RememberUnitTypes(lookup)
     for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
         local unitType = self.UnitTypeOrder[typeIndex]
@@ -163,9 +160,6 @@ function HextechRune:GetVariantPoolIndex()
     return result
 end
 
--- 候选 = 场上该兵种 ∩ 玩家卡池里买过该兵种的模板 ∩ 未满血。卡池槽位靠 instanceId 反查
--- （与回收计数 unitgetcountanddelet 同一句写法），查不到再用形态反查表并回本体槽，
--- 所以场上多出来的、玩家没买的模板不会被治到。
 function HextechRune:PickHuntTarget(playerIndex, lookup, unitType)
     if UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil or g_UnitNameToUnitIndex == nil then
         return nil
@@ -182,7 +176,8 @@ function HextechRune:PickHuntTarget(playerIndex, lookup, unitType)
         if unitIndex == nil then
             unitIndex = variantIndex[instanceId]
         end
-        if unitIndex ~= nil and (tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0) > 0 then
+        if unitIndex ~= nil and (tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0) > 0
+            and not self:IsPresetMapUnitId(objectId) then
             local maxHealth = exObjectGetMaxHealth(objectId)
             local currentHealth = exObjectGetCurrentHealth(objectId)
             if maxHealth ~= nil and maxHealth > 0 and currentHealth ~= nil
@@ -279,9 +274,6 @@ function HextechRune:OnDeathRewardUnitDie(dyingObjId, dyingObjInstanceId, ownerP
     local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
     self:PayCombustionInterest(dyingObjId, firstPlayerIndex, lastPlayerIndex)
 
-    -- 死者阵营补扫一次喂兵种缓存：只在「缓存没见过这个模板」且本方确实有人持卡时才扫，
-    -- 并且每个模板只试一次（一次要 ObjectFindObjects 九遍，密了会卡）。死者本身已经扫不到了，
-    -- 补扫的意义在于同模板的其它单位还活着，认过一次以后就一直认得。
     local deadTypes = self.BattleUnitTypeByInstance[dyingObjInstanceId]
     if deadTypes == nil and deadSideIndex ~= nil
         and self.HuntTypeSeedTried[dyingObjInstanceId] == nil

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.42
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.42、A.59
 
 HextechRune = HextechRune or {}
 
@@ -75,9 +75,6 @@ function HextechRune:IsRuneMatchingUnit(rune, unit, typeLookup)
     return false
 end
 
--- [结论] 阶级与究极生物/以战养战共用 GetUltimateCreatureUnitTier（形态覆盖 → 抽卡池 →
--- 非生产表 → 兜底），T5 按 T4 结算。unitIndex 由 04_buff.lua 的分配记录传入，
--- 不走 ObjectTemplateName 反查，避免强化形态/别名形态查到与单位池不一致的阶级。
 function HextechRune:GetRuneUnitTier(unitIndex)
     if unitIndex == nil or UNITLIST == nil or UNITLIST[unitIndex] == nil then
         return nil

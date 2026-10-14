@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.55
+
 ButtonManager = {
     _data = {},
     _sharedCooldown = {}, -- 用于存储共享冷却时间
@@ -56,9 +58,6 @@ function ButtonManager.SetButton(self, buttonData)
 
     exCenterTopBtnShowForPlayer(playerName, buttonIndex, buttonData.IconId, buttonData.Text)
     
-    -- 目前 EnhancerCorona 会在设置按钮的时候自动（在 50 毫秒后）将按钮启用。
-    -- 因此，直接把按钮禁用是没有用的，会在约 50 毫秒后被覆盖。
-    -- 这里使用延时调用来确保按钮状态被正确设置。
     SchedulerModule.delay_call(function(buttonData)
         local isButtonEnabled = 1
         if not buttonData.IsEnabled or buttonData.IsEnabled == 0 then
@@ -261,9 +260,6 @@ function CreateButton(buttonData)
             -- 冷却已经被外部清掉（终极刷新补次数），这次回调作废。
             return
         end
-        -- 冷却计数独立于使用次数，必须先扣再判断可用性：次数用尽或被锁时提前返回
-        -- 会把计数永久卡在 >0（共享冷却也会加到用尽的按钮上），之后就算补了次数
-        -- （终极刷新）也再没有任何回调能把这个按钮放回可用。
         if (self._cooldownCount or 0) > 0 then
             self._cooldownCount = self._cooldownCount - 1
         else

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34、A.57
 
 devil_max = 200
 angel_max = 200
@@ -773,9 +773,6 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             if g_DrawMode == 1 or g_DrawMode == 2 then
                 g_LuckyCrateMode = 1
             end
-            -- 海克斯与抽卡解耦：这里不再由随机箱子/抽卡状态推导海克斯次数，
-            -- 只按「海克斯符文设置」（选项 5）当前的 g_HextechCount 折算启用标志。
-            -- 未手动设置时保持初始默认，随后由局外“开启随机箱子”的检测决定是否改为三个。
             BtnChoiceDialogEventFunc_ApplyHostHextechSetting()
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇（陆地形态）到第 3 回合才允许生产。
@@ -1042,9 +1039,6 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
     end
 
     dialogData.RandomSkill = function(self, isSymmetric)
-        -- 复制技能需要队友先释放其他技能才有效。
-        -- 因此每边至少要有一名真人玩家抽到非复制技能：
-        -- 单人时不会抽到复制，多人时不会全是复制。
         local copySkillIndex = 5
         g_PreselectedSkillIndices = {}
         g_PreselectedSkillIndices.IsRandom = true

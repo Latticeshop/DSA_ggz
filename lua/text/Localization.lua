@@ -509,7 +509,9 @@ Localization._objects_translate_map = {
     ["CELESTIALANTIVEHICLEVEHICLETECH1"] = "CelestialMBT",
     ["CELESTIALLONGRANGEMISSILEVEHICLE_B"] = "CelestialHJ-10",
     ["ALLIEDANTISTRUCTUREBOMBERAIRCRAFT"] = "AlliedBomberAircraft",
-    ["CELESTIALADVANCEDAIRCRAFTTECH4"] = "CelestialAdvanceAircraftTech4"
+    ["CELESTIALADVANCEDAIRCRAFTTECH4"] = "CelestialAdvanceAircraftTech4",
+    -- 旧联盟重型坦克：地编 ID 是 Overlordtank，引擎名称键是 SovietOverlordtank（见文档 §4.5.2）。
+    ["OVERLORDTANK"] = "SovietOverlordtank"
 }
 Localization.ObjectsTranslate = function(id)
     local t = Localization.InternalTranslate

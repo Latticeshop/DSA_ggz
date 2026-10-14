@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.50
+
 LIMITPOWERC = 4
 FLAGENPOWER = {}
 for i = 1, 6, 1 do
@@ -8,10 +10,6 @@ g_CachedPlayersPowerPlantLimit = {}
 
 YAOGUANG_LIMIT = 3
 FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
--- 只记录通过玩家生产建筑实际造出、且当前仍保留在单位池中的摇光。
--- 箱子、海克斯及其他脚本赠送来源仍进入 UNITCOUNT，但不占用限造额度。
--- 每次结算限造前会与池内实有摇光数对账（ReconcilePlayerProducedYaoguang），
--- 池子被任何方式减少后额度随即重开。
 g_PlayerProducedYaoguangCount = g_PlayerProducedYaoguangCount or { 0, 0, 0, 0, 0, 0 }
 
 GUARDIAN_TANK_LIMIT = 3
@@ -55,10 +53,6 @@ function GetPlayerPoolYaoguangCount(playindex)
     return tonumber(UNITCOUNT[playindex][unitIndex]) or 0
 end
 
--- 限造以池子真实数量为准：把「玩家生产且仍在池中」的计数压回池内实有摇光数。
--- 计数只会在池子被外部减少后虚高（重组器整体重滚、被吸星大法吸走、回收等，
--- 以及以后新增的减少路径），压低就等于立刻重新开放生产；只压低不抬高，
--- 因为赠送的摇光本来就不占限造额度。与 T4 大船「每 tick 从池子现算」同一个口径。
 function ReconcilePlayerProducedYaoguang(playindex)
     if g_PlayerProducedYaoguangCount == nil then
         return

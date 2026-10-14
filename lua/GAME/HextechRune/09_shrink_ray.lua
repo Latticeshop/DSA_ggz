@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.14
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.14、A.52
 
 HextechRune = HextechRune or {}
 
@@ -35,9 +35,6 @@ function HextechRune:GetShrinkRayInterval(sideIndex)
     return self:GetShrinkRayIntervalByCopies(copies)
 end
 
--- 详情文案展示的周期。口径是“这份符文到手后的份数”：三选一卡传选择者自己（候选还没到手，
--- 按拿到后 +1 份展示），面板详情传持有者（已到手，按当前份数展示）。
--- 视角缺失时退回单份口径，保证任何调用路径都能拿到一个合法数值。
 function HextechRune:GetShrinkRayDisplayRounds(playerIndex)
     local copies = 1
     if playerIndex ~= nil then
@@ -62,7 +59,7 @@ function HextechRune:ApplyShrinkRayToSide(targetSideIndex, round)
     for i = 1, count, 1 do
         local objectId = ObjectGetId(objects[i])
         -- 已有的不再重复加载：同一回合内的多次扫描不会刷新时长。
-        if applied[objectId] == nil then
+        if applied[objectId] == nil and not self:IsPresetMapUnit(objects[i]) then
             ObjectLoadAttributeModifier(objects[i], self.ShrinkRayModifierName,
                 self.PersistentBuffDuration)
             applied[objectId] = true
@@ -105,9 +102,6 @@ function HextechRune:ApplyShrinkRayPulse(round)
     end
 end
 
--- 每一份符文取得时都立刻释放一次（与神圣干预/时间裂隙一致），
--- 并以「此刻的份数」把倒计时整体重排：1/2/3 份 → 距本次释放 5/4/3 回合。
--- 晚到的队友因此既立刻生效一次，又把后续节奏按更短的周期重新起算。
 function HextechRune:OnShrinkRayChosen(sideIndex)
     local interval = self:GetShrinkRayInterval(sideIndex)
     if interval == nil then
