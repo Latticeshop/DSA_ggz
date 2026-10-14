@@ -100,6 +100,8 @@ HextechRune.RunePool = {
     { Id = "silver_chicken_soup", Rarity = 3,
         NameKey = "hextech.rune.chicken_soup.name",
         DescKey = "hextech.rune.chicken_soup.desc", Effect = "grant_irradiate",
+        -- 毒质腐蚀只对载具生效：禁载具时这张符文没有可用目标，整张不入池。
+        RequiresType = "vehicle",
         Icon = "Button_PlayerPower_IrradiateTarget" },
 
     -- 黄金
@@ -346,6 +348,18 @@ HextechRune.NonRepeatableRuneIds = {
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
+-- 登神与究极生物的目标黑名单。
+-- 买二送一不受影响，仍然可以圈它们。强化形态今天就没有卡池索引、进不了候选
+HextechRune.RuneTargetExcludedTypes = {
+    AlliedBomberAircraft = true,                    -- 世纪轰炸机
+    AlliedAntiStructureBomberAircraft = true,       -- 世纪轰炸机（对建筑）
+    AlliedAntiStructureBomberAircraft_Enhanced = true,
+    SovietAntiGroundAttacker = true,                -- 伊尔攻击机
+    SovietAntiGroundAttacker_Enhanced = true,
+    CelestialBomberAircraft = true,                 -- 金乌轰炸机
+    CelestialBomberAircraft_Enhanced = true,
+}
+
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
 HextechRune.PlayerOwnedRuneIds = HextechRune.PlayerOwnedRuneIds or {}
 HextechRune.PlayerOwnedRuneCounts = HextechRune.PlayerOwnedRuneCounts or {}
@@ -580,6 +594,12 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
                 excluded[targetType] = true
             end
         end
+        -- 登神与究极生物额外剔掉策划裁决不圈的单位（买二送一不受影响）。
+        if candidate.Effect == "ascension" or candidate.Effect == "ultimate_creature" then
+            for unitType, banned in self.RuneTargetExcludedTypes do
+                excluded[unitType] = true
+            end
+        end
         -- 究极生物的目标不走阵营回收表，改用策划表 T3/T4 的独立名单，且不分阵营
         local target
         if candidate.Effect == "ultimate_creature" then
@@ -682,7 +702,14 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         end
         return Localization.get(rune.DescKey, label)
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
-        return Localization.get(rune.DescKey, rune.TargetUnitName or rune.TargetUnitType or "?")
+        local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
+        if rune.Effect == "ascension" then
+            -- 登神每回收一只只随机命中一维，四档数值相同，按目标单位阶级显示。
+            local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
+            return Localization.get(rune.DescKey, targetName,
+                percent, percent, percent, percent)
+        end
+        return Localization.get(rune.DescKey, targetName)
     elseif rune.Effect == "ultimate_creature" then
         -- 简介里“进化为究极生物”与“获得一个单位”共用同一个随机目标，占位两处。
         local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"

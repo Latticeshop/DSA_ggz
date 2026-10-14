@@ -2,18 +2,17 @@
 
 HextechRune = HextechRune or {}
 
-HextechRune.AscensionHealthPerStack = 0.50
-HextechRune.AscensionDamagePerStack = 0.50
-HextechRune.AscensionRateOfFirePerStack = 0.50
--- 射程必须与索敌视野同倍率成对写入，否则单位停在射程边缘却看不见目标。
-HextechRune.AscensionRangePerStack = 0.50
--- 体积加成，
+-- 每回收 1 个目标单位掷一次：血量 / 伤害 / 攻速 / 射程 里随机命中一项。
+-- 命中的幅度按目标单位的阶级取档：T1 30% / T2 40% / T3 50% / T4 60%。
+HextechRune.AscensionTierPercent = { [1] = 30, [2] = 40, [3] = 50, [4] = 60 }
+-- 体积固定倍率，与掷骰无关。
 HextechRune.AscensionScale = 1.3
 -- 掷骰概率：血量 40% / 伤害 30% / 攻速 20% / 射程 10%
 -- （累计区间 0.40 / 0.70 / 0.90 / 1.00，最后一段就是射程）。
 HextechRune.AscensionHealthChance = 0.40
 HextechRune.AscensionDamageChance = 0.30
 HextechRune.AscensionRateOfFireChance = 0.20
+-- playerIndex → 已累计层数（= 掷骰次数，配额与播报都看它）。
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 -- playerIndex → { Health, Damage, RateOfFire, Range }，各维已掷到的次数。
 HextechRune.AscensionBonusCounts = HextechRune.AscensionBonusCounts or {}
@@ -36,6 +35,14 @@ end
 
 function HextechRune:GetAscensionStacks(playerIndex)
     return self.AscensionStacks[playerIndex] or 0
+end
+
+-- 阶级判定与究极生物、以战养战共用同一个入口（返回 1~4，超阶按 T4 结算）。
+function HextechRune:GetAscensionTierPercent(unitType)
+    if unitType == nil then
+        return 0
+    end
+    return self.AscensionTierPercent[self:GetUltimateCreatureUnitTier(unitType)] or 0
 end
 
 -- 回收 1 个单位掷一次加成种类：血量 / 伤害 / 攻速 / 射程。
@@ -92,18 +99,14 @@ function HextechRune:BroadcastAscension(playerIndex)
     if rune == nil or stacks <= 0 then
         return
     end
-    -- 播报各维累计到现在的加成；加 0.5 再取整，避免二进制浮点在多层时报少 1%
-    -- （0.50 现在是精确值，但改回 0.15 这类不精确值时 3 层会算成 44.999…%）。
+    -- 播报各维累计到现在的加成；每层的幅度按目标单位阶级取档。
+    local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
     local text = Localization.get("hextech.rune.ascension.broadcast",
         rune.TargetUnitName or rune.TargetUnitType or "?",
-        floor(self:GetAscensionBonusCount(playerIndex, "Health")
-            * self.AscensionHealthPerStack * 100 + 0.5),
-        floor(self:GetAscensionBonusCount(playerIndex, "Damage")
-            * self.AscensionDamagePerStack * 100 + 0.5),
-        floor(self:GetAscensionBonusCount(playerIndex, "RateOfFire")
-            * self.AscensionRateOfFirePerStack * 100 + 0.5),
-        floor(self:GetAscensionBonusCount(playerIndex, "Range")
-            * self.AscensionRangePerStack * 100 + 0.5))
+        self:GetAscensionBonusCount(playerIndex, "Health") * percent,
+        self:GetAscensionBonusCount(playerIndex, "Damage") * percent,
+        self:GetAscensionBonusCount(playerIndex, "RateOfFire") * percent,
+        self:GetAscensionBonusCount(playerIndex, "Range") * percent)
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
@@ -234,15 +237,19 @@ function HextechRune:FilterAscensionUnits(playerIndex, unitIndex, units, count)
 end
 
 function HextechRune:CreateAscensionModifier(playerIndex)
+    local rune = self:GetAscensionRune(playerIndex)
+    local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
+    local healthCount = self:GetAscensionBonusCount(playerIndex, "Health")
+    local damageCount = self:GetAscensionBonusCount(playerIndex, "Damage")
+    local rateOfFireCount = self:GetAscensionBonusCount(playerIndex, "RateOfFire")
     local rangeCount = self:GetAscensionBonusCount(playerIndex, "Range")
-    local rangeMult = 1 + rangeCount * self.AscensionRangePerStack
+    -- 各维只算自己掷到的次数；射程必须与索敌视野同倍率成对写入，
+    -- 否则单位停在射程边缘却看不见目标。
+    local rangeMult = 1 + rangeCount * percent / 100
     return exAttributeModifierCreate({
-        HEALTH_MULT = 1 + self:GetAscensionBonusCount(playerIndex, "Health")
-            * self.AscensionHealthPerStack,
-        DAMAGE_MULT = 1 + self:GetAscensionBonusCount(playerIndex, "Damage")
-            * self.AscensionDamagePerStack,
-        RATE_OF_FIRE = 1 + self:GetAscensionBonusCount(playerIndex, "RateOfFire")
-            * self.AscensionRateOfFirePerStack,
+        HEALTH_MULT = 1 + healthCount * percent / 100,
+        DAMAGE_MULT = 1 + damageCount * percent / 100,
+        RATE_OF_FIRE = 1 + rateOfFireCount * percent / 100,
         RANGE = rangeMult,
         VISION = rangeMult,
     }, 1)
@@ -264,9 +271,11 @@ function HextechRune:ApplyAscensionUnits(assignments)
                 ObjectLoadAttributeModifier(assignment.Unit,
                     self:CreateAscensionModifier(assignment.PlayerIndex),
                     self.PersistentBuffDuration)
-                -- 体积与四维同时生效：固定倍率、永久缩放，不掷骰也不建信息框。
+                -- 体积与加成同时生效：固定倍率、永久缩放，不掷骰也不建信息框。
                 exObjectSetFixedScale(ObjectGetId(assignment.Unit),
                     self.AscensionScale)
+                RegisterNoStructureBuffUnit(assignment.Unit,
+                    self:GetPlayerSideIndex(assignment.PlayerIndex))
                 assignment.AscensionGranted = true
             end
         end

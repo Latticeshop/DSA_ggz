@@ -865,9 +865,11 @@ function HextechRune:GrantForeignMCV(playerIndex)
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         mcvTypes[targetFaction], playerName .. "/teamPlayer_" .. playerIndex,
         position, 0)
+    local mcv = GetObjectById(mcvObjectId)
     -- 挂到新基地车上 15 秒：文本框跟着单位走，玩家一眼就知道该展开哪台车
-    TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", GetObjectById(mcvObjectId),
-        "SCRIPT:ally", 15, "")
+    TextDoActionLocalizedOnce("NAMED_SHOW_INFOBOX", mcv, "SCRIPT:ally", 15, "")
+    -- 小地图亮一次标记（与抽卡空投同款）：落点在前哨站里随机挑，光看文本框容易漏
+    ExecuteAction("OBJECT_CREATE_RADAR_EVENT", mcv, "Information")
 end
 
 function HextechRune:EnableBuyTwoGetOne(playerIndex, rune)

@@ -769,3 +769,68 @@ function JapanAntiNavyShipTech3MICROCONTROL ()
         end
     end
 end
+
+-- 登神/究极生物的目标单位：只打单位，不碰任何建筑。
+-- 滤网与百合子的 g_FilterYurikoEnemy 分开定义，两边的索敌调参互不影响。
+g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT SHIP",
+    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+-- 按对象 ID 登记，不写模板名：这两张符文的目标单位每局随机，列不出固定名单。
+-- 只存 id 与阵营侧，跨帧回访一律 GetObjectById 现取句柄。
+g_NoStructureBuffUnitIds = g_NoStructureBuffUnitIds or {}
+-- 同一只单位的索敌只能有一个主人，她若被圈中就整只交回她自己的微操。
+g_NoStructureBuffSkipInstanceIds = { [FastHash("JapanCommandoTech1")] = true }
+
+function RegisterNoStructureBuffUnit(unit, sideIndex)
+    if unit == nil or sideIndex == nil then
+        return
+    end
+    local objectId = ObjectGetId(unit)
+    if ObjectIsAlive(unit)
+        and g_NoStructureBuffSkipInstanceIds[ObjectGetInstanceId(objectId)] == nil then
+        g_NoStructureBuffUnitIds[objectId] = { SideIndex = sideIndex }
+    end
+end
+
+function NoStructureBuffedUnitMICROCONTROL ()
+    if g_PrioritySiegeIdleTeam == nil or g_PrioritySiegeAttackWaypoint == nil then
+        return
+    end
+    for objectId, entry in g_NoStructureBuffUnitIds do
+        local unit = GetObjectById(objectId)
+        if unit == nil or not ObjectIsAlive(unit) then
+            -- 引擎会复用对象 ID，登记不清理就会让新单位白拿免拆塔。
+            g_NoStructureBuffUnitIds[objectId] = nil
+        else
+            local sideIndex = entry.SideIndex
+            local idleTeamName = g_PrioritySiegeIdleTeam[sideIndex]
+            local idleTeamShortName = "teamPlyrCivilian"
+            if sideIndex == 8 then
+                idleTeamShortName = "teamPlyrCreeps"
+            end
+            local teamName = ObjectTeamName(unit)
+            local wasReassigned = teamName ~= idleTeamName and teamName ~= idleTeamShortName
+            if wasReassigned then
+                ExecuteAction("UNIT_SET_TEAM", unit, idleTeamName)
+                -- 离了主力编队就没人给它下推进命令，自己朝敌方 waypoints 攻击前进。
+                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit,
+                    g_PrioritySiegeAttackWaypoint[sideIndex])
+            end
+            ObjectSetCustomTargetChooserData(unit, {
+                CustomFilter = g_FilterNoStructureBuffedEnemy,
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
+            if wasReassigned or entry.WeaponEnabled == nil then
+                -- 上一版靠 NO_ATTACK 挡塔，可能给单位留下禁用状态；接管时统一放开武器。
+                entry.WeaponEnabled = true
+                ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", unit, "NO_ATTACK", 0)
+            end
+        end
+    end
+end

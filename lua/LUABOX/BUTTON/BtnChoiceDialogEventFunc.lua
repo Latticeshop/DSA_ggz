@@ -1202,11 +1202,12 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
     if featureText ~= '' then
         gameModeText = gameModeText .. Localization.get("game_mode.feature_bracket", featureText)
     end
-    -- 抽卡后缀（括号外）
+    -- 抽卡播报（括号外）：模式名本身已经很长，再拼上抽卡后缀会被消息区挤掉，
+    local drawModeText = ''
     if g_DrawMode == 1 then
-        gameModeText = gameModeText .. Localization.get("game_mode.lucky_crate_suffix")
+        drawModeText = Localization.get("game_mode.lucky_crate_suffix")
     elseif g_DrawMode == 2 then
-        gameModeText = gameModeText .. Localization.get("game_mode.pure_draw_suffix")
+        drawModeText = Localization.get("game_mode.pure_draw_suffix")
     end
     local preselectedSkillCount = getn(g_PreselectedSkillIndices)
     if preselectedSkillCount == 6 then
@@ -1239,10 +1240,22 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
         exMessageAppendToMessageArea(Localization.get("skill_mode.error.preselected_count", preselectedSkillCount))
         return
     end
-    exMessageAppendToMessageArea(Localization.get("game.start.begin", gameModeText))
-    exMessageAppendToMessageArea(skillText)
+    local beginLines = { Localization.get("game.start.begin", gameModeText) }
+    if drawModeText ~= '' then
+        tinsert(beginLines, drawModeText)
+    end
+    tinsert(beginLines, skillText)
+    for i = 1, getn(beginLines), 1 do
+        exMessageAppendToMessageArea(beginLines[i])
+    end
     local economicMultiplier = exModeGetCheatMultiplier()
-    exAddTextToPublicBoard(format("%s\n%s\n%s", Localization.get("game.start.begin", gameModeText), skillText, Localization.get("game.start.economic_multiplier", economicMultiplier, GetBaseRecycleRate(economicMultiplier) * 100)), 15)
+    tinsert(beginLines, Localization.get("game.start.economic_multiplier",
+        economicMultiplier, GetBaseRecycleRate(economicMultiplier) * 100))
+    local boardText = beginLines[1]
+    for i = 2, getn(beginLines), 1 do
+        boardText = boardText .. "\n" .. beginLines[i]
+    end
+    exAddTextToPublicBoard(boardText, 15)
     exEnableWBScript("readyForStartCam")
 end
 

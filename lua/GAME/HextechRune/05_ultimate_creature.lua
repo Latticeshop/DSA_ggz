@@ -457,6 +457,7 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
         Modifier = modifier,
         InfoBoxReference = infoBoxReference,
     }
+    RegisterNoStructureBuffUnit(unit, self:GetPlayerSideIndex(playerIndex))
     return true
 end
 
