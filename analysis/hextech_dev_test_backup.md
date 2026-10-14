@@ -2,10 +2,15 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-13）：已发版清理，测试代码不在 `lua/` 与 `ScriptsData.json` 里**
-> （`analysis/_remove_opening_test.py` 已跑过，自检全绿；最后复测用的三张是
-> 「百虎上将 / 现金奖励 / MCV」）。
-> 需要再复测时按 §1 + §2 原样贴回，发版前再跑一次同一个清理脚本即可。
+> **当前状态（2026-10-14）：已清理 —— 发版状态。** 开局测试三选一整段（开关 / `ShowOpeningTestEvent`
+> / `OnRoundBegin` 那段调用 / `FindRuneById`）已由 `analysis/_remove_opening_test.py` 从
+> `lua/` 与 `ScriptsData.json` 中删净，自检全绿（四个标识符计数 0、正式事件与符文池主逻辑保留、
+> 两个文件花括号配平差 0）。
+> **被删掉的最后一版**（2026-10-14 第五、六次换后的名单）三张是 **鸡汤来咯 / 以战养战 / 神威**：
+> 神威当天由金降银、改授「时空裂缝2级」；鸡汤来咯为当天新增；第二张由「现金奖励」换成「以战养战」，
+> 同时现金奖励符文**再次下架留档**。要再复测就按 §1 + §2 原样贴回（`testRuneIds` 换成想测的三张），
+> 发版前再跑一次 `analysis/_remove_opening_test.py` 即可。
+> 上一次清理是 2026-10-13，当时最后复测的三张为 百虎上将 / 现金奖励 / MCV。
 
 
 ---
@@ -27,9 +32,9 @@ HextechRune.OpeningTestTriggered = false
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_hunt_rhythm",
-        "gold_shield_bureau",
+        "silver_chicken_soup",
         "prismatic_war_efficiency",
+        "silver_divine_might",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -119,6 +124,25 @@ end
    会不会补出一栋**造不出兵**的苏联基地当协议钥匙、协议按钮能不能正常用」（苏联玩家自己阵营
    则不该多任何基地）。当前三张为 **百虎上将 / 现金奖励 / MCV**，第 1 回合就能点。
    以后要复测别的组合，只改这一处 `testRuneIds` 即可。
+   **2026-10-14 第四次换（原名单）**：第一、二张仍是 **百虎上将 / 现金奖励**，第三张由
+   `silver_mcv`（MCV）换成 **`silver_divine_might`（神威，银）** —— 神威同日由金降银
+   （原 `gold_divine_might` / Rarity 2 / 时空裂缝3级 → Rarity 3 / 时空裂缝2级，Id 随档位改名、
+   图标换 `Button_PlayerPower_ChronoRift2`）。用这张验证的就是降档后的协议授予流程，
+   以及「非盟军玩家靠地图外那栋钥匙基地解锁」是否照常可用。
+   **2026-10-14 第五次换**：第一张 **百虎上将** 换成同日新增的
+   **`silver_chicken_soup`（鸡汤来咯，银）** —— 授予苏联协议「毒质腐蚀」
+   （`PlayerTech_Soviet_IrradiateTarget` + `SpecialPower_IrradiateTarget`）。
+   要验的是**苏联协议**的同一条钥匙基地路线，尤其是「先拿了现金奖励（已有苏联钥匙基地）、
+   再拿鸡汤来咯**不该再生成第二栋**」（两张同阵营卡共用 `HextechProtocolYard_2_<玩家编>`）。
+   当次三张为 **鸡汤来咯 / 现金奖励 / 神威**；实测结论是**鸡汤来咯正常**。
+   **2026-10-14 第六次换（发版前最后一版）**：第二张 **`gold_cash_reward`（现金奖励）** 换成
+   **`prismatic_war_efficiency`（以战养战，彩）** —— 同日晚些时候用户要求「将以战养战符文替换测试
+   符文选项的现金协议」，并把**现金奖励符文再次下架留档**（池内条目与不可重复名单重新注释，
+   理由：3 人以上对局里协议放不出来、也不结算的问题未定性）；神威与鸡汤来咯两张新协议保留。
+   以战养战带 `NeedsUnitType = true`，测试事件本来就会随机抽一个可用兵种再走
+   `CreateRuneCandidateForPlayer`，不用额外处理。最后一版三张为 **鸡汤来咯 / 以战养战 / 神威**，
+   一局覆盖「苏联协议 ×1 + 盟军协议 ×1 + 以战养战」，第 1 回合就能点；**随后按用户要求发版清理，
+   整段删除**（见文首状态）。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），
@@ -142,6 +166,6 @@ end
 
 > **`analysis/_verify_backup_doc.py` 的既有偏差（不是本次引入）**：它拿本文档 §1 的三段
 > 与早先的全文快照 `analysis/_02_event_before.lua` 逐字比对。§1 第 2 段（`ShowOpeningTestEvent`
-> 的 `testRuneIds`）在本文件里一直是**较新的复测组合**（狩猎律动 / 护盾局 / 战争效率），
+> 的 `testRuneIds`）在本文件里一向是**较新的复测组合**（现在是 鸡汤来咯 / 以战养战 / 神威），
 > 而快照里还是更早的（吸星大法 / 致命节奏 / 十连），所以该脚本会稳定报 `mismatch = 1`；
 > 判定「贴回内容是否与源码一致」请看源码本身与 §2，不要以该脚本的结论为准。

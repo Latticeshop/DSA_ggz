@@ -92,6 +92,15 @@ HextechRune.RunePool = {
         Effect = "upgrade_v4_tulip", RequiredFaction = 2,
         RequiresType = "vehicle",
         Icon = "Button_SovietHeavyMortarVehicle" },
+    -- 「时空裂缝2级」、图标随档位换 ChronoRift2，Id 也跟着改（详见设计文档 §7 当日条目）。
+    { Id = "silver_divine_might", Rarity = 3,
+        NameKey = "hextech.rune.divine_might.name",
+        DescKey = "hextech.rune.divine_might.desc", Effect = "grant_chrono_rift",
+        Icon = "Button_PlayerPower_ChronoRift2" },
+    { Id = "silver_chicken_soup", Rarity = 3,
+        NameKey = "hextech.rune.chicken_soup.name",
+        DescKey = "hextech.rune.chicken_soup.desc", Effect = "grant_irradiate",
+        Icon = "Button_PlayerPower_IrradiateTarget" },
 
     -- 黄金
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -112,11 +121,13 @@ HextechRune.RunePool = {
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
+    -- 协议授予·金·现金奖励：2026-10-14 起再次下架留档 —— 多人局里协议放不出来、也不结算的
+    -- 问题还没定性，先不让它进池。恢复时取消这条注释，并同步取消 04_buff.lua 派发分支与本表
     -- 其它阵营玩家由符文在地图外补一栋不可使用的苏联基地当协议钥匙。
-    { Id = "gold_cash_reward", Rarity = 2,
-        NameKey = "hextech.rune.cash_reward.name",
-        DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
-        Icon = "Button_PlayerPower_ProductionKickback" },
+    -- { Id = "gold_cash_reward", Rarity = 2,
+    --     NameKey = "hextech.rune.cash_reward.name",
+    --     DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
+    --     Icon = "Button_PlayerPower_ProductionKickback" },
     { Id = "gold_safety", Rarity = 2,
         NameKey = "hextech.rune.safety.name",
         DescKey = "hextech.rune.safety.desc", Effect = "safety",
@@ -126,16 +137,13 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.railgun_duel.name",
         DescKey = "hextech.rune.railgun_duel.desc", Effect = "grant_railgun",
         Icon = "Button_CelestialEnergyRailgunBase" },
-    -- 协议授予两张金卡（冷冻卫星 / 神威）：地图外钥匙基地 + HELD 禁用的机制已实测跑通，
-    -- 但本轮先不上线。恢复时取消这两条注释，并同步取消 04_buff.lua 的派发分支与本表排除名单的注释。
+    -- 协议授予·金·冷冻卫星：地图外钥匙基地 + HELD 禁用的机制已实测跑通，但本轮仍不上线。
+    -- 恢复时取消这条注释，并同步取消 04_buff.lua 的派发分支与本表排除名单里对应行的注释。
+    -- 同门的「银·神威」已按白银档上线（见上方白银段末尾）。
     -- { Id = "gold_cryo_satellite", Rarity = 2,
     --     NameKey = "hextech.rune.cryo_satellite.name",
     --     DescKey = "hextech.rune.cryo_satellite.desc", Effect = "grant_cryo_satellite",
     --     Icon = "Button_PlayerPower_CryoSatellite3" },
-    -- { Id = "gold_divine_might", Rarity = 2,
-    --     NameKey = "hextech.rune.divine_might.name",
-    --     DescKey = "hextech.rune.divine_might.desc", Effect = "grant_chrono_rift",
-    --     Icon = "Button_PlayerPower_ChronoRift3" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_CelestialAntiVehicleInfantry_Skill" },
@@ -304,10 +312,13 @@ HextechRune.NonRepeatableRuneIds = {
     gold_fortified = true,
     gold_transcendent_evil = true,
     gold_recycler = true,
-    -- 冷冻卫星 / 神威：重复授予同一协议没有意义，且多份会互相重置冷却（随两张卡一起注释）。
+    silver_divine_might = true,
+    -- 金·现金奖励下架留档期间一并注释，恢复时和池内条目一起放开。
+    -- gold_cash_reward = true,
+    -- 鸡汤来咯：与现金奖励同属苏联协议，重复授予只会互相重置冷却。
+    silver_chicken_soup = true,
+    -- 金·冷冻卫星仍在下架留档中，恢复时与 16_cryo_satellite.lua 的条目一起取消注释。
     -- gold_cryo_satellite = true,
-    -- gold_divine_might = true,
-    gold_cash_reward = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,

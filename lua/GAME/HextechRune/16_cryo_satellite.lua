@@ -2,21 +2,28 @@
 
 HextechRune = HextechRune or {}
 
--- ============ 协议授予类符文（金·冷冻卫星 / 金·神威 / 金·现金奖励）============
+-- ============ 协议授予类符文（银·神威 / 银·鸡汤来咯 / 金·现金奖励 / 留档·金·冷冻卫星）============
 -- 键名与符文的 Effect 一致，派发处直接传 Effect。
 HextechRune.ProtocolGrants = {
     grant_cryo_satellite = {
         PlayerTech = "PlayerTech_Allied_CryoSatellite_Rank3",
         SpecialPower = "SpecialPowerCryoSatelliteLvl3",
         Faction = 1, YardType = "AlliedConstructionYard" },
+    -- 银·神威：2026-10-14 由「时空裂缝3级」降为「时空裂缝2级」（原 gold_divine_might）；
+    -- 科技名取地编选项去掉 Purchase_ 前缀，技能名按 ProtocolEnum 的 Lvl2 档对齐。
     grant_chrono_rift = {
-        PlayerTech = "PlayerTech_Allied_ChronoRift_Rank3",
-        SpecialPower = "SpecialPowerChronoRiftSelectLvl3",
+        PlayerTech = "PlayerTech_Allied_ChronoRift_Rank2",
+        SpecialPower = "SpecialPowerChronoRiftSelectLvl2",
         Faction = 1, YardType = "AlliedConstructionYard" },
     -- 金·现金奖励：苏联协议。苏联玩家自己的基地就够解锁、符文不再额外给基地；
     cash_reward = {
         PlayerTech = "PlayerTech_Soviet_ProductionKickbacks",
         SpecialPower = "SpecialPower_ProductionKickbacks",
+        Faction = 2, YardType = "SovietConstructionYard" },
+    -- 银·鸡汤来咯：苏联协议（毒质腐蚀）。与现金奖励同阵营，钥匙基地共用一栋、不重复生成。
+    grant_irradiate = {
+        PlayerTech = "PlayerTech_Soviet_IrradiateTarget",
+        SpecialPower = "SpecialPower_IrradiateTarget",
         Faction = 2, YardType = "SovietConstructionYard" },
 }
 
@@ -24,7 +31,8 @@ HextechRune.ProtocolGrants = {
 HextechRune.ProtocolYardOffmapX = 3324.27
 HextechRune.ProtocolYardOffmapY = 8979.87
 
--- 两张盟军协议共用同一把钥匙，所以名字按阵营 + 玩家编。
+-- 钥匙基地的名字按「阵营 + 玩家编」：同阵营的多张协议卡（盟军神威 / 冷冻卫星、苏联现金奖励 /
+-- 毒质腐蚀）共用同一把钥匙，已经有就不再生成第二栋。
 function GetHextechProtocolYardName(playerIndex, faction)
     return "HextechProtocolYard_" .. faction .. "_" .. playerIndex
 end

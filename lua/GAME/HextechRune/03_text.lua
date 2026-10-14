@@ -80,6 +80,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.cash_reward.desc"] = { zh = "获得现金奖励协议。", en = "Gain the Cash Bounty protocol." },
     ["hextech.rune.cryo_satellite.name"] = { zh = "冷冻卫星", en = "Cryo Satellite" },
     ["hextech.rune.cryo_satellite.desc"] = { zh = "获得冷冻卫星协议。", en = "Gain the Cryo Satellite protocol." },
+    ["hextech.rune.chicken_soup.name"] = { zh = "鸡汤来咯", en = "Here Comes the Chicken Soup" },
+    ["hextech.rune.chicken_soup.desc"] = { zh = "获得毒质腐蚀协议。", en = "Gain the Irradiate Target protocol." },
     ["hextech.rune.divine_might.name"] = { zh = "神威", en = "Divine Might" },
     ["hextech.rune.divine_might.desc"] = { zh = "获得时空裂缝协议。", en = "Gain the Chrono Rift protocol." },
     ["hextech.rune.safety.name"] = { zh = "安全感", en = "Sense of Security" },
