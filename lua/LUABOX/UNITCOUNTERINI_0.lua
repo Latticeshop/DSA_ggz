@@ -235,6 +235,9 @@ index = index + 1 ;
 UNITLIST [index] = "CelestialSupportAircraft"
 index = index + 1 ;
 UNITLIST [index] = "CelestialAdvanceAircraftTech4"
+-- 供替换型符文把樱花回天雷的入池计数落到它身上（见 HextechRune.UnitReplacementRunes）。
+index = index + 1 ;
+UNITLIST [index] = "JapanSakuraAttackRocket"
 
 for i = 1 , getn(g_AirCrateUnits) , 1 do
     index = index + 1 ;

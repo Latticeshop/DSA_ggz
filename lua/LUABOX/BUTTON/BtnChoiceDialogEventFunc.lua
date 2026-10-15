@@ -1495,7 +1495,11 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
         Choices = {},
     }
 
-    dialogData.Title = Localization.get("recycle.dialog.title", g_CurrentClickRecycleUnit[playerIndex].Name)
+    local clickedUnitInfo = g_CurrentClickRecycleUnit[playerIndex]
+    if clickedUnitInfo == nil then
+        return
+    end
+    dialogData.Title = Localization.get("recycle.dialog.title", clickedUnitInfo.Name)
 
     dialogData.OnChoice = function(self, buttonIndex)
         if buttonIndex <= 4 then
@@ -1505,6 +1509,10 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
             local playerIndex2 = g_PlayerNameToIndex[self.PlayerName]
 
             local recycleUnitInfo = g_CurrentClickRecycleUnit[playerIndex2]
+            if recycleUnitInfo == nil then
+                SetWorldBuilderThisPlayer(previous)
+                return
+            end
             local availableCount = GetRecycleUnitCount(playerIndex2, recycleUnitInfo)
 
             if availableCount > 0 then

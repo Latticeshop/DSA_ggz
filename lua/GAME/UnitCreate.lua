@@ -1014,19 +1014,15 @@ g_UnitCreateEventFunc[FastHash("JapanPointDefenseDrone")] = JapanPointDefenseDro
 
 g_UnitCreateEventFunc[FastHash("JapanKamikazeInfantry")] = JapanKamikazeInfantryBorn
 
--- 鬼樱特攻机出生后永久获得 3 倍生命和 100% 移速加成。
+-- 鬼樱特攻机出生后永久获得 3 倍生命。
 if not g_JapanInterceptorHealthX3Modifier then
     g_JapanInterceptorHealthX3Modifier = exAttributeModifierCreate({ HEALTH_MULT = 3.0 }, 1)
-end
-if not g_JapanSakuraAttackRocketSpeedX2Modifier then
-    g_JapanSakuraAttackRocketSpeedX2Modifier = exAttributeModifierCreate({ SPEED = 2.0 }, 1)
 end
 function JapanSakuraAttackRocketBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     SchedulerModule.delay_call(function(id, playerName)
         if ObjectIsAlive(id) then
             local rocket = GetObjectById(id)
             ObjectLoadAttributeModifier(rocket, g_JapanInterceptorHealthX3Modifier)
-            ObjectLoadAttributeModifier(rocket, g_JapanSakuraAttackRocketSpeedX2Modifier)
             ConfigureSakuraPriorityTargetChooser(rocket)
             -- 鬼樱脱离樱花井的默认待命队伍，加入对应阵营现有的 AI 进攻队列。
             if playerName == "PlyrCivilian" then

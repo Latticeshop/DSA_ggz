@@ -71,6 +71,12 @@ HextechRune.RunePool = {
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
+    { Id = "silver_five_centimeters", Rarity = 3,
+        NameKey = "hextech.rune.five_centimeters.name",
+        DescKey = "hextech.rune.five_centimeters.desc",
+        Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
+        RequiresType = "aircraft",
+        Icon = "Portrait_JapanInterceptorAircraft_air" },
     { Id = "silver_investment", Rarity = 3,
         NameKey = "hextech.rune.investment.name",
         DescKey = "hextech.rune.investment.desc",
@@ -307,6 +313,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_banzai_charge = true,
     -- 花来！：重复持有只是把同一个替换再做一遍，入池替换按持有与否判定，天然无叠加。
     silver_tulip_mortar = true,
+    -- 秒速五厘米：同属替换型，第二份不产生任何额外效果。
+    silver_five_centimeters = true,
     -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
     silver_prepare_backpack = true,
     -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
@@ -912,4 +920,16 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
+end
+
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
+-- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
+-- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
 end

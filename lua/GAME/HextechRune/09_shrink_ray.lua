@@ -4,8 +4,8 @@ HextechRune = HextechRune or {}
 
 HextechRune.ShrinkRayRuneId = "prismatic_shrink_ray"
 HextechRune.ShrinkRayModifierName = "AttributeMod_AlliedSupportAircraftShrinkRay_HighTechnology"
--- 基础周期 5 回合，同阵营每多一份减 1 回合：1/2/3 份 = 5/4/3 回合。
-HextechRune.ShrinkRayBaseInterval = 5
+-- 基础周期 7 回合，同阵营每多一份减 1 回合：1/2/3 份 = 7/6/5 回合。
+HextechRune.ShrinkRayBaseInterval = 7
 HextechRune.ShrinkRayNextRound = HextechRune.ShrinkRayNextRound or {}
 -- 按“被缩小的阵营”登记：记录本批缩小的回合号与对象，回合推进后才解除。
 HextechRune.ShrinkRayActiveRound = HextechRune.ShrinkRayActiveRound or {}
@@ -18,7 +18,7 @@ function HextechRune:GetOpposingSideIndex(sideIndex)
     return 7
 end
 
--- 份数换算周期：1/2/3 份 → 5/4/3 回合，实际生效与详情文案共用这一份公式。
+-- 份数换算周期：1/2/3 份 → 7/6/5 回合，实际生效与详情文案共用这一份公式。
 function HextechRune:GetShrinkRayIntervalByCopies(copies)
     local interval = self.ShrinkRayBaseInterval - (copies - 1)
     if interval < 1 then

@@ -96,6 +96,7 @@ function PureDrawGetOutpostSideName(outpost)
     return nil
 end
 
+-- 中央战场外围落点：随机一座神州前哨站 + 随机偏移。
 function PureDrawGetOutpostDropPosition(sideName, playerIndex)
     if not g_CelestialOutpostsFilter then
         g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
@@ -106,7 +107,9 @@ function PureDrawGetOutpostDropPosition(sideName, playerIndex)
     end
     local candidates = {}
     for i = 1, count, 1 do
-        if sideName == nil or PureDrawGetOutpostSideName(outposts[i]) == sideName then
+        local ownerSide = PureDrawGetOutpostSideName(outposts[i])
+        -- 归属认不出的前哨站（玩家槽预设的那些）一律不当落点：它们的坐标不受半场裁剪约束。
+        if ownerSide ~= nil and (sideName == nil or ownerSide == sideName) then
             tinsert(candidates, outposts[i])
         end
     end
@@ -139,6 +142,10 @@ function PureDrawGetOutpostDropPosition(sideName, playerIndex)
         index = total
     end
     local outpost = candidates[index]
+    local dropSide = sideName
+    if dropSide == nil then
+        dropSide = PureDrawGetOutpostSideName(outpost)
+    end
     local RandomInRange = function(min, max)
         local sign = 1
         if GetRandomNumber() < 0.5 then
@@ -148,6 +155,12 @@ function PureDrawGetOutpostDropPosition(sideName, playerIndex)
     end
     local offsetX = RandomInRange(50, 200)
     local offsetY = RandomInRange(50, 150)
+    -- Y 增为上。前哨站太贴地图边角，往一个方向加偏移就会出界，所以按半场各留一个方向：
+    if dropSide == "PlyrCreeps" and offsetY < 0 then
+        offsetY = -offsetY
+    elseif dropSide == "PlyrCivilian" and offsetY > 0 then
+        offsetY = -offsetY
+    end
     local x, y, z = ObjectGetPosition(outpost)
     return { X = x + offsetX, Y = y + offsetY, Z = z }
 end

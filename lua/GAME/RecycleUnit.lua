@@ -27,6 +27,18 @@ g_RecycleBtnsShowed = {
     [6] = {},
 };
 
+-- 每次点分类页签 +1：延迟建按钮的回调带着自己的号，号不对说明玩家又点了别的页签，回调作废。
+-- 没有这道闸门时，连点两个页签会让前一个回调在清屏之后建出一排按钮，玩家点到超出当前列表
+-- 长度的陈旧按钮就会越界。
+g_RecycleLayoutGen = {
+    [1] = 0,
+    [2] = 0,
+    [3] = 0,
+    [4] = 0,
+    [5] = 0,
+    [6] = 0,
+};
+
 g_RecycleUnitCount = {
     [1] = 1,
     [2] = 5,
@@ -225,6 +237,9 @@ g_AirCraftSoviet = {
 }
 
 g_AirCraftJapan = {
+    -- 秒速五厘米：持有该符文后，樱花回天雷以鬼樱特攻机入池，按樱花回天雷原价回收。
+    {Type = "JapanSakuraAttackRocket", Image = "Portrait_JapanInterceptorAircraft_air",
+        Name = Localization.recycle('unit.JapanSakuraAttackRocket'), Money = 850},
     -- 超级要塞由独立计数槽管理；水面/大头形态都归到同一枚核心。
     {Type = "JapanGigaFortressShipEgg", CountType = "JapanGigaFortressShipEgg", CountsTowardArmyTotal = false,
         Image = "Button_JapanGigaFortressShip", Name = Localization.recycle('unit.JapanFortressShip'), Money = 6300},
@@ -618,10 +633,14 @@ function RecycleTypeBtnClick(playerName, index)
     RecycleUnitBtnsClear(playerName);
 
     g_RecycleBtnsShowed[playerIndex] = {};
+    g_RecycleLayoutGen[playerIndex] = g_RecycleLayoutGen[playerIndex] + 1;
+    local generation = g_RecycleLayoutGen[playerIndex];
     -- 显示按钮  需要延迟一下，要不然会卡住退出界面
-    SchedulerModule.delay_call(function(playerName1, index1)
+    SchedulerModule.delay_call(function(playerName1, index1, generation1)
         local playerIndex1 = g_PlayerNameToIndex[playerName1];
-        local playerFaction = g_PlayerSide[playerIndex1];
+        if g_RecycleLayoutGen[playerIndex1] ~= generation1 then
+            return
+        end
         updateRecycleBtnsForPlayerName(playerName1)
         local btns = g_RecycleBtnsMapByPlayerIndex[playerIndex1][index1 - 20];
         for i = 1, getn(btns) do
@@ -638,18 +657,28 @@ function RecycleTypeBtnClick(playerName, index)
             })
             tinsert(g_RecycleBtnsShowed[playerIndex1], i);
         end
-    end, 4, {playerName, index})
+    end, 4, {playerName, index, generation})
 
 end
 
 function RecycleUnitBtnsClick(playerName, index)
     local playerIndex = g_PlayerNameToIndex[playerName];
-    local playerFaction = g_PlayerSide[playerIndex];
     if g_RecycleBtnsMapByPlayerIndex[playerIndex] == nil then
         _ALERT("g_RecycleBtnsMapByPlayerIndex[playerIndex] == nil, playerName=" .. playerName .. ", index=" .. index);
+        return
     end
     local btnMap = g_RecycleBtnsMapByPlayerIndex[playerIndex][g_CurrentRecycleType[playerIndex]];
-    g_CurrentClickRecycleUnit[playerIndex] = btnMap[index - g_RecycleBtnsIndexStart];
+    local clickUnitInfo = nil
+    if btnMap ~= nil then
+        clickUnitInfo = btnMap[index - g_RecycleBtnsIndexStart];
+    end
+    if clickUnitInfo == nil then
+        -- 按钮号超出当前页签的单位数 = 屏幕上剩的陈旧按钮，清掉这一排，不弹对话框。
+        -- 这里不能只 return：越界值一旦写进 g_CurrentClickRecycleUnit，对话框读标题时会炸。
+        RecycleUnitBtnsClear(playerName);
+        return
+    end
+    g_CurrentClickRecycleUnit[playerIndex] = clickUnitInfo;
     BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName);
 end
 

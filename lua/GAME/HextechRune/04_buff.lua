@@ -73,8 +73,8 @@ HextechRune.DualUnitTypeFilters = {
         }),
     },
 }
--- 无限火力（飞机）只开放给指定对空战斗机、摇光巡天炮及其同机型变体。
--- 轰炸机、天狗、心神等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
+-- 无限火力（飞机）只开放给指定对空战斗机。
+-- 轰炸机、天狗、心神、摇光等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
 HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
     Rule = "ANY", Relationship = "SAME_PLAYER",
     IncludeThing = {
@@ -100,9 +100,6 @@ HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
         -- 苏霍伊
         "SovietInterceptorAircraft",
         "SovietInterceptorAircraft_Enhanced",
-        -- 摇光巡天炮
-        "CelestialAdvanceAircraftTech4",
-        "CelestialAdvanceAircraftTech4_Enhanced",
     }
 })
 HextechRune.UnitTypeOrder = { "infantry", "vehicle", "aircraft", "navy" }
@@ -179,7 +176,7 @@ HextechRune.FiveThunderFirstPower = "SpecialPower_CelestialPantaOrbitalStrike"
 HextechRune.FiveThunderRepeatPower = "SpecialPower_CelestialOrbitalStrike0cd"
 HextechRune.FiveThunderState = HextechRune.FiveThunderState or {}
 HextechRune.FiveThunderMonitorSchedulerId = HextechRune.FiveThunderMonitorSchedulerId or nil
-HextechRune.FiveThunderCooldownRounds = 2
+HextechRune.FiveThunderCooldownRounds = 3
 HextechRune.TeslaAirAssaultPower = "SpecialPower_SovietTeslaAirAssault"
 -- 炽燃利息资金由 GetCombustionInterestMoney() 按经济倍率取值。
 -- 死亡观察者由炽燃利息与以战养战共用，因此状态名不再绑定单个符文。
@@ -960,6 +957,8 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "JapanKamikazeInfantry" },
     { RuneId = "silver_tulip_mortar", SourceType = "SovietAntiStructureVehicle",
         ReplacementType = "SovietHeavyMortarVehicle" },
+    { RuneId = "silver_five_centimeters", SourceType = "JapanInterceptorAircraft",
+        ReplacementType = "JapanSakuraAttackRocket" },
 }
 
 -- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池，
@@ -1325,6 +1324,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
     upgrade_imperial_warrior = true, upgrade_v4_tulip = true,
+    upgrade_sakura_rocket = true,
     prepare_backpack = true,
     ultimate_creature = true,
     war_efficiency = true, time_rift = true,
@@ -1634,7 +1634,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         or rune.Effect == "upgrade_waverider_dragon_breathe"
         or rune.Effect == "upgrade_vanguard_gunship"
         or rune.Effect == "upgrade_imperial_warrior"
-        or rune.Effect == "upgrade_v4_tulip" then
+        or rune.Effect == "upgrade_v4_tulip"
+        or rune.Effect == "upgrade_sakura_rocket" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
     else
         self:ApplyPersistentRune(playerIndex, rune)

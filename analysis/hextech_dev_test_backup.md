@@ -2,15 +2,16 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-14）：已清理 —— 发版状态。** 开局测试三选一整段（开关 / `ShowOpeningTestEvent`
-> / `OnRoundBegin` 那段调用 / `FindRuneById`）已由 `analysis/_remove_opening_test.py` 从
-> `lua/` 与 `ScriptsData.json` 中删净，自检全绿（四个标识符计数 0、正式事件与符文池主逻辑保留、
-> 两个文件花括号配平差 0）。
-> **被删掉的最后一版**（2026-10-14 第五、六次换后的名单）三张是 **鸡汤来咯 / 以战养战 / 神威**：
-> 神威当天由金降银、改授「时空裂缝2级」；鸡汤来咯为当天新增；第二张由「现金奖励」换成「以战养战」，
-> 同时现金奖励符文**再次下架留档**。要再复测就按 §1 + §2 原样贴回（`testRuneIds` 换成想测的三张），
-> 发版前再跑一次 `analysis/_remove_opening_test.py` 即可。
-> 上一次清理是 2026-10-13，当时最后复测的三张为 百虎上将 / 现金奖励 / MCV。
+> **当前状态（2026-10-16）：已贴回 —— 复测中。** §1 三段与 `FindRuneById` 已按本节原样回到
+> `lua/` 与 `ScriptsData.json`，`testRuneIds` 为 **MCV / 秒速五厘米 / 无限火力**（本轮改动：
+> 回收按钮连点越界、MCV 落点改 Player_2/Player_5 前哨站、天堂制造 5→7 回合、五雷天罚 2→3 回合，
+> 加上新增的秒速五厘米）。与 2026-10-14 那版相比 §1 的代码有两处实质变化：**凑不满 3 张也照发**
+> （`getn(options) > 0`，因为秒速五厘米限帝国、无限火力排除帝国，帝国与非帝国座位看到的张数天然不同），
+> 以及补上 `self.PlayerOptionCount[playerIndex]`（正式路径按实际张数居中排版，测试事件必须同步设置）。
+> 发版前照例跑 `analysis/_remove_opening_test.py`（2026-10-16 已干跑确认四处锚点全部命中）。
+> 上一次清理是 2026-10-14，被删掉的最后一版三张为 **鸡汤来咯 / 以战养战 / 神威**
+> （神威当天由金降银、改授「时空裂缝2级」；第二张由「现金奖励」换成「以战养战」，
+> 同时现金奖励符文再次下架留档）；再上一次是 2026-10-13（百虎上将 / 现金奖励 / MCV）。
 
 
 ---
@@ -26,15 +27,15 @@ HextechRune.EnableOpeningRealTest = true
 HextechRune.OpeningTestTriggered = false
 ```
 
-- 事件本体（原 659-714 行，`ShowFormalEvent` 之后）：
+- 事件本体（本轮贴回后位于 `ShowFormalEvent` 之后）：
 
 ```lua
--- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的三个符文。
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_chicken_soup",
-        "prismatic_war_efficiency",
-        "silver_divine_might",
+        "silver_mcv",
+        "silver_five_centimeters",
+        "prismatic_infinite_ammo",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -43,7 +44,7 @@ function HextechRune:ShowOpeningTestEvent()
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
             local options = {}
-            for i = 1, 3, 1 do
+            for i = 1, getn(testRuneIds), 1 do
                 local template = self:FindRuneById(testRuneIds[i])
                 local unitType = nil
                 if template ~= nil and template.NeedsUnitType then
@@ -52,28 +53,20 @@ function HextechRune:ShowOpeningTestEvent()
                         unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
                     end
                 end
+                -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
                 local candidate = nil
                 if template ~= nil then
-                    candidate = self:CopyRuneForCandidate(template, unitType)
-                    if candidate ~= nil and (candidate.Effect == "buy_two_get_one"
-                        or candidate.Effect == "ascension"
-                        or candidate.Effect == "ultimate_creature") then
-                        -- “买二送一/登神/究极生物”的目标在正式事件里由
-                        -- CreateRuneCandidateForPlayer 随机固定；测试事件若直接复制模板，
-                        -- 目标为空，点选后毫无效果。因此这类符文改走正式路径，
-                        -- 保持测试与正式行为一致。
-                        candidate = self:CreateRuneCandidateForPlayer(playerIndex,
-                            template, unitType)
-                    end
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
                 end
                 if candidate ~= nil then
                     tinsert(options, candidate)
                 end
             end
-            if getn(options) == 3 then
+            if getn(options) > 0 then
+                self.PlayerOptionCount[playerIndex] = getn(options)
                 self.PlayerOptions[playerIndex] = options
                 self.PlayerRerollUsed[playerIndex] = false
-                for i = 1, 3, 1 do
+                for i = 1, getn(options), 1 do
                     self:CreateOptionBox(playerIndex, i, options[i].Rarity,
                         self.RarityFrameImageIds[options[i].Rarity], options[i])
                     self:CreateRerollButton(playerIndex, i)
@@ -143,8 +136,14 @@ end
    `CreateRuneCandidateForPlayer`，不用额外处理。最后一版三张为 **鸡汤来咯 / 以战养战 / 神威**，
    一局覆盖「苏联协议 ×1 + 盟军协议 ×1 + 以战养战」，第 1 回合就能点；**随后按用户要求发版清理，
    整段删除**（见文首状态）。
+   **2026-10-16 贴回（当前名单）**：三张换成 **`silver_mcv`（MCV）/ `silver_five_centimeters`
+   （秒速五厘米，当日新增的白银替换型符文）/ `prismatic_infinite_ammo`（无限火力）**——
+   分别验「MCV 落点改用 Player_2/Player_5 预设前哨站」「樱花回天雷入池计数落到鬼樱特攻机槽」
+   「名单去掉摇光后摇光不再获得无限弹药」。天堂制造 7 回合、五雷天罚 3 回合属于周期数值，
+   要换就占用其中一格。注意这一版**允许张数不足 3**：秒速五厘米 `RequiredFaction = 3`、
+   无限火力 `ExcludedFaction = 3`，帝国座位与非帝国座位天然各缺一角。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
-   合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`。
+   已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），
    只复制模板会让它带着空兵种被点选、整张符文毫无效果。
 3. **`FindRuneById` 也随之回归**：它当时和测试事件一起被删掉（`01_rune_pool.lua` 末尾，
