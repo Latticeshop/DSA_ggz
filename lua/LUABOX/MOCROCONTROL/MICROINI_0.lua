@@ -366,9 +366,11 @@ function AntiAirAircraftHunterMICROCONTROL ()
     end
 end
 
--- 百合子禁止攻击建筑：有敌方单位时追击最近单位，
--- 全地图没有合法单位目标时把自身设为非法攻击目标，打断攻击前进并原地待命。
+-- 百合子禁止攻击建筑：独立队列——被进攻编队收走就立刻抢回 idle 队，
 function CommandoNoStructureMICROCONTROL ()
+    if g_PrioritySiegeIdleTeam == nil or g_PrioritySiegeAttackWaypoint == nil then
+        return
+    end
     for playindex = 7, 8, 1 do
         local units, count = ObjectFindObjects(P[playindex], nil, FilterNoStructureCommando)
         for i = 1, count, 1 do
@@ -376,7 +378,10 @@ function CommandoNoStructureMICROCONTROL ()
             local selfId = ObjectGetId(self)
             -- 只在当前确实被放回进攻编队时分离，待命状态下不会重复换队。
             if IsCommandoInAttackTeam(self, playindex) then
-                ExecuteAction("UNIT_SET_TEAM", self, DEFAULTIDLETEAM[playindex])
+                ExecuteAction("UNIT_SET_TEAM", self, g_PrioritySiegeIdleTeam[playindex])
+                -- 离了主力编队就没人给她下推进命令，自己朝敌方 waypoints 攻击前进。
+                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", self,
+                    g_PrioritySiegeAttackWaypoint[playindex])
             end
             ObjectSetCustomTargetChooserData(self, {
                 CustomFilter = g_FilterYurikoEnemy,
@@ -389,30 +394,6 @@ function CommandoNoStructureMICROCONTROL ()
                 PreferTargetInsideRange = true
             })
             ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
-            local target = ObjectGetTarget(self)
-            local hasValidTarget = target ~= nil
-                and ObjectIsAlive(target)
-                and ObjectTestTargetObjectWithFilter(self, target, g_FilterYurikoEnemy)
-            if not hasValidTarget then
-                local replacement = FindNearestEnemyAnywhere(self, g_FilterPrioritySiegeEnemyTank)
-                if replacement == nil then
-                    replacement = FindNearestEnemyAnywhere(self, g_FilterYurikoEnemyAircraft)
-                end
-                if replacement == nil then
-                    replacement = FindNearestEnemyAnywhere(self, g_FilterPrioritySiegeEnemyInfantry)
-                end
-                if replacement ~= nil then
-                    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
-                    ObjectSetAssignedTarget(self, replacement)
-                    ExecuteAction("NAMED_ATTACK_NAMED", self, replacement)
-                else
-                    -- 引擎层禁用武器，ATTACK 编队即使再次刷新命令也无法攻击建筑。
-                    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 1)
-                    ObjectSetAssignedTarget(self, self)
-                end
-            else
-                ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", self, "NO_ATTACK", 0)
-            end
         end
     end
 end
@@ -826,11 +807,6 @@ function NoStructureBuffedUnitMICROCONTROL ()
                 PreferTargetInsideRange = true
             })
             ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
-            if wasReassigned or entry.WeaponEnabled == nil then
-                -- 上一版靠 NO_ATTACK 挡塔，可能给单位留下禁用状态；接管时统一放开武器。
-                entry.WeaponEnabled = true
-                ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", unit, "NO_ATTACK", 0)
-            end
         end
     end
 end

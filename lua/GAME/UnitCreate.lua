@@ -994,15 +994,15 @@ function AlliedCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 g_UnitCreateEventFunc[FastHash("AlliedCommandoTech1")] = AlliedCommandoBorn
 -- g_JapanCommandoLimitBorn = GetLimitCommandoUnitCreateFunc("JapanCommandoTech1", 2)
-if not g_YurikoRangeX25Modifier then
-    g_YurikoRangeX25Modifier = exAttributeModifierCreate({ RANGE = 2.5, VISION = 2.5 }, 1)
+if not g_YurikoRangeX22Modifier then
+    g_YurikoRangeX22Modifier = exAttributeModifierCreate({ RANGE = 2.2, VISION = 2.2 }, 1)
 end
 function JapanCommandoBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     -- g_JapanCommandoLimitBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
     SchedulerModule.delay_call(function(id)
         if ObjectIsAlive(id) then
             local yuriko = GetObjectById(id)
-            ObjectLoadAttributeModifier(yuriko, g_YurikoRangeX25Modifier)
+            ObjectLoadAttributeModifier(yuriko, g_YurikoRangeX22Modifier)
         end
     end, 1, {createdObjId})
     YurikoPriorityTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)

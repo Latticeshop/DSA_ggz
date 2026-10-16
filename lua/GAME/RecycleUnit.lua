@@ -144,7 +144,7 @@ g_InfantryCelestial = {
 --}
 
 g_VehicleAllied = {
-    {Type = "AlliedAntiInfantryVehicle_Ground", Image = "Button_AlliedAntiInfantryVehicle_on", Name = Localization.recycle('unit.AlliedAntiInfantryVehicle'), Money = 750},
+    {Type = "AlliedAntiInfantryVehicle_Ground", Image = "Button_AlliedAntiInfantryVehicle_on", Name = Localization.get('recycle.unit_prefix.ground') .. Localization.recycle('unit.AlliedAntiInfantryVehicle'), Money = 750},
     {Type = "AlliedAntiAirVehicleTech1", Image = "Button_AlliedIFV_B_on", Name = Localization.recycle('unit.AlliedAntiAirVehicleTech1'), Money = 800},
     {Type = "AlliedAntiVehicleVehicleTech1", Image = "Button_AlliedAntiVehicleVehicleTech1_on", Name = Localization.recycle('unit.AlliedAntiVehicleVehicleTech1'), Money = 950},
     {Type = "prismtank", Image = "Button_PrismTank_B", Name = Localization.recycle('unit.prismtank'), Money = 1400},
@@ -277,7 +277,7 @@ g_AirCraftCelestial = {
 
 g_ShipAllied = {
     {Type = "AlliedAntiNavalScout", Image = "Button_AlliedAntiNavalScout_on", Name = Localization.recycle('unit.AlliedAntiNavalScout'), Money = 750},
-    {Type = "AlliedAntiInfantryVehicle", Image = "Button_AlliedAntiInfantryVehicle_on", Name = Localization.recycle('unit.AlliedAntiInfantryVehicle'), Money = 750},
+    {Type = "AlliedAntiInfantryVehicle", Image = "Button_AlliedAntiInfantryVehicle_on", Name = Localization.get('recycle.unit_prefix.navy') .. Localization.recycle('unit.AlliedAntiInfantryVehicle'), Money = 750},
     {Type = "AlliedAntiAirShip", Image = "Button_AlliedAntiAirShip_on", Name = Localization.recycle('unit.AlliedAntiAirShip'), Money = 900},
     {Type = "AlliedAntiNavyShipTech1", Image = "Button_AlliedAntiNavyShipTech1_on", Name = Localization.recycle('unit.AlliedAntiNavyShipTech1'), Money = 1600},
     {Type = "AlliedAntiNavyShipTech3", Image = "Button_AlliedAntiNavyShipTech3", Name = Localization.recycle('unit.AlliedAntiNavyShipTech3'), Money = 4000},
