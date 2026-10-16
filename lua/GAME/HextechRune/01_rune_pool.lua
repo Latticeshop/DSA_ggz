@@ -208,6 +208,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.ten_pull.name",
         DescKey = "hextech.rune.ten_pull.desc",
         Effect = "ten_pull", Icon = "JUA_Archer_Barrage" },
+    -- 艾卡西亚的惊喜：盟军三级时空炸弹协议；苏联玩家选到它时同样由钥匙基地解锁。
+    { Id = "gold_icathia_surprise", Rarity = 2,
+        NameKey = "hextech.rune.icathia_surprise.name",
+        DescKey = "hextech.rune.icathia_surprise.desc",
+        Effect = "grant_time_bomb", Icon = "Button_PlayerPower_TimeBomb3" },
 
     -- 棱彩
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
@@ -301,6 +306,17 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.equivalent_exchange.desc",
         Effect = "equivalent_exchange", NeedsUnitTypePair = true,
         Icon = "Button_PlayerPower_ChronoSwap" },
+    -- 享辐：苏联三级投毒协议，与「银·鸡汤来咯」同一套跨阵营解锁（地图外钥匙基地）。
+    -- 玩家手动施放、不挂兵种，所以不声明 RequiresType。
+    { Id = "prismatic_radiant_bliss", Rarity = 1,
+        NameKey = "hextech.rune.radiant_bliss.name",
+        DescKey = "hextech.rune.radiant_bliss.desc",
+        Effect = "grant_desolator_bomb", Icon = "Button_PlayerPower_DesolatorBomb3" },
+    -- 万象天引：苏联磁力奇点协议，同款钥匙基地解锁。
+    { Id = "prismatic_myriad_pull", Rarity = 1,
+        NameKey = "hextech.rune.myriad_pull.name",
+        DescKey = "hextech.rune.myriad_pull.desc",
+        Effect = "grant_magnetic_singularity", Icon = "Button_PlayerPower_MagneticSingularity" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -353,6 +369,10 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_shrink_ray = true,
     -- 狩猎律动：每个兵种各限一份（带兵种，判重键是 Id:兵种；同一兵种重复等于每次死亡多治一只）。
     silver_hunt_rhythm = true,
+    -- 享辐 / 万象天引 / 艾卡西亚的惊喜：协议授予类，重复授予只会互相重置冷却。
+    prismatic_radiant_bliss = true,
+    prismatic_myriad_pull = true,
+    gold_icathia_surprise = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -783,6 +803,10 @@ function HextechRune:GetRuneCompactTitle(rune)
     if rune.Effect == "broadband_jamming" then
         return "全频段阻塞\n干扰"
     end
+    -- 艾卡西亚的惊喜：七字太长，按「四字标题」排版拆成 艾卡西亚 / 的惊喜 两行。
+    if rune.Effect == "grant_time_bomb" then
+        return "艾卡西亚\n的惊喜"
+    end
     return name
 end
 
@@ -920,16 +944,4 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
-end
-
--- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
--- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
--- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
 end

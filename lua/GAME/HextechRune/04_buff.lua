@@ -1319,7 +1319,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
     grant_cryo_satellite = true, grant_chrono_rift = true,
-    grant_irradiate = true,
+    grant_irradiate = true, grant_desolator_bomb = true,
+    grant_magnetic_singularity = true, grant_time_bomb = true,
     ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
     upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
@@ -1616,16 +1617,9 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyAllLethalTempoBuffs()
     elseif rune.Effect == "drain" then
         self:ApplyDrainToPlayer(playerIndex)
-    elseif rune.Effect == "grant_chrono_rift"
-        or rune.Effect == "grant_irradiate" then
-        -- 协议授予（银·神威 / 银·鸡汤来咯）：先解科技显式锁再授予，见 16_cryo_satellite.lua。
+    elseif self.ProtocolGrants[rune.Effect] ~= nil then
+        -- ProtocolGrants，新增一张协议符文只改那张表和符文池，派发不用动。
         self:GrantProtocol(playerIndex, rune.Effect)
-    -- 恢复时取消下面两行注释，并同步取消 01_rune_pool.lua 的符文条目与排除名单注释。
-    -- elseif rune.Effect == "cash_reward" then
-    --     self:GrantProtocol(playerIndex, rune.Effect)
-    -- 金·冷冻卫星同理（另一处留档，恢复说明见 01_rune_pool.lua）。
-    -- elseif rune.Effect == "grant_cryo_satellite" then
-    --     self:GrantProtocol(playerIndex, rune.Effect)
     elseif rune.Effect == "prepare_backpack" then
         -- 升阶只在下一次符文选择的筛池上体现，见 02_event.lua 的 CanAscendRuneRarity。
         self.PendingRuneAscend[playerIndex] = true
@@ -1652,7 +1646,7 @@ function HextechRune:ApplyNewBattleUnitEffects(sourceName, skipObjects, seenObje
     self:ApplyAllBroadbandJamming(sourceName or "出兵")
     -- 以战养战同理：本方兵种全体都要吃到本轮数值，不占单位池配额。
     self:ApplyAllWarEfficiencyBuffs()
-    -- 致命节奏同理：持有者的全部兵种单位都要带上固定 +50% 攻速与祝融速射。
+    -- 致命节奏同理：持有者的全部兵种单位都要带上固定 +40% 攻速与祝融速射。
     self:ApplyAllLethalTempoBuffs()
     -- 缩小射线同理：本轮处于缩小状态的阵营，新出场的敌方单位也要补上。
     self:RescanShrinkRay()

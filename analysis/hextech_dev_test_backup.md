@@ -2,16 +2,16 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-16）：已贴回 —— 复测中。** §1 三段与 `FindRuneById` 已按本节原样回到
-> `lua/` 与 `ScriptsData.json`，`testRuneIds` 为 **MCV / 秒速五厘米 / 无限火力**（本轮改动：
-> 回收按钮连点越界、MCV 落点改 Player_2/Player_5 前哨站、天堂制造 5→7 回合、五雷天罚 2→3 回合，
-> 加上新增的秒速五厘米）。与 2026-10-14 那版相比 §1 的代码有两处实质变化：**凑不满 3 张也照发**
-> （`getn(options) > 0`，因为秒速五厘米限帝国、无限火力排除帝国，帝国与非帝国座位看到的张数天然不同），
-> 以及补上 `self.PlayerOptionCount[playerIndex]`（正式路径按实际张数居中排版，测试事件必须同步设置）。
-> 发版前照例跑 `analysis/_remove_opening_test.py`（2026-10-16 已干跑确认四处锚点全部命中）。
-> 上一次清理是 2026-10-14，被删掉的最后一版三张为 **鸡汤来咯 / 以战养战 / 神威**
-> （神威当天由金降银、改授「时空裂缝2级」；第二张由「现金奖励」换成「以战养战」，
-> 同时现金奖励符文再次下架留档）；再上一次是 2026-10-13（百虎上将 / 现金奖励 / MCV）。
+> **当前状态（2026-10-17 收尾）：已删除 —— 发版清理。** 三张测试符文（享辐 / 万象天引 / 艾卡西亚的惊喜）
+> 同日实测正常后跑了 `analysis/_remove_opening_test.py`，四处（顶部声明、`ShowOpeningTestEvent`、
+> `OnRoundBegin` 分支、`FindRuneById`）整段删除，删完 01 payload 47799 B、02 48421 B，
+> `_check_release_clean.py` 通过。要复测按 §1 原样贴回，**`FindRuneById` 也一起补回**（清理脚本连它一并删）。
+> 本轮贴回的情况：§1 三段与 `FindRuneById` 曾全在 `lua/` 与 `ScriptsData.json` 里，`testRuneIds` 为上面三张
+> 协议授予符文（两张棱彩一张黄金，都不带 `NeedsUnitType`、不限阵营，六个座位都能拿满三张）。
+> 上一版是 2026-10-16 的 **MCV / 秒速五厘米 / 无限火力**，那一版**只干跑过清理脚本、没有真删**，
+> 所以本次只换了 `testRuneIds` 一处，其余三段代码原样未动。清理脚本按内容锚点定位、与名单无关，
+> 发版前照例跑 `analysis/_remove_opening_test.py`。
+> 更早两次清理：2026-10-14（末版三张 鸡汤来咯 / 以战养战 / 神威）、2026-10-13（百虎上将 / 现金奖励 / MCV）。
 
 
 ---
@@ -33,9 +33,9 @@ HextechRune.OpeningTestTriggered = false
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_mcv",
-        "silver_five_centimeters",
-        "prismatic_infinite_ammo",
+        "prismatic_radiant_bliss",
+        "prismatic_myriad_pull",
+        "gold_icathia_surprise",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -142,6 +142,12 @@ end
    「名单去掉摇光后摇光不再获得无限弹药」。天堂制造 7 回合、五雷天罚 3 回合属于周期数值，
    要换就占用其中一格。注意这一版**允许张数不足 3**：秒速五厘米 `RequiredFaction = 3`、
    无限火力 `ExcludedFaction = 3`，帝国座位与非帝国座位天然各缺一角。
+   **2026-10-17 换（当前名单）**：三张全换成同日新增的协议授予符文 **`prismatic_radiant_bliss`
+   （享辐，彩，苏联三级投毒）/ `prismatic_myriad_pull`（万象天引，彩，苏联磁力奇点）/
+   `gold_icathia_surprise`（艾卡西亚的惊喜，金，盟军三级时空炸弹）**。要验的是查表化之后的派发链路
+   （`04_buff.lua` 现在只认 `HextechRune.ProtocolGrants` 一张表）、苏联两张共用同一把钥匙基地不该
+   生成第二栋、盟军那张对苏联玩家补出 `HextechProtocolYard_1_<玩家编>`，以及七字标题拆成
+   「艾卡西亚 / 的惊喜」两行后的排版。三张都不限阵营、不带兵种，所以六个座位都能拿满 3 张。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），

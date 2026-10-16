@@ -2,8 +2,8 @@
 
 HextechRune = HextechRune or {}
 
--- ============ 协议授予类符文（银·神威 / 银·鸡汤来咯 / 金·现金奖励 / 留档·金·冷冻卫星）============
--- 键名与符文的 Effect 一致，派发处直接传 Effect。
+-- ============ 协议授予类符文（键名即符文 Effect，04_buff.lua 按这张表派发）============
+-- 新增一张协议符文：这里加一行 + 01_rune_pool.lua 加条目 + 03_text.lua 加文案，派发无需改动。
 HextechRune.ProtocolGrants = {
     grant_cryo_satellite = {
         PlayerTech = "PlayerTech_Allied_CryoSatellite_Rank3",
@@ -25,14 +25,29 @@ HextechRune.ProtocolGrants = {
         PlayerTech = "PlayerTech_Soviet_IrradiateTarget",
         SpecialPower = "SpecialPower_IrradiateTarget",
         Faction = 2, YardType = "SovietConstructionYard" },
+    -- 棱彩·享辐：苏联三级投毒（撒毒）协议。技能名带 Level 后缀、不是 Lvl，按 ProtocolEnum 原样取。
+    grant_desolator_bomb = {
+        PlayerTech = "PlayerTech_Soviet_DesolatorBomb_Rank3",
+        SpecialPower = "SpecialPower_DesolatorBomb_Level3",
+        Faction = 2, YardType = "SovietConstructionYard" },
+    -- 棱彩·万象天引：苏联磁力奇点，协议不分档、技能名没有 Rank 后缀。
+    grant_magnetic_singularity = {
+        PlayerTech = "PlayerTech_Soviet_MagneticSingularity",
+        SpecialPower = "SpecialPowerMagneticSingularity",
+        Faction = 2, YardType = "SovietConstructionYard" },
+    -- 金·艾卡西亚的惊喜：盟军三级时空炸弹。苏联玩家靠地图外钥匙基地解锁，盟军玩家本机即通。
+    grant_time_bomb = {
+        PlayerTech = "PlayerTech_Allied_TimeBomb_Rank3",
+        SpecialPower = "SpecialPowerTimeBombLvl3",
+        Faction = 1, YardType = "AlliedConstructionYard" },
 }
 
 -- 钥匙基地的停泊点，实测确认在地图外。
 HextechRune.ProtocolYardOffmapX = 3324.27
 HextechRune.ProtocolYardOffmapY = 8979.87
 
--- 钥匙基地的名字按「阵营 + 玩家编」：同阵营的多张协议卡（盟军神威 / 冷冻卫星、苏联现金奖励 /
--- 毒质腐蚀）共用同一把钥匙，已经有就不再生成第二栋。
+-- 钥匙基地的名字按「阵营 + 玩家编」：同阵营的多张协议卡共用同一把钥匙（盟军神威 / 冷冻卫星 /
+-- 时空炸弹，苏联现金奖励 / 毒质腐蚀 / 投毒 / 磁力奇点），已经有就不再生成第二栋。
 function GetHextechProtocolYardName(playerIndex, faction)
     return "HextechProtocolYard_" .. faction .. "_" .. playerIndex
 end

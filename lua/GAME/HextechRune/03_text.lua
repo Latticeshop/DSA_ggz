@@ -86,6 +86,12 @@ g_LocalizationExtraText = {
     ["hextech.rune.chicken_soup.desc"] = { zh = "获得毒质腐蚀协议。", en = "Gain the Irradiate Target protocol." },
     ["hextech.rune.divine_might.name"] = { zh = "神威", en = "Divine Might" },
     ["hextech.rune.divine_might.desc"] = { zh = "获得时空裂缝协议。", en = "Gain the Chrono Rift protocol." },
+    ["hextech.rune.radiant_bliss.name"] = { zh = "享辐", en = "Radiant Bliss" },
+    ["hextech.rune.radiant_bliss.desc"] = { zh = "获得三级投毒协议。", en = "Gain the tier-3 Desolator Bomb protocol." },
+    ["hextech.rune.myriad_pull.name"] = { zh = "万象天引", en = "Myriad Pull" },
+    ["hextech.rune.myriad_pull.desc"] = { zh = "获得磁力奇点协议。", en = "Gain the Magnetic Singularity protocol." },
+    ["hextech.rune.icathia_surprise.name"] = { zh = "艾卡西亚的惊喜", en = "Icathia's Surprise" },
+    ["hextech.rune.icathia_surprise.desc"] = { zh = "获得三级时空炸弹协议。", en = "Gain the tier-3 Time Bomb protocol." },
     ["hextech.rune.safety.name"] = { zh = "安全感", en = "Sense of Security" },
     ["hextech.rune.safety.desc"] = { zh = "获得 2 个埃奎斯护盾发生器。", en = "Gain 2 Aegis Shield Generators." },
     ["hextech.rune.railgun_duel.name"] = { zh = "中门对狙", en = "Mid-Door Sniper Duel" },
@@ -175,8 +181,8 @@ g_LocalizationExtraText = {
             en = "Gain 10 random units, at least one of which is tier 4 or above." },
     ["hextech.rune.lethal_tempo.name"] = { zh = "致命节奏", en = "Lethal Tempo" },
     ["hextech.rune.lethal_tempo.desc"] =
-        { zh = "你的单位+50%%攻速，且攻击会越打越快。",
-            en = "Your units gain +50% attack speed, and keep attacking faster and faster." },
+        { zh = "你的单位+40%%攻速，且攻击会越打越快。",
+            en = "Your units gain +40% attack speed, and keep attacking faster and faster." },
     ["hextech.rune.poach.no_source"] =
         { zh = "挖角：敌方卡池为空，本次未获得单位。",
             en = "Poach: the enemy pool is empty, no unit gained." },
@@ -192,13 +198,11 @@ g_LocalizationExtraText = {
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
             en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
-    -- 回归基本功：按单位阶级整体加减，卡面文案不带兵种槽（无 %s）。
     ["hextech.rune.back_to_basics.name"] = { zh = "回归基本功", en = "Back to Basics" },
     ["hextech.rune.back_to_basics.desc"] = {
-        zh = "你的T1/T2单位血量和伤害提高90%%、攻速和射程提高50%%；你的T3/T4单位血量和伤害降低90%%、攻速和射程降低50%%。",
-        en = "Your T1/T2 units gain 90%% health, 90%% damage, 50%% attack speed and 50%% range; your T3/T4 units lose 90%% health, 90%% damage, 50%% attack speed and 50%% range."
+        zh = "你的T1/T2单位血量、伤害、攻速和射程提高90%%；你的T3/T4单位血量、伤害、攻速和射程降低50%%。",
+        en = "Your T1/T2 units gain 90%% health, damage, attack speed and range; your T3/T4 units lose 50%% health, damage, attack speed and range."
     },
-    -- 等价交换：两个兵种槽（第一个 %s = 受益兵种，第二个 %s = 受损兵种），
     -- 兵种对在候选生成时随机定好，见 01_rune_pool.lua 的 CreateRuneCandidateForPlayer。
     ["hextech.rune.equivalent_exchange.name"] = { zh = "等价交换", en = "Equivalent Exchange" },
     ["hextech.rune.equivalent_exchange.desc"] = {

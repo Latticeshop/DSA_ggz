@@ -7,10 +7,10 @@ HextechRune.LethalTempoRuneId = "prismatic_lethal_tempo"
 HextechRune.LethalTempoModifierName = "AttributeModifier_CelestialZhuRongRapidFire"
 -- 加载时长：单位每回合都会被回收重建，取长时长避免中途过期。
 HextechRune.LethalTempoModifierDuration = 9999
--- 固定 +50% 攻速，单开一份修正器（不借用「迅捷」那份）。
+-- 固定 +40% 攻速，单开一份修正器（不借用「迅捷」那份）。
 if not g_HextechLethalTempoRateOfFireModifier then
     g_HextechLethalTempoRateOfFireModifier =
-        exAttributeModifierCreate({ RATE_OF_FIRE = 1.5 }, 1)
+        exAttributeModifierCreate({ RATE_OF_FIRE = 1.4 }, 1)
 end
 -- 已加载标记按「对象 ID → 回合号」记录：同一回合内的多次补扫不重复加载，
 -- 换回合后单位是新对象，标记自然失效（补兵与空军补扫都会再走一遍扫描）。
