@@ -10,35 +10,30 @@ if count <= 0 then
     return
 end
 
+-- 与九头蛇/冰天雪地同款：
 local landingTargetFilter = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "SAME_PLAYER",
-    Include = "INFANTRY VEHICLE HUGE_VEHICLE",
-    ExcludeThing = { "JapanFortressShip", "JapanigaFortressShip" },
-    Exclude = "AIRCRAFT SHIP STRUCTURE DEBRIS IGNORE_IN_AI_HUNT_TACTIC",
+    Include = "SELECTABLE",
+    ExcludeThing = { "JapanFortressShip", "JapanigaFortressShip", "Overlordtank",
+        "AlliedMCV",
+        "CelestialMCV", "CelestialMCV_Ground", "CelestialMCV_Naval", "CelestialMCV_Air",
+        "CelestialMCV_Enhanced", "CelestialMCV_Enhanced_Ground",
+        "CelestialMCV_Enhanced_Naval", "CelestialMCV_Enhanced_Air",
+        "CelestialBaseDefenseAdvanced", "CelestialBaseDefenseAdvanced_NoCore",
+        "CelestialBaseDefenseAir", "CelestialEnergyGatlingTower",
+        "AlliedHeavyArtilleryDefenseBase", "SovietBaseDefenseAdvanced",
+        "JapanBaseDefenseAdvanced" },
+    Exclude = "AIRCRAFT SHIP STRUCTURE DEBRIS IGNORE_IN_AI_HUNT_TACTIC IMMOBILE",
 })
 local landingTargets, landingTargetCount = ObjectFindObjects(targetTower, nil, landingTargetFilter)
--- 特殊海塔和其后方的超级要塞守卫无法被 SHIP/STRUCTURE Kind 稳定排除。
--- 按地图对象 ID 再兜底一次，避免将 seaTower7/8 所在水域选为落点。
-local excludedLandingTargetIds = {}
-local excludedLandingTargetNames = {
-    "T73F", "T83F", "Sea3ProtectShip7", "Sea3ProtectShip8"
-}
-for i = 1, getn(excludedLandingTargetNames), 1 do
-    local excludedTarget = GetObjectByScriptName(excludedLandingTargetNames[i])
-    if excludedTarget then
-        excludedLandingTargetIds[ObjectGetId(excludedTarget)] = true
-    end
-end
 local availableLandingTargets = {}
-local availableLandingTargetCount = 0
 for i = 1, landingTargetCount, 1 do
-    local target = landingTargets[i]
-    if ObjectIsAlive(target) and not excludedLandingTargetIds[ObjectGetId(target)] then
-        tinsert(availableLandingTargets, target)
+    if ObjectIsAlive(landingTargets[i]) then
+        tinsert(availableLandingTargets, landingTargets[i])
     end
 end
-availableLandingTargetCount = getn(availableLandingTargets)
+local availableLandingTargetCount = getn(availableLandingTargets)
 
 local randomIndex = function(maxIndex)
     local index = ceil(GetRandomNumber() * maxIndex)
@@ -60,7 +55,7 @@ for groupIndex = 1, groupCount, 1 do
         availableLandingTargets = {}
         for i = 1, landingTargetCount, 1 do
             local target = landingTargets[i]
-            if ObjectIsAlive(target) and not excludedLandingTargetIds[ObjectGetId(target)] then
+            if ObjectIsAlive(target) then
                 tinsert(availableLandingTargets, target)
             end
         end

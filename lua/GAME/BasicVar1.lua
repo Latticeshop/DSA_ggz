@@ -117,6 +117,12 @@ function SpawnTowerGuardian(objectName, objectType, sourceTeam, attackTeam,
             { objectName, guardianId, 1 })
     end
 
+    -- 原本靠地编 ATTACK__7/8 的 TEAM_SET_EXPERIENCE_POINTS("ATTACK", 99999) 满星，
+    -- 那条会连带给一切进 ATTACK 队的新单位强行升星，已删除；守护神改为 lua 直接指定 5 星。
+    for levelindex = 1, 5, 1 do
+        ExecuteAction("UNIT_GAIN_LEVEL", guardian, 1)
+    end
+
     ExecuteAction("TEAM_MERGE_INTO_TEAM", sourceTeam, attackTeam)
 end
 

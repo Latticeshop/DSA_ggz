@@ -1,5 +1,8 @@
 for i=5,6,1 do
 local wuti = GetObjectByScriptName("devil"..i)
+for levelindex=1,5,1 do
+ExecuteAction("UNIT_GAIN_LEVEL", wuti, 1)
+end
 ObjectLoadAttributeModifier(wuti,'AttributeMod_GenericSpeedSet200',300000000)
 for i=1,5,1 do
 ObjectLoadAttributeModifier(wuti,'AttributeModifier_CelestialZhuRongRapidFire',300000000)

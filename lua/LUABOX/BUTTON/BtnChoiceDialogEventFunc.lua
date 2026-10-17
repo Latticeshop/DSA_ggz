@@ -54,6 +54,7 @@ g_SkillNames = {
     Localization.get("skill.name.3"),
     Localization.get("skill.name.4"),
     Localization.get("skill.name.5"),
+    Localization.get("skill.name.6"),
 }
 Localization.on_language_changed(function()
     g_GameModeName = {
@@ -73,6 +74,7 @@ Localization.on_language_changed(function()
         Localization.get("skill.name.3"),
         Localization.get("skill.name.4"),
         Localization.get("skill.name.5"),
+        Localization.get("skill.name.6"),
     }
 end)
 g_PreselectedSkillIndices = {}
@@ -1039,7 +1041,8 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
     end
 
     dialogData.RandomSkill = function(self, isSymmetric)
-        local copySkillIndex = 5
+        -- 复制组固定在技能选择的最后一行，随机要避开它（1..copySkillIndex-1 才是可选组）。
+        local copySkillIndex = 6
         g_PreselectedSkillIndices = {}
         g_PreselectedSkillIndices.IsRandom = true
         local skillNamesCount = getn(g_SkillNames)

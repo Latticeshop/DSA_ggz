@@ -46,10 +46,10 @@ HextechRune.ProtocolGrants = {
 HextechRune.ProtocolYardOffmapX = 3324.27
 HextechRune.ProtocolYardOffmapY = 8979.87
 
--- 钥匙基地的名字按「阵营 + 玩家编」：同阵营的多张协议卡共用同一把钥匙（盟军神威 / 冷冻卫星 /
+-- 钥匙基地的名字按「阵营 + 持有者」：同一方的多张协议卡共用一把钥匙（盟军神威 / 冷冻卫星 /
 -- 时空炸弹，苏联现金奖励 / 毒质腐蚀 / 投毒 / 磁力奇点），已经有就不再生成第二栋。
-function GetHextechProtocolYardName(playerIndex, faction)
-    return "HextechProtocolYard_" .. faction .. "_" .. playerIndex
+function GetHextechProtocolYardName(playerName, faction)
+    return "HextechProtocolYard_" .. faction .. "_" .. playerName
 end
 
 -- 地图外没有航点，仍走已验证的航点生成通道保证归属与形态，落点再单独挪一次（与伏龙殿同一套做法）。
@@ -58,18 +58,24 @@ function HextechRune.DisableProtocolYard(yardName)
     ExecuteAction("NAMED_SET_DISABLED", yardName, "HELD", 1)
 end
 
-function HextechRune:EnsureProtocolYard(playerIndex, grant)
-    if g_PlayerSide ~= nil and g_PlayerSide[playerIndex] == grant.Faction then
+-- playerIndex 为 nil 表示场地中间的 AI 阵营（PlyrCivilian/PlyrCreeps）：这类侧没有自己的
+-- Player_N_Start 航点，借 Player_1_Start 生成就行（归属只由 team 参数决定），同帧挪到图外。
+function HextechRune:EnsureProtocolYard(playerName, grant, playerIndex)
+    if playerIndex ~= nil and g_PlayerSide ~= nil
+        and g_PlayerSide[playerIndex] == grant.Faction then
         return
     end
-    local name = GetHextechProtocolYardName(playerIndex, grant.Faction)
+    local name = GetHextechProtocolYardName(playerName, grant.Faction)
     if GetObjectByScriptName(name) ~= nil then
         return
     end
-    local playerName = "Player_" .. playerIndex
+    local waypoint = "Player_1_Start"
+    if playerIndex ~= nil then
+        waypoint = "Player_" .. playerIndex .. "_Start"
+    end
     ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION", name,
         grant.YardType, playerName .. "/team" .. playerName,
-        playerName .. "_Start", 0)
+        waypoint, 0)
     local yard = GetObjectByScriptName(name)
     if yard == nil then
         return
@@ -82,14 +88,14 @@ function HextechRune:EnsureProtocolYard(playerIndex, grant)
 end
 
 -- 赋予手法与 04_buff.lua 的 GrantCashRewardProtocol 相同：先解掉科技显式锁，否则授予后图标仍置灰。
-function HextechRune:GrantProtocol(playerIndex, grantKey)
+-- 授予对象既可以是玩家（Player_N），也可以是场地中间的 AI 阵营（PlyrCivilian/PlyrCreeps）。
+function HextechRune:GrantProtocolToPlayer(playerName, grantKey, playerIndex)
     local grant = self.ProtocolGrants[grantKey]
     if grant == nil then
         return
     end
-    local playerName = "Player_" .. playerIndex
     local previous = SetWorldBuilderThisPlayer(1)
-    self:EnsureProtocolYard(playerIndex, grant)
+    self:EnsureProtocolYard(playerName, grant, playerIndex)
     ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName, grant.PlayerTech, 0)
     ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", grant.SpecialPower, playerName)
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
@@ -99,12 +105,15 @@ function HextechRune:GrantProtocol(playerIndex, grantKey)
     SetWorldBuilderThisPlayer(previous)
     -- 技能实例由 GRANT 延迟创建，同帧的 Available 可能只改到全局禁用记录，下一帧再解禁一次。
     SchedulerModule.delay_call(HextechRune.ReunlockProtocol, 1,
-        {playerIndex, grant.PlayerTech, grant.SpecialPower})
+        {playerName, grant.PlayerTech, grant.SpecialPower})
+end
+
+function HextechRune:GrantProtocol(playerIndex, grantKey)
+    self:GrantProtocolToPlayer("Player_" .. playerIndex, grantKey, playerIndex)
 end
 
 -- 延迟解禁：只补解锁与可用性，不再重复 GRANT（重复授予会把冷却打回原形）。
-function HextechRune.ReunlockProtocol(playerIndex, playerTech, specialPower)
-    local playerName = "Player_" .. playerIndex
+function HextechRune.ReunlockProtocol(playerName, playerTech, specialPower)
     local previous = SetWorldBuilderThisPlayer(1)
     ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName, playerTech, 0)
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName, specialPower, "Available")

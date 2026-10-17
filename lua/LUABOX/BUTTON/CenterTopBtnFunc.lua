@@ -368,6 +368,9 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
         buttons[1] = CreateSpawnArmyImmediatelyButton(playerIndex)
         buttons[2] = CreateNanoMaintainHiveButton(playerIndex)
     elseif kind == 5 then
+        buttons[1] = CreateHydraButton(playerIndex)
+        buttons[2] = CreateSnowstormButton(playerIndex)
+    elseif kind == 6 then
         buttons[1] = CreateRepeatEnemySpecialPowerButton(playerIndex)
         buttons[2] = CreateRepeatSelfSpecialPowerButton(playerIndex)
     else
@@ -620,25 +623,6 @@ function CreateRepeatEnemySpecialPowerButton(playerIndex)
     return CreateButton(buttonData)
 end
 
-    --function CreateBuyOverButton(playerIndex)
-    --    local buttonData = {
-    --        PlayerName = "Player_" .. playerIndex,
-    --        PlayerIndex = playerIndex,
-    --        ButtonIndex = 1,
-    --        IconId = 'Button_AlliedInfiltrationInfantry_on',
-    --        Title = '策反',
-    --        Description = '策反中间区域附近的陆军和空军',
-    --        IsEnabled = true,
-    --        MaxUseCount = 1,
-    --        SharedCooldownId = "buyover",
-    --        SharedCooldownSeconds = 10,
-    --        OnClick = function(self)
-    --            return RequestBuyOver(self.PlayerIndex)
-    --        end,
-    --    }
-    --    return CreateButton(buttonData)
-    --end
-
 function CreateNanoMaintainHiveButton(playerIndex)
     local buttonData = {
         PlayerName = "Player_" .. playerIndex,
@@ -773,22 +757,6 @@ function RequestDestruction(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.local_destruction", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "A01_CoastalGun_ImpactExplosion")
     exEnableWBScript(sideScript)
-    if playerIndex <= 3 then
-        tinsert(g_evilButtonClickHistory, RequestDestruction)
-    else
-        tinsert(g_angelButtonClickHistory, RequestDestruction)
-    end
-    return true
-end
-
-function RequestBuyOver(playerIndex)
-    local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
-        sideName = Localization.get("side.angel")
-    end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.bribe", sideName))
-    --ExecuteAction("PLAY_SOUND_EFFECT", "A01_CoastalGun_ImpactExplosion")
-
     if playerIndex <= 3 then
         tinsert(g_evilButtonClickHistory, RequestDestruction)
     else
@@ -1058,6 +1026,9 @@ function RequestDragonShip(playerIndex, count)
         local previousHp = ObjectGetCurrentHealth(dragonship)
         ExecuteAction("SET_UNIT_REFERENCE", str, dragonship)
         ExecuteAction("NAMED_SET_MAX_HEALTH", str, maxHealth, 'true')
+        for levelindex = 1, 5, 1 do
+            ExecuteAction("UNIT_GAIN_LEVEL", dragonship, 1)
+        end
         local currentHp = ObjectGetCurrentHealth(dragonship)
         exMessageAppendToMessageArea(Localization.get("center_top.dragonship.hp_change", id, previousHp, currentHp))
     end
