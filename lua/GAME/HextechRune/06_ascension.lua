@@ -2,7 +2,8 @@
 
 HextechRune = HextechRune or {}
 
--- 每回收 1 个目标单位掷一次：血量 / 伤害 / 攻速 / 射程 里随机命中一项。
+-- 每回收 1 个目标单位掷一次：血量 / 伤害 / 攻速 / 射程 里随机命中一项，
+-- 带弹药的飞机（见 AmmoAircraftUnitTypes）再多掷一维「弹药」。
 -- 命中的幅度按目标单位的阶级取档：T1 30% / T2 40% / T3 50% / T4 60%。
 HextechRune.AscensionTierPercent = { [1] = 30, [2] = 40, [3] = 50, [4] = 60 }
 -- 体积固定倍率，与掷骰无关。
@@ -12,9 +13,20 @@ HextechRune.AscensionScale = 1.3
 HextechRune.AscensionHealthChance = 0.40
 HextechRune.AscensionDamageChance = 0.30
 HextechRune.AscensionRateOfFireChance = 0.20
+HextechRune.AscensionRangeChance = 0.10
+HextechRune.AscensionAmmoChance = 0.10
+-- 名单与 04_buff.lua 的 InfiniteAmmoAircraftFilter 同源，改一边要同步另一边。
+HextechRune.AmmoAircraftUnitTypes = {
+    AlliedFighterAircraft = true,          -- 阿波罗
+    AlliedInterceptorAircraft = true,      -- 阿瑞斯
+    CelestialFighterAircraft = true,       -- 凤凰
+    CelestialInterceptorAircraft = true,   -- 重明截击机
+    SovietFighterAircraft = true,          -- 米格
+    SovietInterceptorAircraft = true,      -- 苏霍伊
+}
 -- playerIndex → 已累计层数（= 掷骰次数，配额与播报都看它）。
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
--- playerIndex → { Health, Damage, RateOfFire, Range }，各维已掷到的次数。
+-- playerIndex → { Health, Damage, RateOfFire, Range, Ammo }，各维已掷到的次数。
 HextechRune.AscensionBonusCounts = HextechRune.AscensionBonusCounts or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
@@ -45,20 +57,53 @@ function HextechRune:GetAscensionTierPercent(unitType)
     return self.AscensionTierPercent[self:GetUltimateCreatureUnitTier(unitType)] or 0
 end
 
--- 回收 1 个单位掷一次加成种类：血量 / 伤害 / 攻速 / 射程。
-function HextechRune:RollAscensionBonusKind()
+-- 回收 1 个单位掷一次加成种类：血量 / 伤害 / 攻速 / 射程，带弹药的飞机再多一维弹药。
+function HextechRune:RollAscensionBonusKind(hasAmmo)
     local roll = GetRandomNumber()
+    local damageChance = self.AscensionDamageChance
+    if hasAmmo then
+        damageChance = damageChance - self.AscensionAmmoChance
+    end
     if roll < self.AscensionHealthChance then
         return "Health"
     end
-    if roll < self.AscensionHealthChance + self.AscensionDamageChance then
+    local threshold = self.AscensionHealthChance + damageChance
+    if roll < threshold then
         return "Damage"
     end
-    if roll < self.AscensionHealthChance + self.AscensionDamageChance
-        + self.AscensionRateOfFireChance then
+    threshold = threshold + self.AscensionRateOfFireChance
+    if roll < threshold then
         return "RateOfFire"
     end
-    return "Range"
+    if not hasAmmo or roll < threshold + self.AscensionRangeChance then
+        return "Range"
+    end
+    return "Ammo"
+end
+
+function HextechRune:IsAmmoAircraftUnitType(unitType)
+    return unitType ~= nil and self.AmmoAircraftUnitTypes[unitType] == true
+end
+
+-- 弹药不是 AttributeModifier 的维度，只能按武器槽写数值（无限火力同款接口）。
+-- 倍率套用最大弹量后写进当前弹量；没有弹药的武器槽取到空值就跳过。
+-- 只往上写、不下调：出兵扫描里无限火力先写 100000，这里再按倍率写会把无限火力抹掉。
+function HextechRune:ApplyAmmoBonusToUnit(unit, multiplier)
+    if multiplier == nil or multiplier <= 1 then
+        return
+    end
+    for weaponIndex = 1, 5, 1 do
+        local maxAmmo = ObjectGetWeaponSetUpdateWeaponMaxAmmoCount(unit, 1, 1, weaponIndex)
+        if maxAmmo ~= nil and maxAmmo > 0 then
+            local bonusAmmo = floor(maxAmmo * multiplier + 0.5)
+            local currentAmmo = ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount(
+                unit, 1, 1, weaponIndex)
+            if currentAmmo == nil or bonusAmmo > currentAmmo then
+                ObjectSetWeaponSetUpdateWeaponCurrentAmmoCount(unit, 1, 1, weaponIndex,
+                    bonusAmmo)
+            end
+        end
+    end
 end
 
 function HextechRune:GetAscensionBonusCount(playerIndex, kind)
@@ -77,11 +122,13 @@ function HextechRune:AddAscensionStacks(playerIndex, count)
     self.AscensionStacks[playerIndex] = self:GetAscensionStacks(playerIndex) + count
     local counts = self.AscensionBonusCounts[playerIndex]
     if counts == nil then
-        counts = { Health = 0, Damage = 0, RateOfFire = 0, Range = 0 }
+        counts = { Health = 0, Damage = 0, RateOfFire = 0, Range = 0, Ammo = 0 }
         self.AscensionBonusCounts[playerIndex] = counts
     end
+    local rune = self:GetAscensionRune(playerIndex)
+    local hasAmmo = rune ~= nil and self:IsAmmoAircraftUnitType(rune.TargetUnitType)
     for i = 1, count, 1 do
-        local kind = self:RollAscensionBonusKind()
+        local kind = self:RollAscensionBonusKind(hasAmmo)
         counts[kind] = (counts[kind] or 0) + 1
     end
 end
@@ -101,12 +148,20 @@ function HextechRune:BroadcastAscension(playerIndex)
     end
     -- 播报各维累计到现在的加成；每层的幅度按目标单位阶级取档。
     local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
-    local text = Localization.get("hextech.rune.ascension.broadcast",
-        rune.TargetUnitName or rune.TargetUnitType or "?",
-        self:GetAscensionBonusCount(playerIndex, "Health") * percent,
-        self:GetAscensionBonusCount(playerIndex, "Damage") * percent,
-        self:GetAscensionBonusCount(playerIndex, "RateOfFire") * percent,
-        self:GetAscensionBonusCount(playerIndex, "Range") * percent)
+    local health = self:GetAscensionBonusCount(playerIndex, "Health") * percent
+    local damage = self:GetAscensionBonusCount(playerIndex, "Damage") * percent
+    local rateOfFire = self:GetAscensionBonusCount(playerIndex, "RateOfFire") * percent
+    local range = self:GetAscensionBonusCount(playerIndex, "Range") * percent
+    local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
+    local text
+    if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
+        text = Localization.get("hextech.rune.ascension.broadcast_ammo", targetName,
+            health, damage, rateOfFire, range,
+            self:GetAscensionBonusCount(playerIndex, "Ammo") * percent)
+    else
+        text = Localization.get("hextech.rune.ascension.broadcast", targetName,
+            health, damage, rateOfFire, range)
+    end
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
@@ -153,7 +208,11 @@ end
 function HextechRune:GetAscensionPooledCount(playerIndex, rune)
     local unitInfo = self:FindAscensionUnitInfo(playerIndex, rune.TargetUnitType)
     if unitInfo == nil then
-        return 0
+        if rune.TargetUnitIndex == nil or UNITCOUNT == nil
+            or UNITCOUNT[playerIndex] == nil then
+            return 0
+        end
+        return tonumber(UNITCOUNT[playerIndex][rune.TargetUnitIndex]) or 0
     end
     return tonumber(GetRecycleUnitCount(playerIndex, unitInfo)) or 0
 end
@@ -271,6 +330,13 @@ function HextechRune:ApplyAscensionUnits(assignments)
                 ObjectLoadAttributeModifier(assignment.Unit,
                     self:CreateAscensionModifier(assignment.PlayerIndex),
                     self.PersistentBuffDuration)
+                -- 弹药走武器槽，不进 Modifier：按掷到弹药的次数放大当前弹量。
+                if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
+                    local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
+                    self:ApplyAmmoBonusToUnit(assignment.Unit,
+                        1 + self:GetAscensionBonusCount(assignment.PlayerIndex, "Ammo")
+                            * percent / 100)
+                end
                 -- 体积与加成同时生效：固定倍率、永久缩放，不掷骰也不建信息框。
                 exObjectSetFixedScale(ObjectGetId(assignment.Unit),
                     self.AscensionScale)

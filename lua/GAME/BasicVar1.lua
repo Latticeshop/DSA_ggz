@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.72
+
 g_PlayerDebtCount = {
     ["Player_1"] = 0,
     ["Player_2"] = 0,
@@ -25,6 +27,26 @@ g_PlayerNameToIndex = {
     ["Player_6"] = 6,
 }
 
+
+g_SkillSummonedUnits = g_SkillSummonedUnits or {}
+
+function RegisterSkillSummonedUnit(unit)
+    if unit ~= nil and ObjectIsAlive(unit) then
+        g_SkillSummonedUnits[ObjectGetId(unit)] = unit
+    end
+end
+
+function IsSkillSummonedUnitId(objectId)
+    local unit = g_SkillSummonedUnits[objectId]
+    if unit == nil then
+        return false
+    end
+    if not ObjectIsAlive(unit) or ObjectGetId(unit) ~= objectId then
+        g_SkillSummonedUnits[objectId] = nil
+        return false
+    end
+    return true
+end
 
 -- 塔摧毁进度  TODO
 g_TowerDestroyProgress = 0;

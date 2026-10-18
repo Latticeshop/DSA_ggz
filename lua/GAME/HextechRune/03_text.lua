@@ -131,11 +131,20 @@ g_LocalizationExtraText = {
         en = "One of your %s units evolves into an Ultimate Creature! Recycle your current T1 and T2 units; each recycled T1 unit grants 7%% health and 3%% damage, each recycled T2 unit grants 7%% attack speed and 3%% range. Gain 1 %s unit."
     },
     ["hextech.rune.ultimate_creature.broadcast"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
+    -- 带弹药的飞机（阿波罗/阿瑞斯/凤凰/重明/米格/苏霍伊）额外吃一维弹药，文案单开一条。
+    ["hextech.rune.ultimate_creature.desc_ammo"] = {
+        zh = "你的一个 %s 单位进化成为究极生物！回收你当前的T1和T2单位，每回收一个T1/T2单位，分别增加7%%血量和3%%伤害和1%%弹药/7%%攻速和3%%射程。获得一个 %s 单位。",
+        en = "One of your %s units evolves into an Ultimate Creature! Recycle your current T1 and T2 units; each recycled T1 unit grants 7%% health, 3%% damage and 1%% ammo, each recycled T2 unit grants 7%% attack speed and 3%% range. Gain 1 %s unit."
+    },
+    ["hextech.rune.ultimate_creature.broadcast_ammo"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%,%d弹药%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%, %d ammo%%" },
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
     ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+%d%%血量/+%d%%伤害/+%d%%攻速/+%d%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +%d%% health / +%d%% damage / +%d%% attack speed / +%d%% range." },
     ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
+    -- 带弹药的飞机把「伤害」的 10% 让给「弹药」：血量 40% / 伤害 20% / 攻速 20% / 射程 10% / 弹药 10%。
+    ["hextech.rune.ascension.desc_ammo"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+%d%%血量/+%d%%伤害/+%d%%攻速/+%d%%射程/+%d%%弹药。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +%d%% health / +%d%% damage / +%d%% attack speed / +%d%% range / +%d%% ammo." },
+    ["hextech.rune.ascension.broadcast_ammo"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%,%d弹药%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%, %d ammo%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
     ["hextech.rune.banzai_charge.name"] = { zh = "万岁冲锋", en = "Banzai Charge" },

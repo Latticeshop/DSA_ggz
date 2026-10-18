@@ -10,9 +10,10 @@ HextechRune.UltimateCreatureEmperorsRageModifier =
     "AttributeModifer_JapanEmperorsResolve_L1"
 HextechRune.UltimateCreatureScale = 1.3
 -- 赋值模式：只回收 T1/T2 单位来强化，T3 及以上原样留在单位池里。
--- T1 每个 → 血量 +7%、伤害 +3%；T2 每个 → 攻速 +7%、射程 +3%，与播报文案共用这份数值。
+-- 目标是带弹药的飞机时，T1 每个再给 +1% 弹药（判定见 06_ascension.lua 的 AmmoAircraftUnitTypes）。
 HextechRune.UltimateCreatureT1HealthPercent = 7
 HextechRune.UltimateCreatureT1DamagePercent = 3
+HextechRune.UltimateCreatureT1AmmoPercent = 1
 HextechRune.UltimateCreatureT2RateOfFirePercent = 7
 HextechRune.UltimateCreatureT2RangePercent = 3
 HextechRune.UltimateCreatureRegisteredUnits =
@@ -323,26 +324,37 @@ function HextechRune:SacrificeUnitPoolForUltimateCreature(playerIndex)
 end
 
 -- 回收完成后按以战养战同款格式播报，让持有者看清献祭换到了多少数值：
--- 血量/伤害来自 T1 数量，攻速/射程来自 T2 数量。
-function HextechRune:BroadcastUltimateCreature(playerIndex, tierCounts)
+-- 血量/伤害来自 T1 数量，攻速/射程来自 T2 数量；带弹药的飞机再报一维弹药。
+function HextechRune:BroadcastUltimateCreature(playerIndex, tierCounts, hasAmmo)
     if tierCounts[1] + tierCounts[2] <= 0 then
         return
     end
-    local text = Localization.get("hextech.rune.ultimate_creature.broadcast",
-        tierCounts[1] * self.UltimateCreatureT1HealthPercent,
-        tierCounts[1] * self.UltimateCreatureT1DamagePercent,
-        tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent,
-        tierCounts[2] * self.UltimateCreatureT2RangePercent)
+    local health = tierCounts[1] * self.UltimateCreatureT1HealthPercent
+    local damage = tierCounts[1] * self.UltimateCreatureT1DamagePercent
+    local rateOfFire = tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent
+    local range = tierCounts[2] * self.UltimateCreatureT2RangePercent
+    local text
+    if hasAmmo then
+        text = Localization.get("hextech.rune.ultimate_creature.broadcast_ammo",
+            health, damage, rateOfFire, range,
+            tierCounts[1] * self.UltimateCreatureT1AmmoPercent)
+    else
+        text = Localization.get("hextech.rune.ultimate_creature.broadcast",
+            health, damage, rateOfFire, range)
+    end
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
 end
 
 function HextechRune:CreateUltimateCreature(playerIndex, rune)
+    local hasAmmo = self:IsAmmoAircraftUnitType(rune.TargetUnitType)
     local tierCounts = self:SacrificeUnitPoolForUltimateCreature(playerIndex)
     self.UltimateCreatureStates[playerIndex] = {
         TierCounts = tierCounts,
         UnitIndex = rune.TargetUnitIndex,
+        UnitType = rune.TargetUnitType,
+        HasAmmo = hasAmmo,
     }
-    self:BroadcastUltimateCreature(playerIndex, tierCounts)
+    self:BroadcastUltimateCreature(playerIndex, tierCounts, hasAmmo)
 
     -- 目标单位在选卡那一刻随机定好（见 CreateRuneCandidateForPlayer 的 minTier 分支）。
     -- T3 及以上的池子不再清空，所以这里按「加一只」补进池子，而不是清空后重设。
@@ -442,6 +454,11 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     }, 1)
     ObjectLoadAttributeModifier(unit, modifier,
         self.PersistentBuffDuration)
+    -- 目标是带弹药的飞机时，T1 献祭数量按 1% 放大当前弹量（走武器槽，不走 Modifier）。
+    if state.HasAmmo then
+        self:ApplyAmmoBonusToUnit(unit,
+            1 + tierCounts[1] * self.UltimateCreatureT1AmmoPercent / 100)
+    end
     -- 只加载天皇之怒一级的实际数值，不释放其范围武器和地面特效。
     ObjectLoadAttributeModifier(unit,
         self.UltimateCreatureEmperorsRageModifier,

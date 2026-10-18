@@ -1,5 +1,6 @@
 for i=5,6,1 do
 local wuti = GetObjectByScriptName("devil"..i)
+RegisterSkillSummonedUnit(wuti)
 for levelindex=1,5,1 do
 ExecuteAction("UNIT_GAIN_LEVEL", wuti, 1)
 end

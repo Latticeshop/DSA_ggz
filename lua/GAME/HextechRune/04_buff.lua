@@ -961,19 +961,9 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "JapanSakuraAttackRocket" },
 }
 
--- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池，
--- 因此这些原单位不能再作为“登神 / 买二送一”的目标（见 01_rune_pool.lua）。
-function HextechRune:GetReplacedSourceTypes(playerIndex)
-    self:EnsurePlayerRuneState(playerIndex)
-    local result = {}
-    for i = 1, getn(self.UnitReplacementRunes), 1 do
-        local entry = self.UnitReplacementRunes[i]
-        if self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] then
-            result[entry.SourceType] = true
-        end
-    end
-    return result
-end
+-- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池。
+-- 「指定单位型」符文怎么选目标（原形态 / 升级形态的双向排除）统一在
+-- 01_rune_pool.lua 的 GetReplacementTargetFilter，不要在这里另写一份。
 
 -- 在单位池正式计数前替换回收目标。抽卡单位的获得播报同样读取替换后的槽位，
 -- 因而会直接显示升级单位，而不是先加入原单位再做二次转换。
@@ -1209,6 +1199,8 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
             local assignment = self.BattleUnitAssignments[objectId]
             if not self:IsCurrentAssignment(unit, assignment)
                 and not self:IsPresetMapUnit(unit)
+                -- 技能召唤单位（空军元帅苏霍伊、龙船等）同模板同阵营，不能占玩家的符文名额。
+                and not IsSkillSummonedUnitId(objectId)
                 and (skipObjects == nil or skipObjects[objectId] == nil) then
                 tinsert(newUnits, unit)
             end
@@ -1631,6 +1623,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         or rune.Effect == "upgrade_v4_tulip"
         or rune.Effect == "upgrade_sakura_rocket" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
+        -- 已指向原形态的登神/买二送一同时改指升级形态。
+        self:RemapReplacedRuneTargets(playerIndex)
     else
         self:ApplyPersistentRune(playerIndex, rune)
     end

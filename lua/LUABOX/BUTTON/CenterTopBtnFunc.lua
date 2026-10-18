@@ -1025,6 +1025,8 @@ function RequestDragonShip(playerIndex, count)
         local str = "UnitStrRef" .. id
         local previousHp = ObjectGetCurrentHealth(dragonship)
         ExecuteAction("SET_UNIT_REFERENCE", str, dragonship)
+        -- 阵营 AI 生成的定制单位，登记后符文按阵营扫描时不会把它当成玩家卡池单位。
+        RegisterSkillSummonedUnit(dragonship)
         ExecuteAction("NAMED_SET_MAX_HEALTH", str, maxHealth, 'true')
         for levelindex = 1, 5, 1 do
             ExecuteAction("UNIT_GAIN_LEVEL", dragonship, 1)

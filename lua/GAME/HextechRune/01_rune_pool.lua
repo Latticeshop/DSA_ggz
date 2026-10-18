@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -386,6 +386,13 @@ HextechRune.RuneTargetExcludedTypes = {
     SovietAntiGroundAttacker_Enhanced = true,
     CelestialBomberAircraft = true,                 -- 金乌轰炸机
     CelestialBomberAircraft_Enhanced = true,
+    -- 2026-10-18 实测的侦察单位：登神加成落不到它们的行为上（附着/自爆/侦查），
+    -- 圈到就是空给。爆裂机器人的附着形态仍是同一个兵种名，一条即覆盖。
+    AlliedScoutInfantry = true,                     -- 将军犬
+    SovietScoutInfantry = true,                     -- 熊
+    SovietScoutVehicle = true,                      -- 恐怖机器人
+    JapanScoutInfantry = true,                      -- 爆裂机器人（蜻蜓）
+    CelestialScoutDrone = true,                     -- 天眼哨机
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
@@ -485,7 +492,74 @@ function HextechRune:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
     return result
 end
 
-function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
+function HextechRune:GetReplacementTargetFilter(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local blocked = {}
+    local ownedReplacement = {}
+    for i = 1, getn(self.UnitReplacementRunes), 1 do
+        local entry = self.UnitReplacementRunes[i]
+        if self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] then
+            blocked[entry.SourceType] = true
+            ownedReplacement[entry.ReplacementType] = true
+        else
+            blocked[entry.ReplacementType] = true
+        end
+    end
+    return blocked, ownedReplacement
+end
+
+-- 取得替换型符文时，已经指向原形态的「登神 / 买二送一」跟着改指升级形态，
+-- 否则原形态从此不再入池，那张卡会永远攒不到进度（究极生物是直接送 1 只，不受影响）。
+-- 买二送一的进度存在 g_HextechBuyTwoGetOne 的 state 里（取卡时复制过一份槽位），
+-- 只改符文的话它会继续数已经不再入池的原形态，所以两张表一起改指、Progress 原样继承。
+function HextechRune:GetReplacementTargetName(playerIndex, unitType)
+    local info = self:FindAscensionUnitInfo(playerIndex, unitType)
+    if info ~= nil and info.Name ~= nil then
+        return info.Name
+    end
+    return self:PickUltimateCreatureDisplayName(unitType)
+end
+
+function HextechRune:RemapReplacedRuneTargets(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local mapped = {}
+    for i = 1, getn(self.UnitReplacementRunes), 1 do
+        local entry = self.UnitReplacementRunes[i]
+        if self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] ~= nil then
+            mapped[entry.SourceType] = entry
+        end
+    end
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        local entry = mapped[rune.TargetUnitType]
+        if entry ~= nil and (rune.Effect == "ascension"
+            or rune.Effect == "buy_two_get_one") then
+            rune.TargetUnitType = entry.ReplacementType
+            rune.TargetUnitIndex = g_UnitNameToUnitIndex[entry.ReplacementType]
+                or rune.TargetUnitIndex
+            rune.TargetUnitName = self:GetReplacementTargetName(playerIndex,
+                entry.ReplacementType)
+        end
+    end
+    local states = g_HextechBuyTwoGetOne[playerIndex]
+    if states == nil then
+        return
+    end
+    for i = 1, getn(states), 1 do
+        local state = states[i]
+        local entry = mapped[state.UnitType]
+        if entry ~= nil then
+            state.UnitType = entry.ReplacementType
+            state.UnitIndex = g_UnitNameToUnitIndex[entry.ReplacementType]
+                or state.UnitIndex
+            state.UnitName = self:GetReplacementTargetName(playerIndex,
+                entry.ReplacementType)
+        end
+    end
+end
+
+function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded, ownedReplacement)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil
         or g_UnitNameToUnitIndex == nil then
         return nil
@@ -497,10 +571,11 @@ function HextechRune:PickBuyTwoGetOneTarget(playerIndex, excluded)
     end
     local producible, aliasOnly = self:BuildBuyTwoGetOneTargetFilter()
     local candidates = self:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly,
-        excluded)
+        excluded, ownedReplacement)
     if getn(candidates) == 0 and producible ~= nil then
         -- 保证符文仍然出现在三选一里（宁可目标偏弱，也不要整张符文消失）。
-        candidates = self:CollectBuyTwoGetOneCandidates(factionPool, nil, nil, excluded)
+        candidates = self:CollectBuyTwoGetOneCandidates(factionPool, nil, nil, excluded,
+            ownedReplacement)
     end
     if getn(candidates) == 0 then
         return nil
@@ -543,8 +618,10 @@ function HextechRune:BuildLockedTargetUnitTypes()
     return locked
 end
 
--- 汇总自身阵营四类回收表里“可计数 + 可生产”的单位，并按单位类型去重
-function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly, excluded)
+-- 汇总自身阵营四类回收表里“可计数 + 可生产”的单位，并按单位类型去重。
+-- ownedReplacement 放行玩家已持有替换符文的那只升级形态（它不在抽卡池里）。
+function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, aliasOnly,
+    excluded, ownedReplacement)
     local locked = self:BuildLockedTargetUnitTypes()
     local seen = {}
     local candidates = {}
@@ -558,6 +635,7 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
                     local unitIndex = g_UnitNameToUnitIndex[countType]
                     local allowed = producible == nil
                         or (producible[countType] == true and aliasOnly[countType] == nil)
+                        or (ownedReplacement ~= nil and ownedReplacement[countType] == true)
                     if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false
                         and allowed and locked[countType] == nil
                         and seen[countType] == nil
@@ -611,9 +689,8 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
     end
     if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension"
         or candidate.Effect == "ultimate_creature" then
-        -- 已被出口内销/高平两用/先进火炮替换的原形态不再作为目标：它们后续生产时
-        -- 一律以升级形态入池，圈了原形态的目标会永远无法累计。
-        local excluded = self:GetReplacedSourceTypes(playerIndex)
+        -- 替换型符文的双向排除：未持有的升级形态造不出来，持有的原形态不再入池。
+        local excluded, ownedReplacement = self:GetReplacementTargetFilter(playerIndex)
         -- “买二送一”可重复选择，但同一个玩家的两个买二送一不能圈同一个单位；
         -- 登神不做这项排除，允许与买二送一指向同一个单位。
         if candidate.Effect == "buy_two_get_one" then
@@ -633,7 +710,7 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
         if candidate.Effect == "ultimate_creature" then
             target = self:PickUltimateCreatureTarget(excluded)
         else
-            target = self:PickBuyTwoGetOneTarget(playerIndex, excluded)
+            target = self:PickBuyTwoGetOneTarget(playerIndex, excluded, ownedReplacement)
         end
         if target == nil then
             return nil
@@ -732,8 +809,13 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
         local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
         if rune.Effect == "ascension" then
-            -- 登神每回收一只只随机命中一维，四档数值相同，按目标单位阶级显示。
+            -- 登神每回收一只只随机命中一维，各档数值相同，按目标单位阶级显示。
             local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
+            if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
+                -- 带弹药的飞机多一维「弹药」。
+                return Localization.get("hextech.rune.ascension.desc_ammo", targetName,
+                    percent, percent, percent, percent, percent)
+            end
             return Localization.get(rune.DescKey, targetName,
                 percent, percent, percent, percent)
         end
@@ -741,6 +823,10 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     elseif rune.Effect == "ultimate_creature" then
         -- 简介里“进化为究极生物”与“获得一个单位”共用同一个随机目标，占位两处。
         local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
+        if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
+            return Localization.get("hextech.rune.ultimate_creature.desc_ammo",
+                targetName, targetName)
+        end
         return Localization.get(rune.DescKey, targetName, targetName)
     elseif rune.Effect == "recycler" then
         return Localization.get(rune.DescKey, floor(GetHextechRecycleBonusRate() * 100 + 0.5))
