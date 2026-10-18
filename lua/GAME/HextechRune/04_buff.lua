@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.4、A.44
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.4、A.44、A.79
 
 -- 海克斯符文系统：首批可实测效果。
 
@@ -943,52 +943,8 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     return result
 end
 
--- 替换型符文：玩家持有后，对应原单位在回收计数时被替换为指定升级单位。
-HextechRune.UnitReplacementRunes = {
-    { RuneId = "silver_export_domestic", SourceType = "JapanAntiNavyShipTech3",
-        ReplacementType = "CelestialSeized_JapanAntiNavyShipTech3" },
-    { RuneId = "silver_dual_purpose", SourceType = "SovietAntiAirShip",
-        ReplacementType = "VUAntiAirVehicleTech1" },
-    { RuneId = "silver_dragon_breathe", SourceType = "CelestialAntiInfantryVehicle_B",
-        ReplacementType = "CelestialWaveriderIFV_DragonBreathe" },
-    { RuneId = "silver_advanced_artillery", SourceType = "AlliedGunshipAircraft",
-        ReplacementType = "AlliedAC130GunshipAircraft" },
-    { RuneId = "silver_banzai_charge", SourceType = "JapanAntiInfantryInfantry",
-        ReplacementType = "JapanKamikazeInfantry" },
-    { RuneId = "silver_tulip_mortar", SourceType = "SovietAntiStructureVehicle",
-        ReplacementType = "SovietHeavyMortarVehicle" },
-    { RuneId = "silver_five_centimeters", SourceType = "JapanInterceptorAircraft",
-        ReplacementType = "JapanSakuraAttackRocket" },
-}
-
--- 该玩家持有替换型符文后，原形态单位产出时一律以升级形态入池。
--- 「指定单位型」符文怎么选目标（原形态 / 升级形态的双向排除）统一在
--- 01_rune_pool.lua 的 GetReplacementTargetFilter，不要在这里另写一份。
-
--- 在单位池正式计数前替换回收目标。抽卡单位的获得播报同样读取替换后的槽位，
--- 因而会直接显示升级单位，而不是先加入原单位再做二次转换。
-function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
-    self:EnsurePlayerRuneState(playerIndex)
-    local sourceType = UNITLIST[unitIndex]
-    local replacementType = nil
-    for i = 1, getn(self.UnitReplacementRunes), 1 do
-        local entry = self.UnitReplacementRunes[i]
-        if entry.SourceType == sourceType
-            and self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] then
-            replacementType = entry.ReplacementType
-            break
-        end
-    end
-    if replacementType == nil or g_UnitNameToUnitIndex == nil then
-        return unitIndex
-    end
-    return g_UnitNameToUnitIndex[replacementType] or unitIndex
-end
-
-function HextechRune:IsKamikazeGiftWarrior(playerIndex)
-    self:EnsurePlayerRuneState(playerIndex)
-    return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
-end
+-- 替换型符文的回收替换表（UnitReplacementRunes）与 ResolveCollectedUnitIndex /
+-- IsKamikazeGiftWarrior 已于 2026-10-19 外移到 18_basics_exchange.lua（本 payload 只余 106 B）。
 
 function HextechRune:IsUnitInRuneType(unit, rune, typeLookup)
     if rune.UnitType == nil or typeLookup[rune.UnitType] == nil then
@@ -1007,30 +963,38 @@ end
 -- 给一只已经按单位池配额分配到玩家的战斗单位加载一个持续型符文。
 -- 返回 true 表示兵种匹配且本次确实执行了效果。
 function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLookup, unitIndex)
-    if not self:IsRuneMatchingUnit(rune, unit, typeLookup) then
+    if not self:IsRuneMatchingUnit(rune, unit, typeLookup, playerIndex) then
         return false
     end
+    -- 纯数值加成按符文实例取修正器，多形态单位吃到两个兵种变体时才能真正叠两份。
+    local statMod = self:GetPerTypeStatModifier(rune, unit, typeLookup, playerIndex)
     if rune.Effect == "damage" then
-        ObjectLoadAttributeModifier(unit, g_HextechDamageX150Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechDamageX150Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "rate_of_fire" then
-        ObjectLoadAttributeModifier(unit, g_HextechRateOfFireX150Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechRateOfFireX150Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "speed" then
-        ObjectLoadAttributeModifier(unit, g_HextechSpeedX140Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechSpeedX140Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "range_silver" then
-        ObjectLoadAttributeModifier(unit, g_HextechRangeX115Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechRangeX115Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "range_gold" then
-        ObjectLoadAttributeModifier(unit, g_HextechRangeX125Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechRangeX125Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "range_prismatic" then
-        ObjectLoadAttributeModifier(unit, g_HextechRangeX150Modifier, self.PersistentBuffDuration)
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechRangeX150Modifier,
+            self.PersistentBuffDuration)
     elseif rune.Effect == "astral_body" then
-        ObjectLoadAttributeModifier(unit, g_HextechAstralBodyModifier,
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechAstralBodyModifier,
             self.PersistentBuffDuration)
     elseif rune.Effect == "goliath" then
-        ObjectLoadAttributeModifier(unit, g_HextechGoliathModifier,
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechGoliathModifier,
             self.PersistentBuffDuration)
     elseif rune.Effect == "ragnarok" then
         local objectId = ObjectGetId(unit)
-        ObjectLoadAttributeModifier(unit, g_HextechRagnarokModifier,
+        ObjectLoadAttributeModifier(unit, statMod or g_HextechRagnarokModifier,
             self.PersistentBuffDuration)
         self.RagnarokUnits[objectId] = true
         -- 出兵当帧先压一次；此后每回合开始由 ApplyAllRagnarokHealthClamps 维持。
@@ -1055,7 +1019,8 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
         self:ApplyInfiniteAmmoToUnit(unit)
     elseif rune.Effect == "back_to_basics" or rune.Effect == "equivalent_exchange" then
         -- 按阶级/双兵种取 Modifier 的细节都在 18_basics_exchange.lua（本 payload 已贴上限）。
-        return self:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitIndex)
+        return self:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitIndex,
+            playerIndex)
     else
         return false
     end
@@ -1155,7 +1120,7 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     for runeIndex = 1, getn(owned), 1 do
         local rune = owned[runeIndex]
         if self:IsPersistentBattleRune(rune)
-            and self:IsRuneMatchingUnit(rune, unit, typeLookup) then
+            and self:IsRuneMatchingUnit(rune, unit, typeLookup, playerIndex) then
             if rune.Effect ~= "infinite_ammo"
                 or (typeLookup.infiniteAmmoAircraft ~= nil
                     and typeLookup.infiniteAmmoAircraft[ObjectGetId(unit)]) then
@@ -1318,7 +1283,11 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
     upgrade_imperial_warrior = true, upgrade_v4_tulip = true,
     upgrade_sakura_rocket = true,
+    upgrade_rhino_tank = true,
     prepare_backpack = true,
+    easy_does_it = true,
+    -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
+    soul_interlock = true,
     ultimate_creature = true,
     war_efficiency = true, time_rift = true,
     hunt_rhythm = true,
@@ -1615,13 +1584,17 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "prepare_backpack" then
         -- 升阶只在下一次符文选择的筛池上体现，见 02_event.lua 的 CanAscendRuneRarity。
         self.PendingRuneAscend[playerIndex] = true
+    elseif rune.Effect == "easy_does_it" then
+        -- 多拿一张只在下一次符文选择界面上体现，见 02_event.lua 的 ShowRuneOptionsForPlayer。
+        self.PendingExtraRunePick[playerIndex] = true
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
         or rune.Effect == "upgrade_waverider_dragon_breathe"
         or rune.Effect == "upgrade_vanguard_gunship"
         or rune.Effect == "upgrade_imperial_warrior"
         or rune.Effect == "upgrade_v4_tulip"
-        or rune.Effect == "upgrade_sakura_rocket" then
+        or rune.Effect == "upgrade_sakura_rocket"
+        or rune.Effect == "upgrade_rhino_tank" then
         -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
         -- 已指向原形态的登神/买二送一同时改指升级形态。
         self:RemapReplacedRuneTargets(playerIndex)

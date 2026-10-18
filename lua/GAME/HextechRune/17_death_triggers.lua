@@ -118,6 +118,19 @@ function HextechRune:GetHuntRhythmUnitTypes(playerIndex)
             result[unitType] = true
         end
     end
+    -- 元神互锁：同步组里的另一个兵种按同一张狩猎律动独立结算 —— 它那边死人（deadTypes 命中）时
+    -- 也治你自己的一只同类单位，两兵种各治各的、不互相翻倍。
+    if result ~= nil then
+        for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
+            local unitType = self.UnitTypeOrder[typeIndex]
+            if result[unitType] == true then
+                local partner = self:GetInterlockPartnerType(playerIndex, unitType)
+                if partner ~= nil then
+                    result[partner] = true
+                end
+            end
+        end
+    end
     return result
 end
 

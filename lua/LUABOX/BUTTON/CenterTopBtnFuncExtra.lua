@@ -1,8 +1,7 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.77
+
 -- 第 6 组技能：九头蛇万岁 + 冰天雪地。
 
--- 实测口径：达摩剑那套（SELECTABLE + 模板名名单 + Exclude STRUCTURE）才挡得住塔。
--- 只按兵种白名单会漏 —— 天庭建筑带 VEHICLE、塔的另一半还不带 STRUCTURE，KindOf 拦不住；
--- 而单留 SELECTABLE 也挡不住（塔本身就是可选中的，实测会捞出 4 座塔）。新增塔种必须往名单里加名字。
 g_ExcludeThingNames = {
     -- 防御塔：本体 + 无核心形态，以及其余四种塔和运兵车。
     "CelestialBaseDefenseAdvanced",

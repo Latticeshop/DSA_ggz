@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71、A.73、A.82
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -71,12 +71,18 @@ HextechRune.RunePool = {
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
-    { Id = "silver_five_centimeters", Rarity = 3,
+    { Id = "gold_five_centimeters", Rarity = 2,
         NameKey = "hextech.rune.five_centimeters.name",
         DescKey = "hextech.rune.five_centimeters.desc",
         Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
         RequiresType = "aircraft",
         Icon = "Portrait_JapanInterceptorAircraft_air" },
+    { Id = "silver_wheeled_cannon", Rarity = 3,
+        NameKey = "hextech.rune.wheeled_cannon.name",
+        DescKey = "hextech.rune.wheeled_cannon.desc",
+        Effect = "upgrade_rhino_tank", RequiredFaction = 2,
+        RequiresType = "vehicle",
+        Icon = "Button_SovietHeavyAntiAirVehicleTech2" },
     { Id = "silver_investment", Rarity = 3,
         NameKey = "hextech.rune.investment.name",
         DescKey = "hextech.rune.investment.desc",
@@ -203,6 +209,18 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.drain.name",
         DescKey = "hextech.rune.drain.desc",
         Effect = "drain", Icon = "Button_PlayerPower_MagneticSingularity" },
+    { Id = "gold_easy_does_it", Rarity = 2,
+        NameKey = "hextech.rune.easy_does_it.name",
+        DescKey = "hextech.rune.easy_does_it.desc",
+        Effect = "easy_does_it", ExcludeOnLastFormalRound = true,
+        ExclusiveRuneIds = { prismatic_gambling_addict = true },
+        Icon = "AUA_Unpack" },
+    { Id = "gold_soul_interlock", Rarity = 2,
+        NameKey = "hextech.rune.soul_interlock.name",
+        DescKey = "hextech.rune.soul_interlock.desc",
+        Effect = "soul_interlock", NeedsUnitTypePair = true,
+        RequireTwoUnitTypes = true,
+        Icon = "CelestialQuantumLink" },
 
     { Id = "gold_ten_pull", Rarity = 1,
         NameKey = "hextech.rune.ten_pull.name",
@@ -260,7 +278,8 @@ HextechRune.RunePool = {
     { Id = "prismatic_gambling_addict", Rarity = 1,
         NameKey = "hextech.rune.gambling_addict.name",
         DescKey = "hextech.rune.gambling_addict.desc",
-        Effect = "gambling_addict", Icon = "Button_PlayerPower_FreeTrade" },
+        Effect = "gambling_addict", ExclusiveRuneIds = { gold_easy_does_it = true },
+        Icon = "Button_PlayerPower_FreeTrade" },
     { Id = "prismatic_ultimate_creature", Rarity = 1,
         NameKey = "hextech.rune.ultimate_creature.name",
         DescKey = "hextech.rune.ultimate_creature.desc",
@@ -292,12 +311,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.goliath.desc",
         Effect = "goliath", NeedsUnitType = true,
         Icon = "Button_JapanMechaKing" },
-    -- 回归基本功：按单位阶级整体加减，不挂任何兵种（详见 18_basics_exchange.lua）。
-    -- 玩家本场第一次正式选择不发（那时单位池还空着，选了也无从体现）。
     { Id = "prismatic_back_to_basics", Rarity = 1,
         NameKey = "hextech.rune.back_to_basics.name",
         DescKey = "hextech.rune.back_to_basics.desc",
-        Effect = "back_to_basics", ExcludeOnFirstFormalSelection = true,
+        Effect = "back_to_basics", NeedsUnitType = true,
+        ExcludeOnFirstFormalSelection = true,
         Icon = "SUA_Twinblade_Evacuate" },
     -- 等价交换：兵种1 受益、兵种2 受损。两个兵种在生成候选那一刻一次性随机定好
     -- 持有判定按基础 Id（GetRuneOwnershipId），不按兵种对，避免靠重随叠着拿多份。
@@ -306,9 +324,7 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.equivalent_exchange.desc",
         Effect = "equivalent_exchange", NeedsUnitTypePair = true,
         Icon = "Button_PlayerPower_ChronoSwap" },
-    -- 享辐：苏联三级投毒协议，与「银·鸡汤来咯」同一套跨阵营解锁（地图外钥匙基地）。
-    -- 玩家手动施放、不挂兵种，所以不声明 RequiresType。
-    { Id = "prismatic_radiant_bliss", Rarity = 1,
+    { Id = "prismatic_radiant_bliss", Rarity = 2,
         NameKey = "hextech.rune.radiant_bliss.name",
         DescKey = "hextech.rune.radiant_bliss.desc",
         Effect = "grant_desolator_bomb", Icon = "Button_PlayerPower_DesolatorBomb3" },
@@ -330,9 +346,15 @@ HextechRune.NonRepeatableRuneIds = {
     -- 花来！：重复持有只是把同一个替换再做一遍，入池替换按持有与否判定，天然无叠加。
     silver_tulip_mortar = true,
     -- 秒速五厘米：同属替换型，第二份不产生任何额外效果。
-    silver_five_centimeters = true,
+    gold_five_centimeters = true,
+    -- 轮式大炮：同属替换型，第二份不产生任何额外效果。
+    silver_wheeled_cannon = true,
     -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
     silver_prepare_backpack = true,
+    -- 顺手的事：每人一份；两份会把「下一次多拿一张」叠在同一处，整局张数还会顶到 6。
+    gold_easy_does_it = true,
+    -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
+    gold_soul_interlock = true,
     -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
     silver_five_tiger_generals = true,
     gold_fortified = true,
@@ -508,10 +530,14 @@ function HextechRune:GetReplacementTargetFilter(playerIndex)
     return blocked, ownedReplacement
 end
 
--- 取得替换型符文时，已经指向原形态的「登神 / 买二送一」跟着改指升级形态，
--- 否则原形态从此不再入池，那张卡会永远攒不到进度（究极生物是直接送 1 只，不受影响）。
--- 买二送一的进度存在 g_HextechBuyTwoGetOne 的 state 里（取卡时复制过一份槽位），
--- 只改符文的话它会继续数已经不再入池的原形态，所以两张表一起改指、Progress 原样继承。
+-- 单位名 → 池槽位的安全查表：全局表可能尚未初始化，键也可能为 nil，而本引擎不接受 nil 键。
+function HextechRune:LookupUnitPoolIndex(unitType)
+    if g_UnitNameToUnitIndex == nil or unitType == nil then
+        return nil
+    end
+    return g_UnitNameToUnitIndex[unitType]
+end
+
 function HextechRune:GetReplacementTargetName(playerIndex, unitType)
     local info = self:FindAscensionUnitInfo(playerIndex, unitType)
     if info ~= nil and info.Name ~= nil then
@@ -522,39 +548,61 @@ end
 
 function HextechRune:RemapReplacedRuneTargets(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
+    -- 本引擎（RA3LuaBridge 方言）对 nil 键查表会直接抛「table index is nil」，不像 PC 版
+    -- Lua 4.0 那样安静返回 nil；因此下面所有「可能为 nil 的变量当键」的地方都必须先判空，
+    -- 否则一拿替换型符文（高平两用/轮式大炮等）就报错。
+    local replacements = self.UnitReplacementRunes
+    if replacements == nil then
+        return
+    end
     local mapped = {}
-    for i = 1, getn(self.UnitReplacementRunes), 1 do
-        local entry = self.UnitReplacementRunes[i]
-        if self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] ~= nil then
+    for i = 1, getn(replacements), 1 do
+        local entry = replacements[i]
+        if entry ~= nil and entry.SourceType ~= nil
+            and self.PlayerOwnedRuneIds[playerIndex][entry.RuneId] ~= nil then
             mapped[entry.SourceType] = entry
         end
     end
     local owned = self.PlayerOwnedRunes[playerIndex]
+    if owned == nil then
+        return
+    end
     for i = 1, getn(owned), 1 do
         local rune = owned[i]
-        local entry = mapped[rune.TargetUnitType]
-        if entry ~= nil and (rune.Effect == "ascension"
-            or rune.Effect == "buy_two_get_one") then
-            rune.TargetUnitType = entry.ReplacementType
-            rune.TargetUnitIndex = g_UnitNameToUnitIndex[entry.ReplacementType]
-                or rune.TargetUnitIndex
-            rune.TargetUnitName = self:GetReplacementTargetName(playerIndex,
-                entry.ReplacementType)
+        if rune ~= nil then
+            -- 只有指定单位型（登神 / 买二送一 / 究极生物）才有 TargetUnitType，其余全是 nil。
+            local targetType = rune.TargetUnitType
+            if targetType ~= nil then
+                local entry = mapped[targetType]
+                if entry ~= nil and (rune.Effect == "ascension"
+                    or rune.Effect == "buy_two_get_one") then
+                    rune.TargetUnitType = entry.ReplacementType
+                    rune.TargetUnitIndex = self:LookupUnitPoolIndex(entry.ReplacementType)
+                        or rune.TargetUnitIndex
+                    rune.TargetUnitName = self:GetReplacementTargetName(playerIndex,
+                        entry.ReplacementType)
+                end
+            end
         end
     end
-    local states = g_HextechBuyTwoGetOne[playerIndex]
+    local states = nil
+    if g_HextechBuyTwoGetOne ~= nil then
+        states = g_HextechBuyTwoGetOne[playerIndex]
+    end
     if states == nil then
         return
     end
     for i = 1, getn(states), 1 do
         local state = states[i]
-        local entry = mapped[state.UnitType]
-        if entry ~= nil then
-            state.UnitType = entry.ReplacementType
-            state.UnitIndex = g_UnitNameToUnitIndex[entry.ReplacementType]
-                or state.UnitIndex
-            state.UnitName = self:GetReplacementTargetName(playerIndex,
-                entry.ReplacementType)
+        if state ~= nil and state.UnitType ~= nil then
+            local entry = mapped[state.UnitType]
+            if entry ~= nil and entry.ReplacementType ~= nil then
+                state.UnitType = entry.ReplacementType
+                state.UnitIndex = self:LookupUnitPoolIndex(entry.ReplacementType)
+                    or state.UnitIndex
+                state.UnitName = self:GetReplacementTargetName(playerIndex,
+                    entry.ReplacementType)
+            end
         end
     end
 end
@@ -743,6 +791,58 @@ function HextechRune:IsRuneCandidateAvailable(playerIndex, rune)
     return not self.PlayerOwnedRuneIds[playerIndex][self:GetRuneOwnershipId(rune)]
 end
 
+function HextechRune:IsRuneExclusiveBlocked(playerIndex, rune)
+    if rune == nil or rune.ExclusiveRuneIds == nil then
+        return false
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        if rune.ExclusiveRuneIds[owned[i].Id] ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+-- 元神互锁：持有者的「同步组」= 那张符文候选生成时随机定下的两个兵种。
+-- 判定每次都实时查持有状态，所以先拿到的 buff 与后拿到的 buff 走同一组同步。
+function HextechRune:GetInterlockUnitTypes(playerIndex)
+    if playerIndex == nil then
+        return nil
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        if rune.Effect == "soul_interlock" and rune.UnitType ~= nil
+            and rune.UnitType2 ~= nil then
+            local set = {}
+            set[rune.UnitType] = true
+            set[rune.UnitType2] = true
+            return set
+        end
+    end
+    return nil
+end
+
+-- 传一个兵种进来：它在同步组里就返回组内的另一个兵种，否则返回 nil。
+function HextechRune:GetInterlockPartnerType(playerIndex, unitType)
+    if unitType == nil then
+        return nil
+    end
+    local set = self:GetInterlockUnitTypes(playerIndex)
+    if set == nil or set[unitType] == nil then
+        return nil
+    end
+    for other, owned in set do
+        if other ~= unitType then
+            return other
+        end
+    end
+    return nil
+end
+
 -- 可重复符文每次选择都获得独立实例 ID，用于持续效果的单位级加载标记。
 function HextechRune:GetRuneEffectInstanceId(rune)
     if rune.OwnedInstanceId ~= nil then
@@ -798,6 +898,10 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         end
         -- 狩猎律动的敌我两侧各有一个兵种槽。
         if rune.Effect == "hunt_rhythm" then
+            return Localization.get(rune.DescKey, label, label)
+        end
+        -- 回归基本功：加成段与削弱段各写一个兵种槽，两处填同一个兵种。
+        if rune.Effect == "back_to_basics" then
             return Localization.get(rune.DescKey, label, label)
         end
         -- 以战养战的每单位百分比随对局经济倍率变化，卡面按当前档位显示 1% 或 0.5%。
@@ -954,12 +1058,18 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             -- 通用兵种约束：只对某个兵种有效的符文（含 grant_* 直接生成单位的），该兵种被禁
             -- 时就不入池 —— 赠送路径不过出兵函数，漏声明会绕过整套禁用判定（见 §4.5.1）。
             and (rune.RequiresType == nil or BanModeIsTypeEnabled(rune.RequiresType) == 1)
+            -- 元神互锁要从可用兵种里随机抽两个配成同步组，凑不出两个时整张不发
+            -- （禁用页最多同时禁 3 项，禁到 3 项就只剩一个兵种，这张牌等于空牌）。
+            and (not rune.RequireTwoUnitTypes
+                or getn(self:GetAvailableUnitTypes(playerIndex)) >= 2)
             and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
             -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。
             and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent())
             -- 玩家的第一次正式选择里，这类「整体改写单位池」的符文不发（与回合数无关）。
             and (not rune.ExcludeOnFirstFormalSelection
-                or not self:IsFirstFormalSelection(playerIndex)) then
+                or not self:IsFirstFormalSelection(playerIndex))
+            -- 与已持有的符文互斥时同样不发（顺手的事 × 赌怪，避免单人整局超过 5 张）。
+            and not self:IsRuneExclusiveBlocked(playerIndex, rune) then
             if rune.NeedsUnitTypePair then
                 -- 等价交换这一类：兵种对在候选里定死，一次事件只出 1 个候选，
                 -- 不像普通兵种符文那样把每个兵种各展开一份（否则会霸占整个棱彩池）。
@@ -1030,4 +1140,13 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
+end
+
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
 end

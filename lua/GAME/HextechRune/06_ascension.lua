@@ -1,10 +1,7 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.24、A.56
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.24、A.56、A.75
 
 HextechRune = HextechRune or {}
 
--- 每回收 1 个目标单位掷一次：血量 / 伤害 / 攻速 / 射程 里随机命中一项，
--- 带弹药的飞机（见 AmmoAircraftUnitTypes）再多掷一维「弹药」。
--- 命中的幅度按目标单位的阶级取档：T1 30% / T2 40% / T3 50% / T4 60%。
 HextechRune.AscensionTierPercent = { [1] = 30, [2] = 40, [3] = 50, [4] = 60 }
 -- 体积固定倍率，与掷骰无关。
 HextechRune.AscensionScale = 1.3
@@ -85,9 +82,6 @@ function HextechRune:IsAmmoAircraftUnitType(unitType)
     return unitType ~= nil and self.AmmoAircraftUnitTypes[unitType] == true
 end
 
--- 弹药不是 AttributeModifier 的维度，只能按武器槽写数值（无限火力同款接口）。
--- 倍率套用最大弹量后写进当前弹量；没有弹药的武器槽取到空值就跳过。
--- 只往上写、不下调：出兵扫描里无限火力先写 100000，这里再按倍率写会把无限火力抹掉。
 function HextechRune:ApplyAmmoBonusToUnit(unit, multiplier)
     if multiplier == nil or multiplier <= 1 then
         return
@@ -170,7 +164,12 @@ function HextechRune:FindAscensionUnitInfo(playerIndex, unitType)
     if g_PlayerSide == nil or g_RecycleBtnsMapByFaction == nil then
         return nil
     end
-    local factionPool = g_RecycleBtnsMapByFaction[g_PlayerSide[playerIndex]]
+    -- 本引擎不接受 nil 键（会抛 table index is nil），座位表里查不到就先返回。
+    local faction = g_PlayerSide[playerIndex]
+    if faction == nil then
+        return nil
+    end
+    local factionPool = g_RecycleBtnsMapByFaction[faction]
     if factionPool == nil then
         return nil
     end

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.15、A.26、A.40
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.15、A.26、A.40、A.81
 
 HextechRune = HextechRune or {}
 
@@ -70,6 +70,17 @@ function HextechRune:HasAnyWarEfficiency(playerIndex)
         end
     end
     return false
+end
+
+function HextechRune:GetWarEfficiencySourceType(playerIndex, unitType)
+    if self:GetPlayerWarEfficiencyCopies(playerIndex, unitType) > 0 then
+        return unitType
+    end
+    local partner = self:GetInterlockPartnerType(playerIndex, unitType)
+    if partner == nil or self:GetPlayerWarEfficiencyCopies(playerIndex, partner) <= 0 then
+        return nil
+    end
+    return partner
 end
 
 -- 死亡单位归属的战场 AI → 其所在阵营；对手阵营才是计数受益方。
@@ -146,8 +157,10 @@ function HextechRune:BroadcastWarEfficiency(playerIndex)
     local percentPerDeath = self:GetWarEfficiencyBonusPerDeath() * 100
     for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
         local unitType = self.UnitTypeOrder[typeIndex]
-        local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, unitType)
-        if copies > 0 then
+        -- 元神互锁：另一个兵种同步过来的那一份也要播报，否则玩家看不到自己的载具在吃加成。
+        local sourceType = self:GetWarEfficiencySourceType(playerIndex, unitType)
+        if sourceType ~= nil then
+            local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, sourceType)
             local text = Localization.get("hextech.rune.war_efficiency.broadcast",
                 Localization.get("hextech.unit_type." .. unitType),
                 self:FormatWarEfficiencyPercent(counts[1] * copies * percentPerDeath),
@@ -199,11 +212,10 @@ function HextechRune:ExpireWarEfficiencyBuffs(playerIndex)
     end
 end
 
--- 只作用到按单位池配额归属给该玩家的战斗单位上（见 GetPlayerBattleEffectQuota）。
 function HextechRune:ApplyWarEfficiencyBuffs(playerIndex, unitType, lookup)
-    local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, unitType)
+    local sourceType = self:GetWarEfficiencySourceType(playerIndex, unitType)
     local counts = self.WarEfficiencyActive[playerIndex]
-    if copies <= 0 or counts == nil
+    if sourceType == nil or counts == nil
         or counts[1] + counts[2] + counts[3] + counts[4] <= 0 then
         return
     end
@@ -211,11 +223,12 @@ function HextechRune:ApplyWarEfficiencyBuffs(playerIndex, unitType, lookup)
     if objects == nil then
         return
     end
+    local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, sourceType)
     self:EnsureWarEfficiencyPlayerState(playerIndex)
     if self.WarEfficiencyApplied[playerIndex][unitType] == nil then
         self.WarEfficiencyApplied[playerIndex][unitType] = {}
     end
-    local modifier = self:GetWarEfficiencyModifier(playerIndex, unitType, counts, copies)
+    local modifier = self:GetWarEfficiencyModifier(playerIndex, sourceType, counts, copies)
     local applied = self.WarEfficiencyApplied[playerIndex][unitType]
     for objectId, value in objects do
         local assignment = self.BattleUnitAssignments[objectId]

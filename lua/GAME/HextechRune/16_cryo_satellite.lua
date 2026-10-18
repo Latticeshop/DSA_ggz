@@ -25,7 +25,7 @@ HextechRune.ProtocolGrants = {
         PlayerTech = "PlayerTech_Soviet_IrradiateTarget",
         SpecialPower = "SpecialPower_IrradiateTarget",
         Faction = 2, YardType = "SovietConstructionYard" },
-    -- 棱彩·享辐：苏联三级投毒（撒毒）协议。技能名带 Level 后缀、不是 Lvl，按 ProtocolEnum 原样取。
+    -- 金·享辐（2026-10-19 由彩降金）：苏联三级投毒（撒毒）协议。技能名带 Level 后缀、不是 Lvl，按 ProtocolEnum 原样取。
     grant_desolator_bomb = {
         PlayerTech = "PlayerTech_Soviet_DesolatorBomb_Rank3",
         SpecialPower = "SpecialPower_DesolatorBomb_Level3",

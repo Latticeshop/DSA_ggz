@@ -20,6 +20,8 @@ g_LocalizationExtraText = {
     ["hextech.panel.title"] = { zh = "海克斯符文面板", en = "Hextech Rune Panel" },
     ["hextech.panel.close"] = { zh = "关闭", en = "Close" },
     ["hextech.error.not_enough_candidates"] = { zh = "当前阶级可用符文不足 3 个，无法生成选项", en = "Fewer than 3 eligible runes are available for this tier" },
+    -- 互斥兜底（顺手的事 × 赌怪）：开局测试事件按 Id 直取符文，会绕过筛池，点选时再拦一次。
+    ["hextech.error.rune_exclusive"] = { zh = "已持有与【%s】互斥的符文，无法再选。", en = "You already own a rune that excludes [%s]." },
 
     -- === 单位类型 ===
     ["hextech.unit_type.infantry"] = { zh = "步兵", en = "Infantry" },
@@ -70,6 +72,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.advanced_artillery.desc"] = { zh = "你的先锋武装炮艇机“升级”为AC130版本。", en = "Your Vanguard Gunships are upgraded to the AC-130 variant." },
     ["hextech.rune.five_centimeters.name"] = { zh = "秒速五厘米", en = "Five Centimeters per Second" },
     ["hextech.rune.five_centimeters.desc"] = { zh = "你的樱花回天雷升级为鬼樱特攻机。", en = "Your Sakura Homing Rockets are upgraded to Ghost Sakura Strike Rockets." },
+    ["hextech.rune.wheeled_cannon.name"] = { zh = "轮式大炮", en = "Wheeled Cannon" },
+    ["hextech.rune.wheeled_cannon.desc"] = { zh = "你的犀牛坦克升级为ZSU-85自行防空炮。", en = "Your Rhino Tanks are upgraded to ZSU-85 Self-Propelled Anti-Aircraft Guns." },
     ["hextech.rune.cloudbreaker.name"] = { zh = "穿云定海", en = "Cloudbreaker" },
     ["hextech.rune.cloudbreaker.desc"] = { zh = "获得 1 个摇光。", en = "Gain 1 Yaoguang." },
     ["hextech.rune.oil_king.name"] = { zh = "石油王", en = "Oil King" },
@@ -203,20 +207,29 @@ g_LocalizationExtraText = {
     ["hextech.rune.prepare_backpack.desc"] =
         { zh = "你下次符文选择会整体升一阶。",
             en = "Your next rune selection is raised one full tier." },
+    ["hextech.rune.easy_does_it.name"] = { zh = "顺手的事", en = "While I'm At It" },
+    ["hextech.rune.easy_does_it.desc"] =
+        { zh = "你下次符文选择可以多拿一张。",
+            en = "Your next rune selection lets you take one extra card." },
     ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
             en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
     ["hextech.rune.back_to_basics.name"] = { zh = "回归基本功", en = "Back to Basics" },
     ["hextech.rune.back_to_basics.desc"] = {
-        zh = "你的T1/T2单位血量、伤害、攻速和射程提高90%%；你的T3/T4单位血量、伤害、攻速和射程降低50%%。",
-        en = "Your T1/T2 units gain 90%% health, damage, attack speed and range; your T3/T4 units lose 50%% health, damage, attack speed and range."
+        zh = "你的T1/T2 %s 单位血量、伤害、攻速和射程提高90%%；你的T3/T4 %s 单位血量、伤害、攻速和射程降低50%%。",
+        en = "Your T1/T2 %s units gain 90%% health, damage, attack speed and range; your T3/T4 %s units lose 50%% health, damage, attack speed and range."
     },
     -- 兵种对在候选生成时随机定好，见 01_rune_pool.lua 的 CreateRuneCandidateForPlayer。
     ["hextech.rune.equivalent_exchange.name"] = { zh = "等价交换", en = "Equivalent Exchange" },
     ["hextech.rune.equivalent_exchange.desc"] = {
         zh = "你的%s单位血量提高90%%、伤害和攻速和射程提高25%%；你的%s单位血量降低90%%、伤害和攻速和射程降低50%%。",
         en = "Your %s units gain 90%% health and 25%% damage, attack speed and range; your %s units lose 90%% health and 50%% damage, attack speed and range."
+    },
+    ["hextech.rune.soul_interlock.name"] = { zh = "元神互锁", en = "Soul Interlock" },
+    ["hextech.rune.soul_interlock.desc"] = {
+        zh = "你的 %s 与 %s 的海克斯符文数值BUFF会同步生效。",
+        en = "Your %s and %s units' Hextech rune stat buffs take effect on both."
     },
 
     -- === 重随、广播与提示 ===
@@ -228,6 +241,8 @@ g_LocalizationExtraText = {
     ["hextech.gambling_addict.broadcast"] = { zh = "$p%dName通过【%s】获得了符文：%s 和符文：%s", en = "$p%dName gained runes from [%s]: %s and %s" },
     -- 准备背包兑现时播报，%s 为升上去的那一阶（黄金 / 棱彩）。
     ["hextech.ascend.broadcast"] = { zh = "$p%dName准备背包符文生效：本次符文升到%s", en = "$p%dName's Backpack Ready took effect: this selection is raised to %s" },
+    -- 顺手的事兑现时播报：多拿的那一张由玩家自己在下一次选择里点。
+    ["hextech.easy_does_it.broadcast"] = { zh = "$p%dName顺手的事符文生效：本次符文可以多拿一张", en = "$p%dName's While I'm At It: you may take one extra rune this selection" },
     ["hextech.selection.hidden_hint"] = { zh = "当前有未选择的海克斯，按'J'键展开面板", en = "You have an unselected Hextech rune. Press 'J' to open the panel." },
     -- 符文事件到点后不再自动弹面板，改为全图播报一次，提醒玩家按 J 查收。
     ["hextech.selection.ready_broadcast"] = { zh = "获得一个海克斯符文，请查收~", en = "A Hextech rune is ready, press J to claim it~" },

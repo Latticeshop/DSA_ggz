@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34、A.57
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34、A.57、A.76
 
 devil_max = 200
 angel_max = 200
@@ -101,11 +101,6 @@ g_BuyTowerId = {
         ["evil"] = { 0, 0 },
     }
 }
--- 市场氪金塔原价：按钮显示与扣款校验共用这一份，改价只改这里。
--- 对应关系：shield=护盾投射塔 JapanPointShieldControlTower、sakura=樱花井
--- JapanKamikazeCommandTower、poplar=胡杨防空系统 SovietHeavyAntiAirMissileTurret、
--- aegis=埃奎斯护盾发生器 AlliedAegisLargeDefenseBase、railgun=天门神弓 CelestialEnergyRailgunBase。
--- 塔防专家的半价由 GetTowerPrice 在运行时算（floor(原价 × 0.5)），不写死。
 g_MarketTowerBasePrice = {
     shield = 10000, sakura = 10000, poplar = 10000, aegis = 12000, railgun = 15000,
 }

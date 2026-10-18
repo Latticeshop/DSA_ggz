@@ -18,6 +18,10 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
+-- 开发测试：第 1 回合固定显示指定的三张符文。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestTriggered = false
+
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
@@ -28,6 +32,9 @@ HextechRune.CurrentRound = 0
 -- 准备背包：待消费的升阶机会（按玩家），以及本次事件的真实候选张数（1~3 张）。
 HextechRune.PendingRuneAscend = {}
 HextechRune.PlayerOptionCount = {}
+-- 顺手的事：待消费的「多拿一张」（按玩家），以及当前这次选择里还剩几次多拿的机会。
+HextechRune.PendingExtraRunePick = {}
+HextechRune.PlayerExtraPickRemaining = {}
 
 -- ===== 屏幕中央 3 个方框的布局参数 =====
 -- 说明：日冕地图逻辑分辨率 1366x768，CenterX/Y 为屏幕中心像素坐标。
@@ -452,11 +459,16 @@ end
 
 function HextechRune:RefreshRerollButtons(playerIndex)
     local playerName = "Player_" .. playerIndex
+    -- 顺手的事重排之后候选可能少于 3 张：只重建实际还在的那些，
+    -- 否则空位（尤其整排已按较少张数居中时的右侧空位）会留一颗没用的重随按钮。
+    local count = self.PlayerOptionCount[playerIndex] or 3
     for optionIndex = 1, 3, 1 do
         local buttonIndex = self:GetRerollBtnIndex(playerIndex, optionIndex)
         exCustomBtnSetVisibilityForPlayer(playerName, buttonIndex, 0)
         exCustomBtnRemoveForPlayer(playerName, buttonIndex)
-        self:CreateRerollButton(playerIndex, optionIndex)
+        if optionIndex <= count then
+            self:CreateRerollButton(playerIndex, optionIndex)
+        end
     end
 end
 
@@ -618,6 +630,7 @@ end
 
 -- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
 function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
+    local extraPick = self.PendingExtraRunePick[playerIndex] == true
     local rune = nil
     local shownRarity = rarity
     if self:CanAscendRuneRarity(playerIndex, rarity) then
@@ -643,6 +656,11 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
     -- 现发的奖励符文仍按第一次选择筛池。
     self:MarkFormalSelectionReceived(playerIndex)
+    -- 顺手的事：电脑没有选择界面，多拿的一张直接按同阶池再抽一次（同回合、同稀有度）。
+    if extraPick then
+        self.PendingExtraRunePick[playerIndex] = nil
+        self:GrantRandomRuneToComputer(playerIndex, rarity, round)
+    end
     return true
 end
 
@@ -685,6 +703,13 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
         self:CreateOptionBox(playerIndex, i, shownRarity,
             self.RarityFrameImageIds[shownRarity], rune)
         self:CreateRerollButton(playerIndex, i)
+    end
+    -- 顺手的事：本次选择里多给一次点击机会（只剩一张候选时兑现不了，留着给下一次）。
+    if self.PendingExtraRunePick[playerIndex] and getn(options) >= 2 then
+        self.PendingExtraRunePick[playerIndex] = nil
+        self.PlayerExtraPickRemaining[playerIndex] = 1
+        exAddTextToPublicBoard(Localization.get("hextech.easy_does_it.broadcast",
+            playerIndex), 10)
     end
     self.PlayerSelectionVisible[playerIndex] = true
     self:HideSelectionHint(playerIndex)
@@ -743,6 +768,93 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
+function HextechRune:ShowOpeningTestEvent()
+    -- 2026-10-19 用户要求：第三张由「金·顺手的事」换成「银·神威（时空裂缝 2 级）」。
+    local testRuneIds = {
+        "silver_wheeled_cannon",
+        "gold_soul_interlock",
+        "silver_divine_might",
+    }
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, getn(testRuneIds), 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = nil
+                if template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
+                end
+                if candidate ~= nil then
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) > 0 then
+                self.PlayerOptionCount[playerIndex] = getn(options)
+                self.PlayerOptions[playerIndex] = options
+                self.PlayerRerollUsed[playerIndex] = false
+                for i = 1, getn(options), 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
+end
+
+-- 移除某玩家当前的候选卡（卡框 / 图标 / 重随按钮 / 标题），不动 PlayerOptions。
+-- 关页与「顺手的事」重排都走这里，避免两处各写一份 3 连循环。
+function HextechRune:RemoveOptionBoxes(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    for i = 1, 3, 1 do
+        local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
+        local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
+        local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, i)
+        local textIndex = self:GetOptionTextIndex(playerIndex, i)
+        exCustomBtnSetVisibilityForPlayer(playerName, btnIndex, 0)
+        exCustomBtnRemoveForPlayer(playerName, btnIndex)
+        exCustomBtnSetVisibilityForPlayer(playerName, iconBtnIndex, 0)
+        exCustomBtnRemoveForPlayer(playerName, iconBtnIndex)
+        exCustomBtnSetVisibilityForPlayer(playerName, rerollBtnIndex, 0)
+        exCustomBtnRemoveForPlayer(playerName, rerollBtnIndex)
+        exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, 0)
+    end
+end
+
+-- 按 PlayerOptions 的当前张数把候选卡整排重建（张数变少后重新居中）。
+function HextechRune:RelayoutOptionBoxes(playerIndex)
+    self:RemoveOptionBoxes(playerIndex)
+    local options = self.PlayerOptions[playerIndex]
+    if options == nil then
+        return
+    end
+    self.PlayerOptionCount[playerIndex] = getn(options)
+    for i = 1, getn(options), 1 do
+        local rune = options[i]
+        self:CreateOptionBox(playerIndex, i, rune.Rarity,
+            self.RarityFrameImageIds[rune.Rarity], rune)
+        self:CreateRerollButton(playerIndex, i)
+    end
+end
+
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     local options = self.PlayerOptions[playerIndex]
@@ -750,28 +862,36 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         return
     end
     local rune = options[optionIndex]
+    -- 互斥兜底：开局测试事件按 Id 直取符文、不过筛池，这里拦住「已持有赌怪又选顺手的事」。
+    if self:IsRuneExclusiveBlocked(playerIndex, rune) then
+        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
+            Localization.get("hextech.error.rune_exclusive",
+                self:GetRuneDisplayName(rune)), 10)
+        return
+    end
     if not self:AddOwnedRune(playerIndex, rune) then
         return
     end
-    self.PlayerOptions[playerIndex] = nil
-    self.PlayerSelectionVisible[playerIndex] = false
-    self:HideSelectionHint(playerIndex)
+    -- 顺手的事：本次还能多拿一张时，取走这一张后把剩下的候选压紧留在屏幕上继续点。
+    local extraRemaining = self.PlayerExtraPickRemaining[playerIndex] or 0
+    local keepSelection = extraRemaining > 0 and getn(options) > 1
+    if keepSelection then
+        self.PlayerExtraPickRemaining[playerIndex] = extraRemaining - 1
+        tremove(options, optionIndex)
+    else
+        self.PlayerExtraPickRemaining[playerIndex] = nil
+        self.PlayerOptions[playerIndex] = nil
+        self.PlayerSelectionVisible[playerIndex] = false
+        self:HideSelectionHint(playerIndex)
+    end
     self:OnRuneChosen(playerIndex, rune)
     -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
     -- 现发的奖励符文仍按第一次选择筛池。
     self:MarkFormalSelectionReceived(playerIndex)
-    for i = 1, 3, 1 do
-        local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
-        local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
-        local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, i)
-        local textIndex = self:GetOptionTextIndex(playerIndex, i)
-        exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, btnIndex, 0)
-        exCustomBtnRemoveForPlayer("Player_" .. playerIndex, btnIndex)
-        exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, iconBtnIndex, 0)
-        exCustomBtnRemoveForPlayer("Player_" .. playerIndex, iconBtnIndex)
-        exCustomBtnSetVisibilityForPlayer("Player_" .. playerIndex, rerollBtnIndex, 0)
-        exCustomBtnRemoveForPlayer("Player_" .. playerIndex, rerollBtnIndex)
-        exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex, textIndex, 0)
+    if keepSelection then
+        self:RelayoutOptionBoxes(playerIndex)
+    else
+        self:RemoveOptionBoxes(playerIndex)
     end
     local msg = Localization.get("hextech.picked", self:GetRuneDisplayName(rune))
     exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, msg, 10)
@@ -781,7 +901,8 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         self:ShowPanel(playerIndex)
     end
     -- 队列里还有到点的事件时继续挂提示，同样等玩家按 J 展开，不自动弹面板。
-    if getn(self:EnsurePlayerEventQueue(playerIndex)) > 0 then
+    -- 候选卡还留在屏幕上时不能挂提示（那句提示说的是「按 J 展开面板」）。
+    if not keepSelection and getn(self:EnsurePlayerEventQueue(playerIndex)) > 0 then
         self:ShowSelectionHint(playerIndex)
     end
 end
@@ -1120,6 +1241,12 @@ end
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
+    -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
+        self.OpeningTestTriggered = true
+        self:ShowOpeningTestEvent()
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true
