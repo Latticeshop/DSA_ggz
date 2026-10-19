@@ -1075,6 +1075,18 @@ g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG")] = FarthestTargetChooser
 g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = FarthestTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("SovietSPG")] = FarthestTargetChooserBorn
 
+-- 海军优先索敌：名单取 UNITLIST 的海军段（LandArmySpawn 用 UNITSPSHIP 生成 step35+1..step4），
+-- 滤网与出生钩子在 MICROINI_0.lua，讲解见 analysis/地图注释说明文档.md 附录 A.84。
+if g_NavalPriorityUnitHashes ~= nil and UNITLIST ~= nil and step35 ~= nil and step4 ~= nil then
+    for unitIndex = step35 + 1, step4, 1 do
+        local unitType = UNITLIST[unitIndex]
+        if unitType ~= nil then
+            g_NavalPriorityUnitHashes[FastHash(unitType)] = true
+            RegisterUnitCreateCallback(unitType, NavalPriorityTargetChooserBorn)
+        end
+    end
+end
+
 g_ScatterShellBornChance = 0.5
 
 function ScatterShellFormBorn(createdObjId, createdObjInstanceId, ownerPlayerName)

@@ -1152,3 +1152,52 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
 end
+
+-- 每回合「名额」：登神 / 究极生物这类「一名玩家同一回合只能有一只」的效果共用。
+-- 一回合里出兵扫描会跑两趟（固定出兵 + 延迟补扫），各自的局部标记管不住跨趟重复，
+-- 所以名额按玩家存在这张表里，回合号取 lvc 计数器（与播报、以战养战同一口径）。
+HextechRune.RoundSlots = HextechRune.RoundSlots or {}
+
+function HextechRune:GetBattleRoundIndex()
+    return tonumber(exCounterGetByName("lvc")) or 0
+end
+
+-- 该玩家本回合的名额是否已被占用。名额上的单位已经死了就当场收回，避免新单位拿不到。
+function HextechRune:IsRoundSlotTaken(playerIndex, slotName)
+    local slot = self.RoundSlots[playerIndex]
+    if slot == nil or slot.Name ~= slotName then
+        return false
+    end
+    if slot.Round ~= self:GetBattleRoundIndex() then
+        return false
+    end
+    local unit = GetObjectById(slot.ObjectId)
+    if unit == nil or not ObjectIsAlive(unit) then
+        self.RoundSlots[playerIndex] = nil
+        return false
+    end
+    return true
+end
+
+function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
+    if playerIndex == nil or unit == nil then
+        return
+    end
+    self.RoundSlots[playerIndex] = {
+        Name = slotName,
+        Round = self:GetBattleRoundIndex(),
+        ObjectId = ObjectGetId(unit)
+    }
+end
+
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
+-- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
+-- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
+end

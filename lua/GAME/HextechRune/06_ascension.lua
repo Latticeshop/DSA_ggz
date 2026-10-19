@@ -314,18 +314,20 @@ function HextechRune:CreateAscensionModifier(playerIndex)
 end
 
 -- 每回合出兵后，把累计层数作为一个动态 Modifier 加载到该玩家的目标单位上。
--- 每只单位使用独立实例，与究极生物的处理方式一致。
+-- 名额：每名玩家每回合只登神一只（同兵种出了两只也只给第一只），跨两次出兵扫描都生效。
 function HextechRune:ApplyAscensionUnits(assignments)
     if assignments == nil then
         return
     end
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
-        local rune = self:GetAscensionRune(assignment.PlayerIndex)
+        local playerIndex = assignment.PlayerIndex
+        local rune = self:GetAscensionRune(playerIndex)
         if rune ~= nil and assignment.UnitIndex == rune.TargetUnitIndex then
-            local stacks = self:GetAscensionStacks(assignment.PlayerIndex)
+            local stacks = self:GetAscensionStacks(playerIndex)
             if self:IsCurrentAssignment(assignment.Unit, assignment) and stacks > 0
-                and not assignment.AscensionGranted then
+                and not assignment.AscensionGranted
+                and not self:IsRoundSlotTaken(playerIndex, "ascension") then
                 ObjectLoadAttributeModifier(assignment.Unit,
                     self:CreateAscensionModifier(assignment.PlayerIndex),
                     self.PersistentBuffDuration)
@@ -340,7 +342,8 @@ function HextechRune:ApplyAscensionUnits(assignments)
                 exObjectSetFixedScale(ObjectGetId(assignment.Unit),
                     self.AscensionScale)
                 RegisterNoStructureBuffUnit(assignment.Unit,
-                    self:GetPlayerSideIndex(assignment.PlayerIndex))
+                    self:GetPlayerSideIndex(playerIndex))
+                self:MarkRoundSlot(playerIndex, "ascension", assignment.Unit)
                 assignment.AscensionGranted = true
             end
         end

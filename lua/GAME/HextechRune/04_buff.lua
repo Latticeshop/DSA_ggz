@@ -1132,14 +1132,23 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     local creature = self.UltimateCreatureStates
     if creature ~= nil and creature[playerIndex] ~= nil
         and unitIndex == creature[playerIndex].UnitIndex then
+        -- 本回合已经进化过一只就不再认领（一回合有固定出兵 + 延迟补扫两趟扫描）。
+        if self:IsRoundSlotTaken(playerIndex, "ultimate_creature") then
+            return 0
+        end
         return 1
     end
 
-    -- 登神：目标单位只保留 1 个，其余已转化为层数。
+    -- 登神：目标单位只保留 1 个，其余已转化为层数。名额固定 1——原先返回 poolCount，
+    -- 兵种份额是 2 时会把两只都认领给同一名玩家、两只都登神（2026-10-20 用户实测）。
+    -- 本回合已经登神过一只时同理返回 0，第二趟扫描不再认领第二只。
     local ascensionRune = self:GetAscensionRune(playerIndex)
     if ascensionRune ~= nil and unitIndex == ascensionRune.TargetUnitIndex
         and self:GetAscensionStacks(playerIndex) > 0 then
-        return poolCount
+        if self:IsRoundSlotTaken(playerIndex, "ascension") then
+            return 0
+        end
+        return 1
     end
 
     -- 百虎上将不再占用单位池名额：它按「名下所有步兵」全量发百夫长，登记与否都不影响发放。

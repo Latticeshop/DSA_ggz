@@ -478,21 +478,24 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     return true
 end
 
+-- 名额：每名玩家每回合只进化一只究极生物。原先只用函数内的 appliedPlayers，
+-- 一回合的两趟出兵扫描各持一份，第二趟会再给一只，所以改走跨扫描的回合名额表。
 function HextechRune:ApplyUltimateCreatures(assignments)
-    local appliedPlayers = {}
     self:CleanupUltimateCreatureRegistrations()
 
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
         local playerIndex = assignment.PlayerIndex
         local state = self.UltimateCreatureStates[playerIndex]
-        if state ~= nil and not appliedPlayers[playerIndex]
+        if state ~= nil
             and assignment.UnitIndex == state.UnitIndex
+            and not self:IsRoundSlotTaken(playerIndex, "ultimate_creature")
             and self:IsCurrentAssignment(assignment.Unit, assignment) then
             if self:ApplyUltimateCreatureToUnit(assignment.Unit, state,
                 playerIndex) then
                 assignment.UltimateCreatureGranted = true
-                appliedPlayers[playerIndex] = true
+                self:MarkRoundSlot(playerIndex, "ultimate_creature",
+                    assignment.Unit)
             end
         end
     end

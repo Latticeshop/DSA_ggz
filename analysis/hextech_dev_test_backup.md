@@ -2,25 +2,19 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-19 发版清理）：已删除 —— 发版态。** 按 `python analysis/_remove_opening_test.py`
-> 把四处（顶部声明、`ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）整段删除并重新
-> `sync_scriptsdata.py`：删除行号为 原第 21-24 / 767-830 / 1188-1193 / 1159-1166 行，删后
-> `01_rune_pool.lua` payload 57324 B、`02_event.lua` payload 51723 B，`_check_release_clean.py`
-> 报「发版自检: 通过」。**最后一版名单（第四批）**：`silver_wheeled_cannon`（轮式大炮，银）/
-> `gold_oblivion_bomb`（湮灭炸弹，金）/ `gold_ascension`（登神，金，目标固定苏霍伊截击机
-> `SovietInterceptorAircraft`，靠 `testTargetOverrides` 覆盖随机目标）。
-> **要复测按 §1 原样贴回**（四处一起补回，含 `FindRuneById`）。
-> **静态复核脚本已同步成「清理态」断言**：`_verify_easy_does_it.py` / `_verify_burn_furry.py` /
-> `_verify_wheeled_cannon_interlock.py` 现在断言四处标识符在 `lua/` 与 payload 里均为 0、
-> 正式事件（`ShowFormalEvent` / `IsFormalRound` / `BuildFilteredPool`）仍在。
->
-> **贴回期间会出现的一批「预期内失败」**：`_verify_basics_exchange.py` / `_verify_cash_reward.py` /
-> `_verify_chicken_soup.py` / `_verify_silver_divine_might.py` / `_check_release_clean.py` /
-> `_tmp_release_audit.py` 里都带「开局测试已清理」的断言，只要这四处还贴在源码里，它们就会报 BAD。
-> 这些断言针对的是**发版态**，不是本次改坏的，清理完自然恢复。
-> 另外第 1 回合的测试三选一会先给每个座位一张符文，于是①`PlayerFormalSelectionCount` 从此不为 0，
-> 第 3 回合不再算「第一次正式选择」（`ExcludeOnFirstFormalSelection` 的重组器 / 回归基本功会照常出现）；
-> ②整局张数会多一张（拿到顺手的事时是 6 张，超出面板 5 格）。两条都只在贴回期间成立，属预期。
+> **当前状态（2026-10-19 第八批）：已贴回 —— 开发态。** 按 §1 原样贴回四处（顶部开关原 21-23 行、
+> `ShowOpeningTestEvent` 原 782-844 行、`OnRoundBegin` 分支原 1267-1272 行、`01_rune_pool.lua` 末尾的
+> `FindRuneById`），落盘脚本 `python analysis/_patch_round.py`（可重复执行，锚点都断言唯一）。
+> 本轮名单（第八批）：`prismatic_back_to_basics`（彩·回归基本功，**顶掉原来的银·轮式大炮**）/
+> `gold_oblivion_bomb`（金·湮灭炸弹）/ `gold_ascension`（金·登神，目标由苏霍伊截击机改成
+> **帝国长枪迷你潜艇 `JapanNavyScoutShip`**，专测海军）。
+> **2026-10-20 更正**：`JapanNavyScoutShip` 才是长枪迷你潜艇，`JapanAntiVehicleShip` 是薙刀驱逐舰
+> （第一版写错，用户实测圈到薙刀）。模板名对照见《地图注释说明文档》附录 A.84.4。
+> 选回归基本功是因为它 2026-10-19 拆成四兵种后标题变五字，正好顺带验卡面居中（与歌莉娅巨人同档）。
+> 贴回后 payload：`01_rune_pool.lua` 57401 B（余 8135 B）、`02_event.lua` 56116 B（余 9420 B），
+> `_verify_code_same.py` 报 code-changed = 0，本轮验收脚本 `analysis/_verify_opening_test_naval.py` 全绿。
+> **发版前照旧整段删除**：`python analysis/_remove_opening_test.py` + 重新 `sync_scriptsdata.py` +
+> `_check_release_clean.py` 复核（四处全部删净后它会重新报「发版自检: 通过」）。
 >
 > **上一轮状态（2026-10-17 收尾）：已删除 —— 发版清理。** 三张测试符文（享辐 / 万象天引 / 艾卡西亚的惊喜）
 > 同日实测正常后跑了 `analysis/_remove_opening_test.py`，四处（顶部声明、`ShowOpeningTestEvent`、
@@ -39,7 +33,7 @@
 ## 1. 开局第 1 回合固定三选一测试事件
 
 **原位置**：`lua/GAME/HextechRune/02_event.lua`
-- 开关（原 23-25 行，位于 `HextechRune.RarityFrameImageIds` 之后）：
+- 开关（原 21-23 行，位于 `HextechRune.RarityFrameImageIds` 之后）：
 
 ```lua
 -- 开发测试：第 1 回合固定显示指定的三张符文。
@@ -47,23 +41,23 @@ HextechRune.EnableOpeningRealTest = true
 HextechRune.OpeningTestTriggered = false
 ```
 
-- 事件本体（本轮贴回后位于 `ShowFormalEvent` 之后）：
+- 事件本体（本轮贴回后位于 `ShowFormalEvent` 之后，原 782-844 行）：
 
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
-    -- 2026-10-19 三批换人：第三张 顺手的事→银·神威；第二张 元神互锁→金·湮灭炸弹（测 K 键）；
-    -- 第三批 银·神威→新增的金·烧福瑞（用户要亲自测对面步兵的转化流程）；
-    -- 第四批 金·烧福瑞→金·登神，且目标固定为苏霍伊截击机（SovietInterceptorAircraft），专测飞机。
+    -- 2026-10-19 第五批：回归基本功（拆分四兵种后标题变五字，顺带验居中）顶掉银·轮式大炮；
+    -- 登神目标由苏霍伊改成帝国长枪迷你潜艇 JapanNavyScoutShip，专测海军的登神链路。
     local testRuneIds = {
-        "silver_wheeled_cannon",
+        "prismatic_back_to_basics",
         "gold_oblivion_bomb",
         "gold_ascension",
     }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
-    -- 苏霍伊只有苏联座席能产出，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
+    -- 长枪迷你潜艇的地编 ID 是 JapanNavyScoutShip（JapanAntiVehicleShip 是薙刀驱逐舰，别写错）；
+    -- 它只在帝国座席的回收表里，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
     local testTargetOverrides = {
-        gold_ascension = "SovietInterceptorAircraft",
+        gold_ascension = "JapanNavyScoutShip",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -116,7 +110,7 @@ function HextechRune:ShowOpeningTestEvent()
 end
 ```
 
-- `OnRoundBegin` 里的触发分支（原 1093-1098 行，**必须**放在正式事件判断之前）：
+- `OnRoundBegin` 里的触发分支（原 1267-1272 行，**必须**放在正式事件判断之前）：
 
 ```lua
     -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
@@ -129,7 +123,7 @@ end
 
 **复测用的固定三选一**：改 `testRuneIds` 即可；要固定某张「指定单位型」符文（登神 / 买二送一 / 究极生物）
 的目标单位，在同函数里的 `testTargetOverrides` 加一行 `符文Id = "单位模板名"`（当前为
-`gold_ascension = "SovietInterceptorAircraft"`），它会在候选构造完之后覆盖随机目标。
+`gold_ascension = "JapanNavyScoutShip"`），它会在候选构造完之后覆盖随机目标。
 
 ---
 
@@ -233,6 +227,16 @@ end
     带「弹药」的版本（T3 = 50% 档，五个维度随机命中一维）；苏霍伊只有**苏联座席**的回收表里有，
     其它座席这张卡不生效，属调试预期。烧福瑞本身没动，仍在金档池里正常可抽，验证脚本
     `analysis/_verify_burn_furry.py` 的测试名单断言已同步改成「已不含烧福瑞、名单仍三张」。
+   **2026-10-19 第八批（当前名单）**：用户要求「开局测试里的一个改成回归基本功、一个改成登神潜艇」——
+   第一张 **`silver_wheeled_cannon`（银·轮式大炮）→ `prismatic_back_to_basics`（彩·回归基本功）**
+   （它同日拆成四兵种、标题变五字，顺便验卡面居中），第三张登神仍在，但 `testTargetOverrides`
+   由 `SovietInterceptorAircraft` 改成 **`JapanAntiVehicleShip`（帝国长枪迷你潜艇）**，专测海军：
+   `testRuneIds` 现在是 `{ "prismatic_back_to_basics", "gold_oblivion_bomb", "gold_ascension" }`
+   （彩 / 金 / 金）。回归基本功带 `NeedsUnitType`，测试事件本来就会随机抽一个可用兵种（步兵 / 载具 /
+   空军 / 海军之一），所以同一局重开可能拿到不同后缀的标题；**要专门验海军标题就把兵种禁到只剩海军**。
+   长枪迷你潜艇的地编 ID 是 **`JapanNavyScoutShip`**（第一版误写成 `JapanAntiVehicleShip`，
+   那是薙刀驱逐舰，2026-10-20 已改对），只在**帝国座席**的回收表里，其它座席这张登神不生效（调试预期）。轮式大炮本身没动，
+   仍在银档池里正常可抽、与登神的改指链路照旧。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），
@@ -256,6 +260,6 @@ end
 
 > **`analysis/_verify_backup_doc.py` 的既有偏差（不是本次引入）**：它拿本文档 §1 的三段
 > 与早先的全文快照 `analysis/_02_event_before.lua` 逐字比对。§1 第 2 段（`ShowOpeningTestEvent`
-> 的 `testRuneIds`）在本文件里一向是**较新的复测组合**（现在是 顺手的事 / 享辐 / 赌怪），
+> 的 `testRuneIds`）在本文件里一向是**较新的复测组合**（现在是 回归基本功 / 湮灭炸弹 / 登神），
 > 而快照里还是更早的（吸星大法 / 致命节奏 / 十连），所以该脚本会稳定报 `mismatch = 1`；
 > 判定「贴回内容是否与源码一致」请看源码本身与 §2，不要以该脚本的结论为准。

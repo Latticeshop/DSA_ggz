@@ -754,6 +754,41 @@ end
 --     end
 -- end
 
+-- 海军优先索敌：敌舰 > 敌方建筑(海塔) > 其余默认
+-- 滤网与出生钩子在这里，出生登记在 UnitCreate.lua 的海军段循环里。
+g_FilterNavalPriorityEnemyShip=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="SHIP",
+    Exclude="IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+-- 第二档：海塔。地编脚本名 T71F~T73F / T81F~T83F 只能按对象查，过滤器只认模板与 KindOf，
+g_FilterNavalPriorityEnemyStructure=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="STRUCTURE",
+    Exclude="IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+})
+
+g_NavalPriorityUnitHashes = {}
+
+function NavalPriorityTargetChooserBorn (createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectSetCustomTargetChooserData(GetObjectById(id), {
+                CompareFilterList = {
+                    g_FilterNavalPriorityEnemyShip,
+                    g_FilterNavalPriorityEnemyStructure
+                },
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            })
+            ObjectSetTargetChooserNextAutoAcquireDelay(id, 0)
+        end
+    end, 1, {createdObjId})
+end
+
 -- 登神/究极生物的目标单位：只打单位，不碰任何建筑。
 -- 滤网与百合子的 g_FilterYurikoEnemy 分开定义，两边的索敌调参互不影响。
 g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
@@ -764,8 +799,13 @@ g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
 })
 
 -- 按对象 ID 登记，不写模板名：这两张符文的目标单位每局随机，列不出固定名单。
--- 只存 id 与阵营侧，跨帧回访一律 GetObjectById 现取句柄。
 g_NoStructureBuffUnitIds = g_NoStructureBuffUnitIds or {}
+-- 海军行军的终点路点，与 WB 脚本 ATTACKSHIP__7/__8 同源。
+-- 舰船被登神/究极生物圈中时不能按陆军那套推进到 TD7/TD8（陆上 waypoint），否则会半路拐向岸边。
+g_NavalPriorityAttackWaypoint = g_NavalPriorityAttackWaypoint or {
+    [7] = "PLANEREBORN8",
+    [8] = "PLANEREBORN7"
+}
 -- 同一只单位的索敌只能有一个主人，她若被圈中就整只交回她自己的微操。
 g_NoStructureBuffSkipInstanceIds = { [FastHash("JapanCommandoTech1")] = true }
 
@@ -797,18 +837,36 @@ function NoStructureBuffedUnitMICROCONTROL ()
                 idleTeamShortName = "teamPlyrCreeps"
             end
             local teamName = ObjectTeamName(unit)
-            local wasReassigned = teamName ~= idleTeamName and teamName ~= idleTeamShortName
+            -- 舰船只换终点、不换待遇（讲解见附录 A.85.1b）：跟陆军登神单位/百合子同一套，
+            -- 退出进攻编队进 idle 队，否则队级 AttackMove 会绕过自定义索敌去打海塔。
+            local isNavalUnit = g_NavalPriorityUnitHashes ~= nil
+                and g_NavalPriorityUnitHashes[ObjectGetInstanceId(objectId)] == true
+            local wasReassigned = teamName ~= idleTeamName
+                and teamName ~= idleTeamShortName
             if wasReassigned then
                 ExecuteAction("UNIT_SET_TEAM", unit, idleTeamName)
                 -- 离了主力编队就没人给它下推进命令，自己朝敌方 waypoints 攻击前进。
-                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit,
-                    g_PrioritySiegeAttackWaypoint[sideIndex])
+                -- 舰船必须走海军路点（PLANEREBORN8/7），指到陆上的 TD7/TD8 就会拐向岸边。
+                local waypointName = g_PrioritySiegeAttackWaypoint[sideIndex]
+                if isNavalUnit then
+                    waypointName = g_NavalPriorityAttackWaypoint[sideIndex]
+                        or "PLANEREBORN8"
+                end
+                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit, waypointName)
             end
-            ObjectSetCustomTargetChooserData(unit, {
+            local targetChooserData = {
                 CustomFilter = g_FilterNoStructureBuffedEnemy,
                 ReverseRangeCompare = false,
                 PreferTargetInsideRange = true
-            })
+            }
+            if g_NavalPriorityUnitHashes ~= nil and g_FilterNavalPriorityEnemyShip ~= nil
+                and g_NavalPriorityUnitHashes[ObjectGetInstanceId(objectId)] then
+                -- 登神 / 究极生物的舰船：只排「敌舰」一档，其余走默认（海军 > 其他）。
+                targetChooserData.CompareFilterList = {
+                    g_FilterNavalPriorityEnemyShip
+                }
+            end
+            ObjectSetCustomTargetChooserData(unit, targetChooserData)
             ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
         end
     end

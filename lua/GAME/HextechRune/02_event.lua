@@ -18,6 +18,10 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
+-- 开发测试：第 1 回合固定显示指定的三张符文。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestTriggered = false
+
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
@@ -258,13 +262,24 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
         end
         return self.OptionTitleOffsetX + shift
     end
-    -- 五字标题（变形重组器 / 升级重组器，16px）实测偏左约 2/3 个字，按四字 22px 的
-    -- 每字步进外推右移；带兵种后缀的小字号五字标题（万用瞄准镜）继续用默认值。
-    if characterCount == 5 and rune.UnitType == nil then
+    -- 五字标题（变形重组器 / 升级重组器，16px、无兵种后缀）实测偏左约 2/3 个字，右移 30。
+    -- 带兵种后缀的五字标题（回归基本功 / 歌莉娅巨人）字号是 14px，按 16px 那档的字号比例
+    -- 折算成 26；万用瞄准镜那三档 10px 小字号实测默认值已居中，不跟着放大。
+    if characterCount == 5 then
         if isPanel then
-            return 13
+            if rune.UnitType == nil then
+                return 13
+            end
+            return self.PanelRuneTitleOffsetX
         end
-        return 30
+        if rune.UnitType == nil then
+            return 30
+        end
+        if rune.Effect == "range_silver" or rune.Effect == "range_gold"
+            or rune.Effect == "range_prismatic" then
+            return self.OptionTitleOffsetX
+        end
+        return 26
     end
     if characterCount == 4 then
         if isPanel then
@@ -764,6 +779,71 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
+function HextechRune:ShowOpeningTestEvent()
+    -- 2026-10-19 第五批：回归基本功（拆分四兵种后标题变五字，顺带验居中）顶掉银·轮式大炮；
+    -- 登神目标由苏霍伊改成帝国长枪迷你潜艇 JapanNavyScoutShip，专测海军的登神链路。
+    local testRuneIds = {
+        "prismatic_back_to_basics",
+        "gold_oblivion_bomb",
+        "gold_ascension",
+    }
+    -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
+    -- 长枪迷你潜艇的地编 ID 是 JapanNavyScoutShip（JapanAntiVehicleShip 是薙刀驱逐舰，别写错）；
+    -- 它只在帝国座席的回收表里，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
+    local testTargetOverrides = {
+        gold_ascension = "JapanNavyScoutShip",
+    }
+    for playerIndex = 1, 6, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, getn(testRuneIds), 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = nil
+                if template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
+                end
+                if candidate ~= nil then
+                    local overrideType = testTargetOverrides[candidate.Id]
+                    if overrideType ~= nil then
+                        candidate.TargetUnitType = overrideType
+                        candidate.TargetUnitIndex = self:LookupUnitPoolIndex(overrideType)
+                        candidate.TargetUnitName = self:GetReplacementTargetName(playerIndex, overrideType)
+                    end
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) > 0 then
+                self.PlayerOptionCount[playerIndex] = getn(options)
+                self.PlayerOptions[playerIndex] = options
+                self.PlayerRerollUsed[playerIndex] = false
+                for i = 1, getn(options), 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
+end
+
 -- 移除某玩家当前的候选卡（卡框 / 图标 / 重随按钮 / 标题），不动 PlayerOptions。
 -- 关页与「顺手的事」重排都走这里，避免两处各写一份 3 连循环。
 function HextechRune:RemoveOptionBoxes(playerIndex)
@@ -1185,6 +1265,12 @@ end
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
+    -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and not self.OpeningTestTriggered and round == 1 then
+        self.OpeningTestTriggered = true
+        self:ShowOpeningTestEvent()
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true
