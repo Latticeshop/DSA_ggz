@@ -253,7 +253,13 @@ end
 function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
     local playerName = "Player_" .. playerIndex
     local buttons = {}
-    local preselectedPlayerSkillKind = g_PreselectedSkillIndices[playerIndex]
+    -- 技能组按「本边第几个真人」压缩发放（1v1 = 2 项、2v2 = 4 项、满 6 人 = 6 项），
+    -- 不能直接用 playerIndex 取值，否则空位会把后面玩家的技能组挤到另一项上。
+    local preselectedSkillIndex = BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
+    local preselectedPlayerSkillKind = nil
+    if preselectedSkillIndex ~= nil then
+        preselectedPlayerSkillKind = g_PreselectedSkillIndices[preselectedSkillIndex]
+    end
     if preselectedPlayerSkillKind ~= nil then
         CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, preselectedPlayerSkillKind)
     else

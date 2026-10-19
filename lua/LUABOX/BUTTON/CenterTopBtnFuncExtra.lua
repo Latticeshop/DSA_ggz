@@ -94,6 +94,35 @@ function g_GetEnemyBattlefieldContext(playerIndex)
     return context
 end
 
+-- 把一只单位的冷冻条灌满：按「当前最大血量 × 2」灌，符文血量加成（HEALTH_MULT）也算在内。
+-- exObjectGetMaxHealth 比 ObjectGetInitialHealth 贵约 5 倍，但一次施放只按单位数调一遍。
+function g_FillUnitCryoToFreeze(unit)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return false
+    end
+    local objectId = ObjectGetId(unit)
+    if objectId == nil then
+        return false
+    end
+    local amount = g_SnowstormCryoFillFallback
+    local maxHealth = exObjectGetMaxHealth(objectId)
+    if maxHealth ~= nil and maxHealth > 0 then
+        -- 桥接给的是浮点，exObjectDealSecondaryDamage 收整数，取整避免精度告警。
+        amount = floor(maxHealth * 2)
+    end
+    exObjectDealSecondaryDamage(objectId, amount)
+    return true
+end
+
+-- 冻结敌方场上全部单位：名单与冰柱同源（g_GetEnemyBattlefieldContext），
+-- 因此建筑、防御塔、地编预设守护神都不会被冻。解冻交给引擎自然衰减。
+function g_FreezeAllEnemyFieldUnits(playerIndex)
+    local context = g_GetEnemyBattlefieldContext(playerIndex)
+    for i = 1, getn(context.units), 1 do
+        g_FillUnitCryoToFreeze(context.units[i])
+    end
+end
+
 function CreateHydraButton(playerIndex)
     local buttonData = {
         PlayerName = "Player_" .. playerIndex,
@@ -177,16 +206,22 @@ function RequestHydra(playerIndex)
     return true
 end
 
--- 冰天雪地：按盟军三级冷冻卫星协议对敌方单位释放。
+-- 冰天雪地：按盟军三级冷冻卫星协议对敌方单位释放，并把敌方场上全部单位的冷冻条灌满。
 -- 施法者用场地中间的 AI 阵营（PlyrCivilian/PlyrCreeps），协议授予也给这一侧，
 g_SnowstormPowerName = "SpecialPowerCryoSatelliteLvl3"
 g_SnowstormGrantKey = "grant_cryo_satellite"
 -- 实测：只有 Command_CryoSatelliteLvl3 会发动卫星；
 -- Command_SpecialPowerCryoSatelliteLvl3 是「授予协议」那一档按钮，按下去只给玩家加协议。
 g_SnowstormCommandName = "Command_CryoSatelliteLvl3"
-g_SnowstormTargetCount = 8
+-- 冰柱数量：6。全场冷冻条灌满之后冰柱只负责视觉与点名冻结。
+g_SnowstormTargetCount = 6
 -- 技能实例是延迟创建的（符文侧同一结论：同帧的 Available 可能打空），所以延迟 2 帧再按按钮。
 g_SnowstormCastDelayFrames = 2
+-- 冰柱先落地（施放延迟 2 帧）再灌冷冻值：协议在目标还没被冻住时就已点名完毕，
+-- 不会因为目标处于冻结状态而判无效、白丢冰柱特效。这个值要大于 g_SnowstormCastDelayFrames。
+g_SnowstormFieldFreezeDelayFrames = 4
+-- 取不到最大血量时的兜底灌值（远大于任何单位最大血量，多灌的部分被 2× 上限钳制）。
+g_SnowstormCryoFillFallback = 60000
 
 g_SnowstormSpellbookFilter = CreateObjectFilter({
     Rule = "ANY",
@@ -227,39 +262,43 @@ function RequestSnowstorm(playerIndex)
             Localization.get("center_top.error.no_unit_to_freeze"), 8)
         return false
     end
-    local spellbook = g_GetSpellbookByOwner(context.sideAIPlayer)
-    if spellbook == nil then
-        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
-            Localization.get("center_top.error.no_unit_to_freeze"), 8)
-        return false
-    end
-    local casterRef = "SnowstormCaster_" .. context.sideAIPlayer
-    ExecuteAction("SET_UNIT_REFERENCE", casterRef, spellbook)
-    HextechRune:GrantProtocolToPlayer(context.sideAIPlayer, g_SnowstormGrantKey)
 
-    local freezeCount = g_SnowstormTargetCount
-    if freezeCount > context.total then
-        freezeCount = context.total
-    end
-    local picked = g_PickRandomIndices(context.total, freezeCount)
-    local targets = {}
-    for k = 1, getn(picked), 1 do
-        local unit = context.units[picked[k]]
-        if unit ~= nil and ObjectIsAlive(unit) then
-            local unitId = ObjectGetId(unit)
-            local entry = {
-                Id = unitId,
-                Ref = "SnowstormTarget_" .. tostring(unitId),
-            }
-            ExecuteAction("SET_UNIT_REFERENCE", entry.Ref, unit)
-            tinsert(targets, entry)
+    -- 主效果：敌方场上全部单位（不含建筑/防御塔/地编守护神）冷冻条灌满。
+    -- 排在冰柱之后 2 帧，保证协议点名时目标还没被冻住。
+    SchedulerModule.delay_call(g_FreezeAllEnemyFieldUnits,
+        g_SnowstormFieldFreezeDelayFrames, { playerIndex })
+
+    -- 附带的冷冻卫星冰柱：只打随机 g_SnowstormTargetCount 个。
+    -- 拿不到 AI 方技能书就整段跳过，主效果照常生效（技能一样消耗次数、进冷却）。
+    local spellbook = g_GetSpellbookByOwner(context.sideAIPlayer)
+    if spellbook ~= nil then
+        local casterRef = "SnowstormCaster_" .. context.sideAIPlayer
+        ExecuteAction("SET_UNIT_REFERENCE", casterRef, spellbook)
+        HextechRune:GrantProtocolToPlayer(context.sideAIPlayer, g_SnowstormGrantKey)
+
+        local freezeCount = g_SnowstormTargetCount
+        if freezeCount > context.total then
+            freezeCount = context.total
+        end
+        local picked = g_PickRandomIndices(context.total, freezeCount)
+        local targets = {}
+        for k = 1, getn(picked), 1 do
+            local unit = context.units[picked[k]]
+            if unit ~= nil and ObjectIsAlive(unit) then
+                local unitId = ObjectGetId(unit)
+                local entry = {
+                    Id = unitId,
+                    Ref = "SnowstormTarget_" .. tostring(unitId),
+                }
+                ExecuteAction("SET_UNIT_REFERENCE", entry.Ref, unit)
+                tinsert(targets, entry)
+            end
+        end
+        if getn(targets) > 0 then
+            SchedulerModule.delay_call(g_CastSnowstorm, g_SnowstormCastDelayFrames,
+                { casterRef, targets })
         end
     end
-    if getn(targets) < 1 then
-        return false
-    end
-    SchedulerModule.delay_call(g_CastSnowstorm, g_SnowstormCastDelayFrames,
-        { casterRef, targets })
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName))
 

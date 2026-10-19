@@ -222,7 +222,7 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "JapanKamikazeInfantry" },
     { RuneId = "silver_tulip_mortar", SourceType = "SovietAntiStructureVehicle",
         ReplacementType = "SovietHeavyMortarVehicle" },
-    { RuneId = "gold_five_centimeters", SourceType = "JapanInterceptorAircraft",
+    { RuneId = "silver_five_centimeters", SourceType = "JapanInterceptorAircraft",
         ReplacementType = "JapanSakuraAttackRocket" },
     { RuneId = "silver_wheeled_cannon", SourceType = "SovietHeavyAntiVehicleVehicleTech2",
         ReplacementType = "SovietHeavyAntiAirVehicleTech2" },
@@ -255,4 +255,148 @@ end
 function HextechRune:IsKamikazeGiftWarrior(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
+end
+
+-- ===== 金·烧福瑞：回合开始把对面 AI 的步兵按本方份数比例换成警犬/战熊 =====
+HextechRune.BurnFurryRuneId = "gold_burn_furry"
+-- 同阵营份数 → 转化比例：1/2/3 份 = 50%/75%/100%（超过 3 份按 100%）。
+HextechRune.BurnFurryPercentByCopies = { 0.50, 0.75, 1.00 }
+-- 生成的动物随机取一个：警犬（盟军探路兵位）/ 战熊（苏联探路兵位）。
+HextechRune.BurnFurryAnimalTypes = { "AlliedScoutInfantry", "SovietScoutInfantry" }
+HextechRune.BurnFurryAppliedRound = HextechRune.BurnFurryAppliedRound or {}
+HextechRune.BurnFurrySpawnSerial = HextechRune.BurnFurrySpawnSerial or 0
+
+function HextechRune:GetBurnFurryPercentByCopies(copies)
+    local lastCopies = getn(self.BurnFurryPercentByCopies)
+    if copies > lastCopies then
+        copies = lastCopies
+    end
+    if copies < 1 then
+        return 0
+    end
+    return self.BurnFurryPercentByCopies[copies]
+end
+
+function HextechRune:GetBurnFurryPercent(sideIndex)
+    local copies = self:GetSideOwnedRuneCount(sideIndex, self.BurnFurryRuneId)
+    if copies <= 0 then
+        return 0
+    end
+    return self:GetBurnFurryPercentByCopies(copies)
+end
+
+-- 卡面展示：三选一时候选还没到手，按「拿到之后」的份数算。
+function HextechRune:GetBurnFurryDisplayPercent(playerIndex)
+    local copies = 1
+    if playerIndex ~= nil then
+        self:EnsurePlayerRuneState(playerIndex)
+        copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex),
+            self.BurnFurryRuneId)
+        if not self.PlayerOwnedRuneIds[playerIndex][self.BurnFurryRuneId] then
+            copies = copies + 1
+        end
+    end
+    return floor(self:GetBurnFurryPercentByCopies(copies) * 100 + 0.5)
+end
+
+-- 对面是 AI 阵营（P7/P8），没有「出兵出队」那一步，新单位要直接进步兵攻击队才会参战。
+function HextechRune:GetBurnFurryAttackTeam(sideIndex)
+    if INFANTATTACK ~= nil and INFANTATTACK[sideIndex] ~= nil
+        and INFANTATTACK[sideIndex][1] ~= nil then
+        return INFANTATTACK[sideIndex][1]
+    end
+    if DEFAULTATTCKTEAM ~= nil and DEFAULTATTCKTEAM[sideIndex] ~= nil then
+        return DEFAULTATTCKTEAM[sideIndex]
+    end
+    if sideIndex == 7 then
+        return "PlyrCivilian/teamPlyrCivilian"
+    end
+    return "PlyrCreeps/teamPlyrCreeps"
+end
+
+-- 在指定坐标生成一只警犬/战熊；名字带序号，生成后回取句柄补星级。
+function HextechRune:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount)
+    local types = self.BurnFurryAnimalTypes
+    local unitType = types[self:RandomIndex(getn(types))]
+    self.BurnFurrySpawnSerial = self.BurnFurrySpawnSerial + 1
+    local name = format("HextechBurnFurry%d", self.BurnFurrySpawnSerial)
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", name, unitType,
+        self:GetBurnFurryAttackTeam(sideIndex), { X = x, Y = y, Z = z }, 0)
+    local unit = GetObjectByScriptName(name)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return false
+    end
+    -- 敌方单位按回合数升星，换出来的也要跟上，否则等于白送对面一波弱兵。
+    for levelIndex = 1, levelCount, 1 do
+        ExecuteAction("UNIT_GAIN_LEVEL", unit, 1)
+    end
+    return true
+end
+
+-- 删掉对面该比例的步兵，并在原地生成等量的警犬/战熊。只动 P7/P8 的战场单位，
+-- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
+function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
+    local filter = nil
+    if self.UnitTypeFilters ~= nil then
+        filter = self.UnitTypeFilters.infantry
+    end
+    if P == nil or P[sideIndex] == nil or filter == nil or percent <= 0 then
+        return 0
+    end
+    local units, count = ObjectFindObjects(P[sideIndex], nil, filter)
+    local candidates = {}
+    for i = 1, count, 1 do
+        if ObjectIsAlive(units[i]) and not self:IsPresetMapUnit(units[i]) then
+            tinsert(candidates, units[i])
+        end
+    end
+    local total = getn(candidates)
+    if total <= 0 then
+        return 0
+    end
+    local targetCount = floor(total * percent + 0.5)
+    if targetCount < 1 then
+        targetCount = 1
+    elseif targetCount > total then
+        targetCount = total
+    end
+    local levelCount = 0
+    if LEVELUP ~= nil and LEVELUP[sideIndex] ~= nil then
+        levelCount = LEVELUP[sideIndex]
+        if levelCount > 5 then
+            levelCount = 5
+        end
+    end
+    local converted = 0
+    for i = 1, targetCount, 1 do
+        -- 无放回随机：抽中的换到当前位置，后面的位置不会再抽到它。
+        local pickIndex = i + self:RandomIndex(total - i + 1) - 1
+        local pick = candidates[i]
+        candidates[i] = candidates[pickIndex]
+        candidates[pickIndex] = pick
+        local x, y, z = ObjectGetPosition(pick)
+        ExecuteAction("NAMED_DELETE", pick)
+        if self:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount) then
+            converted = converted + 1
+        end
+    end
+    return converted
+end
+
+-- 回合开始（出兵混编完成后）结算一次；补充军队会让回合效果重走一遍，按回合号去重。
+-- 2026-10-19 用户实测反馈：去掉每回合的播报（会刷屏），只静默改造敌兵。
+function HextechRune:ApplyBurnFurryPulse(round)
+    if round == nil then
+        round = exCounterGetByName("lvc")
+    end
+    for holderSideIndex = 7, 8, 1 do
+        local percent = self:GetBurnFurryPercent(holderSideIndex)
+        if percent <= 0 then
+            self.BurnFurryAppliedRound[holderSideIndex] = nil
+        elseif self.BurnFurryAppliedRound[holderSideIndex] ~= round then
+            self.BurnFurryAppliedRound[holderSideIndex] = round
+            local targetSideIndex = self:GetOpposingSideIndex(holderSideIndex)
+            self:ConvertBurnFurryInfantry(targetSideIndex, percent)
+        end
+    end
 end

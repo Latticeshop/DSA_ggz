@@ -1286,6 +1286,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_rhino_tank = true,
     prepare_backpack = true,
     easy_does_it = true,
+    -- 烧福瑞：只在回合开始整批改造对面 AI 的步兵，不逐单位挂载。
+    burn_furry = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
     soul_interlock = true,
     ultimate_creature = true,
@@ -1665,6 +1667,8 @@ function HextechRune:ApplyRoundEffects(round)
     self:ApplyAllRagnarokHealthClamps()
     -- 缩小射线：到点的阵营让对手全体单位缩小一回合。
     self:ApplyShrinkRayPulse(round)
+    -- 烧福瑞：按本方份数比例把对手 AI 的步兵换成警犬/战熊（同一回合只结算一次）。
+    self:ApplyBurnFurryPulse(round)
     -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
     -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
     SchedulerModule.delay_call(function(effectRound)

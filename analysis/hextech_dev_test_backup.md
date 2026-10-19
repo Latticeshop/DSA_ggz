@@ -4,12 +4,12 @@
 
 > **当前状态（2026-10-19 第二批）：已贴回 —— 待游戏内实测。** 按 §1 原文把四处（顶部声明、
 > `ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）全部贴回 `lua/` 并同步进
-> `ScriptsData.json`；按用户要求把 `testRuneIds` **换成当轮新符文**：
-> **`silver_wheeled_cannon`（轮式大炮，银）/ `gold_soul_interlock`（元神互锁，金）/
-> `gold_easy_does_it`（顺手的事，金）**——前两张是第二批新卡，第三张留「顺手的事」是
-> 因为它的多拿一张流程还没在游戏里验过（第一批的享辐 / 赌怪已从名单撤下）。
+> `ScriptsData.json`；按用户要求把 `testRuneIds` **换成本轮新符文**，现名单为
+> **`silver_wheeled_cannon`（轮式大炮，银）/ `gold_oblivion_bomb`（湮灭炸弹，金）/
+> `gold_burn_furry`（烧福瑞，金，当日新增）**（当天换过三次，年表见 §1 末尾）。
 > **测轮式大炮要选苏联阵营**（`RequiredFaction = 2`，且源单位犀牛坦克只有苏联有）；
-> 测元神互锁要先拿到至少一张别的兵种符文，否则同步组没有可同步的对象，且同步组是**随机**的。
+> 测湮灭炸弹看「选中后不立刻落弹、只挂 K 键提示，按 K 消耗一次并落弹」；
+> 测烧福瑞看「拿到当回合不生效、下一回合开始对面步兵按比例变成警犬/战熊」。
 > **实测通过后照旧整段删除**：`python analysis/_remove_opening_test.py`（四处一起删，
 > 包括 `FindRuneById`），再跑 `analysis/tools/sync_scriptsdata.py` 与
 > `analysis/_check_release_clean.py`。静态复核见 `analysis/_verify_easy_does_it.py` 与
@@ -55,8 +55,8 @@ HextechRune.OpeningTestTriggered = false
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
         "silver_wheeled_cannon",
-        "gold_soul_interlock",
-        "gold_easy_does_it",
+        "gold_oblivion_bomb",
+        "gold_burn_furry",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -158,8 +158,8 @@ end
    一局覆盖「苏联协议 ×1 + 盟军协议 ×1 + 以战养战」，第 1 回合就能点；**随后按用户要求发版清理，
    整段删除**（见文首状态）。
    **2026-10-16 贴回（当时名单）**：三张换成 **`silver_mcv`（MCV）/ `silver_five_centimeters`
-   （秒速五厘米，当日新增的白银替换型符文，**2026-10-19 由银档改挂金档、Id 已改为
-   `gold_five_centimeters`**）/ `prismatic_infinite_ammo`（无限火力）**——
+   （秒速五厘米，当日新增的白银替换型符文；**2026-10-19 曾由银档改挂金档为
+   `gold_five_centimeters`，同日又改回银档 `silver_five_centimeters`**）/ `prismatic_infinite_ammo`（无限火力）**——
    分别验「MCV 落点改用 Player_2/Player_5 预设前哨站」「樱花回天雷入池计数落到鬼樱特攻机槽」
    「名单去掉摇光后摇光不再获得无限弹药」。天堂制造 7 回合、五雷天罚 3 回合属于周期数值，
    要换就占用其中一格。注意这一版**允许张数不足 3**：秒速五厘米 `RequiredFaction = 3`、
@@ -186,6 +186,29 @@ end
    这一局顺带要验的两件事：①拿轮式大炮**不再报错**（原先 `RemapReplacedRuneTargets` 拿 nil 键
    查表会抛 `table index is nil`，2026-10-19 已修，见设计文档 §7.2）；②银·神威授予的是
    **时空裂缝 2 级**（`PurcChronoRift2`），不是 3 级。
+   **2026-10-19 晚些时候再换一次（当前名单）**：用户要求把第二张「金·元神互锁」换成
+   **`gold_oblivion_bomb`（金·湮灭炸弹）**，`testRuneIds` 现在是
+   `{ "silver_wheeled_cannon", "gold_oblivion_bomb", "silver_divine_might" }`（银 / 金 / 银）。
+   湮灭炸弹不带 `NeedsUnitType`、不限阵营、允许重复取得，所以六个座位都能摆满 3 张；
+   这一局要验的是**选中后不立刻落弹**、只在 J 提示下方挂「按'K'键部署湮灭炸弹」，
+   按 K（`ExtraCommand.lua` 的热键命令 75）消耗一次并在抽卡空投圆心 `(3547.06, 3055.49)`
+   生成归属使用者的 `japanomegaoblivionbomb`、次数减 1，拿两份可连按两次。元神互锁本身没动，
+   仍在金档池里正常可抽。
+   同一天稍晚，**秒速五厘米又由金档改回银档**（`Rarity = 2 → 3`、Id 由
+   `gold_five_centimeters` 改回 `silver_five_centimeters`，见设计文档 §7）；上面 2026-10-16
+   那段里「Id 已改为 `gold_five_centimeters`」的说法请以银档 Id 为准。
+   同样在这一天，**顺手的事也由金档降为银档**（`Rarity = 2 → 3`、Id 由 `gold_easy_does_it`
+   改为 `silver_easy_does_it`，赌怪侧 `ExclusiveRuneIds` 同步改名），所以上面 2026-10-19 贴回
+   那段里「`gold_easy_does_it`（顺手的事，金）」现在应读作银档 Id；多拿一张的流程与互斥都不变。
+   **2026-10-19 第三批（当前名单）**：用户要求把第三张「银·神威」换成当日新增的
+   **`gold_burn_furry`（金·烧福瑞）** 自己测，`testRuneIds` 现在是
+   `{ "silver_wheeled_cannon", "gold_oblivion_bomb", "gold_burn_furry" }`（银 / 金 / 金）。
+   烧福瑞**取符文时不会立刻触发**（`OnRuneChosen` 没有分支），要等回合开始那一次
+   `ApplyRoundEffects`（出兵混编完成之后）才把对面步兵按比例换成警犬/战熊；点选一般排在
+   这次结算之后，所以**基本要到下一回合才看得到效果**，这一局至少要打两回合；
+   它按「同阵营份数」取比例（1/2/3 份 = 50%/75%/100%），单人拿不到第二份。
+   测试事件按 Id 直取符文、不过筛池，因此**禁步兵模式下也会把它摆上来**（正常池里它 `RequiresType`
+   会下架），这是预期行为。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），

@@ -79,6 +79,62 @@ Localization.on_language_changed(function()
 end)
 g_PreselectedSkillIndices = {}
 
+-- 本方实际占用的玩家槽位，按 Player_i 升序。真人、电脑都算（电脑也吃技能组），只有空位/关闭位不算：
+-- 1v1 = 每边 1 个、2v2 = 每边 2 个、满 6 位 = 每边 3 个。
+function BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
+    local playerIndices = {}
+    for playerIndex = sideStartIndex, sideStartIndex + 2, 1 do
+        -- P[i] 是本图 6 个玩家对象（UNITCOUNTERINI_0.lua 里 GetObjectByScriptName("P"..i)），空位为 nil。
+        local isHuman = EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY",
+            "Player_" .. playerIndex, "Human")
+        if isHuman or (P ~= nil and P[playerIndex] ~= nil) then
+            tinsert(playerIndices, playerIndex)
+        end
+    end
+    return playerIndices
+end
+
+-- 玩家 → 技能组数组下标：按「本边第几个占位玩家」压缩编号（1..3 魔鬼、4..6 天使）。
+-- 满 6 位时与 playerIndex 完全一致；有空位时不留洞 —— 1v1 用 1 / 4，2v2 用 1、2 / 4、5。
+-- 空位因此不再占掉一项，对称模式两边同一序号必然抽到同一组。
+function BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
+    local sideStartIndex = 1
+    if playerIndex >= 4 then
+        sideStartIndex = 4
+    end
+    local playerIndices = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
+    for i = 1, getn(playerIndices), 1 do
+        if playerIndices[i] == playerIndex then
+            return sideStartIndex - 1 + i
+        end
+    end
+    return nil
+end
+
+-- 房主预选/随机要定义几项技能组：按两边实到玩家数的多者（满 6 位 = 3 项、2v2 = 2 项、1v1 = 1 项），
+-- 一个都认不出来（编辑器/回放）时退回 3 项。
+function BtnChoiceDialogEventFunc_GetPreselectSlotCount()
+    local sideCount = max(
+        getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(1)),
+        getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(4)))
+    if sideCount < 1 then
+        return 3
+    end
+    if sideCount > 3 then
+        return 3
+    end
+    return sideCount
+end
+
+-- 氪金塔通用收尾，五座市场塔都走这里：
+--   ① IN_SHIELD_SPHERE —— 护盾球内，塔免疫冷冻（与 TowerFreeOfFreeze.lua 给 T71~T84 挂的是同一位）；
+--   ② UNPACKING 清 0 —— 引擎给脚本新建的建筑挂建造期状态位，清掉后购买当帧即可用，不必等展开动画。
+function BtnChoiceDialogEventFunc_FinishMarketTower(objectId)
+    local tower = GetObjectById(objectId)
+    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower, "IN_SHIELD_SPHERE", 1)
+    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower, "UNPACKING", 0)
+end
+
 g_BuyTowerId = {
     ["JapanPointShieldControlTower"] = {
         ["angel"] = 0,
@@ -217,6 +273,8 @@ function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
             { RANGE = 1.75 }, 1)
     end
     ObjectLoadAttributeModifier(GetObjectById(id), g_CelestialEnergyRailgunBaseRangeX175Modifier)
+    -- 与其余氪金塔同款收尾：免疫冷冻 + 购买当帧即可用（见 FinishMarketTower）。
+    BtnChoiceDialogEventFunc_FinishMarketTower(id)
     BtnChoiceDialogEventFunc_FinishCelestialTower(id)
     return id
 end
@@ -442,8 +500,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local tower = GetObjectById(id);
         ObjectLoadAttributeModifier(tower,'AttributeModifier_BoxRateOfFireUp', 999999)
         ObjectLoadAttributeModifier(tower,'AttributeModifier_BoxRangeUp', 999999)
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"IN_SHIELD_SPHERE", 1)
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"UNPACKING", 0)
+        BtnChoiceDialogEventFunc_FinishMarketTower(id)
 
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
 
@@ -488,8 +545,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 { RANGE = 1.5, VISION = 1.5 }, 1)
         end
         ObjectLoadAttributeModifier(tower, g_SovietHeavyAntiAirMissileTurretRangeX15Modifier)
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"IN_SHIELD_SPHERE", 1)
-        ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower,"UNPACKING", 0)
+        BtnChoiceDialogEventFunc_FinishMarketTower(id)
 
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
 
@@ -538,6 +594,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 { RANGE = 1.5, VISION = 1.5 }, 1)
         end
         ObjectLoadAttributeModifier(GetObjectById(id), g_JapanKamikazeCommandTowerRangeX15Modifier)
+        -- 与其余氪金塔同款收尾：免疫冷冻 + 购买当帧即可用（见 FinishMarketTower）。
+        BtnChoiceDialogEventFunc_FinishMarketTower(id)
         if not ignoresLimit then
             g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
         end
@@ -622,6 +680,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             Health = 9000
         });
         slots[slotIndex] = id;
+        BtnChoiceDialogEventFunc_FinishMarketTower(id)
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
     end
 
@@ -1016,22 +1075,25 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         end
 
     end
-    dialogData.EnsureSideHasNonCopySkill = function(self, playerIndexStart, skillIndexOffset, copySkillIndex)
-        local humanPlayerIndices = {}
+    -- 本方占位玩家（真人或电脑）全都抽到「复制技能」时随机改掉其中一个。下标按压缩编号取（见
+    -- BtnChoiceDialogEventFunc_GetSkillIndexForPlayer）；poolOffset 供对称模式把天使侧折回共用池子。
+    dialogData.EnsureSideHasNonCopySkill = function(self, sideStartIndex, copySkillIndex, poolOffset)
+        local playerIndices = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
+        if getn(playerIndices) < 1 then
+            return
+        end
+        local skillIndices = {}
         local allCopy = 1
-        for playerIndex = playerIndexStart, playerIndexStart + 2 do
-            local playerName = "Player_" .. playerIndex
-            if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human") then
-                tinsert(humanPlayerIndices, playerIndex)
-                if g_PreselectedSkillIndices[playerIndex + skillIndexOffset] ~= copySkillIndex then
-                    allCopy = nil
-                end
+        for i = 1, getn(playerIndices), 1 do
+            local skillIndex = sideStartIndex - 1 + i - poolOffset
+            tinsert(skillIndices, skillIndex)
+            if g_PreselectedSkillIndices[skillIndex] ~= copySkillIndex then
+                allCopy = nil
             end
         end
-        if getn(humanPlayerIndices) > 0 and allCopy then
-            local humanListIndex = self:RandomInteger(1, getn(humanPlayerIndices))
-            local playerIndex = humanPlayerIndices[humanListIndex]
-            g_PreselectedSkillIndices[playerIndex + skillIndexOffset] = self:RandomInteger(1, copySkillIndex - 1)
+        if allCopy then
+            local targetIndex = skillIndices[self:RandomInteger(1, getn(skillIndices))]
+            g_PreselectedSkillIndices[targetIndex] = self:RandomInteger(1, copySkillIndex - 1)
         end
     end
 
@@ -1041,26 +1103,33 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         g_PreselectedSkillIndices = {}
         g_PreselectedSkillIndices.IsRandom = true
         local skillNamesCount = getn(g_SkillNames)
-        tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-        tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-        tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
+        -- 只按场上实际占用的槽位抽：满 6 位 = 3 项、2v2 = 2 项、1v1 = 1 项（空位不再占一项）。
+        -- 电脑占的槽位也算一项（电脑同样吃技能组）；两边取人数多的那侧，对称模式两边共用同一序号池。
+        local sideCount = BtnChoiceDialogEventFunc_GetPreselectSlotCount()
+        -- 数组长度必须始终是 6（InvokeStartGame 只认 6）：超出占位人数的位置按已抽到的循环补满，
+        for i = 1, 3, 1 do
+            if i <= sideCount then
+                tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
+            else
+                tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i - sideCount])
+            end
+        end
         if isSymmetric then
             g_PreselectedSkillIndices.IsSymmetric = true
-            -- 两边都映射到前 3 个随机结果，修正后再复制以保持对称。
-            self:EnsureSideHasNonCopySkill(1, 0, copySkillIndex)
-            self:EnsureSideHasNonCopySkill(4, -3, copySkillIndex)
-            -- 对称的随机技能组，复制前 3 个技能组
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[1])
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[2])
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[3])
+            -- 两边共用 1..sideCount 这个池子：先在池子里修正，再整体复制到 4..6 保持对称。
+            self:EnsureSideHasNonCopySkill(1, copySkillIndex, 0)
+            self:EnsureSideHasNonCopySkill(4, copySkillIndex, 3)
+            for i = 1, 3, 1 do
+                tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i])
+            end
         else
             g_PreselectedSkillIndices.IsSymmetric = false
-            -- 不对称的随机技能组
-            tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-            tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-            tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-            self:EnsureSideHasNonCopySkill(1, 0, copySkillIndex)
-            self:EnsureSideHasNonCopySkill(4, 0, copySkillIndex)
+            -- 不对称：第二边独立抽，同样只抽本边占位玩家用得上的那几项。
+            for i = 1, sideCount, 1 do
+                g_PreselectedSkillIndices[3 + i] = self:RandomInteger(1, skillNamesCount)
+            end
+            self:EnsureSideHasNonCopySkill(1, copySkillIndex, 0)
+            self:EnsureSideHasNonCopySkill(4, copySkillIndex, 0)
         end
     end
     dialogData.RandomInteger = function(self, min, max)
@@ -1093,12 +1162,14 @@ function BtnChoiceDialogEventFunc_ShowHostChooseSkillForAllDialog(playerName)
     }
     dialogData.RefreshData = function(self)
         self.Choices = {}
+        -- 需要定义几项按实到人数算（1v1 = 1 项、2v2 = 2 项、满 6 人 = 3 项）。
+        local requiredCount = BtnChoiceDialogEventFunc_GetPreselectSlotCount()
         local preselectedSkillCount = getn(g_PreselectedSkillIndices)
         if preselectedSkillCount > 0 then
             tinsert(self.Choices, Localization.get("skill_mode.cancel"))
-            if preselectedSkillCount < 3 then
-                -- 假如预选技能组少于 3 个，继续选择
-                self.Title = Localization.get("skill_mode.continue", 3 - preselectedSkillCount)
+            if preselectedSkillCount < requiredCount then
+                -- 假如预选技能组还不够，继续选择
+                self.Title = Localization.get("skill_mode.continue", requiredCount - preselectedSkillCount)
             end
         else
             self.Title = Localization.get("skill_mode.all.title")
@@ -1147,12 +1218,14 @@ function BtnChoiceDialogEventFunc_ShowHostChooseSkillForAllDialog(playerName)
             tinsert(g_PreselectedSkillIndices, skillIndex)
         end
 
-        if getn(g_PreselectedSkillIndices) == 3 then
-            -- 已经选择了 3 个技能组，可以开始游戏了
-            -- 复制、补全到 6 个技能组
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[1])
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[2])
-            tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[3])
+        if getn(g_PreselectedSkillIndices) >= BtnChoiceDialogEventFunc_GetPreselectSlotCount() then
+            -- 已按实到人数选够技能组，可以开始游戏了。
+            for i = getn(g_PreselectedSkillIndices) + 1, 3, 1 do
+                tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[1])
+            end
+            for i = 1, 3, 1 do
+                tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i])
+            end
             -- 开始游戏
             BtnChoiceDialogEventFunc_InvokeStartGame()
             return
@@ -1224,10 +1297,12 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
             --     end
             -- end
         else
+            -- 播报只报实际生效的那几组（1v1 就 1 组、2v2 就 2 组）。
+            local preselectCount = BtnChoiceDialogEventFunc_GetPreselectSlotCount()
             skillText = Localization.get("game.start.skill_prefix")
-            for i = 1, 3 do
+            for i = 1, preselectCount do
                 skillText = skillText .. g_SkillNames[g_PreselectedSkillIndices[i]]
-                if i < preselectedSkillCount then
+                if i < preselectCount then
                     skillText = skillText .. ','
                 end
             end

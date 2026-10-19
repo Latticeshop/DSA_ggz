@@ -56,6 +56,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.oblivion_bomb.name"] = { zh = "湮灭炸弹", en = "Oblivion Bomb" },
     ["hextech.rune.oblivion_bomb.desc"] = { zh = "获得 1 次湮灭炸弹部署次数。", en = "Gain 1 Oblivion Bomb deployment charge." },
     ["hextech.oblivion_bomb.hotkey_hint"] = { zh = "按'K'键部署湮灭炸弹", en = "Press 'K' to deploy an Oblivion Bomb" },
+    ["hextech.rune.burn_furry.name"] = { zh = "烧福瑞", en = "Burning Furry" },
+    ["hextech.rune.burn_furry.desc"] = { zh = "回合开始时，将敌方 %d%% 的步兵变成警犬或战熊。", en = "At the start of each round, %d%% of enemy infantry become police dogs or war bears." },
     ["hextech.rune.giga_fortress.name"] = { zh = "超级要塞", en = "Giga Fortress" },
     ["hextech.rune.giga_fortress.desc"] = { zh = "获得 1 个超级要塞核心。", en = "Gain 1 Giga Fortress Core." },
     ["hextech.rune.five_tiger_generals.name"] = { zh = "百虎上将", en = "Hundred Tiger Generals" },

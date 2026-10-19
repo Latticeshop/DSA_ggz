@@ -770,11 +770,12 @@ end
 
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
-    -- 2026-10-19 用户要求：第三张由「金·顺手的事」换成「银·神威（时空裂缝 2 级）」。
+    -- 2026-10-19 三批换人：第三张 顺手的事→银·神威；第二张 元神互锁→金·湮灭炸弹（测 K 键）；
+    -- 第三批 银·神威→新增的金·烧福瑞（用户要亲自测对面步兵的转化流程）。
     local testRuneIds = {
         "silver_wheeled_cannon",
-        "gold_soul_interlock",
-        "silver_divine_might",
+        "gold_oblivion_bomb",
+        "gold_burn_furry",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex

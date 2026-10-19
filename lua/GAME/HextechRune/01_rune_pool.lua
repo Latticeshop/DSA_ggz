@@ -71,7 +71,7 @@ HextechRune.RunePool = {
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
-    { Id = "gold_five_centimeters", Rarity = 2,
+    { Id = "silver_five_centimeters", Rarity = 3,
         NameKey = "hextech.rune.five_centimeters.name",
         DescKey = "hextech.rune.five_centimeters.desc",
         Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
@@ -115,12 +115,24 @@ HextechRune.RunePool = {
         -- 毒质腐蚀只对载具生效：禁载具时这张符文没有可用目标，整张不入池。
         RequiresType = "vehicle",
         Icon = "Button_PlayerPower_IrradiateTarget" },
+    { Id = "silver_easy_does_it", Rarity = 3,
+        NameKey = "hextech.rune.easy_does_it.name",
+        DescKey = "hextech.rune.easy_does_it.desc",
+        Effect = "easy_does_it", ExcludeOnLastFormalRound = true,
+        ExclusiveRuneIds = { prismatic_gambling_addict = true },
+        Icon = "AUA_Unpack" },
 
     -- 黄金
     { Id = "gold_oblivion_bomb", Rarity = 2,
         NameKey = "hextech.rune.oblivion_bomb.name",
         DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
         Icon = "Button_PlayerPower_Telekenetic" },
+    -- 烧福瑞：只对敌方步兵生效（禁步兵时对面没有步兵，整张下架）。
+    { Id = "gold_burn_furry", Rarity = 2,
+        NameKey = "hextech.rune.burn_furry.name",
+        DescKey = "hextech.rune.burn_furry.desc",
+        Effect = "burn_furry", RequiresType = "infantry",
+        Icon = "Button_SovietScoutInfantry_small" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
         -- 摇光是 UNITLIST 槽 103（飞机段），按纯空军算：禁空军时这张符文不入池。
@@ -135,9 +147,8 @@ HextechRune.RunePool = {
     { Id = "gold_starting_funds", Rarity = 2, NameKey = "hextech.rune.starting_funds.name",
         DescKey = "hextech.rune.starting_funds.desc", Effect = "starting_funds",
         Icon = "AUA_Bribe" },
-    -- 协议授予·金·现金奖励：2026-10-14 起再次下架留档 —— 多人局里协议放不出来、也不结算的
+    -- 协议授予·金·现金奖励：—— 多人局里协议放不出来、也不结算的
     -- 问题还没定性，先不让它进池。恢复时取消这条注释，并同步取消 04_buff.lua 派发分支与本表
-    -- 其它阵营玩家由符文在地图外补一栋不可使用的苏联基地当协议钥匙。
     -- { Id = "gold_cash_reward", Rarity = 2,
     --     NameKey = "hextech.rune.cash_reward.name",
     --     DescKey = "hextech.rune.cash_reward.desc", Effect = "cash_reward",
@@ -209,12 +220,6 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.drain.name",
         DescKey = "hextech.rune.drain.desc",
         Effect = "drain", Icon = "Button_PlayerPower_MagneticSingularity" },
-    { Id = "gold_easy_does_it", Rarity = 2,
-        NameKey = "hextech.rune.easy_does_it.name",
-        DescKey = "hextech.rune.easy_does_it.desc",
-        Effect = "easy_does_it", ExcludeOnLastFormalRound = true,
-        ExclusiveRuneIds = { prismatic_gambling_addict = true },
-        Icon = "AUA_Unpack" },
     { Id = "gold_soul_interlock", Rarity = 2,
         NameKey = "hextech.rune.soul_interlock.name",
         DescKey = "hextech.rune.soul_interlock.desc",
@@ -278,7 +283,7 @@ HextechRune.RunePool = {
     { Id = "prismatic_gambling_addict", Rarity = 1,
         NameKey = "hextech.rune.gambling_addict.name",
         DescKey = "hextech.rune.gambling_addict.desc",
-        Effect = "gambling_addict", ExclusiveRuneIds = { gold_easy_does_it = true },
+        Effect = "gambling_addict", ExclusiveRuneIds = { silver_easy_does_it = true },
         Icon = "Button_PlayerPower_FreeTrade" },
     { Id = "prismatic_ultimate_creature", Rarity = 1,
         NameKey = "hextech.rune.ultimate_creature.name",
@@ -346,15 +351,17 @@ HextechRune.NonRepeatableRuneIds = {
     -- 花来！：重复持有只是把同一个替换再做一遍，入池替换按持有与否判定，天然无叠加。
     silver_tulip_mortar = true,
     -- 秒速五厘米：同属替换型，第二份不产生任何额外效果。
-    gold_five_centimeters = true,
+    silver_five_centimeters = true,
     -- 轮式大炮：同属替换型，第二份不产生任何额外效果。
     silver_wheeled_cannon = true,
     -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
     silver_prepare_backpack = true,
     -- 顺手的事：每人一份；两份会把「下一次多拿一张」叠在同一处，整局张数还会顶到 6。
-    gold_easy_does_it = true,
+    silver_easy_does_it = true,
     -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
     gold_soul_interlock = true,
+    -- 烧福瑞：队友各持一份按 50/75/100% 叠加，同一名玩家第二份不再加档。
+    gold_burn_furry = true,
     -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
     silver_five_tiger_generals = true,
     gold_fortified = true,
@@ -548,9 +555,8 @@ end
 
 function HextechRune:RemapReplacedRuneTargets(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
-    -- 本引擎（RA3LuaBridge 方言）对 nil 键查表会直接抛「table index is nil」，不像 PC 版
-    -- Lua 4.0 那样安静返回 nil；因此下面所有「可能为 nil 的变量当键」的地方都必须先判空，
-    -- 否则一拿替换型符文（高平两用/轮式大炮等）就报错。
+    -- 本引擎（RA3LuaBridge 方言）对 nil 键查表会直接抛「table index is nil」，不像 PC 版 Lua 4.0 那样
+    -- 安静返回 nil；所以下面所有「可能为 nil 的变量当键」的地方都必须先判空（否则一拿替换型符文就报错）。
     local replacements = self.UnitReplacementRunes
     if replacements == nil then
         return
@@ -940,6 +946,10 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         return Localization.get(rune.DescKey, GetStartingFundsMoney())
     elseif rune.Effect == "shrink_ray" then
         return Localization.get(rune.DescKey, self:GetShrinkRayDisplayRounds(playerIndex))
+    elseif rune.Effect == "burn_furry" then
+        -- 转化比例随本方（含队友）份数变化，卡面按拿到之后的份数显示 50/75/100。
+        return Localization.get(rune.DescKey,
+            self:GetBurnFurryDisplayPercent(playerIndex))
     elseif rune.Effect == "divine_intervention" then
         return Localization.get(rune.DescKey,
             self:GetDivineInterventionDisplaySeconds(playerIndex))
