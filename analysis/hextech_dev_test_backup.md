@@ -2,18 +2,17 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-19 第二批）：已贴回 —— 待游戏内实测。** 按 §1 原文把四处（顶部声明、
-> `ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）全部贴回 `lua/` 并同步进
-> `ScriptsData.json`；按用户要求把 `testRuneIds` **换成本轮新符文**，现名单为
-> **`silver_wheeled_cannon`（轮式大炮，银）/ `gold_oblivion_bomb`（湮灭炸弹，金）/
-> `gold_burn_furry`（烧福瑞，金，当日新增）**（当天换过三次，年表见 §1 末尾）。
-> **测轮式大炮要选苏联阵营**（`RequiredFaction = 2`，且源单位犀牛坦克只有苏联有）；
-> 测湮灭炸弹看「选中后不立刻落弹、只挂 K 键提示，按 K 消耗一次并落弹」；
-> 测烧福瑞看「拿到当回合不生效、下一回合开始对面步兵按比例变成警犬/战熊」。
-> **实测通过后照旧整段删除**：`python analysis/_remove_opening_test.py`（四处一起删，
-> 包括 `FindRuneById`），再跑 `analysis/tools/sync_scriptsdata.py` 与
-> `analysis/_check_release_clean.py`。静态复核见 `analysis/_verify_easy_does_it.py` 与
-> `analysis/_verify_wheeled_cannon_interlock.py`。
+> **当前状态（2026-10-19 发版清理）：已删除 —— 发版态。** 按 `python analysis/_remove_opening_test.py`
+> 把四处（顶部声明、`ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）整段删除并重新
+> `sync_scriptsdata.py`：删除行号为 原第 21-24 / 767-830 / 1188-1193 / 1159-1166 行，删后
+> `01_rune_pool.lua` payload 57324 B、`02_event.lua` payload 51723 B，`_check_release_clean.py`
+> 报「发版自检: 通过」。**最后一版名单（第四批）**：`silver_wheeled_cannon`（轮式大炮，银）/
+> `gold_oblivion_bomb`（湮灭炸弹，金）/ `gold_ascension`（登神，金，目标固定苏霍伊截击机
+> `SovietInterceptorAircraft`，靠 `testTargetOverrides` 覆盖随机目标）。
+> **要复测按 §1 原样贴回**（四处一起补回，含 `FindRuneById`）。
+> **静态复核脚本已同步成「清理态」断言**：`_verify_easy_does_it.py` / `_verify_burn_furry.py` /
+> `_verify_wheeled_cannon_interlock.py` 现在断言四处标识符在 `lua/` 与 payload 里均为 0、
+> 正式事件（`ShowFormalEvent` / `IsFormalRound` / `BuildFilteredPool`）仍在。
 >
 > **贴回期间会出现的一批「预期内失败」**：`_verify_basics_exchange.py` / `_verify_cash_reward.py` /
 > `_verify_chicken_soup.py` / `_verify_silver_divine_might.py` / `_check_release_clean.py` /
@@ -53,10 +52,18 @@ HextechRune.OpeningTestTriggered = false
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
+    -- 2026-10-19 三批换人：第三张 顺手的事→银·神威；第二张 元神互锁→金·湮灭炸弹（测 K 键）；
+    -- 第三批 银·神威→新增的金·烧福瑞（用户要亲自测对面步兵的转化流程）；
+    -- 第四批 金·烧福瑞→金·登神，且目标固定为苏霍伊截击机（SovietInterceptorAircraft），专测飞机。
     local testRuneIds = {
         "silver_wheeled_cannon",
         "gold_oblivion_bomb",
-        "gold_burn_furry",
+        "gold_ascension",
+    }
+    -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
+    -- 苏霍伊只有苏联座席能产出，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
+    local testTargetOverrides = {
+        gold_ascension = "SovietInterceptorAircraft",
     }
     for playerIndex = 1, 6, 1 do
         local playerName = "Player_" .. playerIndex
@@ -80,6 +87,12 @@ function HextechRune:ShowOpeningTestEvent()
                     candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
                 end
                 if candidate ~= nil then
+                    local overrideType = testTargetOverrides[candidate.Id]
+                    if overrideType ~= nil then
+                        candidate.TargetUnitType = overrideType
+                        candidate.TargetUnitIndex = self:LookupUnitPoolIndex(overrideType)
+                        candidate.TargetUnitName = self:GetReplacementTargetName(playerIndex, overrideType)
+                    end
                     tinsert(options, candidate)
                 end
             end
@@ -114,7 +127,9 @@ end
     end
 ```
 
-**复测用的固定三选一**：改 `testRuneIds` 即可
+**复测用的固定三选一**：改 `testRuneIds` 即可；要固定某张「指定单位型」符文（登神 / 买二送一 / 究极生物）
+的目标单位，在同函数里的 `testTargetOverrides` 加一行 `符文Id = "单位模板名"`（当前为
+`gold_ascension = "SovietInterceptorAircraft"`），它会在候选构造完之后覆盖随机目标。
 
 ---
 
@@ -209,6 +224,15 @@ end
    它按「同阵营份数」取比例（1/2/3 份 = 50%/75%/100%），单人拿不到第二份。
    测试事件按 Id 直取符文、不过筛池，因此**禁步兵模式下也会把它摆上来**（正常池里它 `RequiresType`
    会下架），这是预期行为。
+    **2026-10-19 第四批（当前名单）**：用户要求把第三张「金·烧福瑞」换成 **`gold_ascension`
+    （金·登神）**，并且**目标固定为苏霍伊截击机 `SovietInterceptorAircraft`**——`testRuneIds` 现在是
+    `{ "silver_wheeled_cannon", "gold_oblivion_bomb", "gold_ascension" }`（银 / 金 / 金），
+    另加一张 `testTargetOverrides = { gold_ascension = "SovietInterceptorAircraft" }`，在候选构造完之后
+    直接把 `TargetUnitType / TargetUnitIndex / TargetUnitName` 改成苏霍伊（正式池仍按随机目标走）。
+    这样能专门看**飞机吃登神**的链路：`AmmoAircraftUnitTypes` 登记了苏霍伊，所以卡面和播报会走
+    带「弹药」的版本（T3 = 50% 档，五个维度随机命中一维）；苏霍伊只有**苏联座席**的回收表里有，
+    其它座席这张卡不生效，属调试预期。烧福瑞本身没动，仍在金档池里正常可抽，验证脚本
+    `analysis/_verify_burn_furry.py` 的测试名单断言已同步改成「已不含烧福瑞、名单仍三张」。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），

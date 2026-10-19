@@ -415,13 +415,13 @@ HextechRune.RuneTargetExcludedTypes = {
     SovietAntiGroundAttacker_Enhanced = true,
     CelestialBomberAircraft = true,                 -- 金乌轰炸机
     CelestialBomberAircraft_Enhanced = true,
-    -- 2026-10-18 实测的侦察单位：登神加成落不到它们的行为上（附着/自爆/侦查），
-    -- 圈到就是空给。爆裂机器人的附着形态仍是同一个兵种名，一条即覆盖。
     AlliedScoutInfantry = true,                     -- 将军犬
     SovietScoutInfantry = true,                     -- 熊
     SovietScoutVehicle = true,                      -- 恐怖机器人
     JapanScoutInfantry = true,                      -- 爆裂机器人（蜻蜓）
     CelestialScoutDrone = true,                     -- 天眼哨机
+    AlliedAntiVehicleVehicleTech1 = true,           -- 守护者坦克
+    AlliedAntiVehicleVehicleTech1_Enhanced = true,
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
@@ -1150,13 +1150,4 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     return true
-end
-
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
 end

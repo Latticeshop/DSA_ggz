@@ -6,7 +6,8 @@ PrioritySiegeAttackMoveMICROCONTROL ()
 -- 超级要塞形态只在登场时由 SpawnGigaFortress.lua 随机决定，不再周期切换。
 JapanAntiAirShipMICROCONTROL ()
 SovietScoutVehicleMICROCONTROL ()
-JapanAntiNavyShipTech3MICROCONTROL()
+-- 太刀微操（自动开技能 + 只索敌水面）已整体停用，函数体见 MOCROCONTROL/MICROINI_0.lua。
+-- JapanAntiNavyShipTech3MICROCONTROL()
 CommandoNoStructureMICROCONTROL ()
 NoStructureBuffedUnitMICROCONTROL ()
 if BIGSHIPCONTROL then

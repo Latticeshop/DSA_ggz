@@ -159,13 +159,14 @@ FilterCelestialAdvanceAircraftTech4=CreateObjectFilter({
     }
 })
 
-FilterJapanAntiNavyShipTech3=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    IncludeThing = {
-        "JapanAntiNavyShipTech3"
-    }
-})
+-- 太刀（JapanAntiNavyShipTech3）专用过滤器与微操已整体停用，见下方 JapanAntiNavyShipTech3MICROCONTROL。
+-- FilterJapanAntiNavyShipTech3=CreateObjectFilter({
+--     Rule="ANY",
+--     Relationship="SAME_PLAYER",
+--     IncludeThing = {
+--         "JapanAntiNavyShipTech3"
+--     }
+-- })
 
 FilterALLENEMYUNIT=CreateObjectFilter({
     Rule="ANY",
@@ -719,37 +720,39 @@ function CelestialAdvanceAircraftTech4MICROCONTROL ()
     end
 end
 
-g_FilterOnlyOverWater = CreateObjectFilter({
-    Rule="ALL",
-    StatusBitFlags="OVER_WATER"
-})
-g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData = 0
-function JapanAntiNavyShipTech3MICROCONTROL ()
-    for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiNavyShipTech3)
-        ----exMessageAppendToMessageArea("count"..count)
-        for i = 1 , count , 1 do
-            local selfId = ObjectGetId(SELF[i])
-            local countdown = exObjectGetSpecialCountDownFrame(selfId, "SpecialPower_JANSTier3CombatMode")
-            if countdown ~= nil and countdown > 750 then
-                -- 不能让太刀无限制使用技能，让它冷却一下吧
-            else
-                ObjectUnloadAttributeModifier(selfId, "AttributeModifier_JANSTier3CombatMode")
-                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i], "Command_JANSTier3CombatMode")
-                if selfId > g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData then
-                    -- ID 是单调递增的，所以只要 ID 大于上次记录的 ID，就说明是新生成的单位
-                    -- 为它设置索敌信息
-                    ObjectSetCustomTargetChooserData(selfId, {
-                        CustomFilter = g_FilterOnlyOverWater
-                    })
-                    -- 更新最后记录的 ID
-                    g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData = selfId
-                end
-                ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
-            end
-        end
-    end
-end
+-- 太刀微操已整体停用（2026-10-19）：自动施放 F 技能（Command_JANSTier3CombatMode）
+-- 与“只索敌水面目标”的自定义索敌逻辑全部注释，恢复时取消本段注释即可。
+-- g_FilterOnlyOverWater = CreateObjectFilter({
+--     Rule="ALL",
+--     StatusBitFlags="OVER_WATER"
+-- })
+-- g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData = 0
+-- function JapanAntiNavyShipTech3MICROCONTROL ()
+--     for playindex = 7 , 8 , 1 do
+--         local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiNavyShipTech3)
+--         ----exMessageAppendToMessageArea("count"..count)
+--         for i = 1 , count , 1 do
+--             local selfId = ObjectGetId(SELF[i])
+--             local countdown = exObjectGetSpecialCountDownFrame(selfId, "SpecialPower_JANSTier3CombatMode")
+--             if countdown ~= nil and countdown > 750 then
+--                 -- 不能让太刀无限制使用技能，让它冷却一下吧
+--             else
+--                 ObjectUnloadAttributeModifier(selfId, "AttributeModifier_JANSTier3CombatMode")
+--                 ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", SELF[i], "Command_JANSTier3CombatMode")
+--                 if selfId > g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData then
+--                     -- ID 是单调递增的，所以只要 ID 大于上次记录的 ID，就说明是新生成的单位
+--                     -- 为它设置索敌信息
+--                     ObjectSetCustomTargetChooserData(selfId, {
+--                         CustomFilter = g_FilterOnlyOverWater
+--                     })
+--                     -- 更新最后记录的 ID
+--                     g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData = selfId
+--                 end
+--                 ObjectSetTargetChooserNextAutoAcquireDelay(selfId, 0)
+--             end
+--         end
+--     end
+-- end
 
 -- 登神/究极生物的目标单位：只打单位，不碰任何建筑。
 -- 滤网与百合子的 g_FilterYurikoEnemy 分开定义，两边的索敌调参互不影响。

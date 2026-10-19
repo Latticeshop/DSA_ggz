@@ -228,6 +228,10 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "SovietHeavyAntiAirVehicleTech2" },
 }
 
+-- 狂热武士：万岁冲锋持有者按上表的替换型条目 100% 换；
+HextechRune.KamikazeBaseUnitType = "JapanAntiInfantryInfantry"
+HextechRune.KamikazeUnitType = "JapanKamikazeInfantry"
+
 -- 在单位池正式计数前替换回收目标。抽卡单位的获得播报同样读取替换后的槽位，
 -- 因而会直接显示升级单位，而不是先加入原单位再做二次转换。
 function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
@@ -246,16 +250,23 @@ function HextechRune:ResolveCollectedUnitIndex(playerIndex, unitIndex)
             break
         end
     end
+    if replacementType == nil and sourceType == self.KamikazeBaseUnitType
+        and self:RandomIndex(2) == 1 then
+        -- 未持有万岁冲锋：回收时 50% 概率直接换成狂热武士（替换掉入池槽位，不额外赠送单位）。
+        replacementType = self.KamikazeUnitType
+    end
     if replacementType == nil or g_UnitNameToUnitIndex == nil then
         return unitIndex
     end
     return g_UnitNameToUnitIndex[replacementType] or unitIndex
 end
 
-function HextechRune:IsKamikazeGiftWarrior(playerIndex)
-    self:EnsurePlayerRuneState(playerIndex)
-    return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
-end
+-- 原「买二送一板载武士」
+-- 现由 ResolveCollectedUnitIndex 的 50% 替换取代，保留注释以便回滚。
+-- function HextechRune:IsKamikazeGiftWarrior(playerIndex)
+--     self:EnsurePlayerRuneState(playerIndex)
+--     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
+-- end
 
 -- ===== 金·烧福瑞：回合开始把对面 AI 的步兵按本方份数比例换成警犬/战熊 =====
 HextechRune.BurnFurryRuneId = "gold_burn_furry"

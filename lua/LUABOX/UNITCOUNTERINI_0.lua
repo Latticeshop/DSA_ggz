@@ -688,37 +688,6 @@ function unitgetcountanddelet (playindex)
                         HextechRune:OnPlayerUnitCollected(playindex, actualUnitIndex)
                     end
 
-                    if UNITLIST[actualUnitIndex] == "JapanAntiInfantryInfantry"
-                        or (UNITLIST[actualUnitIndex] == "JapanKamikazeInfantry"
-                            and HextechRune ~= nil
-                            and HextechRune.IsKamikazeGiftWarrior ~= nil
-                            and HextechRune:IsKamikazeGiftWarrior(playindex)) then
-                        local playerGiftState = g_PlayerGiftStates[playindex]
-                        local kamikazeState = playerGiftState.GiftJapanKamikazeInfantry or 0
-                        kamikazeState = kamikazeState + 1
-                        if kamikazeState >= 2 then
-                            kamikazeState = 0
-                            -- 赠送一个 JapanKamikazeInfantry
-                            ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
-                            local kamikazeIndex = g_UnitNameToUnitIndex["JapanKamikazeInfantry"]
-                            UNITCOUNT[playindex][kamikazeIndex] = UNITCOUNT[playindex][kamikazeIndex] + 1
-                        end
-                        playerGiftState.GiftJapanKamikazeInfantry = kamikazeState
-                    end
-
-                    -- 暂停：与帝国武士相同，每生产两个苏联动员兵，额外记入一个动员兵。
-                    -- if UNITLIST[actualUnitIndex] == "SovietAntiInfantryInfantry" then
-                    --     local playerGiftState = g_PlayerGiftStates[playindex]
-                    --     local conscriptState = playerGiftState.GiftSovietAntiInfantryInfantry or 0
-                    --     conscriptState = conscriptState + 1
-                    --     if conscriptState >= 2 then
-                    --         conscriptState = 0
-                    --         ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
-                    --         local conscriptIndex = g_UnitNameToUnitIndex["SovietAntiInfantryInfantry"]
-                    --         UNITCOUNT[playindex][conscriptIndex] = UNITCOUNT[playindex][conscriptIndex] + 1
-                    --     end
-                    --     playerGiftState.GiftSovietAntiInfantryInfantry = conscriptState
-                    -- end
                 end
                 if PureDrawRemoveKnownPlayerUnit ~= nil then
                     PureDrawRemoveKnownPlayerUnit(ObjectGetId(TAR[i]))

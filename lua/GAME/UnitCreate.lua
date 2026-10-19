@@ -345,16 +345,15 @@ function JapanPointDefenseDroneBorn(createdObjId, createdObjInstanceId, ownerPla
 end
 
 function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
-    -- 已停用：电脑的狂热武士出生 5 秒后无条件开 F。
-    -- 改为出生时配置引擎索敌；Lua 只读取引擎选中的目标并触发 F。
-    -- if ownerPlayerName == "PlyrCreeps"
-    --     or ownerPlayerName == "PlyrCivilian" then
-    --     SchedulerModule.delay_call(function(id)
-    --         if ObjectIsAlive(id) then
-    --             ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_SpecialPowerJapanKamikazeBonzai")
-    --         end
-    --     end, 15 * 5, {createdObjId})
-    -- end
+    -- 电脑的狂热武士出生 5 秒后无条件开一次 F（开局板载冲锋）。
+    if ownerPlayerName == "PlyrCreeps"
+        or ownerPlayerName == "PlyrCivilian" then
+        SchedulerModule.delay_call(function(id)
+            if ObjectIsAlive(id) then
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", GetObjectById(id), "Command_SpecialPowerJapanKamikazeBonzai")
+            end
+        end, 15 * 5, {createdObjId})
+    end
     if not IsAutoChessAIPlayer(ownerPlayerName) then
         return
     end

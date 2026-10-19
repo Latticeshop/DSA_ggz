@@ -75,23 +75,6 @@ function JapanAntiStructureVehicleBUFF ()
     end
 end
 
-FilterJapanShip=CreateObjectFilter({
-    Rule="ANY",
-
-    IncludeThing = {
-        "JapanAntiNavyShipTech3","JapanAntiVehicleShip"
-    }
-})
-
-
-
-function JapanShipBUFF ()
-    local TAR , COUNTX = ObjectFindObjects(nil, nil, FilterJapanShip)
-    for i = 1 , COUNTX ,1 do
-        ObjectLoadAttributeModifier(TAR[i], "AttributeMod_CenturionUpgradeLv1",9999)
-    end
-end
-
 
 FilterCelestialLongRangeMissileVehicle=CreateObjectFilter({
     Rule="ANY",
