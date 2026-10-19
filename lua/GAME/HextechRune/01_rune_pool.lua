@@ -121,6 +121,9 @@ HextechRune.RunePool = {
         Effect = "easy_does_it", ExcludeOnLastFormalRound = true,
         ExclusiveRuneIds = { prismatic_gambling_addict = true },
         Icon = "AUA_Unpack" },
+    { Id = "silver_recycler", Rarity = 3, NameKey = "hextech.rune.recycler.name",
+        DescKey = "hextech.rune.recycler.desc", Effect = "recycler",
+        Icon = "Button_AlliedSalvageShip" },
 
     -- 黄金
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -172,9 +175,6 @@ HextechRune.RunePool = {
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_CelestialAntiVehicleInfantry_Skill" },
-    { Id = "gold_recycler", Rarity = 2, NameKey = "hextech.rune.recycler.name",
-        DescKey = "hextech.rune.recycler.desc", Effect = "recycler",
-        Icon = "Button_AlliedSalvageShip" },
     { Id = "gold_scope", Rarity = 2, NameKey = "hextech.rune.scope.gold.name",
         DescKey = "hextech.rune.scope.gold.desc", Effect = "range_gold", NeedsUnitType = true,
         Icon = "AUA_Tank_TargetPainter" },
@@ -366,7 +366,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_five_tiger_generals = true,
     gold_fortified = true,
     gold_transcendent_evil = true,
-    gold_recycler = true,
+    -- 破烂王
+    silver_recycler = true,
     silver_divine_might = true,
     -- 金·现金奖励下架留档期间一并注释，恢复时和池内条目一起放开。
     -- gold_cash_reward = true,
