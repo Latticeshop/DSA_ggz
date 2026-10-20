@@ -14,8 +14,8 @@ HextechRune.UltimateCreatureScale = 1.3
 HextechRune.UltimateCreatureT1HealthPercent = 7
 HextechRune.UltimateCreatureT1DamagePercent = 3
 HextechRune.UltimateCreatureT1AmmoPercent = 1
-HextechRune.UltimateCreatureT2RateOfFirePercent = 7
-HextechRune.UltimateCreatureT2RangePercent = 3
+HextechRune.UltimateCreatureT2RateOfFirePercent = 14
+HextechRune.UltimateCreatureT2RangePercent = 6
 HextechRune.UltimateCreatureRegisteredUnits =
     HextechRune.UltimateCreatureRegisteredUnits or {}
 
