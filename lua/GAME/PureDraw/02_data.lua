@@ -66,7 +66,6 @@ g_PureDrawBuildableUnitPool = {
         { Type = "SovietHeavyAntiVehicleVehicleTech2", CustomDrawCount = 2 },
         { Type = "SovietSledgehammerSPG", CustomDrawCount = 2 },
         { Type = "JapanSentinelVehicle", CustomDrawCount = 2 },
-        { Type = "JapanInterceptorAircraft", CustomDrawCount = 3 },
         { Type = "CelestialAntiVehicleVehicleTech1", CustomDrawCount = 3 },
         { Type = "CelestialLongRangeMissileVehicle_B", CustomDrawCount = 2 },
         { Type = "JapanAntiVehicleVehicleTech1", CustomDrawCount = 2 },
@@ -111,6 +110,9 @@ g_PureDrawBuildableUnitPool = {
         { Type = "SovietTransportAircraft" },
         { Type = "CelestialInterceptorAircraft", CustomDrawCount = 2 },
         { Type = "CelestialBomberAircraft" },
+        -- 2026-10-21 用户裁决：樱花回天雷是完整的 T3 单位（与鬼樱特攻机同阶），
+        -- 从 T2 载具段挪到 T3 空军段，出货权重随之由 50% 档变 10% 档。
+        { Type = "JapanInterceptorAircraft", CustomDrawCount = 3 },
         -- T3 舰船
         { Type = "AlliedAntiNavyShipTech3", Sea = true },
         { Type = "SovietAntiNavyShipTech3", Sea = true },

@@ -71,11 +71,13 @@ HextechRune.RunePool = {
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
+    -- （前几回合就把樱花换成鬼樱过于超模；判定见 BuildFilteredPool 与 §4.0 全局规则）。
     { Id = "silver_five_centimeters", Rarity = 3,
         NameKey = "hextech.rune.five_centimeters.name",
         DescKey = "hextech.rune.five_centimeters.desc",
         Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
         RequiresType = "aircraft",
+        ExcludeOnFirstFormalSelection = true,
         Icon = "Portrait_JapanInterceptorAircraft_air" },
     { Id = "silver_wheeled_cannon", Rarity = 3,
         NameKey = "hextech.rune.wheeled_cannon.name",
@@ -423,6 +425,8 @@ HextechRune.RuneTargetExcludedTypes = {
     CelestialScoutDrone = true,                     -- 天眼哨机
     AlliedAntiVehicleVehicleTech1 = true,           -- 守护者坦克
     AlliedAntiVehicleVehicleTech1_Enhanced = true,
+    JapanInterceptorAircraft = true,                -- 樱花回天雷
+    JapanSakuraAttackRocket = true,                 -- 鬼樱特攻机
 }
 
 HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
@@ -1076,7 +1080,7 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             and (not rune.ExcludeInShrinkMode or g_EnableShrinkMode ~= 1)
             -- 本场已无下一次正式事件时，这类「只对下一次起作用」的符文不发。
             and (not rune.ExcludeOnLastFormalRound or self:HasNextFormalEvent())
-            -- 玩家的第一次正式选择里，这类「整体改写单位池」的符文不发（与回合数无关）。
+            -- 玩家的第一次正式选择里，这类「前期过强 / 依赖已有单位池」的符文不发（与回合数无关）。
             and (not rune.ExcludeOnFirstFormalSelection
                 or not self:IsFirstFormalSelection(playerIndex))
             -- 与已持有的符文互斥时同样不发（顺手的事 × 赌怪，避免单人整局超过 5 张）。

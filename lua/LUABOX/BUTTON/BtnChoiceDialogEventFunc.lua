@@ -1097,6 +1097,18 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         end
     end
 
+    -- （见 analysis/地图注释说明文档.md §5.3）。
+    dialogData.AppendRandomSkillSide = function(self, baseIndex, sideCount, skillNamesCount)
+        for i = 1, 3, 1 do
+            if i <= sideCount then
+                tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
+            else
+                tinsert(g_PreselectedSkillIndices,
+                    g_PreselectedSkillIndices[baseIndex + i - sideCount])
+            end
+        end
+    end
+
     dialogData.RandomSkill = function(self, isSymmetric)
         -- 复制组固定在技能选择的最后一行，随机要避开它（1..copySkillIndex-1 才是可选组）。
         local copySkillIndex = 6
@@ -1106,14 +1118,7 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         -- 只按场上实际占用的槽位抽：满 6 位 = 3 项、2v2 = 2 项、1v1 = 1 项（空位不再占一项）。
         -- 电脑占的槽位也算一项（电脑同样吃技能组）；两边取人数多的那侧，对称模式两边共用同一序号池。
         local sideCount = BtnChoiceDialogEventFunc_GetPreselectSlotCount()
-        -- 数组长度必须始终是 6（InvokeStartGame 只认 6）：超出占位人数的位置按已抽到的循环补满，
-        for i = 1, 3, 1 do
-            if i <= sideCount then
-                tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
-            else
-                tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i - sideCount])
-            end
-        end
+        self:AppendRandomSkillSide(0, sideCount, skillNamesCount)
         if isSymmetric then
             g_PreselectedSkillIndices.IsSymmetric = true
             -- 两边共用 1..sideCount 这个池子：先在池子里修正，再整体复制到 4..6 保持对称。
@@ -1124,10 +1129,8 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
             end
         else
             g_PreselectedSkillIndices.IsSymmetric = false
-            -- 不对称：第二边独立抽，同样只抽本边占位玩家用得上的那几项。
-            for i = 1, sideCount, 1 do
-                g_PreselectedSkillIndices[3 + i] = self:RandomInteger(1, skillNamesCount)
-            end
+            -- 不对称：天使侧独立再抽一整边（可以抽到和魔鬼侧相同的组，这是本模式的定义）。
+            self:AppendRandomSkillSide(3, sideCount, skillNamesCount)
             self:EnsureSideHasNonCopySkill(1, copySkillIndex, 0)
             self:EnsureSideHasNonCopySkill(4, copySkillIndex, 0)
         end
