@@ -1245,15 +1245,3 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
         ObjectId = ObjectGetId(unit)
     }
 end
-
--- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池。
--- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent），
--- 发版清理时与测试事件一并删除（脚本见 analysis/_remove_opening_test.py）。
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
-end

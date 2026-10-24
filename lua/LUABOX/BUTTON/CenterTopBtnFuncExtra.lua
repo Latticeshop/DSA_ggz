@@ -185,11 +185,12 @@ function RequestHydra(playerIndex)
             -- 只转归属不进进攻队列的话，单位会原地待命，看起来像没生效。
             ExecuteAction("NAMED_TRANSFER_OWNERSHIP_PLAYER", unit, context.sideAIPlayer)
             ExecuteAction("UNIT_SET_TEAM", unit, attackTeam)
-            -- 地编 ATTACK__7/8 的强制满星已删除，这里和出兵队同一口径：按本方「升本」补星。
-            if LEVELUP ~= nil then
-                for levelindex = 1, LEVELUP[context.sideIndex], 1 do
-                    ExecuteAction("UNIT_GAIN_LEVEL", unit, 1)
-                end
+            -- 登神/究极生物有独立的微操队列，按登记表里的阵营把单位换回待命队；
+            -- 归属变了必须同步阵营，否则每帧最后一步都会被拉回原阵营。
+            local objectId = ObjectGetId(unit)
+            if g_NoStructureBuffUnitIds ~= nil
+                and g_NoStructureBuffUnitIds[objectId] ~= nil then
+                g_NoStructureBuffUnitIds[objectId].SideIndex = context.sideIndex
             end
             controlled = controlled + 1
         end
@@ -213,8 +214,8 @@ g_SnowstormGrantKey = "grant_cryo_satellite"
 -- 实测：只有 Command_CryoSatelliteLvl3 会发动卫星；
 -- Command_SpecialPowerCryoSatelliteLvl3 是「授予协议」那一档按钮，按下去只给玩家加协议。
 g_SnowstormCommandName = "Command_CryoSatelliteLvl3"
--- 冰柱数量：6。全场冷冻条灌满之后冰柱只负责视觉与点名冻结。
-g_SnowstormTargetCount = 6
+-- 冰柱数量：4。全场冷冻条灌满之后冰柱只负责视觉与点名冻结。
+g_SnowstormTargetCount = 4
 -- 技能实例是延迟创建的（符文侧同一结论：同帧的 Available 可能打空），所以延迟 2 帧再按按钮。
 g_SnowstormCastDelayFrames = 2
 -- 冰柱先落地（施放延迟 2 帧）再灌冷冻值：协议在目标还没被冻住时就已点名完毕，

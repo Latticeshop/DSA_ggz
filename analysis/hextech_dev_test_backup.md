@@ -2,7 +2,17 @@
 
 发版前已从 `lua/` 与 `ScriptsData.json` 中移除下列测试代码，全部内容备份在此，需要复测时按说明原样贴回即可。
 
-> **当前状态（2026-10-19 第八批）：已贴回 —— 开发态。** 按 §1 原样贴回四处（顶部开关原 21-23 行、
+> **当前状态（2026-10-24 发版清理）：已删除 —— 发版态。** 用户要求「去掉开局测试符文这块代码，准备发版」，
+> 按 §1 的四处一次删净（顶部开关 / `ShowOpeningTestEvent` 整函数 / `OnRoundBegin` 的 `round == 1` 分支 /
+> `01_rune_pool.lua` 末尾的 `FindRuneById`），脚本 `python analysis/_remove_opening_test.py`；
+> 随后 `sync_scriptsdata.py` 回填、`_check_release_clean.py` 报「发版自检: 通过」。
+> **本轮最后一版名单（第十批 / 第十一批）**：`gold_at_field`（金·AT立场，载具档）/ `gold_at_field`（同一 Id 的舰船档，
+> 靠 `testUnitTypeByIndex = { "vehicle", "navy" }` 按格子顺序指派兵种）/ `gold_free_trade`（金·自由贸易）；
+> 候选构造仍传 `ignoreFaction = true`（测试局跳过阵营过滤）。登神已让出测试位 —— `testTargetOverrides` 里那条
+> `gold_ascension = "JapanNavyScoutShip"` 随函数一起删，池内登神与海军链路一行未动。
+> 要复测就按 §1 原样贴回（`analysis/_patch_round.py` 是第八批的贴回脚本，锚点仍唯一、可重复执行；名单改成当轮要测的三张）。
+>
+> **上一轮状态（2026-10-19 第八批）：已贴回 —— 开发态。** 按 §1 原样贴回四处（顶部开关原 21-23 行、
 > `ShowOpeningTestEvent` 原 782-844 行、`OnRoundBegin` 分支原 1267-1272 行、`01_rune_pool.lua` 末尾的
 > `FindRuneById`），落盘脚本 `python analysis/_patch_round.py`（可重复执行，锚点都断言唯一）。
 > 本轮名单（第八批）：`prismatic_back_to_basics`（彩·回归基本功，**顶掉原来的银·轮式大炮**）/
@@ -41,18 +51,18 @@ HextechRune.EnableOpeningRealTest = true
 HextechRune.OpeningTestTriggered = false
 ```
 
-- 事件本体（本轮贴回后位于 `ShowFormalEvent` 之后，原 782-844 行）：
+- 事件本体（位于 `ShowFormalEvent` 之后，原 967-1032 行）：
 
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
-    -- 2026-10-19 第五批：回归基本功（拆分四兵种后标题变五字，顺带验居中）顶掉银·轮式大炮；
-    -- 登神目标由苏霍伊改成帝国长枪迷你潜艇 JapanNavyScoutShip，专测海军的登神链路。
     local testRuneIds = {
-        "prismatic_back_to_basics",
-        "gold_oblivion_bomb",
-        "gold_ascension",
+        "gold_at_field",
+        "gold_at_field",
+        "gold_free_trade",
     }
+    -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
+    local testUnitTypeByIndex = { "vehicle", "navy" }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
     -- 长枪迷你潜艇的地编 ID 是 JapanNavyScoutShip（JapanAntiVehicleShip 是薙刀驱逐舰，别写错）；
     -- 它只在帝国座席的回收表里，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
@@ -68,17 +78,19 @@ function HextechRune:ShowOpeningTestEvent()
             local options = {}
             for i = 1, getn(testRuneIds), 1 do
                 local template = self:FindRuneById(testRuneIds[i])
-                local unitType = nil
-                if template ~= nil and template.NeedsUnitType then
+                local unitType = testUnitTypeByIndex[i]
+                if unitType == nil and template ~= nil and template.NeedsUnitType then
                     local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
                     if getn(availableTypes) > 0 then
                         unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
                     end
                 end
                 -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
+                -- 测试局跳过阵营判定（第 4 个参数）：苏联座席也能拿到大生产，用来验协议栏是否被选。
                 local candidate = nil
                 if template ~= nil then
-                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template,
+                        unitType, true)
                 end
                 if candidate ~= nil then
                     local overrideType = testTargetOverrides[candidate.Id]
@@ -93,7 +105,7 @@ function HextechRune:ShowOpeningTestEvent()
             if getn(options) > 0 then
                 self.PlayerOptionCount[playerIndex] = getn(options)
                 self.PlayerOptions[playerIndex] = options
-                self.PlayerRerollUsed[playerIndex] = false
+                self:ResetRerollState(playerIndex, options)
                 for i = 1, getn(options), 1 do
                     self:CreateOptionBox(playerIndex, i, options[i].Rarity,
                         self.RarityFrameImageIds[options[i].Rarity], options[i])
@@ -110,7 +122,7 @@ function HextechRune:ShowOpeningTestEvent()
 end
 ```
 
-- `OnRoundBegin` 里的触发分支（原 1267-1272 行，**必须**放在正式事件判断之前）：
+- `OnRoundBegin` 里的触发分支（原 1457-1462 行，**必须**放在正式事件判断之前）：
 
 ```lua
     -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
@@ -237,11 +249,22 @@ end
    长枪迷你潜艇的地编 ID 是 **`JapanNavyScoutShip`**（第一版误写成 `JapanAntiVehicleShip`，
    那是薙刀驱逐舰，2026-10-20 已改对），只在**帝国座席**的回收表里，其它座席这张登神不生效（调试预期）。轮式大炮本身没动，
    仍在银档池里正常可抽、与登神的改指链路照旧。
+   **2026-10-24 第十批 / 第十一批（最后一版名单）**：这两批只改 `testRuneIds`、兵种指派与候选构造的跳过参数，
+   三段代码本体没再动。第十批把「回归基本功」换成 **`gold_free_trade`（金·自由贸易）**、把「湮灭炸弹」换成
+   **`prismatic_mass_production`（彩·大生产）**（名单 = 自由贸易 / 大生产 / 登神）；第十批之三给
+   `CreateRuneCandidateForPlayer` 加第 4 个参数 `ignoreFaction`（只有测试事件传 `true`）；第十批之四把大生产
+   下架留档、名单换回 `gold_oblivion_bomb`（自由贸易 / 湮灭炸弹 / 登神）；第十一批用
+   **`prismatic_at_field`（彩·AT立场）** 顶掉湮灭炸弹，第十一批之二又把它降档成 **`gold_at_field`（金·兵种卡）**——
+   同一 Id 摆两格、靠 `testUnitTypeByIndex = { "vehicle", "navy" }` 按格子顺序指派兵种，登神让出第三格：
+   **最终名单 = AT立场(载具) / AT立场(舰船) / 自由贸易**。两轮的新卡（自由贸易、AT立场）都已在游戏内实测通过，
+   2026-10-24 用户「去掉开局测试符文这块代码，准备发版」→ 按本文件整段删除；删除前的四处原文已同步进 §1，
+   并逐字节存了两份快照 `analysis/_02_event_before_release_1024.lua` / `analysis/_01_rune_pool_before_release_1024.lua`。
 2. **候选构造统一走正式入口**：上面 §1 的 `CopyRuneForCandidate` + 三类特殊符文的二次兜底
    已合并为一句 `self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)`（§1 现在就是合并后的版本）。
    原因是新增的等价交换要在候选里**随机抽定两个兵种**（`NeedsUnitTypePair`），
    只复制模板会让它带着空兵种被点选、整张符文毫无效果。
-3. **`FindRuneById` 也随之回归**：它当时和测试事件一起被删掉（`01_rune_pool.lua` 末尾，
+   **2026-10-24 第十批之三**又给这个入口加了第 4 个参数 `ignoreFaction`：测试局传 `true`（苏联座席也能拿到大生产），正式路径不传。
+3. **`FindRuneById` 也随之回归**：它当时和测试事件一起被删掉（`01_rune_pool.lua` 末尾，原 1249-1259 行，
    备份漏记），复测版重新加回，清理脚本已补上这一段：
 
 ```lua
@@ -258,8 +281,7 @@ function HextechRune:FindRuneById(runeId)
 end
 ```
 
-> **`analysis/_verify_backup_doc.py` 的既有偏差（不是本次引入）**：它拿本文档 §1 的三段
-> 与早先的全文快照 `analysis/_02_event_before.lua` 逐字比对。§1 第 2 段（`ShowOpeningTestEvent`
-> 的 `testRuneIds`）在本文件里一向是**较新的复测组合**（现在是 回归基本功 / 湮灭炸弹 / 登神），
-> 而快照里还是更早的（吸星大法 / 致命节奏 / 十连），所以该脚本会稳定报 `mismatch = 1`；
-> 判定「贴回内容是否与源码一致」请看源码本身与 §2，不要以该脚本的结论为准。
+> **`analysis/_verify_backup_doc.py` 现在对着「删除前快照」逐字校验**（2026-10-24 起）：它拿本文档 §1 的三段与
+> `analysis/_02_event_before_release_1024.lua`（`02_event.lua` 删除前的完整副本）比对，第 4 段（`FindRuneById`）
+> 对着 `analysis/_01_rune_pool_before_release_1024.lua` 比对；四处全中才算存档没走样，正常应报 `mismatch = 0`。
+> 更早那份 `analysis/_02_event_before.lua`（2026-10-04）留作历史快照，不再参与校验（§1 的名单此后又换过多轮）。
