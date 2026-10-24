@@ -228,7 +228,7 @@ Localization._text_sources = {
     ["button.hydra.title"] = { zh = "九头蛇万岁", en = "Hail Hydra" },
     ["button.hydra.description"] = { zh = "派出间谍渗透敌后，战场上随机一半的敌方单位心控为己方单位(冷却70秒)", en = "Send spies behind enemy lines; half of the enemy field units are mind-controlled into your side (70s cooldown)" },
     ["button.snowstorm.title"] = { zh = "冰天雪地", en = "Frozen Wasteland" },
-    ["button.snowstorm.description"] = { zh = "召唤极地寒流覆盖战场，敌方场上全部单位的立刻冻结，随机降下4条冷冻冰柱！\n【不含防御塔与建筑】", en = "An arctic front covers the battlefield: every enemy field unit is frozen at once, and 4 cryo ice pillars rain down at random!\n[Towers and buildings excluded]" },
+    ["button.snowstorm.description"] = { zh = "召唤极地寒流覆盖战场，敌方场上全部单位立刻冻结！\n【不含防御塔与建筑】", en = "An arctic front covers the battlefield: every enemy field unit is frozen at once!\n[Towers and buildings excluded]" },
     ["button.skill_selected"] = { zh = "$p%dName选择了%s", en = "$p%dName selected %s" },
 
     -- CenterTop specific
