@@ -80,6 +80,11 @@ g_LocalizationExtraText = {
     ["hextech.rune.cloudbreaker.desc"] = { zh = "获得 1 个摇光。", en = "Gain 1 Yaoguang." },
     ["hextech.rune.oil_king.name"] = { zh = "石油王", en = "Oil King" },
     ["hextech.rune.oil_king.desc"] = { zh = "获得两个油井。", en = "Gain two Oil Derricks." },
+    ["hextech.rune.free_trade.name"] = { zh = "自由贸易", en = "Free Trade" },
+    ["hextech.rune.free_trade.desc"] = { zh = "获得自由贸易协议。", en = "Gain the Free Trade protocol." },
+    ["hextech.rune.at_field.name"] = { zh = "AT立场", en = "AT Field" },
+    ["hextech.rune.at_field.desc"] = { zh = "你的%s每回合获得纳米护盾。", en = "Your %s gain a nano shield each round." },
+    ["hextech.rune.at_field.ship"] = { zh = "舰船", en = "Ships" },
     ["hextech.rune.buy_two_get_one.name"] = { zh = "买二送一", en = "Buy Two, Get One" },
     ["hextech.rune.buy_two_get_one.desc"] = { zh = "你的 %s 单位买二送一。", en = "Your %s units: buy two, get one free." },
     ["hextech.rune.starting_funds.name"] = { zh = "启动资金", en = "Starting Funds" },
@@ -98,6 +103,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.myriad_pull.desc"] = { zh = "获得磁力奇点协议。", en = "Gain the Magnetic Singularity protocol." },
     ["hextech.rune.icathia_surprise.name"] = { zh = "艾卡西亚的惊喜", en = "Icathia's Surprise" },
     ["hextech.rune.icathia_surprise.desc"] = { zh = "获得三级时空炸弹协议。", en = "Gain the tier-3 Time Bomb protocol." },
+    ["hextech.rune.mass_production.name"] = { zh = "大生产", en = "Mass Production" },
+    ["hextech.rune.mass_production.desc"] = { zh = "获得大生产协议。", en = "Gain the Mass Production protocol." },
     ["hextech.rune.safety.name"] = { zh = "安全感", en = "Sense of Security" },
     ["hextech.rune.safety.desc"] = { zh = "获得 2 个埃奎斯护盾发生器。", en = "Gain 2 Aegis Shield Generators." },
     ["hextech.rune.railgun_duel.name"] = { zh = "中门对狙", en = "Mid-Door Sniper Duel" },
@@ -219,8 +226,8 @@ g_LocalizationExtraText = {
             en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
     ["hextech.rune.back_to_basics.name"] = { zh = "回归基本功", en = "Back to Basics" },
     ["hextech.rune.back_to_basics.desc"] = {
-        zh = "你的T1/T2 %s 单位血量、伤害、攻速和射程提高90%%；你的T3/T4 %s 单位血量、伤害、攻速和射程降低50%%。",
-        en = "Your T1/T2 %s units gain 90%% health, damage, attack speed and range; your T3/T4 %s units lose 50%% health, damage, attack speed and range."
+        zh = "你的T1/T2 %s 单位血量、伤害提高90%%，攻速、射程提高50%%；你的T3/T4 %s 单位血量、伤害降低90%%，攻速、射程降低50%%。",
+        en = "Your T1/T2 %s units gain 90%% health and damage, and 50%% attack speed and range; your T3/T4 %s units lose 90%% health and damage, and 50%% attack speed and range."
     },
     -- 兵种对在候选生成时随机定好，见 01_rune_pool.lua 的 CreateRuneCandidateForPlayer。
     ["hextech.rune.equivalent_exchange.name"] = { zh = "等价交换", en = "Equivalent Exchange" },
@@ -237,6 +244,18 @@ g_LocalizationExtraText = {
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },
     ["hextech.reroll.used"] = { zh = "本次重随机会已使用", en = "Reroll already used for this selection" },
+    -- 单人游玩（全场只有 1 名真人）时按钮文案换成这条：不限次数，见 IsUnlimitedReroll。
+    ["hextech.reroll.available_solo"] = { zh = "重随该符文（单人游玩·不限次数）", en = "Reroll this rune (solo play, unlimited)" },
+    -- 房主把重随次数设成 3 次时：每张卡各一次。
+    ["hextech.reroll.available_three"] = { zh = "重随该符文（本次每张卡各限一次）", en = "Reroll this rune (once per card this selection)" },
+    -- 房主选项页（选海克斯符文数量那一页）的「重随次数」开关。
+    -- 值只留「1次 / 3次」：对话框按钮是单行文字，长文案会溢出。
+    ["hextech.reroll_mode.label"] = { zh = "重随次数：", en = "Rerolls: " },
+    ["hextech.reroll_mode.1"] = { zh = "1次", en = "1" },
+    ["hextech.reroll_mode.3"] = { zh = "3次", en = "3" },
+    ["hextech.solo.unlimited_reroll"] = { zh = "检测到单人游玩，开启无限重随符文", en = "Single-player detected: unlimited rune rerolls enabled" },
+    -- 单人局里房主点了「重随次数」那一行：无限重随关掉，改按 1 / 3 次走。
+    ["hextech.solo.unlimited_reroll_off"] = { zh = "已改为按次重随：无限重随关闭", en = "Switched to per-selection rerolls: unlimited rerolls off" },
     ["hextech.reroll.failed"] = { zh = "当前没有可替换的同阶符文。", en = "No eligible replacement rune is available in this tier." },
     ["hextech.bonus.broadcast"] = { zh = "$p%dName通过【%s】获得了符文：%s", en = "$p%dName gained a rune from [%s]: %s" },
     -- 赌怪一次给两张，合成一条播报，避免同一句话连刷两遍。

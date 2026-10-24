@@ -1002,6 +1002,7 @@ function BtnChoiceDialogEventFunc_ShowHextechModeDialog(playerName)
             Localization.get("hextech.option.2"),
             Localization.get("hextech.option.3"),
             Localization.get("hextech.option.4"),
+            HextechRerollModeLabel(),
             Localization.get("hextech.back"),
         }
         if g_HextechCount >= 0 and g_HextechCount <= 4 then
@@ -1020,6 +1021,9 @@ function BtnChoiceDialogEventFunc_ShowHextechModeDialog(playerName)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         elseif buttonIndex == 6 then
+            HextechRerollModeApply(self)
+            return
+        elseif buttonIndex == 7 then
             BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
             return
         end

@@ -1021,6 +1021,11 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
         -- 按阶级/双兵种取 Modifier 的细节都在 18_basics_exchange.lua（本 payload 已贴上限）。
         return self:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitIndex,
             playerIndex)
+    elseif rune.Effect == "at_field" then
+        -- AT立场不在这里出手（由 ApplyAtFieldShields 在出兵两趟扫描后各套一批）：
+        -- 这里回 true 只是让单位登记带标记活到那时，FinalizeBattleUnitAssignments
+        -- 会把"没拿到任何效果"的登记直接删掉，否则整批施加时按登记筛不出任何人。
+        return true
     else
         return false
     end
@@ -1105,6 +1110,8 @@ function HextechRune:IsPersistentBattleRune(rune)
         -- 百虎上将（步兵）与致命节奏（全兵种）也要走份额分配：战斗复制体属于 P7/P8，
         -- 只能靠这份登记认归属，按 Player_N 所有权是扫不出来的。
         or rune.Effect == "five_tiger_generals" or rune.Effect == "lethal_tempo"
+        -- AT立场同理：只有登记里带 PlayerIndex 才能区分同侧三名玩家，整批套盾靠它筛人。
+        or rune.Effect == "at_field"
 end
 
 -- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
@@ -1589,6 +1596,12 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:ApplyAllLethalTempoBuffs()
     elseif rune.Effect == "drain" then
         self:ApplyDrainToPlayer(playerIndex)
+    elseif rune.Effect == "grant_mass_production" then
+        -- 大生产是纯被动协议（没有技能按钮），不查 ProtocolGrants 表，
+        self:GrantMassProduction(playerIndex)
+    elseif rune.Effect == "grant_free_trade" then
+        -- 自由贸易同属被动协议（没有技能按钮、不用基地车），走它自己的授予以复用协议流程。
+        self:GrantFreeTrade(playerIndex)
     elseif self.ProtocolGrants[rune.Effect] ~= nil then
         -- ProtocolGrants，新增一张协议符文只改那张表和符文池，派发不用动。
         self:GrantProtocol(playerIndex, rune.Effect)
@@ -1685,11 +1698,16 @@ function HextechRune:ApplyRoundEffects(round)
         local seenObjects = {}
         HextechRune:ApplyBattleUnitEffectPass(
             "第" .. tostring(effectRound) .. "回合固定出兵", nil, seenObjects)
+        -- AT立场：这时载具/舰船已经在场，先套一批。
+        HextechRune:ApplyAtFieldShields()
         -- 陆军战机以外的飞机由 AIRSPACT 节点在出兵 10 秒后才生成，
         -- 赶不上上面这次扫描，这里用排除表只对本轮之后新增的对象补一遍。
         SchedulerModule.delay_call(function(airRound, seen)
             HextechRune:ApplyBattleUnitEffectPass(
                 "第" .. tostring(airRound) .. "回合空军批次", seen, nil)
+            -- 再套一遍：补上走飞机出生点的新对象（天狗、心神这类变形载具也能吃盾），
+            -- 已套过的对象由 AtFieldShielded 去重，不会叠第二层。
+            HextechRune:ApplyAtFieldShields()
         end, HextechRune.AirBatchEffectDelay, { effectRound, seenObjects })
     end, self.BattleUnitEffectDelay, { round })
 end

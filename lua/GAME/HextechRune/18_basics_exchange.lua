@@ -68,19 +68,19 @@ function HextechRune:GetPerTypeStatModifier(rune, unit, typeLookup, playerIndex)
     return modifier
 end
 
--- 回归基本功（T1/T2 档）：血量、伤害、攻速、射程全部 +90%。
+-- 回归基本功（T1/T2 档）：血量、伤害 +90%，攻速、射程 +50%（2026-10-24 数值调整）。
 -- 射程与索敌视野必须同倍率，否则单位会在射程边缘停下却看不见目标。
 if not g_HextechBackToBasicsHighModifier then
     g_HextechBackToBasicsHighModifier = exAttributeModifierCreate({
         HEALTH_MULT = 1.9, DAMAGE_MULT = 1.9,
-        RATE_OF_FIRE = 1.9, RANGE = 1.9, VISION = 1.9,
+        RATE_OF_FIRE = 1.5, RANGE = 1.5, VISION = 1.5,
     }, 1)
 end
--- 回归基本功（T3/T4 档）：血量、伤害、攻速、射程全部降低 50%。
+-- 回归基本功（T3/T4 档）：血量、伤害 -90%，攻速、射程 -50%（2026-10-24 数值调整）。
 -- 射程下调刻意不联动 VISION（同全频段阻塞干扰）：只砍射程，不让自家单位变瞎。
 if not g_HextechBackToBasicsLowModifier then
     g_HextechBackToBasicsLowModifier = exAttributeModifierCreate({
-        HEALTH_MULT = 0.5, DAMAGE_MULT = 0.5,
+        HEALTH_MULT = 0.1, DAMAGE_MULT = 0.1,
         RATE_OF_FIRE = 0.5, RANGE = 0.5,
     }, 1)
 end

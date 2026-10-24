@@ -74,8 +74,6 @@ UNITLIST [index] = "CelestialAntiVehicleVehicleTech1"
 index = index + 1 ;
 UNITLIST [index] = "CelestialLongRangeMissileVehicle"
 index = index + 1 ;
-UNITLIST [index] = "JapanAntiAirVehicleTech1"
-index = index + 1 ;
 UNITLIST [index] = "JapanAntiVehicleVehicleTech1"
 index = index + 1 ;
 UNITLIST [index] = "JapanSentinelVehicle"
@@ -181,10 +179,12 @@ index = index + 1 ;
 --exMessageAppendToMessageArea("indexHEAVYVEH"..index)
 step3 = index-1
 --index = 151
--- 天狗、心神按飞机批次登场，并使用飞机队伍及出生时序。
+-- 天狗、心神、打击者VX 按飞机批次登场，并使用飞机队伍及出生时序。
 UNITLIST [index] = "JapanAntiInfantryVehicle"
 index = index + 1 ;
 UNITLIST [index] = "JapanMissileMechaAdvanced"
+index = index + 1 ;
+UNITLIST [index] = "JapanAntiAirVehicleTech1"
 index = index + 1 ;
 UNITLIST [index] = "JapanScoutInfantry"
 index = index + 1 ;

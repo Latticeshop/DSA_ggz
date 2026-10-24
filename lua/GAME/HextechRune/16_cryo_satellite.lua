@@ -4,6 +4,7 @@ HextechRune = HextechRune or {}
 
 -- ============ 协议授予类符文（键名即符文 Effect，04_buff.lua 按这张表派发）============
 -- 新增一张协议符文：这里加一行 + 01_rune_pool.lua 加条目 + 03_text.lua 加文案，派发无需改动。
+-- 表里的 Faction 同时是抽卡过滤依据（不给本阵营协议），讲解见文档 8.1。
 HextechRune.ProtocolGrants = {
     grant_cryo_satellite = {
         PlayerTech = "PlayerTech_Allied_CryoSatellite_Rank3",
@@ -60,7 +61,9 @@ end
 
 -- playerIndex 为 nil 表示场地中间的 AI 阵营（PlyrCivilian/PlyrCreeps）：这类侧没有自己的
 -- Player_N_Start 航点，借 Player_1_Start 生成就行（归属只由 team 参数决定），同帧挪到图外。
-function HextechRune:EnsureProtocolYard(playerName, grant, playerIndex)
+function HextechRune:EnsureProtocolYard(playerName, grant, playerIndex, keepUsable)
+    -- 本阵营的协议本来就不生成钥匙基地。抽卡侧已经过滤掉「自己阵营的协议符文」，
+    -- 这里留着是第二道保险（例如别处直接调用 GrantProtocolToPlayer 时）。
     if playerIndex ~= nil and g_PlayerSide ~= nil
         and g_PlayerSide[playerIndex] == grant.Faction then
         return
@@ -82,6 +85,9 @@ function HextechRune:EnsureProtocolYard(playerName, grant, playerIndex)
     end
     local x, y, z = ObjectGetPosition(yard)
     ObjectSetPosition(yard, self.ProtocolYardOffmapX, self.ProtocolYardOffmapY, z)
+    if keepUsable then
+        return
+    end
     -- 同帧挂会被随后的展开流程改回去（实测就是那一小段展开空隙），等展开落定再挂：
     -- 建筑展开约 3.5 秒，取 53 帧（3.53 秒）略偏后。实测这样协议照常可用、基地造不出兵。
     SchedulerModule.delay_call(HextechRune.DisableProtocolYard, 53, { name })
@@ -119,4 +125,160 @@ function HextechRune.ReunlockProtocol(playerName, playerTech, specialPower)
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName, specialPower, "Available")
     ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName, specialPower, 0)
     SetWorldBuilderThisPlayer(previous)
+end
+
+-- 只解科技锁的延迟解禁（被动协议没有技能按钮，不能走 ReunlockProtocol 的技能那两步）。
+function HextechRune.ReunlockPlayerTech(playerName, playerTech)
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName, playerTech, 0)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+-- 讲解见 analysis/地图注释说明文档.md 8.2（没有技能按钮；钥匙基地见下一行）
+HextechRune.MassProductionPlayerTech = "PlayerTech_ProductionBonus_Soviet"
+HextechRune.MassProductionYard = { Faction = 2, YardType = "SovietConstructionYard" }
+
+function HextechRune:GrantMassProduction(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local alreadyMarked = false
+    if g_ProductionBonus_SovietGet ~= nil
+        and g_ProductionBonus_SovietGet[playerIndex] == 1 then
+        alreadyMarked = true
+    end
+    -- 顺序与 GrantProtocolToPlayer 一致：先把钥匙基地立起来，再解科技锁。
+    local previous = SetWorldBuilderThisPlayer(1)
+    self:EnsureProtocolYard(playerName, self.MassProductionYard, playerIndex)
+    ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
+        self.MassProductionPlayerTech, 0)
+    SetWorldBuilderThisPlayer(previous)
+    SchedulerModule.delay_call(HextechRune.ReunlockPlayerTech, 1,
+        {playerName, self.MassProductionPlayerTech})
+    SchedulerModule.delay_call(HextechRune.ReunlockPlayerTech, 60,
+        {playerName, self.MassProductionPlayerTech})
+    local techEventFired = false
+    if g_ProductionBonus_SovietGet == nil then
+        g_ProductionBonus_SovietGet = {}
+    end
+    if g_ProductionBonus_SovietGet ~= nil then
+        techEventFired = g_ProductionBonus_SovietGet[playerIndex] == 1
+        g_ProductionBonus_SovietGet[playerIndex] = 1
+    end
+    -- 与苏联玩家自己点出这条协议同一句播报；引擎若已经派人来过，就不要再播一遍。
+    if not alreadyMarked and not techEventFired then
+        local sideName = ""
+        if PlayerSideName ~= nil and PlayerSideName[playerName] ~= nil then
+            sideName = PlayerSideName[playerName]
+        end
+        exMessageAppendToMessageArea(Localization.get(
+            "upgrade.tech.production_bonus_soviet", sideName, playerIndex))
+    end
+end
+
+-- 讲解见 analysis/地图注释说明文档.md 8.6（走正常获取协议流程，但不发基地车）
+HextechRune.FreeTradePlayerTech = "PlayerTech_ProductionBonus_Allies"
+
+function HextechRune:GrantFreeTrade(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    -- 自由贸易的持有判定就是 Upgrade.lua 生成的那块地标墙块 PlayerA_<i>，
+    local markerName = "PlayerA_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
+        self.FreeTradePlayerTech, 0)
+    local createdHere = false
+    if GetObjectByScriptName(markerName) == nil then
+        local computerPlayer = "PlyrCivilian"
+        if PlayerToComputer ~= nil and PlayerToComputer[playerName] ~= nil then
+            computerPlayer = PlayerToComputer[playerName]
+        end
+        ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", markerName,
+            "AlliedWallPiece", computerPlayer .. "/team" .. computerPlayer,
+            "jiaoyidian")
+        createdHere = GetObjectByScriptName(markerName) ~= nil
+    end
+    SetWorldBuilderThisPlayer(previous)
+    -- 引擎若自己已经把标记建出来（说明协议事件照常触发了），就不要再播一遍。
+    if createdHere then
+        local sideName = ""
+        if PlayerSideName ~= nil and PlayerSideName[playerName] ~= nil then
+            sideName = PlayerSideName[playerName]
+        end
+        exMessageAppendToMessageArea(Localization.get(
+            "upgrade.tech.production_bonus_allied", sideName, playerIndex))
+    end
+end
+
+-- 讲解见 analysis/地图注释说明文档.md 8.7（金·AT立场：每回合给本人载具/舰船套纳米护盾）。
+-- 实测口径：这件武器只对载具与舰船生效，步兵/飞机怎么调都不出盾，所以这张卡只开放这两个兵种。
+HextechRune.AtFieldShieldWeapon = "PlayerPowerPointDefenseDronesWeapon_Individual"
+-- 目标兵种就写在 rune.UnitType 上，滤网直接取 UnitTypeFilters[UnitType]。
+HextechRune.AtFieldShielded = HextechRune.AtFieldShielded or {}
+HextechRune.AtFieldShieldedRound = nil
+
+-- 开火锚点照帝国全体护盾用本侧陆地塔 T74/T84（实测自锚点不出盾）；死亡模式塔被清掉，
+-- 退到侧容器 P[侧号]，再不行才用单位自己。落点始终是目标单位坐标。
+function HextechRune:GetAtFieldFireAnchor(sideIndex, unit)
+    local anchor = T74
+    if sideIndex == 8 then
+        anchor = T84
+    end
+    if anchor == nil or not ObjectIsAlive(anchor) then
+        anchor = nil
+        if P ~= nil and sideIndex ~= nil then
+            anchor = P[sideIndex]
+        end
+    end
+    if anchor == nil or not ObjectIsAlive(anchor) then
+        anchor = unit
+    end
+    return anchor
+end
+
+function HextechRune:ApplyAtFieldShieldToUnit(unit, sideIndex)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return
+    end
+    local anchor = self:GetAtFieldFireAnchor(sideIndex, unit)
+    local x, y, z = ObjectGetPosition(unit)
+    ObjectCreateAndFireTempWeaponToTarget(anchor, self.AtFieldShieldWeapon,
+        { X = x, Y = y, Z = z }, unit)
+end
+
+function HextechRune:ApplyAtFieldShields()
+    if P == nil or self.BattleUnitAssignments == nil then
+        return
+    end
+    local round = self.CurrentRound or 0
+    if self.AtFieldShieldedRound ~= round then
+        self.AtFieldShielded = {}
+        self.AtFieldShieldedRound = round
+    end
+    for playerIndex = 1, 6, 1 do
+        self:EnsurePlayerRuneState(playerIndex)
+        local owned = self.PlayerOwnedRunes[playerIndex]
+        for runeIndex = 1, getn(owned), 1 do
+            local rune = owned[runeIndex]
+            if rune.Effect == "at_field" and rune.UnitType ~= nil then
+                self:ApplyAtFieldShieldsForType(playerIndex, rune.UnitType, round)
+            end
+        end
+    end
+end
+
+function HextechRune:ApplyAtFieldShieldsForType(playerIndex, unitType, round)
+    local filter = self.UnitTypeFilters[unitType]
+    local sideIndex = self:GetPlayerSideIndex(playerIndex)
+    if filter == nil or sideIndex == nil or P[sideIndex] == nil then
+        return
+    end
+    local units, count = ObjectFindObjects(P[sideIndex], nil, filter)
+    for i = 1, count, 1 do
+        local unit = units[i]
+        local objectId = ObjectGetId(unit)
+        local assignment = self.BattleUnitAssignments[objectId]
+        if assignment ~= nil and assignment.PlayerIndex == playerIndex
+            and ObjectIsAlive(unit) and self.AtFieldShielded[objectId] ~= round then
+            self.AtFieldShielded[objectId] = round
+            self:ApplyAtFieldShieldToUnit(unit, sideIndex)
+        end
+    end
 end

@@ -140,10 +140,11 @@ g_ProductionBonus_JapanWeaponEnable = {
     [6] = 1,
 }
 
+-- 全体护盾的目标：载具 / 大型载具 / 舰船（原口径只有 VEHICLE，实测套盾武器对舰船同样生效，
 g_VehicleFilter = CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
-    Include="VEHICLE",
+    Include="VEHICLE HUGE_VEHICLE SHIP",
 })
 
 g_MoneyBonusTargetFilter = CreateObjectFilter({

@@ -106,6 +106,10 @@ HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~830
 HextechRune.PanelVisible = {}
 -- 每次打开三选一时重置；三个按钮共享同一次使用机会。
 HextechRune.PlayerRerollUsed = HextechRune.PlayerRerollUsed or {}
+-- 重随次数模式 = 3 时改成按卡记（三张卡各一次）；
+-- PlayerRerollHistory 记本次选择里出现过的符文，换下去的那张不再回来（一次选择最多见 6 张）。
+HextechRune.PlayerRerollUsedOptions = HextechRune.PlayerRerollUsedOptions or {}
+HextechRune.PlayerRerollHistory = HextechRune.PlayerRerollHistory or {}
 -- 每名真人玩家独立保存尚未展示的正式符文事件；当前三选一完成后按先进先出弹出。
 HextechRune.PlayerEventQueues = HextechRune.PlayerEventQueues or {}
 -- 当前三选一是否实际显示；隐藏时 PlayerOptions 仍保留，J 键可原样恢复。
@@ -116,6 +120,48 @@ HextechRune.PlayerFormalSelectionCount = HextechRune.PlayerFormalSelectionCount 
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 3, 10, 18, 27 }
+
+-- 1（默认）＝ 当下行为：本次选择三张卡共用一次重随。
+-- 3 ＝ 三张卡各能重随一次（总共最多 3 次）；配合「换下去的那张不再回来」，
+-- 按钮在 BtnChoiceDialogEventFunc_ShowHextechModeDialog 里，点击调 HextechRerollModeToggle。
+g_HextechRerollMode = g_HextechRerollMode or 1
+-- 房主手动点过这一行（哪怕点完又切回 1 次）＝ 明确要按次数走，单人无限重随关掉。
+g_HextechRerollManual = g_HextechRerollManual or 0
+
+-- 这一行不带「(已选择)」后缀：对话框按钮单行显示，加了会溢出（值本身已写明 1次 / 3次）。
+function HextechRerollModeLabel()
+    local mode = g_HextechRerollMode
+    if mode ~= 3 then
+        mode = 1
+    end
+    return Localization.get("hextech.reroll_mode.label")
+        .. Localization.get("hextech.reroll_mode." .. mode)
+end
+
+function HextechRerollModeToggle()
+    -- 先取「切换前」的状态：单人无限重随被这一下关掉时，要额外播一句解释。
+    local wasUnlimited = HextechRune ~= nil and HextechRune:IsUnlimitedReroll()
+    if g_HextechRerollMode == 3 then
+        g_HextechRerollMode = 1
+    else
+        g_HextechRerollMode = 3
+    end
+    g_HextechRerollManual = 1
+    exMessageAppendToMessageArea(
+        Localization.get("game_mode.host.selected", HextechRerollModeLabel()))
+    if wasUnlimited then
+        exMessageAppendToMessageArea(
+            Localization.get("hextech.solo.unlimited_reroll_off"))
+    end
+end
+
+-- 切完重画这一页。放在这里而不是 BtnChoiceDialogEventFunc.lua：那个 payload 已经贴着
+-- 65536 上限（去注释后 64997 B，余 539 B），页面里只留一行调用。
+function HextechRerollModeApply(dialog)
+    HextechRerollModeToggle()
+    dialog:RefreshData()
+    ButtonChoiceDialogManager:ShowDialog(dialog)
+end
 
 -- 计算某玩家某个方框的按钮 index
 function HextechRune:GetOptionBtnIndex(playerIndex, optionIndex)
@@ -238,6 +284,11 @@ end
 function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
     local name = Localization.get(rune.NameKey)
     local characterCount = self:GetTextMaxCharacterCount(name)
+    -- ASCII 字母只有 0.55 个汉字宽，直接按 4 字档排实测偏右，折算 3.1 → 落 3 字档正好居中。
+    local visualUnits = self:GetTextMaxVisualUnits(name)
+    if visualUnits < characterCount then
+        characterCount = floor(visualUnits + 0.5)
+    end
     -- 全频段阻塞干扰在卡面显示为“全频段阻塞 / 干扰”，以最宽的
     -- 五字行实测校正；不用未换行的七字本地化名称分档。
     if rune.Effect == "broadband_jamming" then
@@ -447,17 +498,105 @@ function HextechRune:IsHumanPlayer(playerIndex)
         "Player_" .. playerIndex, "Human")
 end
 
+-- 全场只有 1 名真人 ＝ 单机遭遇战。判据与 PureDrawIsHumanPlayer / AID_0 / Human_0 一致：
+-- PLAYER_IS_HUMAN_OR_AI_PERSONALITY(..., "Human")；空位/关闭位在这里返回 false
+-- （同 BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices 的口径：真人看这一条，电脑看 P[i]）。
+-- 遭遇战里其余座席都是电脑，电脑的三选一走 GrantRandomRuneToComputer、根本不显示界面，
+-- 所以放开重随不会影响它们。
+function HextechRune:IsSoloHumanGame()
+    local humanCount = 0
+    for playerIndex = 1, 6, 1 do
+        if self:IsHumanPlayer(playerIndex) then
+            humanCount = humanCount + 1
+            if humanCount > 1 then
+                return false
+            end
+        end
+    end
+    return humanCount == 1
+end
+
+-- 单人游玩时重随不限次数：单机刷符文只能靠重开，限一次等于没得选。
+-- 房主点过「重随次数」那一行（g_HextechRerollManual = 1）就按 1 / 3 次走，无限重随关闭。
+function HextechRune:IsUnlimitedReroll()
+    if g_HextechRerollManual == 1 then
+        return false
+    end
+    return self.SoloUnlimitedReroll == true
+end
+
+function HextechRune:InitSoloUnlimitedReroll()
+    if self.SoloUnlimitedEvaluated then
+        return
+    end
+    if g_EnableHextechRune ~= 1 then
+        return
+    end
+    self.SoloUnlimitedEvaluated = true
+    if self:IsSoloHumanGame() then
+        self.SoloUnlimitedReroll = true
+        -- 房主在开局前就点过「重随次数」那一行：无限重随已经是关的，别再播这条。
+        if g_HextechRerollManual ~= 1 then
+            exMessageAppendToMessageArea(
+                Localization.get("hextech.solo.unlimited_reroll"))
+        end
+    end
+end
+
+function HextechRune:IsRerollUsed(playerIndex, optionIndex)
+    if self:IsUnlimitedReroll() then
+        return false
+    end
+    if g_HextechRerollMode == 3 then
+        local used = self.PlayerRerollUsedOptions[playerIndex]
+        return used ~= nil and used[optionIndex] == true
+    end
+    return self.PlayerRerollUsed[playerIndex] == true
+end
+
+-- 开新选择时重置重随状态，并把初始三张记进 history（3 次模式靠它保证不重复）。
+function HextechRune:ResetRerollState(playerIndex, options)
+    self.PlayerRerollUsed[playerIndex] = false
+    self.PlayerRerollUsedOptions[playerIndex] = {}
+    local history = {}
+    for i = 1, getn(options), 1 do
+        tinsert(history, self:GetRuneOwnershipId(options[i]))
+    end
+    self.PlayerRerollHistory[playerIndex] = history
+end
+
+function HextechRune:IsRuneRerolledAway(playerIndex, runeId)
+    local history = self.PlayerRerollHistory[playerIndex]
+    if history == nil then
+        return false
+    end
+    for i = 1, getn(history), 1 do
+        if history[i] == runeId then
+            return true
+        end
+    end
+    return false
+end
+
 function HextechRune:CreateRerollButton(playerIndex, optionIndex)
     local playerName = "Player_" .. playerIndex
     local totalWidth = self:GetOptionTotalWidth(playerIndex)
     local startX = self.CenterX - totalWidth / 2
     local cardX = startX + (optionIndex - 1) * (self.OptionCardWidth + self.OptionCardSpacing)
     local cardY = self.CenterY - self.OptionCardHeight / 2 - 30
-    local used = self.PlayerRerollUsed[playerIndex] == true
+    local used = self:IsRerollUsed(playerIndex, optionIndex)
+    local descKey = "hextech.reroll.available"
+    if used then
+        descKey = "hextech.reroll.used"
+    elseif self:IsUnlimitedReroll() then
+        descKey = "hextech.reroll.available_solo"
+    elseif g_HextechRerollMode == 3 then
+        descKey = "hextech.reroll.available_three"
+    end
     exCreateCustomButtonForPlayer(playerName, {
         Index = self:GetRerollBtnIndex(playerIndex, optionIndex),
         TextureName = used and g_HextechRerollUsedBtnId or g_HextechRerollBtnId,
-        Desc = Localization.get(used and "hextech.reroll.used" or "hextech.reroll.available"),
+        Desc = Localization.get(descKey),
         X = cardX + (self.OptionCardWidth - self.RerollButtonWidth) / 2,
         Y = cardY + self.OptionCardHeight + 4,
         SizeX = self.RerollButtonWidth,
@@ -599,22 +738,49 @@ function HextechRune:PickRerollReplacement(playerIndex, optionIndex)
     local oldRune = options[optionIndex]
     local oldId = self:GetRuneOwnershipId(oldRune)
     local pool = self:BuildFilteredPool(playerIndex, oldRune.Rarity)
-    local candidates = {}
+    -- fresh：本页没出现过的（3 次模式下优先，保证最多见到 6 张不同的卡）；
+    -- loose：本页换下去过的（同阶池不足 6 张时用它兜底，宁可重复也不让按钮点不动）。
+    local fresh = {}
+    local loose = {}
     for i = 1, getn(pool), 1 do
         local candidate = pool[i]
-        if self:GetRuneOwnershipId(candidate) ~= oldId
+        local candidateId = self:GetRuneOwnershipId(candidate)
+        if candidateId ~= oldId
             and not self:IsRuneInCurrentOptions(options, candidate, optionIndex) then
-            tinsert(candidates, candidate)
+            if g_HextechRerollMode == 3
+                and self:IsRuneRerolledAway(playerIndex, candidateId) then
+                tinsert(loose, candidate)
+            else
+                tinsert(fresh, candidate)
+            end
         end
     end
-    if getn(candidates) == 0 then
+    if getn(fresh) > 0 then
+        return fresh[self:RandomIndex(getn(fresh))]
+    end
+    if getn(loose) > 0 then
+        return loose[self:RandomIndex(getn(loose))]
+    end
+    -- 单人无限重随：同阶池小到「去掉当前三张就没得换」时允许重复（含同一张），
+    -- 否则重随按钮会卡在「没有可替换的同阶符文」上，白点一次；
+    -- 多人局仍返回 nil，保持「失败不消耗」的老行为。
+    if not self:IsUnlimitedReroll() then
         return nil
     end
-    return candidates[self:RandomIndex(getn(candidates))]
+    local fallback = {}
+    for i = 1, getn(pool), 1 do
+        if getn(pool) == 1 or self:GetRuneOwnershipId(pool[i]) ~= oldId then
+            tinsert(fallback, pool[i])
+        end
+    end
+    if getn(fallback) == 0 then
+        return nil
+    end
+    return fallback[self:RandomIndex(getn(fallback))]
 end
 
 function HextechRune:HandleRerollClick(playerIndex, optionIndex)
-    if self.PlayerRerollUsed[playerIndex] or self.PlayerOptions[playerIndex] == nil then
+    if self:IsRerollUsed(playerIndex, optionIndex) or self.PlayerOptions[playerIndex] == nil then
         return
     end
     local replacement = self:PickRerollReplacement(playerIndex, optionIndex)
@@ -623,7 +789,24 @@ function HextechRune:HandleRerollClick(playerIndex, optionIndex)
             Localization.get("hextech.reroll.failed"), 6)
         return
     end
-    self.PlayerRerollUsed[playerIndex] = true
+    -- 单人游玩不记「已用」：按钮保持可用，可以一直随到想要的那张。
+    if not self:IsUnlimitedReroll() then
+        if g_HextechRerollMode == 3 then
+            if self.PlayerRerollUsedOptions[playerIndex] == nil then
+                self.PlayerRerollUsedOptions[playerIndex] = {}
+            end
+            self.PlayerRerollUsedOptions[playerIndex][optionIndex] = true
+        else
+            self.PlayerRerollUsed[playerIndex] = true
+        end
+    end
+    -- 记进 history：3 次模式下这张不会再出现在本页的其它卡上。
+    local history = self.PlayerRerollHistory[playerIndex]
+    if history == nil then
+        history = {}
+        self.PlayerRerollHistory[playerIndex] = history
+    end
+    tinsert(history, self:GetRuneOwnershipId(replacement))
     self.PlayerOptions[playerIndex][optionIndex] = replacement
     local playerName = "Player_" .. playerIndex
     local btnIndex = self:GetOptionBtnIndex(playerIndex, optionIndex)
@@ -685,6 +868,8 @@ end
 -- 真正展示时才根据玩家最新持有状态筛池，避免排队期间刚选到的唯一符文
 -- 仍残留在后续事件的候选中。
 function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
+    -- 兜底：第 1 回合回调没跑到时，借第一次开选择补判一次（只评估一次、不重复播报）。
+    self:InitSoloUnlimitedReroll()
     local options = nil
     local shownRarity = rarity
     if self:CanAscendRuneRarity(playerIndex, rarity) then
@@ -705,7 +890,7 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
     end
     self.PlayerOptionCount[playerIndex] = getn(options)
     self.PlayerOptions[playerIndex] = options
-    self.PlayerRerollUsed[playerIndex] = false
+    self:ResetRerollState(playerIndex, options)
     if shownRarity ~= rarity then
         self:CommitAscendRuneRarity(playerIndex, shownRarity)
     end
@@ -781,13 +966,13 @@ end
 
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
-    -- 2026-10-19 第五批：回归基本功（拆分四兵种后标题变五字，顺带验居中）顶掉银·轮式大炮；
-    -- 登神目标由苏霍伊改成帝国长枪迷你潜艇 JapanNavyScoutShip，专测海军的登神链路。
     local testRuneIds = {
-        "prismatic_back_to_basics",
-        "gold_oblivion_bomb",
-        "gold_ascension",
+        "gold_at_field",
+        "gold_at_field",
+        "gold_free_trade",
     }
+    -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
+    local testUnitTypeByIndex = { "vehicle", "navy" }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
     -- 长枪迷你潜艇的地编 ID 是 JapanNavyScoutShip（JapanAntiVehicleShip 是薙刀驱逐舰，别写错）；
     -- 它只在帝国座席的回收表里，其它座席拿到这张卡不会生效（调试用，不影响正式池）。
@@ -803,17 +988,19 @@ function HextechRune:ShowOpeningTestEvent()
             local options = {}
             for i = 1, getn(testRuneIds), 1 do
                 local template = self:FindRuneById(testRuneIds[i])
-                local unitType = nil
-                if template ~= nil and template.NeedsUnitType then
+                local unitType = testUnitTypeByIndex[i]
+                if unitType == nil and template ~= nil and template.NeedsUnitType then
                     local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
                     if getn(availableTypes) > 0 then
                         unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
                     end
                 end
                 -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
+                -- 测试局跳过阵营判定（第 4 个参数）：苏联座席也能拿到大生产，用来验协议栏是否被选。
                 local candidate = nil
                 if template ~= nil then
-                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template, unitType)
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template,
+                        unitType, true)
                 end
                 if candidate ~= nil then
                     local overrideType = testTargetOverrides[candidate.Id]
@@ -828,7 +1015,7 @@ function HextechRune:ShowOpeningTestEvent()
             if getn(options) > 0 then
                 self.PlayerOptionCount[playerIndex] = getn(options)
                 self.PlayerOptions[playerIndex] = options
-                self.PlayerRerollUsed[playerIndex] = false
+                self:ResetRerollState(playerIndex, options)
                 for i = 1, getn(options), 1 do
                     self:CreateOptionBox(playerIndex, i, options[i].Rarity,
                         self.RarityFrameImageIds[options[i].Rarity], options[i])
@@ -1265,6 +1452,8 @@ end
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
+    -- 单人遭遇战：开局评估一次并播报（消息区小字），此后重随不限次数；多人局不播也不放开。
+    self:InitSoloUnlimitedReroll()
     -- 开发测试：第 1 回合的固定三选一必须先于正式事件判断。
     if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
         and not self.OpeningTestTriggered and round == 1 then

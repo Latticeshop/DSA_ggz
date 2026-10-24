@@ -335,11 +335,30 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.radiant_bliss.name",
         DescKey = "hextech.rune.radiant_bliss.desc",
         Effect = "grant_desolator_bomb", Icon = "Button_PlayerPower_DesolatorBomb3" },
-    -- 万象天引：苏联磁力奇点协议，同款钥匙基地解锁。
-    { Id = "prismatic_myriad_pull", Rarity = 1,
+    -- 兵种被禁时 GetRuneCandidateUnitTypes 自动把该版本去掉，不需要另写 RequiresType。
+    { Id = "gold_at_field", Rarity = 2,
+        NameKey = "hextech.rune.at_field.name",
+        DescKey = "hextech.rune.at_field.desc",
+        Effect = "at_field", NeedsUnitType = true,
+        UnitTypes = { "vehicle", "navy" },
+        Icon = "Button_JapanNanoSustainingForceField" },
+    -- 万象天引：苏联磁力奇点协议，同款钥匙基地解锁。2026-10-24 由彩降金（Id 前缀不跟着改）。
+    { Id = "prismatic_myriad_pull", Rarity = 2,
         NameKey = "hextech.rune.myriad_pull.name",
         DescKey = "hextech.rune.myriad_pull.desc",
         Effect = "grant_magnetic_singularity", Icon = "Button_PlayerPower_MagneticSingularity" },
+    -- 协议授予·彩·大生产：2026-10-24 实测「连苏联玩家开局拿也降不了价」（协议疑似有前置/时间条件）
+    -- { Id = "prismatic_mass_production", Rarity = 1,
+    --     NameKey = "hextech.rune.mass_production.name",
+    --     DescKey = "hextech.rune.mass_production.desc",
+    --     Effect = "grant_mass_production", ExcludedFaction = 2,
+    --     Icon = "Button_PlayerPower_MassProduction" },
+    -- 只给非盟军玩家抽；结算口径见 MONEYINI_1（持币人自己的全部电厂，含神州电厂），讲解见文档 8.6。
+    { Id = "gold_free_trade", Rarity = 2,
+        NameKey = "hextech.rune.free_trade.name",
+        DescKey = "hextech.rune.free_trade.desc",
+        Effect = "grant_free_trade", ExcludedFaction = 1,
+        Icon = "Button_PlayerPower_FreeTrade" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -405,6 +424,13 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_radiant_bliss = true,
     prismatic_myriad_pull = true,
     gold_icathia_surprise = true,
+    -- 大生产：地图侧只有「本队获得大生产的人数」这一份台账（每人一格），第二份不再加档。
+    -- 2026-10-24 下架留档期间一并注释，恢复时与池内条目一起放开。
+    -- prismatic_mass_production = true,
+    -- 自由贸易：PlayerA_<i> 标记物全局唯一，第二份只是重复生成同名对象，故唯一。
+    gold_free_trade = true,
+    -- AT立场：兵种版按 OwnershipId 判重（Id:UnitType），载具与舰船各自独立占位。
+    gold_at_field = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -713,20 +739,36 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     return candidates
 end
 
-function HextechRune:IsRuneFactionAvailable(playerIndex, rune)
-    if g_PlayerSide ~= nil and rune.ExcludedFaction ~= nil
-        and g_PlayerSide[playerIndex] == rune.ExcludedFaction then
+-- ignoreFaction 只在开局测试局用：跳过全部阵营判定，好让苏联玩家也能拿「大生产」验协议栏。
+function HextechRune:IsRuneFactionAvailable(playerIndex, rune, ignoreFaction)
+    if ignoreFaction then
+        return true
+    end
+    local faction = nil
+    if g_PlayerSide ~= nil then
+        faction = g_PlayerSide[playerIndex]
+    end
+    -- 协议类符文不给「自己阵营的协议」：协议归属读 16_cryo_satellite.lua 的
+    -- ProtocolGrants[rune.Effect].Faction，新增协议符文只改那张表就自动生效。
+    if faction ~= nil and rune.Effect ~= nil and self.ProtocolGrants ~= nil then
+        local grant = self.ProtocolGrants[rune.Effect]
+        if grant ~= nil and grant.Faction == faction then
+            return false
+        end
+    end
+    if faction ~= nil and rune.ExcludedFaction ~= nil
+        and faction == rune.ExcludedFaction then
         return false
     end
     if rune.RequiredFaction == nil then
         return true
     end
-    return g_PlayerSide ~= nil
-        and g_PlayerSide[playerIndex] == rune.RequiredFaction
+    return faction ~= nil and faction == rune.RequiredFaction
 end
 
-function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType)
-    if not self:IsRuneFactionAvailable(playerIndex, rune) then
+function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType,
+        ignoreFaction)
+    if not self:IsRuneFactionAvailable(playerIndex, rune, ignoreFaction) then
         return nil
     end
     local candidate = self:CopyRuneForCandidate(rune, unitType)
@@ -862,9 +904,19 @@ function HextechRune:GetRuneEffectInstanceId(rune)
     return self:GetRuneOwnershipId(rune)
 end
 
+-- 个别符文的兵种名换个说法：AT立场的海军档按用户口径显示「舰船」。
+HextechRune.UnitTypeLabelKeyOverrides = {
+    at_field = { navy = "hextech.rune.at_field.ship" },
+}
+
 function HextechRune:GetRuneUnitTypeLabel(rune)
     if rune == nil or rune.UnitType == nil then
         return ""
+    end
+    -- 单个符文的兵种名可以换个说法（AT立场的海军档按用户口径显示「舰船」）。
+    local override = self.UnitTypeLabelKeyOverrides[rune.Effect]
+    if override ~= nil and override[rune.UnitType] ~= nil then
+        return Localization.get(override[rune.UnitType])
     end
     return Localization.get("hextech.unit_type." .. rune.UnitType)
 end
