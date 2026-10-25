@@ -3,7 +3,7 @@
 -- 第 6 组技能：九头蛇万岁 + 冰天雪地。
 
 g_ExcludeThingNames = {
-    -- 防御塔：本体 + 无核心形态，以及其余四种塔和运兵车。
+    -- 防御塔：本体 + 无核心形态，以及其余四种塔。
     "CelestialBaseDefenseAdvanced",
     "CelestialBaseDefenseAdvanced_NoCore",
     "CelestialBaseDefenseAir",
@@ -11,7 +11,18 @@ g_ExcludeThingNames = {
     "AlliedHeavyArtilleryDefenseBase",
     "SovietBaseDefenseAdvanced",
     "JapanBaseDefenseAdvanced",
+    -- 运兵车三个变体（与 EnvKillAllUnit 的清场排除同口径）。
     "JapanLightTransportVehicle",
+    "JapanLightTransportVehicle_AntiTank",
+    "JapanLightTransportVehicle_Kamikaze",
+    -- MCV（同 PureDraw/06_init_mcv.lua 的 g_MCVTypes）：AI 两侧的地编 MCV 就是
+    -- P[7]/P[8] 阵营锚点，转属会让整侧微操循环的 SAME_PLAYER 扫描翻到对面。
+    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
+    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
+    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
+    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
+    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
+    "CelestialMCV_Enhanced_Air",
 }
 
 g_EnemyFieldUnitFilter = CreateObjectFilter({
@@ -66,8 +77,9 @@ function g_PickRandomIndices(count, pickCount)
 end
 
 -- 以对面主炮塔为参考对象取敌方场上单位，再剔掉地图预设的守护神。
--- sideAIPlayer 是本方阵营 AI。
-function g_GetEnemyBattlefieldContext(playerIndex)
+-- sideAIPlayer 是本方阵营 AI。skipIronCurtain 供改归属类效果使用：
+-- 铁幕免疫心控是设定，但这里是代码切阵营，引擎不会自动挡，得自己剔除。
+function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain)
     local context = {
         sideAIPlayer = "PlyrCivilian",
         sideIndex = 7,
@@ -86,7 +98,8 @@ function g_GetEnemyBattlefieldContext(playerIndex)
     local candidates, count = ObjectFindObjects(context.enemyTower, nil, g_EnemyFieldUnitFilter)
     for i = 1, count, 1 do
         local unit = candidates[i]
-        if ObjectIsAlive(unit) and not g_IsPresetGuardianUnit(unit) then
+        if ObjectIsAlive(unit) and not g_IsPresetGuardianUnit(unit)
+            and not (skipIronCurtain and g_IsIronCurtainActive(unit)) then
             context.total = context.total + 1
             context.units[context.total] = unit
         end
@@ -168,13 +181,7 @@ function RequestHydra(playerIndex)
     if playerIndex >= 4 then
         sideName = Localization.get("side.angel")
     end
-    local context = g_GetEnemyBattlefieldContext(playerIndex)
-    if context.total < 1 then
-        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
-            Localization.get("center_top.error.no_unit_to_control"), 8)
-        return false
-    end
-
+    local context = g_GetEnemyBattlefieldContext(playerIndex, true)
     -- 存活单位的一半，向上取整（5 个心控 3 个）。
     local picked = g_PickRandomIndices(context.total, floor((context.total + 1) / 2))
     local attackTeam = context.sideAIPlayer .. "/ATTACK"

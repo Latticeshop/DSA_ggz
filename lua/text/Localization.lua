@@ -269,7 +269,6 @@ Localization._text_sources = {
     ["center_top.used.air_marshal"] = { zh = "%s方请求了空军元帅！", en = "%s requested Air Marshal!" },
     ["center_top.used.hydra"] = { zh = "%s方发动了九头蛇万岁！", en = "%s hailed Hydra!" },
     ["center_top.hydra.controlled_count"] = { zh = "九头蛇万岁：心控敌方单位%d个", en = "Hail Hydra: %d enemy units mind-controlled" },
-    ["center_top.error.no_unit_to_control"] = { zh = "敌方场上没有可心控的单位，九头蛇万岁释放失败", en = "No enemy field units to control, Hail Hydra failed" },
     ["center_top.used.snowstorm"] = { zh = "%s方借助极地的严寒冻结敌方单位！", en = "%s froze the enemy units with arctic cold!" },
     ["center_top.error.no_unit_to_freeze"] = { zh = "敌方场上没有可冻结的单位，冰天雪地未生效", en = "No enemy field units to freeze, Frozen Wasteland had no effect" },
     ["center_top.error.enemy_no_skill_to_copy"] = { zh = "敌方未释放过技能，无法复制技能", en = "Enemy hasn't released skills, cannot copy" },
