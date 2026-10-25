@@ -138,6 +138,18 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.burn_furry.desc",
         Effect = "burn_furry", RequiresType = "infantry",
         Icon = "Button_SovietScoutInfantry_small" },
+    -- 生异形：与烧福瑞同款回合转化，目标换成敌方载具（禁载具时整张下架）。
+    { Id = "gold_spawn_alien", Rarity = 2,
+        NameKey = "hextech.rune.spawn_alien.name",
+        DescKey = "hextech.rune.spawn_alien.desc",
+        Effect = "spawn_alien", RequiresType = "vehicle",
+        Icon = "Button_SovietScoutVehicle_small" },
+    -- 钓鱼佬：与烧福瑞同款回合转化，目标换成敌方海军（禁海时整张下架）。
+    { Id = "gold_angler", Rarity = 2,
+        NameKey = "hextech.rune.angler.name",
+        DescKey = "hextech.rune.angler.desc",
+        Effect = "angler", RequiresType = "navy",
+        Icon = "Button_JapanAntiShipAircraft_air" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
         -- 摇光是 UNITLIST 槽 103（飞机段），按纯空军算：禁空军时这张符文不入池。
@@ -383,6 +395,9 @@ HextechRune.NonRepeatableRuneIds = {
     gold_soul_interlock = true,
     -- 烧福瑞：队友各持一份按 50/75/100% 叠加，同一名玩家第二份不再加档。
     gold_burn_furry = true,
+    -- 生异形 / 钓鱼佬：与烧福瑞同口径，队友各持一份按 50/75/100% 叠加，第二份不再加档。
+    gold_spawn_alien = true,
+    gold_angler = true,
     -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
     silver_five_tiger_generals = true,
     gold_fortified = true,
@@ -1007,6 +1022,12 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
         -- 转化比例随本方（含队友）份数变化，卡面按拿到之后的份数显示 50/75/100。
         return Localization.get(rune.DescKey,
             self:GetBurnFurryDisplayPercent(playerIndex))
+    elseif rune.Effect == "spawn_alien" then
+        return Localization.get(rune.DescKey,
+            self:GetConversionRuneDisplayPercent(playerIndex, self.SpawnAlienRuneId))
+    elseif rune.Effect == "angler" then
+        return Localization.get(rune.DescKey,
+            self:GetConversionRuneDisplayPercent(playerIndex, self.AnglerRuneId))
     elseif rune.Effect == "divine_intervention" then
         return Localization.get(rune.DescKey,
             self:GetDivineInterventionDisplaySeconds(playerIndex))

@@ -268,14 +268,21 @@ end
 --     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
 -- end
 
--- ===== 金·烧福瑞：回合开始把对面 AI 的步兵按本方份数比例换成警犬/战熊 =====
+-- ===== 金·烧福瑞 / 生异形 / 钓鱼佬：回合开始按本方份数比例替换敌方对应兵种 =====
 HextechRune.BurnFurryRuneId = "gold_burn_furry"
+HextechRune.SpawnAlienRuneId = "gold_spawn_alien"
+HextechRune.AnglerRuneId = "gold_angler"
 -- 同阵营份数 → 转化比例：1/2/3 份 = 50%/75%/100%（超过 3 份按 100%）。
 HextechRune.BurnFurryPercentByCopies = { 0.50, 0.75, 1.00 }
 -- 生成的动物随机取一个：警犬（盟军探路兵位）/ 战熊（苏联探路兵位）。
 HextechRune.BurnFurryAnimalTypes = { "AlliedScoutInfantry", "SovietScoutInfantry" }
+-- 生异形：敌方载具 → 恐怖机器人；钓鱼佬：敌方海军 → 海翼。
+HextechRune.SpawnAlienUnitTypes = { "SovietScoutVehicle" }
+HextechRune.AnglerUnitTypes = { "JapanAntiAirShip" }
 HextechRune.BurnFurryAppliedRound = HextechRune.BurnFurryAppliedRound or {}
-HextechRune.BurnFurrySpawnSerial = HextechRune.BurnFurrySpawnSerial or 0
+HextechRune.SpawnAlienAppliedRound = HextechRune.SpawnAlienAppliedRound or {}
+HextechRune.AnglerAppliedRound = HextechRune.AnglerAppliedRound or {}
+HextechRune.ConversionSpawnSerial = HextechRune.ConversionSpawnSerial or 0
 
 function HextechRune:GetBurnFurryPercentByCopies(copies)
     local lastCopies = getn(self.BurnFurryPercentByCopies)
@@ -288,29 +295,37 @@ function HextechRune:GetBurnFurryPercentByCopies(copies)
     return self.BurnFurryPercentByCopies[copies]
 end
 
-function HextechRune:GetBurnFurryPercent(sideIndex)
-    local copies = self:GetSideOwnedRuneCount(sideIndex, self.BurnFurryRuneId)
+-- 三个转化符文共用同一份份数口径。
+function HextechRune:GetConversionRunePercent(sideIndex, runeId)
+    local copies = self:GetSideOwnedRuneCount(sideIndex, runeId)
     if copies <= 0 then
         return 0
     end
     return self:GetBurnFurryPercentByCopies(copies)
 end
 
+function HextechRune:GetBurnFurryPercent(sideIndex)
+    return self:GetConversionRunePercent(sideIndex, self.BurnFurryRuneId)
+end
+
 -- 卡面展示：三选一时候选还没到手，按「拿到之后」的份数算。
-function HextechRune:GetBurnFurryDisplayPercent(playerIndex)
+function HextechRune:GetConversionRuneDisplayPercent(playerIndex, runeId)
     local copies = 1
     if playerIndex ~= nil then
         self:EnsurePlayerRuneState(playerIndex)
-        copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex),
-            self.BurnFurryRuneId)
-        if not self.PlayerOwnedRuneIds[playerIndex][self.BurnFurryRuneId] then
+        copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex), runeId)
+        if not self.PlayerOwnedRuneIds[playerIndex][runeId] then
             copies = copies + 1
         end
     end
     return floor(self:GetBurnFurryPercentByCopies(copies) * 100 + 0.5)
 end
 
--- 对面是 AI 阵营（P7/P8），没有「出兵出队」那一步，新单位要直接进步兵攻击队才会参战。
+function HextechRune:GetBurnFurryDisplayPercent(playerIndex)
+    return self:GetConversionRuneDisplayPercent(playerIndex, self.BurnFurryRuneId)
+end
+
+-- 对面是 AI 阵营（P7/P8），没有「出兵出队」那一步，新单位要直接进攻击队才会参战。
 function HextechRune:GetBurnFurryAttackTeam(sideIndex)
     if INFANTATTACK ~= nil and INFANTATTACK[sideIndex] ~= nil
         and INFANTATTACK[sideIndex][1] ~= nil then
@@ -325,14 +340,37 @@ function HextechRune:GetBurnFurryAttackTeam(sideIndex)
     return "PlyrCreeps/teamPlyrCreeps"
 end
 
--- 在指定坐标生成一只警犬/战熊；名字带序号，生成后回取句柄补星级。
-function HextechRune:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount)
-    local types = self.BurnFurryAnimalTypes
-    local unitType = types[self:RandomIndex(getn(types))]
-    self.BurnFurrySpawnSerial = self.BurnFurrySpawnSerial + 1
-    local name = format("HextechBurnFurry%d", self.BurnFurrySpawnSerial)
-    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", name, unitType,
-        self:GetBurnFurryAttackTeam(sideIndex), { X = x, Y = y, Z = z }, 0)
+-- 载具 / 海军走各自本回合的攻击队；取不到时退回默认队。
+function HextechRune:GetConversionAttackTeam(sideIndex, unitType)
+    if unitType == "vehicle" then
+        if LIGHTVEHATTACK ~= nil and LIGHTVEHATTACK[sideIndex] ~= nil
+            and LIGHTVEHATTACK[sideIndex][1] ~= nil then
+            return LIGHTVEHATTACK[sideIndex][1]
+        end
+    elseif unitType == "navy" then
+        if SHIPTEAMATTACK ~= nil and SHIPTEAMATTACK[sideIndex] ~= nil then
+            return SHIPTEAMATTACK[sideIndex]
+        end
+    else
+        return self:GetBurnFurryAttackTeam(sideIndex)
+    end
+    if DEFAULTATTCKTEAM ~= nil and DEFAULTATTCKTEAM[sideIndex] ~= nil then
+        return DEFAULTATTCKTEAM[sideIndex]
+    end
+    if sideIndex == 7 then
+        return "PlyrCivilian/teamPlyrCivilian"
+    end
+    return "PlyrCreeps/teamPlyrCreeps"
+end
+
+-- 在指定坐标生成替换单位；名字带序号，生成后回取句柄补星级。
+function HextechRune:SpawnConvertedUnit(sideIndex, unitType, spawnTypes, spawnPrefix,
+    x, y, z, levelCount)
+    local spawnType = spawnTypes[self:RandomIndex(getn(spawnTypes))]
+    self.ConversionSpawnSerial = self.ConversionSpawnSerial + 1
+    local name = format("%s%d", spawnPrefix, self.ConversionSpawnSerial)
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", name, spawnType,
+        self:GetConversionAttackTeam(sideIndex, unitType), { X = x, Y = y, Z = z }, 0)
     local unit = GetObjectByScriptName(name)
     if unit == nil or not ObjectIsAlive(unit) then
         return false
@@ -344,13 +382,16 @@ function HextechRune:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount)
     return true
 end
 
--- 删掉对面该比例的步兵，并在原地生成等量的警犬/战熊。只动 P7/P8 的战场单位，
+-- 烧福瑞的生成入口保留原名，内部走公共实现。
+function HextechRune:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount)
+    return self:SpawnConvertedUnit(sideIndex, "infantry", self.BurnFurryAnimalTypes,
+        "HextechBurnFurry", x, y, z, levelCount)
+end
+
+-- 删掉对面该比例的指定兵种，并在原地生成等量的替换单位。只动 P7/P8 的战场单位，
 -- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
-function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
-    local filter = nil
-    if self.UnitTypeFilters ~= nil then
-        filter = self.UnitTypeFilters.infantry
-    end
+function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitType,
+    spawnTypes, spawnPrefix)
     if P == nil or P[sideIndex] == nil or filter == nil or percent <= 0 then
         return 0
     end
@@ -387,11 +428,21 @@ function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
         candidates[pickIndex] = pick
         local x, y, z = ObjectGetPosition(pick)
         ExecuteAction("NAMED_DELETE", pick)
-        if self:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount) then
+        if self:SpawnConvertedUnit(sideIndex, unitType, spawnTypes, spawnPrefix,
+            x, y, z, levelCount) then
             converted = converted + 1
         end
     end
     return converted
+end
+
+function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
+    local filter = nil
+    if self.UnitTypeFilters ~= nil then
+        filter = self.UnitTypeFilters.infantry
+    end
+    return self:ConvertEnemyUnitsOfType(sideIndex, percent, filter, "infantry",
+        self.BurnFurryAnimalTypes, "HextechBurnFurry")
 end
 
 -- 回合开始（出兵混编完成后）结算一次；补充军队会让回合效果重走一遍，按回合号去重。
@@ -410,4 +461,38 @@ function HextechRune:ApplyBurnFurryPulse(round)
             self:ConvertBurnFurryInfantry(targetSideIndex, percent)
         end
     end
+end
+
+-- 生异形 / 钓鱼佬：与烧福瑞同时机、同份数口径，只换敌方兵种与替换单位。
+function HextechRune:ApplyConversionRunePulse(runeId, unitType, spawnTypes,
+    spawnPrefix, appliedRound, round)
+    if round == nil then
+        round = exCounterGetByName("lvc")
+    end
+    local filter = nil
+    if self.UnitTypeFilters ~= nil then
+        filter = self.UnitTypeFilters[unitType]
+    end
+    for holderSideIndex = 7, 8, 1 do
+        local percent = self:GetConversionRunePercent(holderSideIndex, runeId)
+        if percent <= 0 then
+            appliedRound[holderSideIndex] = nil
+        elseif appliedRound[holderSideIndex] ~= round then
+            appliedRound[holderSideIndex] = round
+            self:ConvertEnemyUnitsOfType(self:GetOpposingSideIndex(holderSideIndex),
+                percent, filter, unitType, spawnTypes, spawnPrefix)
+        end
+    end
+end
+
+function HextechRune:ApplySpawnAlienPulse(round)
+    self:ApplyConversionRunePulse(self.SpawnAlienRuneId, "vehicle",
+        self.SpawnAlienUnitTypes, "HextechSpawnAlien",
+        self.SpawnAlienAppliedRound, round)
+end
+
+function HextechRune:ApplyAnglerPulse(round)
+    self:ApplyConversionRunePulse(self.AnglerRuneId, "navy",
+        self.AnglerUnitTypes, "HextechAngler",
+        self.AnglerAppliedRound, round)
 end
