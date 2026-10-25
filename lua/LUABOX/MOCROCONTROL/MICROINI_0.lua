@@ -64,6 +64,14 @@ FilterJapanTsunamiTank=CreateObjectFilter({
     }
 })
 
+FilterJapanAntiVehicleShip=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="SAME_PLAYER",
+    IncludeThing = {
+        "JapanAntiVehicleShip","JapanAntiVehicleShip_Enhanced"
+    }
+})
+
 FilterAntiAirHunterAircraft=CreateObjectFilter({
     Rule="ANY",
     Relationship="SAME_PLAYER",
@@ -252,7 +260,39 @@ function JapanTsunamiTankShieldMICROCONTROL ()
     end
 end
 
+-- 剃刀巡洋舰：附近有非空中敌人时尝试开 F（五连装鱼雷散射）。
+-- AI 不会自己开 F，只能由这里周期触发；技能原生 40 秒 CD，这里用 20 秒间隔粗当冷却闸。
+g_TorpedoShipSpreadEnemyRange = 600
+g_TorpedoShipSpreadScanIntervalFrames = 15 * 20
+g_TorpedoShipSpreadNextScanFrame = g_TorpedoShipSpreadNextScanFrame or 0
+
+function JapanTorpedoShipSpreadMICROCONTROL ()
+    local frame = GetFrame()
+    if frame < g_TorpedoShipSpreadNextScanFrame then
+        return
+    end
+    g_TorpedoShipSpreadNextScanFrame = frame + g_TorpedoShipSpreadScanIntervalFrames
+
+    for playindex = 7, 8, 1 do
+        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiVehicleShip)
+        for i = 1, count, 1 do
+            local self = units[i]
+            local x, y, z = ObjectGetPosition(self)
+            local enemies, enemyCount = ObjectFindObjects(self, {
+                X=x, Y=y, Z=z,
+                Radius=g_TorpedoShipSpreadEnemyRange,
+                DistType="CENTER_2D"
+            }, FilterLAND)
+            if enemyCount > 0 then
+                ExecuteAction("NAMED_USE_COMMANDBUTTON_ABILITY", self,
+                    "Command_ActivateTorpedoSpread")
+            end
+        end
+    end
+end
+
 g_AirHunterReacquireRange = 500
+
 g_AirHunterTargetByUnitId = g_AirHunterTargetByUnitId or {}
 g_AirHunterTransformCommandByInstanceId = {
     [FastHash("JapanAntiInfantryVehicle")] = "Command_JAIV_Transform",

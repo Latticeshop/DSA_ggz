@@ -20,7 +20,7 @@ g_LocalizationExtraText = {
     ["hextech.panel.title"] = { zh = "海克斯符文面板", en = "Hextech Rune Panel" },
     ["hextech.panel.close"] = { zh = "关闭", en = "Close" },
     ["hextech.error.not_enough_candidates"] = { zh = "当前阶级可用符文不足 3 个，无法生成选项", en = "Fewer than 3 eligible runes are available for this tier" },
-    -- 互斥兜底（顺手的事 × 赌怪）：开局测试事件按 Id 直取符文，会绕过筛池，点选时再拦一次。
+    -- 互斥兜底（顺手的事 × 赌怪）：同一批候选可能连选两张，点选时按当时持有再拦一次。
     ["hextech.error.rune_exclusive"] = { zh = "已持有与【%s】互斥的符文，无法再选。", en = "You already own a rune that excludes [%s]." },
 
     -- === 单位类型 ===
@@ -61,7 +61,13 @@ g_LocalizationExtraText = {
     ["hextech.rune.spawn_alien.name"] = { zh = "生异形", en = "Xenomorph" },
     ["hextech.rune.spawn_alien.desc"] = { zh = "回合开始时，将敌方 %d%% 的载具变成恐怖机器人。", en = "At the start of each round, %d%% of enemy vehicles become Terror Drones." },
     ["hextech.rune.angler.name"] = { zh = "钓鱼佬", en = "Angler" },
-    ["hextech.rune.angler.desc"] = { zh = "回合开始时，将敌方 %d%% 的海军变成海翼。", en = "At the start of each round, %d%% of enemy naval units become Sea Wings." },
+    ["hextech.rune.angler.desc"] = {
+        zh = "回合开始时，将敌方 %d%% 的海军变成海翼。",
+        en = "At the start of each round, convert %d%% of enemy navy into Sea Wings." },
+    ["hextech.rune.sit_tight.name"] = { zh = "樱落", en = "Sakura Fall" },
+    ["hextech.rune.sit_tight.desc"] = {
+        zh = "回合开始时，将敌方 %d%% 的空军变成樱花回天雷。",
+        en = "At the start of each round, convert %d%% of enemy aircraft into Sakura Kamikaze." },
     ["hextech.rune.giga_fortress.name"] = { zh = "超级要塞", en = "Giga Fortress" },
     ["hextech.rune.giga_fortress.desc"] = { zh = "获得 1 个超级要塞核心。", en = "Gain 1 Giga Fortress Core." },
     ["hextech.rune.five_tiger_generals.name"] = { zh = "百虎上将", en = "Hundred Tiger Generals" },

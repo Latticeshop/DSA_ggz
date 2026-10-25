@@ -1,4 +1,5 @@
 JapanTsunamiTankShieldMICROCONTROL ()
+JapanTorpedoShipSpreadMICROCONTROL ()
 -- 狂热武士由出生事件配置引擎索敌，并使用按单位的轻量技能触发器。
 AntiAirAircraftHunterMICROCONTROL ()
 JapanAntiAirVehicleTech1MICROCONTROL ()

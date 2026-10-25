@@ -97,6 +97,18 @@ function PurchaseTechMode_Setting()
         AlignY = "top",
     })
 
+    -- 按每个玩家真实的小电上限刷新（继承队友后会变成多份），不再写死 5/4。
+    for i = 1, 6, 1 do
+        local limit = 5
+        if GetPlayerPowerPlantLimit ~= nil then
+            limit = GetPlayerPowerPlantLimit(i)
+        end
+        exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2,
+            Localization.get("purchase_tech.power_plants", limit))
+        exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3,
+            Localization.get("purchase_tech.celestial_plants", limit))
+    end
+
 end
 
 ButtonManager:RegisterCustomButtonHandler(function(playerName, index)

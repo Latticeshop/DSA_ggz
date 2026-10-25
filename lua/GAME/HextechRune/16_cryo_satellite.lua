@@ -95,13 +95,16 @@ end
 
 -- 赋予手法与 04_buff.lua 的 GrantCashRewardProtocol 相同：先解掉科技显式锁，否则授予后图标仍置灰。
 -- 授予对象既可以是玩家（Player_N），也可以是场地中间的 AI 阵营（PlyrCivilian/PlyrCreeps）。
-function HextechRune:GrantProtocolToPlayer(playerName, grantKey, playerIndex)
+function HextechRune:GrantProtocolToPlayer(playerName, grantKey, playerIndex, skipYard)
     local grant = self.ProtocolGrants[grantKey]
     if grant == nil then
         return
     end
     local previous = SetWorldBuilderThisPlayer(1)
-    self:EnsureProtocolYard(playerName, grant, playerIndex)
+    -- 继承时基地已经由引擎转交给新玩家，不再按新玩家名字生成第二栋。
+    if not skipYard then
+        self:EnsureProtocolYard(playerName, grant, playerIndex)
+    end
     ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName, grant.PlayerTech, 0)
     ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", grant.SpecialPower, playerName)
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
@@ -116,6 +119,32 @@ end
 
 function HextechRune:GrantProtocol(playerIndex, grantKey)
     self:GrantProtocolToPlayer("Player_" .. playerIndex, grantKey, playerIndex)
+end
+
+-- 退出继承：协议是逐玩家授予的，必须给继承者重新授予科技/技能；基地已自动转交，不再重建。
+function HextechRune:IsInheritedProtocolRune(rune)
+    if rune == nil then
+        return false
+    end
+    if self.ProtocolGrants[rune.Effect] ~= nil then
+        return true
+    end
+    return rune.Effect == "grant_free_trade"
+        or rune.Effect == "grant_mass_production"
+end
+
+function HextechRune:ReregisterInheritedProtocol(playerIndex, rune)
+    if rune == nil then
+        return
+    end
+    local effect = rune.Effect
+    if self.ProtocolGrants[effect] ~= nil then
+        self:GrantProtocolToPlayer("Player_" .. playerIndex, effect, playerIndex, true)
+    elseif effect == "grant_free_trade" then
+        self:GrantFreeTrade(playerIndex)
+    elseif effect == "grant_mass_production" then
+        self:GrantMassProduction(playerIndex, true)
+    end
 end
 
 -- 延迟解禁：只补解锁与可用性，不再重复 GRANT（重复授予会把冷却打回原形）。
@@ -138,7 +167,7 @@ end
 HextechRune.MassProductionPlayerTech = "PlayerTech_ProductionBonus_Soviet"
 HextechRune.MassProductionYard = { Faction = 2, YardType = "SovietConstructionYard" }
 
-function HextechRune:GrantMassProduction(playerIndex)
+function HextechRune:GrantMassProduction(playerIndex, skipYard)
     local playerName = "Player_" .. playerIndex
     local alreadyMarked = false
     if g_ProductionBonus_SovietGet ~= nil
@@ -147,7 +176,9 @@ function HextechRune:GrantMassProduction(playerIndex)
     end
     -- 顺序与 GrantProtocolToPlayer 一致：先把钥匙基地立起来，再解科技锁。
     local previous = SetWorldBuilderThisPlayer(1)
-    self:EnsureProtocolYard(playerName, self.MassProductionYard, playerIndex)
+    if not skipYard then
+        self:EnsureProtocolYard(playerName, self.MassProductionYard, playerIndex)
+    end
     ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
         self.MassProductionPlayerTech, 0)
     SetWorldBuilderThisPlayer(previous)

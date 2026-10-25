@@ -47,6 +47,16 @@ end
 
 RegisterUnitDieCallback("CelestialBattery", CelestialBatteryDie)
 
+-- 玩家法术书死亡 = 玩家死亡/退出。具体继承逻辑在 MONEYINI_3.lua 的
+-- OnPlayerSpellBookDied 里；这里只负责把引擎事件转过去。
+function PlayerSpellBookDie(dyingObjId, attackerId, dyingObjInstanceId,
+        attackerInstanceId, ownerPlayerName)
+    if OnPlayerSpellBookDied ~= nil then
+        OnPlayerSpellBookDied(ownerPlayerName, dyingObjId)
+    end
+end
+RegisterUnitDieCallback("PlayerSpellBook", PlayerSpellBookDie)
+
 function onUnitDieEvent(dyingObjId, attackerId, dyingObjInstanceId, attackerInstanceId, ownerPlayerName)
     local registered = g_UnitDieEventFunc[dyingObjInstanceId]
     if type(registered) == "function" then

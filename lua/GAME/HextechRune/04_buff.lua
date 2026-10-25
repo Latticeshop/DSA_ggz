@@ -316,12 +316,13 @@ function HextechRune:GetSidePlayerRange(sideIndex)
 end
 
 -- 持有键是“符文 ID + 兵种”，带兵种的符文需要按 ownershipId 统计队伍份数。
+-- 退出继承后槽位仍算一份，所以这里按“槽位持有表”统计，不按玩家聚合表。
 function HextechRune:GetSideRuneCopyCount(sideIndex, ownershipId)
     local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
     local count = 0
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-        self:EnsurePlayerRuneState(playerIndex)
-        if self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
+    for slotIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+        self:EnsureRuneSlotState(slotIndex)
+        if self.PlayerSlotOwnedRuneIds[slotIndex][ownershipId] then
             count = count + 1
         end
     end
@@ -668,9 +669,13 @@ function HextechRune:GrantGigaFortress(playerIndex)
     -- UnitCreate.lua 已为该核心注册 UnitCountFunc：8 帧后计数并删除实体。
 end
 
--- 东风速递：赠送的东风不占建造额度，因此先记额度再生成，玩家仍可自产一辆。
+-- 东风速递：赠送的东风不占建造额度；每拿一次额度 +1，继承时继续累加。
 function HextechRune:GrantDongfengExpress(playerIndex)
-    g_HextechDF41ExtraQuota[playerIndex] = true
+    local currentQuota = g_HextechDF41ExtraQuota[playerIndex]
+    if currentQuota == true then
+        currentQuota = 1
+    end
+    g_HextechDF41ExtraQuota[playerIndex] = (tonumber(currentQuota) or 0) + 1
     self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "CelestialDF41",
@@ -1689,11 +1694,6 @@ function HextechRune:ApplyRoundEffects(round)
     self:ApplyAllRagnarokHealthClamps()
     -- 缩小射线：到点的阵营让对手全体单位缩小一回合。
     self:ApplyShrinkRayPulse(round)
-    -- 烧福瑞：按本方份数比例把对手 AI 的步兵换成警犬/战熊（同一回合只结算一次）。
-    self:ApplyBurnFurryPulse(round)
-    -- 生异形 / 钓鱼佬：同款回合转化，分别把敌方载具换成恐怖机器人、敌方海军换成海翼。
-    self:ApplySpawnAlienPulse(round)
-    self:ApplyAnglerPulse(round)
     -- 出兵命令执行完时，引擎仍可能在后续帧创建或混编单位。
     -- 延迟 45 帧后再做首次登记和 COUNT 切片，避免过早登记导致本轮新单位遗漏。
     SchedulerModule.delay_call(function(effectRound)

@@ -113,6 +113,9 @@ HextechRune.PlayerSelectionVisible = HextechRune.PlayerSelectionVisible or {}
 -- 每名玩家已完成过多少次正式符文选择（点下某张卡，或遭遇战电脑直接获得符文）。
 -- 与回合号无关：只用来回答「这是不是这名玩家的第一次选择」，见 IsFirstFormalSelection。
 HextechRune.PlayerFormalSelectionCount = HextechRune.PlayerFormalSelectionCount or {}
+-- 当前选择对应的符文槽位（正常玩家=自己；退出继承后的额外选择=被继承者槽位）。
+HextechRune.PlayerOptionSlot = HextechRune.PlayerOptionSlot or {}
+HextechRune.PlayerOptionRarity = HextechRune.PlayerOptionRarity or {}
 
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 3, 10, 18, 27 }
@@ -403,10 +406,14 @@ function HextechRune:HasNextFormalEvent()
 end
 
 function HextechRune:IsFirstFormalSelection(playerIndex)
-    return (self.PlayerFormalSelectionCount[playerIndex] or 0) == 0
+    local slotIndex = self.CurrentGrantSlot[playerIndex] or playerIndex
+    return (self.SlotFormalSelectionCount[slotIndex] or 0) == 0
 end
 
 function HextechRune:MarkFormalSelectionReceived(playerIndex)
+    local slotIndex = self.CurrentGrantSlot[playerIndex] or playerIndex
+    self.SlotFormalSelectionCount[slotIndex] =
+        (self.SlotFormalSelectionCount[slotIndex] or 0) + 1
     self.PlayerFormalSelectionCount[playerIndex] =
         (self.PlayerFormalSelectionCount[playerIndex] or 0) + 1
 end
@@ -819,7 +826,11 @@ function HextechRune:HandleRerollClick(playerIndex, optionIndex)
 end
 
 -- 正式事件中的遭遇战电脑不显示三选一界面，直接从自己的同阶筛选池抽一个。
-function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
+function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round, slotIndex)
+    if slotIndex == nil then
+        slotIndex = playerIndex
+    end
+    self.CurrentGrantSlot[playerIndex] = slotIndex
     local extraPick = self.PendingExtraRunePick[playerIndex] == true
     local rune = nil
     local shownRarity = rarity
@@ -833,9 +844,11 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
         rune = self:PickOneRune(playerIndex, rarity)
     end
     if rune == nil then
+        self.CurrentGrantSlot[playerIndex] = nil
         return false
     end
-    if not self:AddOwnedRune(playerIndex, rune) then
+    if not self:AddOwnedRune(playerIndex, rune, slotIndex) then
+        self.CurrentGrantSlot[playerIndex] = nil
         return false
     end
     if shownRarity ~= rarity then
@@ -849,8 +862,9 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round)
     -- 顺手的事：电脑没有选择界面，多拿的一张直接按同阶池再抽一次（同回合、同稀有度）。
     if extraPick then
         self.PendingExtraRunePick[playerIndex] = nil
-        self:GrantRandomRuneToComputer(playerIndex, rarity, round)
+        self:GrantRandomRuneToComputer(playerIndex, rarity, round, slotIndex)
     end
+    self.CurrentGrantSlot[playerIndex] = nil
     return true
 end
 
@@ -862,8 +876,14 @@ function HextechRune:EnsurePlayerEventQueue(playerIndex)
 end
 
 -- 真正展示时才根据玩家最新持有状态筛池，避免排队期间刚选到的唯一符文
--- 仍残留在后续事件的候选中。
-function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
+-- 仍残留在后续事件的候选中。slotIndex 是这次选择归属的展示槽位。
+function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity, slotIndex)
+    if slotIndex == nil then
+        slotIndex = playerIndex
+    end
+    self.CurrentGrantSlot[playerIndex] = slotIndex
+    self.PlayerOptionSlot[playerIndex] = slotIndex
+    self.PlayerOptionRarity[playerIndex] = rarity
     -- 兜底：第 1 回合回调没跑到时，借第一次开选择补判一次（只评估一次、不重复播报）。
     self:InitSoloUnlimitedReroll()
     local options = nil
@@ -882,9 +902,13 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
     if options == nil then
         exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
             Localization.get("hextech.error.not_enough_candidates"), 10)
+        self.CurrentGrantSlot[playerIndex] = nil
+        self.PlayerOptionSlot[playerIndex] = nil
+        self.PlayerOptionRarity[playerIndex] = nil
         return false
     end
     self.PlayerOptionCount[playerIndex] = getn(options)
+    self.PlayerOptionRarity[playerIndex] = shownRarity
     self.PlayerOptions[playerIndex] = options
     self:ResetRerollState(playerIndex, options)
     if shownRarity ~= rarity then
@@ -908,9 +932,12 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity)
     return true
 end
 
-function HextechRune:EnqueueRuneEvent(playerIndex, rarity, round)
+function HextechRune:EnqueueRuneEvent(playerIndex, rarity, round, slotIndex)
+    if slotIndex == nil then
+        slotIndex = playerIndex
+    end
     local queue = self:EnsurePlayerEventQueue(playerIndex)
-    tinsert(queue, { Rarity = rarity, Round = round })
+    tinsert(queue, { Rarity = rarity, Round = round, Slot = slotIndex })
     self:ShowSelectionHint(playerIndex)
     return true
 end
@@ -922,11 +949,14 @@ function HextechRune:ShowNextQueuedRuneEvent(playerIndex)
     local queue = self:EnsurePlayerEventQueue(playerIndex)
     while getn(queue) > 0 do
         local event = tremove(queue, 1)
-        if self:ShowRuneOptionsForPlayer(playerIndex, event.Rarity) then
+        if self:ShowRuneOptionsForPlayer(playerIndex, event.Rarity, event.Slot) then
             return true
         end
     end
     -- 队列取空（或候选池不足）后不再留提示，避免玩家反复按 J 却打不开面板。
+    self.CurrentGrantSlot[playerIndex] = nil
+    self.PlayerOptionSlot[playerIndex] = nil
+    self.PlayerOptionRarity[playerIndex] = nil
     self:HideSelectionHint(playerIndex)
     return false
 end
@@ -935,18 +965,20 @@ end
 function HextechRune:ShowRuneEvent(round)
     local rarity = self:RollFieldRarity(round)
     local hasHumanEvent = false
-    for playerIndex = 1, 6, 1 do
-        -- 仅对存在的玩家触发（有建筑的玩家）
-        local playerName = "Player_" .. playerIndex
+    for slotIndex = 1, 6, 1 do
+        -- 按槽位发放：槽位归属者可能是原玩家，也可能是退出继承后的新玩家。
+        self:EnsureRuneSlotState(slotIndex)
+        local ownerIndex = self.PlayerSlotOwner[slotIndex] or slotIndex
+        local playerName = "Player_" .. ownerIndex
         local previous = SetWorldBuilderThisPlayer(1)
         local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
         SetWorldBuilderThisPlayer(previous)
         if structureCount > 0 then
-            if self:IsHumanPlayer(playerIndex) then
-                self:EnqueueRuneEvent(playerIndex, rarity, round)
+            if self:IsHumanPlayer(ownerIndex) then
+                self:EnqueueRuneEvent(ownerIndex, rarity, round, slotIndex)
                 hasHumanEvent = true
             else
-                self:GrantRandomRuneToComputer(playerIndex, rarity, round)
+                self:GrantRandomRuneToComputer(ownerIndex, rarity, round, slotIndex)
             end
         end
     end
@@ -958,6 +990,130 @@ end
 
 function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
+end
+
+-- 退出继承：退出者名下的全部符文（含之前继承来的）并进继承者的效果聚合；
+-- 各槽位的展示列表保持原样，只把槽位归属名字改成继承者。
+function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
+    self:EnsurePlayerRuneState(fromIndex)
+    self:EnsurePlayerRuneState(toIndex)
+    for slotIndex = 1, 6, 1 do
+        self:EnsureRuneSlotState(slotIndex)
+    end
+    local owned = self.PlayerOwnedRunes[fromIndex]
+    local protocolSeen = {}
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        local ownershipId = self:GetRuneOwnershipId(rune)
+        local alreadyOwned = self.PlayerOwnedRuneIds[toIndex][ownershipId] == true
+        self:TransferOwnedRuneToPlayer(toIndex, rune)
+        -- 协议是逐玩家授予的：继承者没有同一协议时，必须重新授予科技/技能；
+        -- 基地已由引擎转交，ReregisterInheritedProtocol 内部会跳过重建基地。
+        if not alreadyOwned and self:IsInheritedProtocolRune(rune)
+            and protocolSeen[rune.Effect] == nil then
+            protocolSeen[rune.Effect] = true
+            self:ReregisterInheritedProtocol(toIndex, rune)
+        end
+    end
+    -- 先记下退出时正在展示的选择，再清 UI 状态。
+    local pendingSlot = self.PlayerOptionSlot[fromIndex]
+    local pendingRarity = self.PlayerOptionRarity[fromIndex]
+    local fromQueue = self.PlayerEventQueues[fromIndex]
+    -- 准备背包 / 顺手的事这类「下一次选择」权益一起转给继承者。
+    if self.PendingRuneAscend[fromIndex] then
+        self.PendingRuneAscend[toIndex] = true
+    end
+    if self.PendingExtraRunePick[fromIndex] then
+        self.PendingExtraRunePick[toIndex] = true
+    end
+    -- 玩家聚合清空；槽位展示列表不动。
+    self.PlayerOwnedRunes[fromIndex] = {}
+    self.PlayerOwnedRuneIds[fromIndex] = {}
+    self.PlayerOwnedRuneCounts[fromIndex] = {}
+    self.PlayerOptions[fromIndex] = nil
+    self.PlayerOptionCount[fromIndex] = nil
+    self.PendingRuneAscend[fromIndex] = nil
+    self.PendingExtraRunePick[fromIndex] = nil
+    self.PlayerExtraPickRemaining[fromIndex] = nil
+    self.PlayerSelectionVisible[fromIndex] = false
+    self.PlayerRerollUsed[fromIndex] = nil
+    self.PlayerRerollUsedOptions[fromIndex] = nil
+    self.PlayerRerollHistory[fromIndex] = nil
+    self.CurrentGrantSlot[fromIndex] = nil
+    self.PlayerOptionSlot[fromIndex] = nil
+    self.PlayerOptionRarity[fromIndex] = nil
+    self.PlayerEventQueues[fromIndex] = {}
+    self.PanelVisible[fromIndex] = nil
+    -- 所有仍挂在退出者名下的槽位都改挂继承者（支持 A→B 后再 B→C 的级联）。
+    for slotIndex = 1, 6, 1 do
+        if self.PlayerSlotOwner[slotIndex] == fromIndex then
+            self.PlayerSlotOwner[slotIndex] = toIndex
+        end
+    end
+    -- 未展示/未领取的事件转给继承者，保留原槽位。
+    if self:IsHumanPlayer(toIndex) then
+        if fromQueue ~= nil and getn(fromQueue) > 0 then
+            local toQueue = self:EnsurePlayerEventQueue(toIndex)
+            for i = 1, getn(fromQueue), 1 do
+                local event = fromQueue[i]
+                tinsert(toQueue, { Rarity = event.Rarity, Round = event.Round,
+                    Slot = event.Slot or fromIndex })
+            end
+            self:ShowSelectionHint(toIndex)
+        end
+        -- 退出时正显示的三选一：补成一个新事件，避免这次选择丢失。
+        if pendingRarity ~= nil then
+            local toQueue = self:EnsurePlayerEventQueue(toIndex)
+            tinsert(toQueue, { Rarity = pendingRarity, Round = self.CurrentRound,
+                Slot = pendingSlot or fromIndex })
+            self:ShowSelectionHint(toIndex)
+        end
+    end
+    -- 已展开的总览面板立即按新归属重画。
+    for viewerIndex = 1, 6, 1 do
+        if self.PanelVisible[viewerIndex] then
+            self:HidePanel(viewerIndex)
+            self:ShowPanel(viewerIndex)
+        end
+    end
+end
+
+-- 无人继承：槽位符文随资产一起消失。
+function HextechRune:ClearPlayerSlotRunes(fromIndex)
+    self:EnsurePlayerRuneState(fromIndex)
+    for slotIndex = 1, 6, 1 do
+        self:EnsureRuneSlotState(slotIndex)
+    end
+    self.PlayerOwnedRunes[fromIndex] = {}
+    self.PlayerOwnedRuneIds[fromIndex] = {}
+    self.PlayerOwnedRuneCounts[fromIndex] = {}
+    for slotIndex = 1, 6, 1 do
+        if self.PlayerSlotOwner[slotIndex] == fromIndex then
+            self.PlayerSlotOwnedRunes[slotIndex] = {}
+            self.PlayerSlotOwnedRuneIds[slotIndex] = {}
+            self.PlayerSlotOwner[slotIndex] = nil
+        end
+    end
+    self.PlayerOptions[fromIndex] = nil
+    self.PlayerOptionCount[fromIndex] = nil
+    self.PendingRuneAscend[fromIndex] = nil
+    self.PendingExtraRunePick[fromIndex] = nil
+    self.PlayerExtraPickRemaining[fromIndex] = nil
+    self.PlayerSelectionVisible[fromIndex] = false
+    self.PlayerRerollUsed[fromIndex] = nil
+    self.PlayerRerollUsedOptions[fromIndex] = nil
+    self.PlayerRerollHistory[fromIndex] = nil
+    self.CurrentGrantSlot[fromIndex] = nil
+    self.PlayerOptionSlot[fromIndex] = nil
+    self.PlayerOptionRarity[fromIndex] = nil
+    self.PlayerEventQueues[fromIndex] = {}
+    self.PanelVisible[fromIndex] = nil
+    for viewerIndex = 1, 6, 1 do
+        if self.PanelVisible[viewerIndex] then
+            self:HidePanel(viewerIndex)
+            self:ShowPanel(viewerIndex)
+        end
+    end
 end
 
 -- 移除某玩家当前的候选卡（卡框 / 图标 / 重随按钮 / 标题），不动 PlayerOptions。
@@ -1002,14 +1158,17 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
         return
     end
     local rune = options[optionIndex]
-    -- 互斥兜底：开局测试事件按 Id 直取符文、不过筛池，这里拦住「已持有赌怪又选顺手的事」。
+    local slotIndex = self.PlayerOptionSlot[playerIndex] or playerIndex
+    self.CurrentGrantSlot[playerIndex] = slotIndex
+    -- 互斥兜底：候选是选卡那一刻生成的，其间玩家可能已拿到互斥符文（顺手的事的多拿一张
+    -- 会在同一批候选里连选），点选时按当时的持有情况再拦一次。
     if self:IsRuneExclusiveBlocked(playerIndex, rune) then
         exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
             Localization.get("hextech.error.rune_exclusive",
                 self:GetRuneDisplayName(rune)), 10)
         return
     end
-    if not self:AddOwnedRune(playerIndex, rune) then
+    if not self:AddOwnedRune(playerIndex, rune, slotIndex) then
         return
     end
     -- 顺手的事：本次还能多拿一张时，取走这一张后把剩下的候选压紧留在屏幕上继续点。
@@ -1028,6 +1187,12 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
     -- 记在 OnRuneChosen 之后：这一步才真正结束「第一次选择」，该次选择里质变/赌怪
     -- 现发的奖励符文仍按第一次选择筛池。
     self:MarkFormalSelectionReceived(playerIndex)
+    if not keepSelection then
+        -- 选择结束才清槽位上下文；「顺手的事」还要继续用同一个槽位。
+        self.CurrentGrantSlot[playerIndex] = nil
+        self.PlayerOptionSlot[playerIndex] = nil
+        self.PlayerOptionRarity[playerIndex] = nil
+    end
     if keepSelection then
         self:RelayoutOptionBoxes(playerIndex)
     else
@@ -1186,7 +1351,9 @@ end
 function HextechRune:CreatePanelNameText(viewerIndex, targetIndex, x, y)
     local viewerName = "Player_" .. viewerIndex
     local nameTextIndex = self:GetPanelNameTextIndex(targetIndex)
-    local nameText = "$p" .. targetIndex .. "Name"
+    self:EnsureRuneSlotState(targetIndex)
+    local ownerIndex = self.PlayerSlotOwner[targetIndex] or targetIndex
+    local nameText = "$p" .. ownerIndex .. "Name"
     exCreateCustomTextForPlayer(viewerName, {
         Index = nameTextIndex,
         Content = nameText,
@@ -1202,8 +1369,9 @@ end
 -- 创建某玩家的一行真实符文（当前最多显示 5 个，水平一排并居中于列）。
 function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     local viewerName = "Player_" .. viewerIndex
-    self:EnsurePlayerRuneState(targetIndex)
-    local owned = self.PlayerOwnedRunes[targetIndex]
+    self:EnsureRuneSlotState(targetIndex)
+    local owned = self.PlayerSlotOwnedRunes[targetIndex]
+    local ownerIndex = self.PlayerSlotOwner[targetIndex] or targetIndex
     -- 质变和赌怪属于即时奖励入口，面板只展示它们实际产出的符文。
     local displayRunes = {}
     for ownedIndex = 1, getn(owned), 1 do
@@ -1234,7 +1402,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
         local x = startX + (slot - 1) * (self.PanelRuneWidth + self.PanelRuneGap)
         local topY = y - self.PanelRuneHeight / 2
         local runeDesc = format("%s\n%s", self:GetRuneDisplayName(rune),
-            self:GetRuneDescription(rune, targetIndex))
+            self:GetRuneDescription(rune, ownerIndex))
         exCreateCustomButtonForPlayer(viewerName, {
             Index = btnIndex,
             TextureName = self.RarityFrameImageIds[rarity],

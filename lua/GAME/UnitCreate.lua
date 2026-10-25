@@ -34,8 +34,18 @@ function EnforceCelestialDF41PerPlayerLimit()
         local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
         if playerIndex ~= nil then
             local limit = 1
-            if g_HextechDF41ExtraQuota ~= nil and g_HextechDF41ExtraQuota[playerIndex] then
-                limit = 2
+            if GetPlayerDF41BuildLimit ~= nil then
+                limit = GetPlayerDF41BuildLimit(playerIndex)
+            else
+                local extraQuota = 0
+                if g_HextechDF41ExtraQuota ~= nil then
+                    extraQuota = g_HextechDF41ExtraQuota[playerIndex]
+                    if extraQuota == true then
+                        extraQuota = 1
+                    end
+                    extraQuota = tonumber(extraQuota) or 0
+                end
+                limit = 1 + extraQuota
             end
             playerDF41Count[ownerPlayerName] = (playerDF41Count[ownerPlayerName] or 0) + 1
             if playerDF41Count[ownerPlayerName] > limit then
@@ -43,15 +53,26 @@ function EnforceCelestialDF41PerPlayerLimit()
             end
         end
     end
-    if g_HextechDF41ExtraQuota == nil then
+    if GetPlayerDF41BuildLimit == nil and g_HextechDF41ExtraQuota == nil then
         return
     end
     -- 地编的限造脚本（DF 触发器）只认第一辆东风就会永久禁造，符文赠送的那辆
     -- 会让符文拥有者再也造不出自己的东风，因此这里按上限重新同步建造按钮。
     for playerIndex = 1, 6, 1 do
-        if g_HextechDF41ExtraQuota[playerIndex] then
+        local limit = 1
+        if GetPlayerDF41BuildLimit ~= nil then
+            limit = GetPlayerDF41BuildLimit(playerIndex)
+        elseif g_HextechDF41ExtraQuota ~= nil then
+            local extraQuota = g_HextechDF41ExtraQuota[playerIndex]
+            if extraQuota == true then
+                extraQuota = 1
+            end
+            extraQuota = tonumber(extraQuota) or 0
+            limit = 1 + extraQuota
+        end
+        if limit > 1 then
             local allowBuild = 0
-            if (playerDF41Count["Player_" .. playerIndex] or 0) < 2 then
+            if (playerDF41Count["Player_" .. playerIndex] or 0) < limit then
                 allowBuild = 1
             end
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playerIndex,

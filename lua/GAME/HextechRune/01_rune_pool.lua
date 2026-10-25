@@ -138,18 +138,25 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.burn_furry.desc",
         Effect = "burn_furry", RequiresType = "infantry",
         Icon = "Button_SovietScoutInfantry_small" },
+    -- 生异形 / 钓鱼佬：已上调为棱彩（Rarity 1），Id 保留 gold_ 前缀，避免排除名单与文档联动。
     -- 生异形：与烧福瑞同款回合转化，目标换成敌方载具（禁载具时整张下架）。
-    { Id = "gold_spawn_alien", Rarity = 2,
+    { Id = "gold_spawn_alien", Rarity = 1,
         NameKey = "hextech.rune.spawn_alien.name",
         DescKey = "hextech.rune.spawn_alien.desc",
         Effect = "spawn_alien", RequiresType = "vehicle",
         Icon = "Button_SovietScoutVehicle_small" },
     -- 钓鱼佬：与烧福瑞同款回合转化，目标换成敌方海军（禁海时整张下架）。
-    { Id = "gold_angler", Rarity = 2,
+    { Id = "gold_angler", Rarity = 1,
         NameKey = "hextech.rune.angler.name",
         DescKey = "hextech.rune.angler.desc",
         Effect = "angler", RequiresType = "navy",
         Icon = "Button_JapanAntiShipAircraft_air" },
+    -- 樱落：同款回合转化，目标换成敌方空军（禁空军时整张下架）。
+    { Id = "prismatic_sit_tight", Rarity = 1,
+        NameKey = "hextech.rune.sit_tight.name",
+        DescKey = "hextech.rune.sit_tight.desc",
+        Effect = "sit_tight", RequiresType = "aircraft",
+        Icon = "Button_JapanInterceptorAircraft_sea" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
         -- 摇光是 UNITLIST 槽 103（飞机段），按纯空军算：禁空军时这张符文不入池。
@@ -395,9 +402,10 @@ HextechRune.NonRepeatableRuneIds = {
     gold_soul_interlock = true,
     -- 烧福瑞：队友各持一份按 50/75/100% 叠加，同一名玩家第二份不再加档。
     gold_burn_furry = true,
-    -- 生异形 / 钓鱼佬：与烧福瑞同口径，队友各持一份按 50/75/100% 叠加，第二份不再加档。
+    -- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同口径，队友各持一份按 50/75/100% 叠加，第二份不再加档。
     gold_spawn_alien = true,
     gold_angler = true,
+    prismatic_sit_tight = true,
     -- 百虎上将：改成「名下全部步兵」后不再按份数给名额，第二份没有任何额外作用。
     silver_five_tiger_generals = true,
     gold_fortified = true,
@@ -474,6 +482,12 @@ HextechRune.PlayerOwnedRunes = HextechRune.PlayerOwnedRunes or {}
 HextechRune.PlayerOwnedRuneIds = HextechRune.PlayerOwnedRuneIds or {}
 HextechRune.PlayerOwnedRuneCounts = HextechRune.PlayerOwnedRuneCounts or {}
 HextechRune.PlayerOptions = HextechRune.PlayerOptions or {}
+-- 槽位展示数据：玩家退出后，槽位保留原符文，但名字换成继承者。
+HextechRune.PlayerSlotOwnedRunes = HextechRune.PlayerSlotOwnedRunes or {}
+HextechRune.PlayerSlotOwnedRuneIds = HextechRune.PlayerSlotOwnedRuneIds or {}
+HextechRune.PlayerSlotOwner = HextechRune.PlayerSlotOwner or {}
+HextechRune.CurrentGrantSlot = HextechRune.CurrentGrantSlot or {}
+HextechRune.SlotFormalSelectionCount = HextechRune.SlotFormalSelectionCount or {}
 
 function HextechRune:EnsurePlayerRuneState(playerIndex)
     if self.PlayerOwnedRunes[playerIndex] == nil then
@@ -484,6 +498,20 @@ function HextechRune:EnsurePlayerRuneState(playerIndex)
     end
     if self.PlayerOwnedRuneCounts[playerIndex] == nil then
         self.PlayerOwnedRuneCounts[playerIndex] = {}
+    end
+end
+
+-- 槽位初始为空；所有符文都通过 AddOwnedRune 同时写入聚合表与槽位展示表。
+function HextechRune:EnsureRuneSlotState(slotIndex)
+    if slotIndex == nil then
+        return
+    end
+    if self.PlayerSlotOwner[slotIndex] == nil then
+        self.PlayerSlotOwner[slotIndex] = slotIndex
+    end
+    if self.PlayerSlotOwnedRunes[slotIndex] == nil then
+        self.PlayerSlotOwnedRunes[slotIndex] = {}
+        self.PlayerSlotOwnedRuneIds[slotIndex] = {}
     end
 end
 
@@ -754,7 +782,7 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     return candidates
 end
 
--- ignoreFaction 只在开局测试局用：跳过全部阵营判定，好让苏联玩家也能拿「大生产」验协议栏。
+-- ignoreFaction：跳过全部阵营判定。analysis/hextech_dev_test_backup.md）按原样贴回时用。
 function HextechRune:IsRuneFactionAvailable(playerIndex, rune, ignoreFaction)
     if ignoreFaction then
         return true
@@ -1028,6 +1056,9 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     elseif rune.Effect == "angler" then
         return Localization.get(rune.DescKey,
             self:GetConversionRuneDisplayPercent(playerIndex, self.AnglerRuneId))
+    elseif rune.Effect == "sit_tight" then
+        return Localization.get(rune.DescKey,
+            self:GetConversionRuneDisplayPercent(playerIndex, self.SitTightRuneId))
     elseif rune.Effect == "divine_intervention" then
         return Localization.get(rune.DescKey,
             self:GetDivineInterventionDisplaySeconds(playerIndex))
@@ -1215,8 +1246,17 @@ function HextechRune:PickOneRune(playerIndex, rarity)
     return pool[self:RandomIndex(getn(pool))]
 end
 
-function HextechRune:AddOwnedRune(playerIndex, rune)
+function HextechRune:AddOwnedRune(playerIndex, rune, slotIndex)
+    -- 槽位展示数据：正常选择时槽位就是玩家自己；退出继承后的额外选择由调用方传 slotIndex。
+    if slotIndex == nil then
+        slotIndex = self.CurrentGrantSlot[playerIndex]
+    end
+    if slotIndex == nil then
+        slotIndex = playerIndex
+    end
     self:EnsurePlayerRuneState(playerIndex)
+    -- 必须在写入聚合表之前初始化槽位，否则会把刚加的这一条再复制一次。
+    self:EnsureRuneSlotState(slotIndex)
     local ownershipId = self:GetRuneOwnershipId(rune)
     if self:IsRuneNonRepeatable(rune)
         and self.PlayerOwnedRuneIds[playerIndex][ownershipId] then
@@ -1227,7 +1267,21 @@ function HextechRune:AddOwnedRune(playerIndex, rune)
     self.PlayerOwnedRuneIds[playerIndex][ownershipId] = true
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
+    tinsert(self.PlayerSlotOwnedRunes[slotIndex], rune)
+    self.PlayerSlotOwnedRuneIds[slotIndex][ownershipId] = true
     return true
+end
+
+-- 退出继承：把一条符文并进继承者的“效果聚合”，槽位展示列表保持原样。
+function HextechRune:TransferOwnedRuneToPlayer(playerIndex, rune)
+    self:EnsurePlayerRuneState(playerIndex)
+    local ownershipId = self:GetRuneOwnershipId(rune)
+    local ownedCount = (self.PlayerOwnedRuneCounts[playerIndex][ownershipId] or 0) + 1
+    self.PlayerOwnedRuneCounts[playerIndex][ownershipId] = ownedCount
+    self.PlayerOwnedRuneIds[playerIndex][ownershipId] = true
+    -- 用继承者名下的新序号，避免与继承者已有的同 ID 副本撞实例 ID 而少叠一层。
+    rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
+    tinsert(self.PlayerOwnedRunes[playerIndex], rune)
 end
 
 -- 每回合「名额」：登神 / 究极生物这类「一名玩家同一回合只能有一只」的效果共用。

@@ -272,6 +272,7 @@ end
 HextechRune.BurnFurryRuneId = "gold_burn_furry"
 HextechRune.SpawnAlienRuneId = "gold_spawn_alien"
 HextechRune.AnglerRuneId = "gold_angler"
+HextechRune.SitTightRuneId = "prismatic_sit_tight"
 -- 同阵营份数 → 转化比例：1/2/3 份 = 50%/75%/100%（超过 3 份按 100%）。
 HextechRune.BurnFurryPercentByCopies = { 0.50, 0.75, 1.00 }
 -- 生成的动物随机取一个：警犬（盟军探路兵位）/ 战熊（苏联探路兵位）。
@@ -279,9 +280,124 @@ HextechRune.BurnFurryAnimalTypes = { "AlliedScoutInfantry", "SovietScoutInfantry
 -- 生异形：敌方载具 → 恐怖机器人；钓鱼佬：敌方海军 → 海翼。
 HextechRune.SpawnAlienUnitTypes = { "SovietScoutVehicle" }
 HextechRune.AnglerUnitTypes = { "JapanAntiAirShip" }
+HextechRune.SitTightUnitTypes = { "JapanInterceptorAircraft" }
+-- 双形态单位按出生点归兵种：天狗/VX/心神/火箭天使算空军，不算载具/步兵。
+HextechRune.ConversionDualAirTypes = {
+    "JapanAntiInfantryVehicle",
+    "JapanAntiInfantryVehicle_Enhanced",
+    "JapanAntiInfantryVehicle_Enhanced_Water",
+    "JapanAntiAirVehicleTech1",
+    "JapanAntiAirVehicleTech1_Enhanced",
+    "JapanAntiAirVehicleTech1_Enhanced_Water",
+    "JapanMissileMechaAdvanced",
+    "JapanMissileMechaAdvanced_Enhanced",
+    "JapanMissileMechaAdvanced_Enhanced_Water",
+    "JapanAntiVehicleInfantryTech3",
+}
+HextechRune.ConversionDualAirFilter = CreateObjectFilter({
+    Rule = "ANY", Relationship = "SAME_PLAYER",
+    IncludeThing = HextechRune.ConversionDualAirTypes,
+    Exclude = "STRUCTURE DEBRIS"
+})
+-- P[7]/P[8] 是 AI 阵营锚点 MCV；任何转化符文都不能把它们换掉
+HextechRune.ConversionNeverConvertTypes = {
+    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
+    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
+    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
+    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
+    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
+    "CelestialMCV_Enhanced_Air",
+    -- 迅雷载具三形态（与九头蛇万岁、EnvKillAllUnit 的清场排除同口径）：
+    -- 运兵车被转化会连带吞掉车上单位，同时它们属于载具批次。
+    "JapanLightTransportVehicle",
+    "JapanLightTransportVehicle_AntiTank",
+    "JapanLightTransportVehicle_Kamikaze",
+}
+HextechRune.ConversionNeverConvertInstanceIds = {}
+for conversionTypeIndex = 1, getn(HextechRune.ConversionNeverConvertTypes), 1 do
+    HextechRune.ConversionNeverConvertInstanceIds[
+        FastHash(HextechRune.ConversionNeverConvertTypes[conversionTypeIndex])] = true
+end
+-- 载具转化要排除这些「空军出生点」单位，避免生异形把天狗/VX/心神当载具换掉。
+HextechRune.ConversionVehicleExcludeTypes = {}
+for conversionTypeIndex = 1, getn(HextechRune.ConversionDualAirTypes), 1 do
+    tinsert(HextechRune.ConversionVehicleExcludeTypes,
+        HextechRune.ConversionDualAirTypes[conversionTypeIndex])
+end
+for conversionTypeIndex = 1, getn(HextechRune.ConversionNeverConvertTypes), 1 do
+    tinsert(HextechRune.ConversionVehicleExcludeTypes,
+        HextechRune.ConversionNeverConvertTypes[conversionTypeIndex])
+end
+HextechRune.ConversionVehicleFilter = CreateObjectFilter({
+    Rule = "ANY", Relationship = "SAME_PLAYER",
+    Include = "VEHICLE HUGE_VEHICLE",
+    Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
+    ExcludeThing = HextechRune.ConversionVehicleExcludeTypes
+})
+-- 步兵转化同样按出生点：火箭天使走飞机批次，不能被烧福瑞换成狗熊。
+HextechRune.ConversionInfantryFilter = CreateObjectFilter({
+    Rule = "ANY", Relationship = "SAME_PLAYER",
+    Include = "INFANTRY",
+    Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
+    ExcludeThing = { "JapanAntiVehicleInfantryTech3" }
+})
+-- 转化目标只认回收系统的兵种配置：不走出兵系统的单位（地编摆放、技能召唤、
+-- 其它非本系统产物）本来就不会出兵，自然也不该被换掉。
+-- 名单来自 g_BanModeNameTypes（回收表 + 箱子表 + 双形态例外），补上形态别名
+-- 与替换型产物；具体兵种仍由各符文的引擎类别过滤 + 排除名单决定。
+HextechRune.ConversionSystemInstanceIds = nil
+
+function HextechRune:EnsureConversionSystemIds()
+    if self.ConversionSystemInstanceIds ~= nil then
+        return self.ConversionSystemInstanceIds
+    end
+    if BanModeBuildTypes == nil or g_BanModeNameTypes == nil then
+        return nil
+    end
+    BanModeBuildTypes()
+    if g_BanModeTypesReady ~= 1 then
+        return nil
+    end
+    local ids = {}
+    for unitName, types in g_BanModeNameTypes do
+        ids[FastHash(unitName)] = true
+    end
+    if g_PureDrawProductionAliases ~= nil then
+        for baseType, aliases in g_PureDrawProductionAliases do
+            for i = 1, getn(aliases), 1 do
+                ids[FastHash(aliases[i])] = true
+            end
+        end
+    end
+    if self.UnitReplacementRunes ~= nil then
+        for i = 1, getn(self.UnitReplacementRunes), 1 do
+            local replacementType = self.UnitReplacementRunes[i].ReplacementType
+            if replacementType ~= nil then
+                ids[FastHash(replacementType)] = true
+            end
+        end
+    end
+    self.ConversionSystemInstanceIds = ids
+    return ids
+end
+
+-- 查表不可用时放行（宁可按老口径转化，也不要让符文静默失效）。
+function HextechRune:IsConversionSystemUnit(unit)
+    local ids = self:EnsureConversionSystemIds()
+    if ids == nil then
+        return true
+    end
+    local objectId = ObjectGetId(unit)
+    if objectId == nil then
+        return false
+    end
+    return ids[ObjectGetInstanceId(objectId)] == true
+end
+
 HextechRune.BurnFurryAppliedRound = HextechRune.BurnFurryAppliedRound or {}
 HextechRune.SpawnAlienAppliedRound = HextechRune.SpawnAlienAppliedRound or {}
 HextechRune.AnglerAppliedRound = HextechRune.AnglerAppliedRound or {}
+HextechRune.SitTightAppliedRound = HextechRune.SitTightAppliedRound or {}
 HextechRune.ConversionSpawnSerial = HextechRune.ConversionSpawnSerial or 0
 
 function HextechRune:GetBurnFurryPercentByCopies(copies)
@@ -351,6 +467,11 @@ function HextechRune:GetConversionAttackTeam(sideIndex, unitType)
         if SHIPTEAMATTACK ~= nil and SHIPTEAMATTACK[sideIndex] ~= nil then
             return SHIPTEAMATTACK[sideIndex]
         end
+    elseif unitType == "aircraft" then
+        if AIRATTACK ~= nil and AIRATTACK[sideIndex] ~= nil
+            and AIRATTACK[sideIndex][1] ~= nil then
+            return AIRATTACK[sideIndex][1]
+        end
     else
         return self:GetBurnFurryAttackTeam(sideIndex)
     end
@@ -388,18 +509,80 @@ function HextechRune:SpawnBurnFurryAnimal(sideIndex, x, y, z, levelCount)
         "HextechBurnFurry", x, y, z, levelCount)
 end
 
+-- 任何转化符文都跳过：P[1..8] 锚点、MCV/龙船 MCV、6 个守护神、空军元帅技能召唤机。
+function HextechRune:IsConversionProtectedUnit(unit)
+    if unit == nil then
+        return true
+    end
+    if P ~= nil then
+        for anchorIndex = 1, 8, 1 do
+            if P[anchorIndex] == unit then
+                return true
+            end
+        end
+    end
+    -- 6 个守护神（overlord7/8、t533/t534、Sea3ProtectShip7/8）与塔守护者。
+    if self:IsPresetMapUnit(unit) then
+        return true
+    end
+    local objectId = ObjectGetId(unit)
+    if objectId == nil then
+        return false
+    end
+    -- 空军元帅等技能召唤出来的飞机，不参与任何转化。
+    if IsSkillSummonedUnitId ~= nil and IsSkillSummonedUnitId(objectId) then
+        return true
+    end
+    local instanceId = ObjectGetInstanceId(objectId)
+    -- 龙船 MCV（龙行天下）与普通 MCV 同属禁转名单。
+    if g_PlayerDragonShipHashes ~= nil
+        and g_PlayerDragonShipHashes[instanceId] then
+        return true
+    end
+    local neverIds = self.ConversionNeverConvertInstanceIds
+    if neverIds == nil then
+        return false
+    end
+    return neverIds[instanceId] == true
+end
+
 -- 删掉对面该比例的指定兵种，并在原地生成等量的替换单位。只动 P7/P8 的战场单位，
 -- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
 function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitType,
-    spawnTypes, spawnPrefix)
-    if P == nil or P[sideIndex] == nil or filter == nil or percent <= 0 then
+    spawnTypes, spawnPrefix, extraFilter)
+    if P == nil or P[sideIndex] == nil or not ObjectIsAlive(P[sideIndex])
+        or filter == nil or percent <= 0 then
         return 0
     end
     local units, count = ObjectFindObjects(P[sideIndex], nil, filter)
+    if units == nil or type(count) ~= "number" then
+        return 0
+    end
     local candidates = {}
+    local seen = {}
     for i = 1, count, 1 do
-        if ObjectIsAlive(units[i]) and not self:IsPresetMapUnit(units[i]) then
+        if ObjectIsAlive(units[i]) and not self:IsPresetMapUnit(units[i])
+            and not self:IsConversionProtectedUnit(units[i])
+            and self:IsConversionSystemUnit(units[i]) then
+            seen[units[i]] = true
             tinsert(candidates, units[i])
+        end
+    end
+    -- 双形态单位（天狗/VX/心神）当前可能是载具形态，AIRCRAFT 过滤器抓不到，
+    -- 再用一份按模板名的过滤器补齐。
+    if extraFilter ~= nil then
+        local extraUnits, extraCount = ObjectFindObjects(P[sideIndex], nil, extraFilter)
+        if extraUnits ~= nil and type(extraCount) == "number" then
+            for i = 1, extraCount, 1 do
+                local unit = extraUnits[i]
+                if ObjectIsAlive(unit) and not self:IsPresetMapUnit(unit)
+                    and not self:IsConversionProtectedUnit(unit)
+                    and self:IsConversionSystemUnit(unit)
+                    and seen[unit] == nil then
+                    seen[unit] = true
+                    tinsert(candidates, unit)
+                end
+            end
         end
     end
     local total = getn(candidates)
@@ -438,7 +621,9 @@ end
 
 function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
     local filter = nil
-    if self.UnitTypeFilters ~= nil then
+    if self.ConversionInfantryFilter ~= nil then
+        filter = self.ConversionInfantryFilter
+    elseif self.UnitTypeFilters ~= nil then
         filter = self.UnitTypeFilters.infantry
     end
     return self:ConvertEnemyUnitsOfType(sideIndex, percent, filter, "infantry",
@@ -448,6 +633,9 @@ end
 -- 回合开始（出兵混编完成后）结算一次；补充军队会让回合效果重走一遍，按回合号去重。
 -- 2026-10-19 用户实测反馈：去掉每回合的播报（会刷屏），只静默改造敌兵。
 function HextechRune:ApplyBurnFurryPulse(round)
+    if BanModeIsTypeEnabled ~= nil and BanModeIsTypeEnabled("infantry") ~= 1 then
+        return
+    end
     if round == nil then
         round = exCounterGetByName("lvc")
     end
@@ -463,14 +651,17 @@ function HextechRune:ApplyBurnFurryPulse(round)
     end
 end
 
--- 生异形 / 钓鱼佬：与烧福瑞同时机、同份数口径，只换敌方兵种与替换单位。
-function HextechRune:ApplyConversionRunePulse(runeId, unitType, spawnTypes,
-    spawnPrefix, appliedRound, round)
+-- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同份数口径，只换敌方兵种与替换单位。
+-- 兵种被禁时该兵种不会出兵，对应的转化也不结算。
+function HextechRune:ApplyConversionRuneBasePulse(runeId, unitType, spawnTypes,
+    spawnPrefix, appliedRound, round, filter, extraFilter)
+    if BanModeIsTypeEnabled ~= nil and BanModeIsTypeEnabled(unitType) ~= 1 then
+        return
+    end
     if round == nil then
         round = exCounterGetByName("lvc")
     end
-    local filter = nil
-    if self.UnitTypeFilters ~= nil then
+    if filter == nil and self.UnitTypeFilters ~= nil then
         filter = self.UnitTypeFilters[unitType]
     end
     for holderSideIndex = 7, 8, 1 do
@@ -480,19 +671,37 @@ function HextechRune:ApplyConversionRunePulse(runeId, unitType, spawnTypes,
         elseif appliedRound[holderSideIndex] ~= round then
             appliedRound[holderSideIndex] = round
             self:ConvertEnemyUnitsOfType(self:GetOpposingSideIndex(holderSideIndex),
-                percent, filter, unitType, spawnTypes, spawnPrefix)
+                percent, filter, unitType, spawnTypes, spawnPrefix, extraFilter)
         end
     end
 end
 
 function HextechRune:ApplySpawnAlienPulse(round)
-    self:ApplyConversionRunePulse(self.SpawnAlienRuneId, "vehicle",
+    self:ApplyConversionRuneBasePulse(self.SpawnAlienRuneId, "vehicle",
         self.SpawnAlienUnitTypes, "HextechSpawnAlien",
-        self.SpawnAlienAppliedRound, round)
+        self.SpawnAlienAppliedRound, round, self.ConversionVehicleFilter)
 end
 
 function HextechRune:ApplyAnglerPulse(round)
-    self:ApplyConversionRunePulse(self.AnglerRuneId, "navy",
+    self:ApplyConversionRuneBasePulse(self.AnglerRuneId, "navy",
         self.AnglerUnitTypes, "HextechAngler",
-        self.AnglerAppliedRound, round)
+        self.AnglerAppliedRound, round, self.UnitTypeFilters.navy)
+end
+
+function HextechRune:ApplySitTightPulse(round)
+    self:ApplyConversionRuneBasePulse(self.SitTightRuneId, "aircraft",
+        self.SitTightUnitTypes, "HextechSitTight",
+        self.SitTightAppliedRound, round, self.UnitTypeFilters.aircraft,
+        self.ConversionDualAirFilter)
+end
+
+-- 四个转化符文统一在 AIRSPACT 的空军/轻载具批次出完后结算（由该节点调度，
+-- 不再挂在 LandArmySpawn 末尾的 ApplyRoundEffects 上，否则会早于空军批次）。
+-- 顺序固定：烧福瑞 → 生异形 → 樱落 → 钓鱼佬。先结算的符文产出的替换单位
+-- 不再被后面的符文二次转化，钓鱼佬必须最后，避免海军替换出的海翼被空军再换一遍。
+function HextechRune:ApplyAllConversionPulses(round)
+    self:ApplyBurnFurryPulse(round)
+    self:ApplySpawnAlienPulse(round)
+    self:ApplySitTightPulse(round)
+    self:ApplyAnglerPulse(round)
 end
