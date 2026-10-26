@@ -10,20 +10,13 @@ if count <= 0 then
     return
 end
 
--- 与九头蛇/冰天雪地同款：
+-- 与九头蛇/冰天雪地同款；落点排除群体统一取自 BasicVar 的登记表。
 local landingTargetFilter = CreateObjectFilter({
     Rule = "ANY",
     Relationship = "SAME_PLAYER",
     Include = "SELECTABLE",
-    ExcludeThing = { "JapanFortressShip", "JapanigaFortressShip", "Overlordtank",
-        "AlliedMCV",
-        "CelestialMCV", "CelestialMCV_Ground", "CelestialMCV_Naval", "CelestialMCV_Air",
-        "CelestialMCV_Enhanced", "CelestialMCV_Enhanced_Ground",
-        "CelestialMCV_Enhanced_Naval", "CelestialMCV_Enhanced_Air",
-        "CelestialBaseDefenseAdvanced", "CelestialBaseDefenseAdvanced_NoCore",
-        "CelestialBaseDefenseAir", "CelestialEnergyGatlingTower",
-        "AlliedHeavyArtilleryDefenseBase", "SovietBaseDefenseAdvanced",
-        "JapanBaseDefenseAdvanced" },
+    ExcludeThing = g_CollectTargetNames({ "GuardianFormTemplate", "AIAnchorMCV",
+        "DragonShip", "DefenseTower" }),
     Exclude = "AIRCRAFT SHIP STRUCTURE DEBRIS IGNORE_IN_AI_HUNT_TACTIC IMMOBILE",
 })
 local landingTargets, landingTargetCount = ObjectFindObjects(targetTower, nil, landingTargetFilter)

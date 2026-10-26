@@ -282,65 +282,67 @@ HextechRune.SpawnAlienUnitTypes = { "SovietScoutVehicle" }
 HextechRune.AnglerUnitTypes = { "JapanAntiAirShip" }
 HextechRune.SitTightUnitTypes = { "JapanInterceptorAircraft" }
 -- 双形态单位按出生点归兵种：天狗/VX/心神/火箭天使算空军，不算载具/步兵。
-HextechRune.ConversionDualAirTypes = {
-    "JapanAntiInfantryVehicle",
-    "JapanAntiInfantryVehicle_Enhanced",
-    "JapanAntiInfantryVehicle_Enhanced_Water",
-    "JapanAntiAirVehicleTech1",
-    "JapanAntiAirVehicleTech1_Enhanced",
-    "JapanAntiAirVehicleTech1_Enhanced_Water",
-    "JapanMissileMechaAdvanced",
-    "JapanMissileMechaAdvanced_Enhanced",
-    "JapanMissileMechaAdvanced_Enhanced_Water",
-    "JapanAntiVehicleInfantryTech3",
-}
-HextechRune.ConversionDualAirFilter = CreateObjectFilter({
-    Rule = "ANY", Relationship = "SAME_PLAYER",
-    IncludeThing = HextechRune.ConversionDualAirTypes,
-    Exclude = "STRUCTURE DEBRIS"
-})
--- P[7]/P[8] 是 AI 阵营锚点 MCV；任何转化符文都不能把它们换掉
-HextechRune.ConversionNeverConvertTypes = {
-    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
-    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
-    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
-    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
-    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
-    "CelestialMCV_Enhanced_Air",
-    -- 迅雷载具三形态（与九头蛇万岁、EnvKillAllUnit 的清场排除同口径）：
-    -- 运兵车被转化会连带吞掉车上单位，同时它们属于载具批次。
-    "JapanLightTransportVehicle",
-    "JapanLightTransportVehicle_AntiTank",
-    "JapanLightTransportVehicle_Kamikaze",
-}
-HextechRune.ConversionNeverConvertInstanceIds = {}
-for conversionTypeIndex = 1, getn(HextechRune.ConversionNeverConvertTypes), 1 do
-    HextechRune.ConversionNeverConvertInstanceIds[
-        FastHash(HextechRune.ConversionNeverConvertTypes[conversionTypeIndex])] = true
+-- 名单统一取自 BasicVar 的目标群体登记表；本节点早于它加载，所以过滤器懒建。
+HextechRune.ConversionDualAirFilter = nil
+
+function HextechRune:GetConversionDualAirFilter()
+    if self.ConversionDualAirFilter == nil then
+        self.ConversionDualAirFilter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            IncludeThing = g_CollectTargetNames(
+                { "DualFormVehicleAir", "DualFormInfantryAir" }),
+            Exclude = "STRUCTURE DEBRIS"
+        })
+    end
+    return self.ConversionDualAirFilter
 end
+
+-- P[7]/P[8] 是 AI 阵营锚点 MCV；任何转化符文都不能把它们换掉。
+-- MCV 与运兵车（转化会连带吞掉车上单位）的名单统一取自登记表。
+HextechRune.ConversionNeverConvertInstanceIds = nil
+
+function HextechRune:GetConversionNeverConvertInstanceIds()
+    if self.ConversionNeverConvertInstanceIds == nil then
+        local names = g_CollectTargetNames({ "MCV", "Transport" })
+        local ids = {}
+        for conversionTypeIndex = 1, getn(names), 1 do
+            ids[FastHash(names[conversionTypeIndex])] = true
+        end
+        self.ConversionNeverConvertInstanceIds = ids
+    end
+    return self.ConversionNeverConvertInstanceIds
+end
+
 -- 载具转化要排除这些「空军出生点」单位，避免生异形把天狗/VX/心神当载具换掉。
-HextechRune.ConversionVehicleExcludeTypes = {}
-for conversionTypeIndex = 1, getn(HextechRune.ConversionDualAirTypes), 1 do
-    tinsert(HextechRune.ConversionVehicleExcludeTypes,
-        HextechRune.ConversionDualAirTypes[conversionTypeIndex])
+HextechRune.ConversionVehicleFilter = nil
+
+function HextechRune:GetConversionVehicleFilter()
+    if self.ConversionVehicleFilter == nil then
+        self.ConversionVehicleFilter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            Include = "VEHICLE HUGE_VEHICLE",
+            Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
+            ExcludeThing = g_CollectTargetNames({ "DualFormVehicleAir",
+                "DualFormInfantryAir", "MCV", "Transport" })
+        })
+    end
+    return self.ConversionVehicleFilter
 end
-for conversionTypeIndex = 1, getn(HextechRune.ConversionNeverConvertTypes), 1 do
-    tinsert(HextechRune.ConversionVehicleExcludeTypes,
-        HextechRune.ConversionNeverConvertTypes[conversionTypeIndex])
-end
-HextechRune.ConversionVehicleFilter = CreateObjectFilter({
-    Rule = "ANY", Relationship = "SAME_PLAYER",
-    Include = "VEHICLE HUGE_VEHICLE",
-    Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
-    ExcludeThing = HextechRune.ConversionVehicleExcludeTypes
-})
+
 -- 步兵转化同样按出生点：火箭天使走飞机批次，不能被烧福瑞换成狗熊。
-HextechRune.ConversionInfantryFilter = CreateObjectFilter({
-    Rule = "ANY", Relationship = "SAME_PLAYER",
-    Include = "INFANTRY",
-    Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
-    ExcludeThing = { "JapanAntiVehicleInfantryTech3" }
-})
+HextechRune.ConversionInfantryFilter = nil
+
+function HextechRune:GetConversionInfantryFilter()
+    if self.ConversionInfantryFilter == nil then
+        self.ConversionInfantryFilter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            Include = "INFANTRY",
+            Exclude = "STRUCTURE AIRCRAFT SHIP DEBRIS",
+            ExcludeThing = g_TargetGroupNames.DualFormInfantryAir
+        })
+    end
+    return self.ConversionInfantryFilter
+end
 -- 转化目标只认回收系统的兵种配置：不走出兵系统的单位（地编摆放、技能召唤、
 -- 其它非本系统产物）本来就不会出兵，自然也不该被换掉。
 -- 名单来自 g_BanModeNameTypes（回收表 + 箱子表 + 双形态例外），补上形态别名
@@ -539,7 +541,7 @@ function HextechRune:IsConversionProtectedUnit(unit)
         and g_PlayerDragonShipHashes[instanceId] then
         return true
     end
-    local neverIds = self.ConversionNeverConvertInstanceIds
+    local neverIds = self:GetConversionNeverConvertInstanceIds()
     if neverIds == nil then
         return false
     end
@@ -620,12 +622,7 @@ function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitTyp
 end
 
 function HextechRune:ConvertBurnFurryInfantry(sideIndex, percent)
-    local filter = nil
-    if self.ConversionInfantryFilter ~= nil then
-        filter = self.ConversionInfantryFilter
-    elseif self.UnitTypeFilters ~= nil then
-        filter = self.UnitTypeFilters.infantry
-    end
+    local filter = self:GetConversionInfantryFilter()
     return self:ConvertEnemyUnitsOfType(sideIndex, percent, filter, "infantry",
         self.BurnFurryAnimalTypes, "HextechBurnFurry")
 end
@@ -679,7 +676,7 @@ end
 function HextechRune:ApplySpawnAlienPulse(round)
     self:ApplyConversionRuneBasePulse(self.SpawnAlienRuneId, "vehicle",
         self.SpawnAlienUnitTypes, "HextechSpawnAlien",
-        self.SpawnAlienAppliedRound, round, self.ConversionVehicleFilter)
+        self.SpawnAlienAppliedRound, round, self:GetConversionVehicleFilter())
 end
 
 function HextechRune:ApplyAnglerPulse(round)
@@ -692,7 +689,7 @@ function HextechRune:ApplySitTightPulse(round)
     self:ApplyConversionRuneBasePulse(self.SitTightRuneId, "aircraft",
         self.SitTightUnitTypes, "HextechSitTight",
         self.SitTightAppliedRound, round, self.UnitTypeFilters.aircraft,
-        self.ConversionDualAirFilter)
+        self:GetConversionDualAirFilter())
 end
 
 -- 四个转化符文统一在 AIRSPACT 的空军/轻载具批次出完后结算（由该节点调度，

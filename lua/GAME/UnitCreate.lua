@@ -85,16 +85,8 @@ SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, 
 
 -- 玩家获得青龙核心舰后不能将其作为战斗单位使用：每名玩家第一次获得时转换成伏龙殿，
 -- 第二次及以后自动按现有回收规则返款。电脑所属的技能龙船不受影响。
-g_PlayerDragonShipTypes = {
-    "CelestialMCV",
-    "CelestialMCV_Enhanced",
-    "CelestialMCV_Ground",
-    "CelestialMCV_Naval",
-    "CelestialMCV_Air",
-    "CelestialMCV_Enhanced_Ground",
-    "CelestialMCV_Enhanced_Naval",
-    "CelestialMCV_Enhanced_Air",
-}
+-- 名单统一取自 BasicVar 的 DragonShip 群体。
+g_PlayerDragonShipTypes = g_TargetGroupNames.DragonShip
 g_PlayerDragonShipRecyclePrice = 5000
 -- 伏龙殿落点相对基地出生点的偏移：出生点正好压在右下方帝国 MCV 的出口上，
 -- 所以生成后统一往地图右上方（世界坐标 +X/+Y，六名玩家方向一致）挪开。
@@ -396,34 +388,7 @@ function JapanKamikazeInfantryBorn(createdObjId, createdObjInstanceId, ownerPlay
     end, 1, {createdObjId})
 end
 
--- 空军元帅使用双方现有的 BASE 编队作为专用飞行编队，避开普通 AIR/AIRATTACK 编队 AI。
--- 命名检测作为后备；GetObjectByScriptName 查询单位命名空间，不会与同名路径点冲突。
-g_AirMarshalTeamNames = {
-    ["BASE"] = true,
-    ["PlyrCivilian/BASE"] = true,
-    ["PlyrCreeps/BASE"] = true,
-}
-
-function IsAirMarshalAircraft(unit)
-    if unit == nil then
-        return false
-    end
-    if g_AirMarshalTeamNames[ObjectTeamName(unit)] then
-        return true
-    end
-    local unitId = ObjectGetId(unit)
-    for i = 1, 8, 1 do
-        local angelUnit = GetObjectByScriptName("angel" .. i)
-        if angelUnit ~= nil and ObjectGetId(angelUnit) == unitId then
-            return true
-        end
-        local devilUnit = GetObjectByScriptName("devil" .. i)
-        if devilUnit ~= nil and ObjectGetId(devilUnit) == unitId then
-            return true
-        end
-    end
-    return false
-end
+-- 空军元帅的编队/脚本名判定与技能召唤登记统一在 BasicVar（IsAirMarshalAircraft）。
 
 g_TanyaTowerBombState = g_TanyaTowerBombState or {}
 g_TanyaBombTowerScriptNames = g_TanyaBombTowerScriptNames or {
@@ -1295,12 +1260,7 @@ function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
     return false
 end
 
--- 存活周期豁免：六个预设守护神（4 个塔守护者 + 2 个海塔守卫）与技能召唤的龙船。
-g_BattleUnitLifetimeGuardScriptNames = {
-    "overlord7", "overlord8", "t533", "t534",
-    "Sea3ProtectShip7", "Sea3ProtectShip8",
-}
-
+-- 存活周期豁免：六个预设守护神（名单见 BasicVar 的 PresetGuardian）与技能召唤的龙船。
 function IsBattleUnitLifetimeExempt(objectId, unit)
     if unit == nil then
         return false
@@ -1308,8 +1268,8 @@ function IsBattleUnitLifetimeExempt(objectId, unit)
     if IsTowerGuardian ~= nil and IsTowerGuardian(unit) then
         return true
     end
-    for i = 1, getn(g_BattleUnitLifetimeGuardScriptNames), 1 do
-        local guard = GetObjectByScriptName(g_BattleUnitLifetimeGuardScriptNames[i])
+    for i = 1, getn(g_TargetGroupNames.PresetGuardian), 1 do
+        local guard = GetObjectByScriptName(g_TargetGroupNames.PresetGuardian[i])
         if guard ~= nil and ObjectGetId(guard) == objectId then
             return true
         end

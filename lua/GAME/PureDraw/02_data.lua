@@ -229,13 +229,8 @@ g_PureDrawAlwaysKnownUnitHashes = {}
 g_PureDrawObservedPlayerUnitHashes = {}
 g_PureDrawAlwaysKnownUnitTypes = {
     "AlliedEngineer", "SovietEngineer", "JapanEngineer", "CelestialEngineer",
-    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
-    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
-    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
-    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
-    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
-    "CelestialMCV_Enhanced_Air",
 }
+g_AppendTargetNames(g_PureDrawAlwaysKnownUnitTypes, "MCV")
 for i = 1, getn(g_PureDrawAlwaysKnownUnitTypes), 1 do
     local unitHash = FastHash(g_PureDrawAlwaysKnownUnitTypes[i])
     g_PureDrawAlwaysKnownUnitHashes[unitHash] = true

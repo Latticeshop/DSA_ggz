@@ -363,29 +363,12 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
 end
 
-HextechRune.PresetMapUnitScriptNames = {
-    "overlord7", "overlord8", "t533", "t534",
-    "Sea3ProtectShip7", "Sea3ProtectShip8",
-}
-
+-- 六个预设守护神的判定统一在 BasicVar（g_IsPresetGuardianUnitId）。
 function HextechRune:IsPresetMapUnitId(objectId)
-    if objectId == nil then
+    if g_IsPresetGuardianUnitId == nil then
         return false
     end
-    if g_TowerGuardianUnitIds ~= nil
-        and g_TowerGuardianUnitIds[objectId] ~= nil then
-        return true
-    end
-    if GetObjectByScriptName == nil then
-        return false
-    end
-    for i = 1, getn(self.PresetMapUnitScriptNames), 1 do
-        local preset = GetObjectByScriptName(self.PresetMapUnitScriptNames[i])
-        if preset ~= nil and ObjectGetId(preset) == objectId then
-            return true
-        end
-    end
-    return false
+    return g_IsPresetGuardianUnitId(objectId)
 end
 
 function HextechRune:IsPresetMapUnit(unit)

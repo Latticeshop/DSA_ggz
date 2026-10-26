@@ -1,7 +1,7 @@
-local units, count = ObjectFindObjects(T74, nil, unitall)
+local units, count = ObjectFindObjects(T74, nil, g_GetDamoclesUnitFilter())
 local aliveUnits = {}
 for i = 1, count, 1 do
-    if ObjectIsAlive(units[i]) then
+    if ObjectIsAlive(units[i]) and not g_IsPresetGuardianUnit(units[i]) then
         tinsert(aliveUnits, units[i])
     end
 end

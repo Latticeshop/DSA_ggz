@@ -2,57 +2,23 @@
 
 -- 第 6 组技能：九头蛇万岁 + 冰天雪地。
 
-g_ExcludeThingNames = {
-    -- 防御塔：本体 + 无核心形态，以及其余四种塔。
-    "CelestialBaseDefenseAdvanced",
-    "CelestialBaseDefenseAdvanced_NoCore",
-    "CelestialBaseDefenseAir",
-    "CelestialEnergyGatlingTower",
-    "AlliedHeavyArtilleryDefenseBase",
-    "SovietBaseDefenseAdvanced",
-    "JapanBaseDefenseAdvanced",
-    -- 运兵车三个变体（与 EnvKillAllUnit 的清场排除同口径）。
-    "JapanLightTransportVehicle",
-    "JapanLightTransportVehicle_AntiTank",
-    "JapanLightTransportVehicle_Kamikaze",
-    -- MCV（同 PureDraw/06_init_mcv.lua 的 g_MCVTypes）：AI 两侧的地编 MCV 就是
-    -- P[7]/P[8] 阵营锚点，转属会让整侧微操循环的 SAME_PLAYER 扫描翻到对面。
-    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
-    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
-    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
-    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
-    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
-    "CelestialMCV_Enhanced_Air",
-}
+-- 敌方场上单位过滤：建筑/防御塔、运兵车、MCV 不进技能目标池。
+-- 守护神不在这里按模板排除，由 g_GetEnemyBattlefieldContext 逐个剔除
+-- （普通 Overlordtank/JapanFortressShip 不因此豁免）。群体名单见 BasicVar 登记表。
+-- 本节点早于 GAME/BasicVar 加载，过滤器必须首次使用时再建。
+g_EnemyFieldUnitFilter = nil
 
-g_EnemyFieldUnitFilter = CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    Include="SELECTABLE",
-    Exclude="STRUCTURE",
-    ExcludeThing=g_ExcludeThingNames,
-})
-
-g_HydraGuardExemptNames = {
-    "overlord7", "overlord8", "t533", "t534",
-    "Sea3ProtectShip7", "Sea3ProtectShip8",
-}
-
-function g_IsPresetGuardianUnit(unit)
-    if unit == nil then
-        return false
+function g_GetEnemyFieldUnitFilter()
+    if g_EnemyFieldUnitFilter == nil then
+        g_EnemyFieldUnitFilter = CreateObjectFilter({
+            Rule="ANY",
+            Relationship="SAME_PLAYER",
+            Include="SELECTABLE",
+            Exclude="STRUCTURE",
+            ExcludeThing=g_CollectTargetNames({"DefenseTower", "Transport", "MCV"}),
+        })
     end
-    if IsTowerGuardian ~= nil and IsTowerGuardian(unit) then
-        return true
-    end
-    local objectId = ObjectGetId(unit)
-    for i = 1, getn(g_HydraGuardExemptNames), 1 do
-        local guard = GetObjectByScriptName(g_HydraGuardExemptNames[i])
-        if guard ~= nil and ObjectGetId(guard) == objectId then
-            return true
-        end
-    end
-    return false
+    return g_EnemyFieldUnitFilter
 end
 
 -- 从 1..count 里不重复地随机抽 pickCount 个下标。
@@ -79,7 +45,9 @@ end
 -- 以对面主炮塔为参考对象取敌方场上单位，再剔掉地图预设的守护神。
 -- sideAIPlayer 是本方阵营 AI。skipIronCurtain 供改归属类效果使用：
 -- 铁幕免疫心控是设定，但这里是代码切阵营，引擎不会自动挡，得自己剔除。
-function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain)
+-- skipSkillSummoned 同样只给改归属用：技能召唤单位（空军元帅苏霍伊、龙船）自带
+-- 无限血攻弹药类作弊加成，不能被心控；与符文转化口径一致（18_basics_exchange）。
+function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain, skipSkillSummoned)
     local context = {
         sideAIPlayer = "PlyrCivilian",
         sideIndex = 7,
@@ -95,11 +63,12 @@ function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain)
     if context.enemyTower == nil then
         return context
     end
-    local candidates, count = ObjectFindObjects(context.enemyTower, nil, g_EnemyFieldUnitFilter)
+    local candidates, count = ObjectFindObjects(context.enemyTower, nil, g_GetEnemyFieldUnitFilter())
     for i = 1, count, 1 do
         local unit = candidates[i]
         if ObjectIsAlive(unit) and not g_IsPresetGuardianUnit(unit)
-            and not (skipIronCurtain and g_IsIronCurtainActive(unit)) then
+            and not (skipIronCurtain and g_IsIronCurtainActive(unit))
+            and not (skipSkillSummoned and IsSkillSummonedUnitId(ObjectGetId(unit))) then
             context.total = context.total + 1
             context.units[context.total] = unit
         end
@@ -128,9 +97,10 @@ function g_FillUnitCryoToFreeze(unit)
 end
 
 -- 冻结敌方场上全部单位：名单与冰柱同源（g_GetEnemyBattlefieldContext），
--- 因此建筑、防御塔、地编预设守护神都不会被冻。解冻交给引擎自然衰减。
+-- 因此建筑、防御塔、地编预设守护神、技能召唤单位（空军元帅苏霍伊）都不会被冻。
+-- 解冻交给引擎自然衰减。
 function g_FreezeAllEnemyFieldUnits(playerIndex)
-    local context = g_GetEnemyBattlefieldContext(playerIndex)
+    local context = g_GetEnemyBattlefieldContext(playerIndex, false, true)
     for i = 1, getn(context.units), 1 do
         g_FillUnitCryoToFreeze(context.units[i])
     end
@@ -181,7 +151,7 @@ function RequestHydra(playerIndex)
     if playerIndex >= 4 then
         sideName = Localization.get("side.angel")
     end
-    local context = g_GetEnemyBattlefieldContext(playerIndex, true)
+    local context = g_GetEnemyBattlefieldContext(playerIndex, true, true)
     -- 存活单位的一半，向上取整（5 个心控 3 个）。
     local picked = g_PickRandomIndices(context.total, floor((context.total + 1) / 2))
     local attackTeam = context.sideAIPlayer .. "/ATTACK"
@@ -262,7 +232,7 @@ function RequestSnowstorm(playerIndex)
     if playerIndex >= 4 then
         sideName = Localization.get("side.angel")
     end
-    local context = g_GetEnemyBattlefieldContext(playerIndex)
+    local context = g_GetEnemyBattlefieldContext(playerIndex, false, true)
     if context.total < 1 then
         exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
             Localization.get("center_top.error.no_unit_to_freeze"), 8)

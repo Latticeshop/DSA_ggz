@@ -1,24 +1,32 @@
-unitallEnv = CreateObjectFilter({
-    Rule="ANY",
-    Relationship="SAME_PLAYER",
-    IncludeThing={},
-    ExcludeThing={
-        "JapanLightTransportVehicle",
-        "JapanLightTransportVehicle_AntiTank",
-        "JapanLightTransportVehicle_Kamikaze",
-        "AlliedNightinaleHelicopter",
-        "AlliedMCV",
-    },
-    Include="SELECTABLE",
-    Exclude="STRUCTURE",
-})
+-- 本节点早于 GAME/BasicVar 加载，过滤器必须首次使用时再建。
+g_EnvKillUnitFilter = nil
+
+function g_GetEnvKillUnitFilter()
+    if g_EnvKillUnitFilter == nil then
+        g_EnvKillUnitFilter = CreateObjectFilter({
+            Rule="ANY",
+            Relationship="SAME_PLAYER",
+            ExcludeThing=g_CollectTargetNames({"Transport", "Nightingale", "AIAnchorMCV"}),
+            Include="SELECTABLE",
+            Exclude="STRUCTURE",
+        })
+    end
+    return g_EnvKillUnitFilter
+end
 
 -- 夜莺也需要被干掉
-killableNightinale = CreateObjectFilter({
-    Relationship="SAME_PLAYER",
-    IncludeThing={ "AlliedNightinaleHelicopter" },
-    StatusBitFlagsExclude="STEALTHED",
-})
+g_KillableNightingaleFilter = nil
+
+function g_GetKillableNightingaleFilter()
+    if g_KillableNightingaleFilter == nil then
+        g_KillableNightingaleFilter = CreateObjectFilter({
+            Relationship="SAME_PLAYER",
+            IncludeThing=g_TargetGroupNames.Nightingale,
+            StatusBitFlagsExclude="STEALTHED",
+        })
+    end
+    return g_KillableNightingaleFilter
+end
 
 RoundLuaManager.CallOnEveryRoundBegin(function(list)
     local level = exCounterGetByName("lvc")
@@ -28,26 +36,26 @@ RoundLuaManager.CallOnEveryRoundBegin(function(list)
         end
         if level == 9 or level == 23 then
             exAddTextToPublicBoard(Localization.get("env_kill_all_unit.execute"), 10)
-            local units, count = ObjectFindObjects(T74, nil, unitallEnv);
+            local units, count = ObjectFindObjects(T74, nil, g_GetEnvKillUnitFilter());
             for i = 1 , count , 1 do
-                if not IsTowerGuardian(units[i]) then
+                if not g_IsPresetGuardianUnit(units[i]) then
                     ExecuteAction("NAMED_KILL", units[i]);
                 end
             end
 
-            local units2, count2 = ObjectFindObjects(T84, nil, unitallEnv);
+            local units2, count2 = ObjectFindObjects(T84, nil, g_GetEnvKillUnitFilter());
             for i = 1 , count2 , 1 do
-                if not IsTowerGuardian(units2[i]) then
+                if not g_IsPresetGuardianUnit(units2[i]) then
                     ExecuteAction("NAMED_KILL", units2[i]);
                 end
             end
 
-            local nightinaleUnits, nightinaleCount = ObjectFindObjects(T74, nil, killableNightinale)
+            local nightinaleUnits, nightinaleCount = ObjectFindObjects(T74, nil, g_GetKillableNightingaleFilter())
             for i = 1 , nightinaleCount , 1 do
                 ExecuteAction("NAMED_KILL", nightinaleUnits[i]);
             end
 
-            local nightinaleUnits2, nightinaleCount2 = ObjectFindObjects(T84, nil, killableNightinale)
+            local nightinaleUnits2, nightinaleCount2 = ObjectFindObjects(T84, nil, g_GetKillableNightingaleFilter())
             for i = 1 , nightinaleCount2 , 1 do
                 ExecuteAction("NAMED_KILL", nightinaleUnits2[i]);
             end

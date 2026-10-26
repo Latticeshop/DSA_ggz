@@ -210,20 +210,11 @@ end
 
 -- 检测 AI 的 MCV（包括青龙战斗核心舰）是否在中央战场。
 -- 玩家青龙核心舰已由生成事件转换为伏龙殿或自动回收；这里仅处理 AI 单位。
-g_MCVTypes = {
-    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
-    "SovietMCV", "SovietMCV_Enhanced", "SovietMCV_Naval", "SovietMCV_Enhanced_Naval",
-    "JapanMCV", "JapanMCV_Enhanced", "JapanMCV_Naval", "JapanMCV_Enhanced_Naval",
-    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground", "CelestialMCV_Naval",
-    "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground", "CelestialMCV_Enhanced_Naval",
-    "CelestialMCV_Enhanced_Air",
-}
+-- 模板名单统一取自 BasicVar 的 MCV 群体（g_MCVTypes 也在那里指向同一张表）。
 g_AIBannedTypes = {
     "CelestialTransportUAV", -- 迅雷运输艇
-    "JapanLightTransportVehicle",
-    "JapanLightTransportVehicle_AntiTank",
-    "JapanLightTransportVehicle_Kamikaze",
 }
+g_AppendTargetNames(g_AIBannedTypes, "Transport")
 g_PureDrawReservedTransportIds = {}
 g_PureDrawReservedTransportFilter = nil
 g_PureDrawReservedTransportType = "JapanLightTransportVehicle"

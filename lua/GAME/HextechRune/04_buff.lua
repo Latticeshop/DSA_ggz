@@ -24,84 +24,53 @@ HextechRune.UnitTypeFilters = {
 }
 -- 可变形单位按其两种作战形态同时归入两个兵种，不依赖当前模型形态的
 -- AIRCRAFT / VEHICLE / SHIP category。这样它们能同时享受两类兵种符文。
-HextechRune.DualUnitTypeFilters = {
-    {
-        Types = { "vehicle", "aircraft" },
-        Filter = CreateObjectFilter({
-            Rule = "ANY", Relationship = "SAME_PLAYER",
-            IncludeThing = {
-                -- 天狗
-                "JapanAntiInfantryVehicle",
-                "JapanAntiInfantryVehicle_Enhanced",
-                "JapanAntiInfantryVehicle_Enhanced_Water",
-                -- VX
-                "JapanAntiAirVehicleTech1",
-                "JapanAntiAirVehicleTech1_Enhanced",
-                "JapanAntiAirVehicleTech1_Enhanced_Water",
-                -- 心神
-                "JapanMissileMechaAdvanced",
-                "JapanMissileMechaAdvanced_Enhanced",
-                "JapanMissileMechaAdvanced_Enhanced_Water",
+-- 群体名单统一取自 BasicVar；本节点早于它加载，过滤器首次使用时再建。
+HextechRune.DualUnitTypeFilters = nil
+
+function HextechRune:GetDualUnitTypeFilters()
+    if self.DualUnitTypeFilters == nil then
+        self.DualUnitTypeFilters = {
+            {
+                Types = { "vehicle", "aircraft" },
+                Filter = CreateObjectFilter({
+                    Rule = "ANY", Relationship = "SAME_PLAYER",
+                    IncludeThing = g_TargetGroupNames.DualFormVehicleAir,
+                    Exclude = "STRUCTURE DEBRIS"
+                }),
             },
-            Exclude = "STRUCTURE DEBRIS"
-        }),
-    },
-    {
-        Types = { "aircraft", "navy" },
-        Filter = CreateObjectFilter({
-            Rule = "ANY", Relationship = "SAME_PLAYER",
-            IncludeThing = {
-                -- 海翼
-                "JapanAntiAirShip",
-                "JapanAntiAirShip_Enhanced",
-                -- 超级要塞（空中要塞 / 大头轰炸形态）
-                "JapanFortressShip",
-                "JapanGigaFortress_Land",
+            {
+                Types = { "aircraft", "navy" },
+                Filter = CreateObjectFilter({
+                    Rule = "ANY", Relationship = "SAME_PLAYER",
+                    IncludeThing = g_TargetGroupNames.DualFormAirNavy,
+                    Exclude = "STRUCTURE DEBRIS"
+                }),
             },
-            Exclude = "STRUCTURE DEBRIS"
-        }),
-    },
-    {
-        Types = { "infantry", "aircraft" },
-        Filter = CreateObjectFilter({
-            Rule = "ANY", Relationship = "SAME_PLAYER",
-            IncludeThing = {
-                -- 火箭天使：会飞的帝国反装甲步兵，模板带 AIRCRAFT，地图也按飞机批次登场
-                "JapanAntiVehicleInfantryTech3",
+            {
+                Types = { "infantry", "aircraft" },
+                Filter = CreateObjectFilter({
+                    Rule = "ANY", Relationship = "SAME_PLAYER",
+                    IncludeThing = g_TargetGroupNames.DualFormInfantryAir,
+                    Exclude = "STRUCTURE DEBRIS"
+                }),
             },
-            Exclude = "STRUCTURE DEBRIS"
-        }),
-    },
-}
+        }
+    end
+    return self.DualUnitTypeFilters
+end
 -- 无限火力（飞机）只开放给指定对空战斗机。
 -- 轰炸机、天狗、心神、摇光等其它飞机即使属于 aircraft 兵种，也不会获得无限弹药。
-HextechRune.InfiniteAmmoAircraftFilter = CreateObjectFilter({
-    Rule = "ANY", Relationship = "SAME_PLAYER",
-    IncludeThing = {
-        -- 阿波罗
-        "AlliedFighterAircraft",
-        "AlliedFighterAircraft_Enhanced",
-        "AlliedFighterAircraft_WithTrailSomke",
-        -- 阿瑞斯
-        "AlliedInterceptorAircraft",
-        "AlliedInterceptorAircraft_Enhanced",
-        -- 凤凰
-        "CelestialFighterAircraft",
-        "CelestialFighterAircraft_WithBlueTrailSomke",
-        "CelestialFighterAircraft_WithRedTrailSomke",
-        "CelestialFighterAircraft_WithTrailSomke",
-        "CelestialFighterAircraft_WithWhiteTrailSomke",
-        -- 崇明
-        "CelestialInterceptorAircraft",
-        "CelestialInterceptorAircraft_Enhanced",
-        -- 米格
-        "SovietFighterAircraft",
-        "SovietFighterAircraft_Enhanced",
-        -- 苏霍伊
-        "SovietInterceptorAircraft",
-        "SovietInterceptorAircraft_Enhanced",
-    }
-})
+HextechRune.InfiniteAmmoAircraftFilter = nil
+
+function HextechRune:GetInfiniteAmmoAircraftFilter()
+    if self.InfiniteAmmoAircraftFilter == nil then
+        self.InfiniteAmmoAircraftFilter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            IncludeThing = g_TargetGroupNames.InfiniteAmmoAircraft,
+        })
+    end
+    return self.InfiniteAmmoAircraftFilter
+end
 HextechRune.UnitTypeOrder = { "infantry", "vehicle", "aircraft", "navy" }
 -- 与缩小模式一致，持续时间覆盖整场战斗；同一单位的同一符文只加载一次。
 HextechRune.PersistentBuffDuration = 9999
@@ -935,8 +904,9 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     end
     -- 把指定双形态单位补入两张兵种查找表；同一个 objectId 可以同时存在于
     -- 两个表中，因此会分别响应玩家持有的两类兵种符文。
-    for dualIndex = 1, getn(self.DualUnitTypeFilters), 1 do
-        local dual = self.DualUnitTypeFilters[dualIndex]
+    local dualFilters = self:GetDualUnitTypeFilters()
+    for dualIndex = 1, getn(dualFilters), 1 do
+        local dual = dualFilters[dualIndex]
         local units, count = ObjectFindObjects(P[sideIndex], nil, dual.Filter)
         for i = 1, count, 1 do
             local objectId = ObjectGetId(units[i])
@@ -1262,7 +1232,7 @@ function HextechRune:BuildAllBattleUnitTypeLookup()
     for sideIndex = 7, 8, 1 do
         if P ~= nil and P[sideIndex] ~= nil then
             local units, count = ObjectFindObjects(P[sideIndex], nil,
-                self.InfiniteAmmoAircraftFilter)
+                self:GetInfiniteAmmoAircraftFilter())
             for i = 1, count, 1 do
                 infiniteAmmoAircraft[ObjectGetId(units[i])] = true
             end

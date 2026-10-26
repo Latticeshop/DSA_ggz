@@ -12,15 +12,20 @@ HextechRune.AscensionDamageChance = 0.30
 HextechRune.AscensionRateOfFireChance = 0.20
 HextechRune.AscensionRangeChance = 0.10
 HextechRune.AscensionAmmoChance = 0.10
--- 名单与 04_buff.lua 的 InfiniteAmmoAircraftFilter 同源，改一边要同步另一边。
-HextechRune.AmmoAircraftUnitTypes = {
-    AlliedFighterAircraft = true,          -- 阿波罗
-    AlliedInterceptorAircraft = true,      -- 阿瑞斯
-    CelestialFighterAircraft = true,       -- 凤凰
-    CelestialInterceptorAircraft = true,   -- 重明截击机
-    SovietFighterAircraft = true,          -- 米格
-    SovietInterceptorAircraft = true,      -- 苏霍伊
-}
+-- 名单与 04_buff.lua 的无限火力飞机同源，统一取自 BasicVar 的登记表。
+HextechRune.AmmoAircraftUnitTypes = nil
+
+function HextechRune:GetAmmoAircraftUnitTypes()
+    if self.AmmoAircraftUnitTypes == nil then
+        local lookup = {}
+        local names = g_TargetGroupNames.AmmoAircraftFamily
+        for i = 1, getn(names), 1 do
+            lookup[names[i]] = true
+        end
+        self.AmmoAircraftUnitTypes = lookup
+    end
+    return self.AmmoAircraftUnitTypes
+end
 -- playerIndex → 已累计层数（= 掷骰次数，配额与播报都看它）。
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 -- playerIndex → { Health, Damage, RateOfFire, Range, Ammo }，各维已掷到的次数。
@@ -79,7 +84,10 @@ function HextechRune:RollAscensionBonusKind(hasAmmo)
 end
 
 function HextechRune:IsAmmoAircraftUnitType(unitType)
-    return unitType ~= nil and self.AmmoAircraftUnitTypes[unitType] == true
+    if unitType == nil then
+        return false
+    end
+    return self:GetAmmoAircraftUnitTypes()[unitType] == true
 end
 
 function HextechRune:ApplyAmmoBonusToUnit(unit, multiplier)
