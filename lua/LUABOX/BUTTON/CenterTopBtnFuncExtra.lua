@@ -1,11 +1,7 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.77
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.77、A.86
 
 -- 第 6 组技能：九头蛇万岁 + 冰天雪地。
 
--- 敌方场上单位过滤：建筑/防御塔、运兵车、MCV 不进技能目标池。
--- 守护神不在这里按模板排除，由 g_GetEnemyBattlefieldContext 逐个剔除
--- （普通 Overlordtank/JapanFortressShip 不因此豁免）。群体名单见 BasicVar 登记表。
--- 本节点早于 GAME/BasicVar 加载，过滤器必须首次使用时再建。
 g_EnemyFieldUnitFilter = nil
 
 function g_GetEnemyFieldUnitFilter()
@@ -42,11 +38,6 @@ function g_PickRandomIndices(count, pickCount)
     return picked
 end
 
--- 以对面主炮塔为参考对象取敌方场上单位，再剔掉地图预设的守护神。
--- sideAIPlayer 是本方阵营 AI。skipIronCurtain 供改归属类效果使用：
--- 铁幕免疫心控是设定，但这里是代码切阵营，引擎不会自动挡，得自己剔除。
--- skipSkillSummoned 同样只给改归属用：技能召唤单位（空军元帅苏霍伊、龙船）自带
--- 无限血攻弹药类作弊加成，不能被心控；与符文转化口径一致（18_basics_exchange）。
 function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain, skipSkillSummoned)
     local context = {
         sideAIPlayer = "PlyrCivilian",
@@ -183,18 +174,6 @@ function RequestHydra(playerIndex)
     return true
 end
 
--- 冰天雪地：把敌方场上全部单位的冷冻条灌满（不含建筑/防御塔/地编守护神）。
--- 附带的冷冻卫星冰柱已整套注释（实测超模），恢复时取消下面的注释即可。
--- g_SnowstormPowerName = "SpecialPowerCryoSatelliteLvl3"
--- g_SnowstormGrantKey = "grant_cryo_satellite"
--- 实测：只有 Command_CryoSatelliteLvl3 会发动卫星；
--- Command_SpecialPowerCryoSatelliteLvl3 是「授予协议」那一档按钮，按下去只给玩家加协议。
--- g_SnowstormCommandName = "Command_CryoSatelliteLvl3"
--- 冰柱数量：4。全场冷冻条灌满之后冰柱只负责视觉与点名冻结。
--- g_SnowstormTargetCount = 4
--- 技能实例是延迟创建的（符文侧同一结论：同帧的 Available 可能打空），所以延迟 2 帧再按按钮。
--- g_SnowstormCastDelayFrames = 2
--- 主效果的延迟结算，沿用冰柱时期的时序（冰柱先落地、2 帧后再灌冷冻值）。
 g_SnowstormFieldFreezeDelayFrames = 4
 -- 取不到最大血量时的兜底灌值（远大于任何单位最大血量，多灌的部分被 2× 上限钳制）。
 g_SnowstormCryoFillFallback = 60000
@@ -243,37 +222,6 @@ function RequestSnowstorm(playerIndex)
     SchedulerModule.delay_call(g_FreezeAllEnemyFieldUnits,
         g_SnowstormFieldFreezeDelayFrames, { playerIndex })
 
-    -- 附带的冷冻卫星冰柱（已注释，实测超模）：
-    -- 拿不到 AI 方技能书就整段跳过，主效果照常生效（技能一样消耗次数、进冷却）。
-    -- local spellbook = g_GetSpellbookByOwner(context.sideAIPlayer)
-    -- if spellbook ~= nil then
-    --     local casterRef = "SnowstormCaster_" .. context.sideAIPlayer
-    --     ExecuteAction("SET_UNIT_REFERENCE", casterRef, spellbook)
-    --     HextechRune:GrantProtocolToPlayer(context.sideAIPlayer, g_SnowstormGrantKey)
-    --
-    --     local freezeCount = g_SnowstormTargetCount
-    --     if freezeCount > context.total then
-    --         freezeCount = context.total
-    --     end
-    --     local picked = g_PickRandomIndices(context.total, freezeCount)
-    --     local targets = {}
-    --     for k = 1, getn(picked), 1 do
-    --         local unit = context.units[picked[k]]
-    --         if unit ~= nil and ObjectIsAlive(unit) then
-    --             local unitId = ObjectGetId(unit)
-    --             local entry = {
-    --                 Id = unitId,
-    --                 Ref = "SnowstormTarget_" .. tostring(unitId),
-    --             }
-    --             ExecuteAction("SET_UNIT_REFERENCE", entry.Ref, unit)
-    --             tinsert(targets, entry)
-    --         end
-    --     end
-    --     if getn(targets) > 0 then
-    --         SchedulerModule.delay_call(g_CastSnowstorm, g_SnowstormCastDelayFrames,
-    --             { casterRef, targets })
-    --     end
-    -- end
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName))
 

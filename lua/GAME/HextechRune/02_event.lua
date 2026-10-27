@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38、A.45
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38、A.45、A.87
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
@@ -72,12 +72,6 @@ HextechRune.OblivionHintCenterX = 683
 HextechRune.OblivionHintY = 104
 HextechRune.OblivionHintFontSize = 16
 
--- ===== 海克斯面板（按钮 5 展开）布局参数 =====
--- 左右两块托盘 + 中央竖分隔线，左列恶魔（1/2/3）、右列天使（4/5/6），
--- 列内自上而下按座位号排，空座位跳过（2v2 两行、1v1 一行），
--- 每行 =「玩家名 + 至多 5 张 50x50 小卡」（index 预留 6 格）。
--- 标题「海克斯面板」的金渐变字已烘进底板贴图（analysis/make_hextech_panel_bg.py），
--- 所以这里不再画引擎标题文字；贴图本体是 analysis/hextech_panel_bg.png。
 HextechRune.PanelSeatColumnGroups = { { 1, 2, 3 }, { 4, 5, 6 } }
 -- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
 HextechRune.PanelRuneWidth = 50
@@ -457,15 +451,32 @@ function HextechRune:MarkFormalSelectionReceived(playerIndex)
 end
 
 -- 棱彩已是最高阶：升不动就不该把这次机会花掉。
+-- PendingRuneAscend 是**次数**（准备背包）：继承队友的待生效准备背包会叠加，
+-- 但每次选择只升一阶（效果不叠加），所以 2 张就等于接下来 2 次选择各升一阶。
 function HextechRune:CanAscendRuneRarity(playerIndex, rarity)
-    return self.PendingRuneAscend[playerIndex] == true and rarity > 1
+    return (self.PendingRuneAscend[playerIndex] or 0) > 0 and rarity > 1
 end
 
--- 升阶落地后清掉标记并全图播报，播报的是升上去的那一阶。
+-- 升阶落地后扣掉一次并全图播报，播报的是升上去的那一阶。
 function HextechRune:CommitAscendRuneRarity(playerIndex, targetRarity)
-    self.PendingRuneAscend[playerIndex] = nil
+    local remaining = (self.PendingRuneAscend[playerIndex] or 0) - 1
+    if remaining > 0 then
+        self.PendingRuneAscend[playerIndex] = remaining
+    else
+        self.PendingRuneAscend[playerIndex] = nil
+    end
     exAddTextToPublicBoard(Localization.get("hextech.ascend.broadcast", playerIndex,
         Localization.get("hextech.rarity." .. self.RarityNames[targetRarity])), 10)
+end
+
+-- 顺手的事也是**次数**：一次只多拿一张（不叠加），但继承来的会排队，
+function HextechRune:ConsumePendingExtraPick(playerIndex)
+    local remaining = (self.PendingExtraRunePick[playerIndex] or 0) - 1
+    if remaining > 0 then
+        self.PendingExtraRunePick[playerIndex] = remaining
+    else
+        self.PendingExtraRunePick[playerIndex] = nil
+    end
 end
 
 -- 本次事件的卡片张数可能少于 3（高一阶筛池候选不足），整排按实际张数居中。
@@ -539,11 +550,6 @@ function HextechRune:IsHumanPlayer(playerIndex)
         "Player_" .. playerIndex, "Human")
 end
 
--- 全场只有 1 名真人 ＝ 单机遭遇战。判据与 PureDrawIsHumanPlayer / AID_0 / Human_0 一致：
--- PLAYER_IS_HUMAN_OR_AI_PERSONALITY(..., "Human")；空位/关闭位在这里返回 false
--- （同 BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices 的口径：真人看这一条，电脑看 P[i]）。
--- 遭遇战里其余座席都是电脑，电脑的三选一走 GrantRandomRuneToComputer、根本不显示界面，
--- 所以放开重随不会影响它们。
 function HextechRune:IsSoloHumanGame()
     local humanCount = 0
     for playerIndex = 1, 6, 1 do
@@ -869,7 +875,7 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round, slotI
         slotIndex = playerIndex
     end
     self.CurrentGrantSlot[playerIndex] = slotIndex
-    local extraPick = self.PendingExtraRunePick[playerIndex] == true
+    local extraPick = (self.PendingExtraRunePick[playerIndex] or 0) > 0
     local rune = nil
     local shownRarity = rarity
     if self:CanAscendRuneRarity(playerIndex, rarity) then
@@ -899,7 +905,7 @@ function HextechRune:GrantRandomRuneToComputer(playerIndex, rarity, round, slotI
     self:MarkFormalSelectionReceived(playerIndex)
     -- 顺手的事：电脑没有选择界面，多拿的一张直接按同阶池再抽一次（同回合、同稀有度）。
     if extraPick then
-        self.PendingExtraRunePick[playerIndex] = nil
+        self:ConsumePendingExtraPick(playerIndex)
         self:GrantRandomRuneToComputer(playerIndex, rarity, round, slotIndex)
     end
     self.CurrentGrantSlot[playerIndex] = nil
@@ -959,8 +965,9 @@ function HextechRune:ShowRuneOptionsForPlayer(playerIndex, rarity, slotIndex)
         self:CreateRerollButton(playerIndex, i)
     end
     -- 顺手的事：本次选择里多给一次点击机会（只剩一张候选时兑现不了，留着给下一次）。
-    if self.PendingExtraRunePick[playerIndex] and getn(options) >= 2 then
-        self.PendingExtraRunePick[playerIndex] = nil
+    -- 一次只多拿一张（不叠加）；手里有多张（继承攒下来的）时，剩下的一直留到后续选择。
+    if (self.PendingExtraRunePick[playerIndex] or 0) > 0 and getn(options) >= 2 then
+        self:ConsumePendingExtraPick(playerIndex)
         self.PlayerExtraPickRemaining[playerIndex] = 1
         exAddTextToPublicBoard(Localization.get("hextech.easy_does_it.broadcast",
             playerIndex), 10)
@@ -1057,12 +1064,21 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
     local pendingSlot = self.PlayerOptionSlot[fromIndex]
     local pendingRarity = self.PlayerOptionRarity[fromIndex]
     local fromQueue = self.PlayerEventQueues[fromIndex]
-    -- 准备背包 / 顺手的事这类「下一次选择」权益一起转给继承者。
-    if self.PendingRuneAscend[fromIndex] then
-        self.PendingRuneAscend[toIndex] = true
+    -- 准备背包 / 顺手的事这类「下一次选择」权益一起转给继承者 —— **按次数相加**：
+    self.PendingRuneAscend[toIndex] =
+        (self.PendingRuneAscend[toIndex] or 0) + (self.PendingRuneAscend[fromIndex] or 0)
+    if self.PendingRuneAscend[toIndex] == 0 then
+        self.PendingRuneAscend[toIndex] = nil
     end
-    if self.PendingExtraRunePick[fromIndex] then
-        self.PendingExtraRunePick[toIndex] = true
+    local pendingExtra = (self.PendingExtraRunePick[toIndex] or 0)
+        + (self.PendingExtraRunePick[fromIndex] or 0)
+    -- 顺手的事已经生效、正在这次选择里多拿一张（还差一次点击）：也算一份，
+    -- 否则退出者捏着的那次额外点击会一起消失。
+    if (self.PlayerExtraPickRemaining[fromIndex] or 0) > 0 then
+        pendingExtra = pendingExtra + 1
+    end
+    if pendingExtra > 0 then
+        self.PendingExtraRunePick[toIndex] = pendingExtra
     end
     -- 玩家聚合清空；槽位展示列表不动。
     self.PlayerOwnedRunes[fromIndex] = {}
@@ -1086,9 +1102,13 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
     for slotIndex = 1, 6, 1 do
         if self.PlayerSlotOwner[slotIndex] == fromIndex then
             self.PlayerSlotOwner[slotIndex] = toIndex
+            -- 这一格有人接手了，之前若标过「空置」要撤掉，别把继承来的行藏起来。
+            self.PanelVacantSeat[slotIndex] = nil
         end
     end
     -- 未展示/未领取的事件转给继承者，保留原槽位。
+    -- 退出者「捏着还没选」的次数一条都不能丢：队列里排队的、以及退出时正开着的那一次
+    -- 三选一，都要落到继承者名下（他继承的不只是已获得的卡，还有那些没兑现的选择）。
     if self:IsHumanPlayer(toIndex) then
         if fromQueue ~= nil and getn(fromQueue) > 0 then
             local toQueue = self:EnsurePlayerEventQueue(toIndex)
@@ -1105,6 +1125,20 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
             tinsert(toQueue, { Rarity = pendingRarity, Round = self.CurrentRound,
                 Slot = pendingSlot or fromIndex })
             self:ShowSelectionHint(toIndex)
+        end
+    else
+        -- 继承者是电脑：它没有三选一界面，这些待领次数按同阶池直接抽成符文，
+        -- 不能因为「没有界面」就凭空作废。
+        if fromQueue ~= nil then
+            for i = 1, getn(fromQueue), 1 do
+                local event = fromQueue[i]
+                self:GrantRandomRuneToComputer(toIndex, event.Rarity, event.Round,
+                    event.Slot or fromIndex)
+            end
+        end
+        if pendingRarity ~= nil then
+            self:GrantRandomRuneToComputer(toIndex, pendingRarity, self.CurrentRound,
+                pendingSlot or fromIndex)
         end
     end
     -- 已展开的总览面板立即按新归属重画。
@@ -1286,15 +1320,13 @@ function HextechRune:IsPlayerAlive(playerIndex)
     return structureCount > 0
 end
 
--- 某座位当前是否有人坐。口径与 BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices 一致：
--- 真人看 PLAYER_IS_HUMAN_OR_AI_PERSONALITY，占位/电脑看 P[i]（P 是 UNITCOUNTERINI_0 里
--- GetObjectByScriptName("P"..i) 拿到的本图玩家对象，空位为 nil）。
--- 本图空位不占编号：满 6 位是 1~6，2v2 用 1、2 / 4、5，1v1 用 1 / 4，所以 2v2 时
--- 座位 3、6 会返回 false —— 面板直接跳过它们，行序不留白。
--- PanelVacantSeat：原玩家退出且无人继承（符文已清空）的格子，也不再占位。
 function HextechRune:IsPanelSeatOccupied(seatIndex)
     if self.PanelVacantSeat[seatIndex] == true then
         return false
+    end
+    local ownerIndex = self.PlayerSlotOwner[seatIndex]
+    if ownerIndex ~= nil and ownerIndex ~= seatIndex then
+        return true
     end
     if P ~= nil and P[seatIndex] ~= nil then
         return true
@@ -1302,11 +1334,6 @@ function HextechRune:IsPanelSeatOccupied(seatIndex)
     return self:IsHumanPlayer(seatIndex)
 end
 
--- 座位表：两列按阵营分（左列 1/2/3 恶魔、右列 4/5/6 天使），列内**自上而下就按座位号**，
--- 不再按出生点坐标排序 —— 2026-10-27 实测：2v2 时坐标排序会把玩家排到第 1、3 行，
--- 中间留一行空白（地图上恶魔在下、天使在上）。现在按用户要求「都从上往下顺序排列、
--- 不要中间留白、不用管玩家位置」：空座位直接跳过，剩下的人自上而下依次占第 1/2/3 行。
--- 每次开面板现算（座位占用会随退出/继承变化，不再缓存）。
 function HextechRune:GetPanelSeatColumns()
     local columns = {}
     for column = 1, getn(self.PanelSeatColumnGroups), 1 do
@@ -1401,10 +1428,6 @@ function HextechRune:CreatePanelNameText(viewerIndex, targetIndex, x, y)
     })
 end
 
--- 创建某玩家的一行真实符文（最多显示 PanelMaxRuneCount = 5 个，水平一排）。
--- areaX 是卡区左缘：小卡接在名字后面依次右排（不再整体居中）；
--- 间距首选 PanelRuneGap，张数多到放不下时按卡区可用宽度动态收缩，
--- 收缩后相邻卡之间的间距依然两两相等（5 张是设计上限，收缩只在缓冲格真的被占用时才生效）。
 function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, areaX, y)
     local viewerName = "Player_" .. viewerIndex
     self:EnsureRuneSlotState(targetIndex)

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71、A.73、A.82
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71、A.73、A.82、A.88
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -366,13 +366,6 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.myriad_pull.name",
         DescKey = "hextech.rune.myriad_pull.desc",
         Effect = "grant_magnetic_singularity", Icon = "Button_PlayerPower_MagneticSingularity" },
-    -- 协议授予·彩·大生产：2026-10-24 实测「连苏联玩家开局拿也降不了价」（协议疑似有前置/时间条件）
-    -- { Id = "prismatic_mass_production", Rarity = 1,
-    --     NameKey = "hextech.rune.mass_production.name",
-    --     DescKey = "hextech.rune.mass_production.desc",
-    --     Effect = "grant_mass_production", ExcludedFaction = 2,
-    --     Icon = "Button_PlayerPower_MassProduction" },
-    -- 只给非盟军玩家抽；结算口径见 MONEYINI_1（持币人自己的全部电厂，含神州电厂），讲解见文档 8.6。
     { Id = "gold_free_trade", Rarity = 2,
         NameKey = "hextech.rune.free_trade.name",
         DescKey = "hextech.rune.free_trade.desc",
@@ -447,10 +440,6 @@ HextechRune.NonRepeatableRuneIds = {
     prismatic_radiant_bliss = true,
     prismatic_myriad_pull = true,
     gold_icathia_surprise = true,
-    -- 大生产：地图侧只有「本队获得大生产的人数」这一份台账（每人一格），第二份不再加档。
-    -- 2026-10-24 下架留档期间一并注释，恢复时与池内条目一起放开。
-    -- prismatic_mass_production = true,
-    -- 自由贸易：PlayerA_<i> 标记物全局唯一，第二份只是重复生成同名对象，故唯一。
     gold_free_trade = true,
     -- AT立场：兵种版按 OwnershipId 判重（Id:UnitType），载具与舰船各自独立占位。
     gold_at_field = true,

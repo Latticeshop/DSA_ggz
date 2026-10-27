@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.42、A.59、A.74、A.80、A.83
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.42、A.59、A.74、A.80、A.83、A.89
 
 HextechRune = HextechRune or {}
 
@@ -343,10 +343,6 @@ function HextechRune:GetConversionInfantryFilter()
     end
     return self.ConversionInfantryFilter
 end
--- 转化目标只认回收系统的兵种配置：不走出兵系统的单位（地编摆放、技能召唤、
--- 其它非本系统产物）本来就不会出兵，自然也不该被换掉。
--- 名单来自 g_BanModeNameTypes（回收表 + 箱子表 + 双形态例外），补上形态别名
--- 与替换型产物；具体兵种仍由各符文的引擎类别过滤 + 排除名单决定。
 HextechRune.ConversionSystemInstanceIds = nil
 
 function HextechRune:EnsureConversionSystemIds()
@@ -692,10 +688,6 @@ function HextechRune:ApplySitTightPulse(round)
         self:GetConversionDualAirFilter())
 end
 
--- 四个转化符文统一在 AIRSPACT 的空军/轻载具批次出完后结算（由该节点调度，
--- 不再挂在 LandArmySpawn 末尾的 ApplyRoundEffects 上，否则会早于空军批次）。
--- 顺序固定：烧福瑞 → 生异形 → 樱落 → 钓鱼佬。先结算的符文产出的替换单位
--- 不再被后面的符文二次转化，钓鱼佬必须最后，避免海军替换出的海翼被空军再换一遍。
 function HextechRune:ApplyAllConversionPulses(round)
     self:ApplyBurnFurryPulse(round)
     self:ApplySpawnAlienPulse(round)

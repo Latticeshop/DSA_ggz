@@ -1,9 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.90
 
--- 达摩剑的常规随机目标池：只允许非建筑单位。
--- 最前方防御塔仅由达摩剑首轮逻辑单独指定一次，不进入本过滤器。
--- 守护神不再按模板名排除：普通 Overlordtank / JapanFortressShip 是合法目标，
--- 抽取时由 g_IsPresetGuardianUnit 剔除真正的地编守护神。
--- 本节点早于 GAME/BasicVar 加载，过滤器必须首次使用时再建。
 unitall = nil
 
 function g_GetDamoclesUnitFilter()

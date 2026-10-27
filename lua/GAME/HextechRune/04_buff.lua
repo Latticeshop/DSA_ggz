@@ -1582,10 +1582,12 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantProtocol(playerIndex, rune.Effect)
     elseif rune.Effect == "prepare_backpack" then
         -- 升阶只在下一次符文选择的筛池上体现，见 02_event.lua 的 CanAscendRuneRarity。
-        self.PendingRuneAscend[playerIndex] = true
+        self.PendingRuneAscend[playerIndex] =
+            (self.PendingRuneAscend[playerIndex] or 0) + 1
     elseif rune.Effect == "easy_does_it" then
         -- 多拿一张只在下一次符文选择界面上体现，见 02_event.lua 的 ShowRuneOptionsForPlayer。
-        self.PendingExtraRunePick[playerIndex] = true
+        self.PendingExtraRunePick[playerIndex] =
+            (self.PendingExtraRunePick[playerIndex] or 0) + 1
     elseif rune.Effect == "upgrade_tachi_cruiser"
         or rune.Effect == "upgrade_bullfrog"
         or rune.Effect == "upgrade_waverider_dragon_breathe"

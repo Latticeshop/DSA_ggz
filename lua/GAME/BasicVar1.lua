@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.72
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.72、A.91
 
 g_PlayerDebtCount = {
     ["Player_1"] = 0,
@@ -27,10 +27,6 @@ g_PlayerNameToIndex = {
     ["Player_6"] = 6,
 }
 
--- 目标群体登记表（唯一出处）
--- 按「群体」登记模板名/脚本名，各效果只组合需要的群体，不再各自维护长名单。
--- 本节点（GAME/BasicVar）晚于部分 BUFF/LUABOX 节点加载，所以那些必须在加载期
--- 创建过滤器的旧代码一律改成首次使用时懒创建，运行期再读本表。
 g_TargetGroupNames = g_TargetGroupNames or {}
 
 -- 防御塔本体七种（九头蛇/冰天雪地/超时空传送落点的排除口径）。
