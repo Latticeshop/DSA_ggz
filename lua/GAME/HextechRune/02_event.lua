@@ -73,30 +73,68 @@ HextechRune.OblivionHintY = 104
 HextechRune.OblivionHintFontSize = 16
 
 -- ===== 海克斯面板（按钮 5 展开）布局参数 =====
--- 横六筒造型：上排三名玩家名字 + 符文，下排三名玩家符文 + 名字
--- 第一行：上排玩家名；第二行：上排符文；第三行：下排符文；第四行：下排玩家名
-HextechRune.PanelCenterX = 563
-HextechRune.PanelSeatRowGroups = { { 4, 5, 6 }, { 1, 2, 3 } }
--- 标题固定居中于屏幕中央（整体左移后标题保持原位）
-HextechRune.PanelTitleCenterX = 683
-HextechRune.PanelColumnGap = 300
--- 四行 y 坐标
-HextechRune.PanelRowY = { 230, 300, 420, 490 }
+-- 左右两块托盘 + 中央竖分隔线，左列恶魔（1/2/3）、右列天使（4/5/6），
+-- 列内自上而下按座位号排，空座位跳过（2v2 两行、1v1 一行），
+-- 每行 =「玩家名 + 至多 5 张 50x50 小卡」（index 预留 6 格）。
+-- 标题「海克斯面板」的金渐变字已烘进底板贴图（analysis/make_hextech_panel_bg.py），
+-- 所以这里不再画引擎标题文字；贴图本体是 analysis/hextech_panel_bg.png。
+HextechRune.PanelSeatColumnGroups = { { 1, 2, 3 }, { 4, 5, 6 } }
 -- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
 HextechRune.PanelRuneWidth = 50
 HextechRune.PanelRuneHeight = 50
+-- 首选卡间距；张数多到放不下时按卡区可用宽度动态收缩（见 CreatePanelRuneRow），
+-- 收缩后每两个相邻卡之间的间距仍然相等。
 HextechRune.PanelRuneGap = 10
 HextechRune.PanelRuneIconSize = 14
 HextechRune.PanelRuneTitleOffsetX = 5
--- 第四次正式事件叠加“赌怪”奖励时，玩家最多可能展示 5 个实际符文。
+-- 显示上限（设计口径）：一格最多 5 张。正式事件按 g_HextechCount 最多 3 次、每次该座位 1 张，
+-- 加上「顺手的事」多拿的 1 张，「赌怪/质变」的奖励也落在这 5 张里 —— 玩家自己说的设计上限就是 5。
 HextechRune.PanelMaxRuneCount = 5
+-- 这一格**只是缓冲**，正常战局不会出现第 6 张；留出来的目的是保证 index 段
+HextechRune.PanelIndexSlotCount = 6
 -- 面板自定义元素 index 基础（避开已用 index）
-HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*5 + j（401~430）
+HextechRune.PanelBtnIndexBase = 400      -- 符文按钮：玩家 i 的第 j 个 = 400 + (i-1)*6 + j（401~436）
 HextechRune.PanelCloseBtnBase = 500      -- 关闭按钮：玩家 i = 500 + i
 HextechRune.PanelTextIndexBase = 600     -- 名字文字：玩家 i = 600 + i
-HextechRune.PanelTitleTextBase = 610     -- 标题文字：玩家 i = 610 + i
-HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~730
-HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~830
+HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~736
+HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~836
+-- 面板底板：g_HextechPanelBgId（960x320，上边角内凹、三层金边、标题带 + 金标题全烘进贴图）。
+-- 贴图原居中位置是 683 - 480 = 203，实测偏右，2026-10-27 按用户要求整体左移两个卡宽
+-- （2 * PanelRuneWidth = 100）→ 103；竖直与旧底板同心（146 + 380/2 - 160 = 176）。
+HextechRune.PanelBgIndex = 490
+HextechRune.PanelBgX = 103
+HextechRune.PanelBgY = 176
+HextechRune.PanelBgWidth = 960
+HextechRune.PanelBgHeight = 320
+-- 两列托盘左缘 = 底板 X + 贴图内托盘左缘（22 / 496）
+HextechRune.PanelColumnX = { 125, 599 }
+-- 名字左对齐于「托盘左缘 + PanelNameOffsetX」。
+HextechRune.PanelNameOffsetX = 8
+-- 名字字号与实测微调：引擎把 $pNName 画出来时视觉中心偏左偏下，
+-- 各补半个字宽 / 半个字高（字号 16 → 右移 8、上移 8）才落在行心正中。
+HextechRune.PanelNameFontSize = 16
+HextechRune.PanelNameNudgeX = 8
+HextechRune.PanelNameNudgeY = -8
+-- 名字颜色：本座位原玩家=白；这一格已被继承（归属者 ≠ 座位号）=金。
+-- 继承的既定表现是「卡牌位置不动、名字换成继承者」，所以同一个玩家会同时出现在
+HextechRune.PanelNameColor = 16777215
+HextechRune.PanelInheritedNameColor = 16766720
+-- 原玩家退出且无人继承、符文已被清空的座位：面板不再为它留一行。
+HextechRune.PanelVacantSeat = {}
+-- 小卡从「托盘左缘 + PanelCardOffsetX」开始**依次右排**（不再整体居中）。
+-- 卡区可用宽 = 托盘宽 442 - 偏移 100 - 右侧留白 7 = 335：
+-- 6 张时 6*50 + 5*7 = 335 正好铺满，5 张及以下维持 PanelRuneGap = 10。
+HextechRune.PanelCardOffsetX = 100
+HextechRune.PanelCardAreaWidth = 335
+-- 三行行心 y = 底板 Y + 贴图内行顶（70 / 150 / 230）+ 行高 64 的一半
+HextechRune.PanelRowY = { 278, 358, 438 }
+-- 关闭按钮：素材 hextechRemoveButton.png 是 76x46，实测偏大，等比缩到 56x34（约 74%）显示。
+-- 位置按缩后的尺寸重摆，仍落在标题带右端、与带右缘（贴图内 946）留 20px，
+-- 并避开标题带右上角 R26 的内凹圆弧，否则按钮右上角会戳到圆弧外的透明区。
+HextechRune.PanelCloseSizeX = 56
+HextechRune.PanelCloseSizeY = 34
+HextechRune.PanelCloseOffsetX = 870
+HextechRune.PanelCloseOffsetY = 13
 
 -- 每玩家面板是否展开
 HextechRune.PanelVisible = {}
@@ -1092,6 +1130,8 @@ function HextechRune:ClearPlayerSlotRunes(fromIndex)
             self.PlayerSlotOwnedRunes[slotIndex] = {}
             self.PlayerSlotOwnedRuneIds[slotIndex] = {}
             self.PlayerSlotOwner[slotIndex] = nil
+            -- 这一格没人接手：面板不再给它留行（否则会留一行空名字 + 0 张卡）
+            self.PanelVacantSeat[slotIndex] = true
         end
     end
     self.PlayerOptions[fromIndex] = nil
@@ -1213,28 +1253,23 @@ function HextechRune:HandleOptionClick(playerIndex, optionIndex)
 end
 
 -- ===== 海克斯面板（按钮 5 展开）=====
--- 面板按 GetPanelSeatRows 的座位表展示六名玩家真实拥有的海克斯符文。
+-- 面板按 GetPanelSeatColumns 的座位表展示六名玩家真实拥有的海克斯符文。
 
 function HextechRune:GetPanelRuneBtnIndex(playerIndex, slot)
-    return self.PanelBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
+    return self.PanelBtnIndexBase + (playerIndex - 1) * self.PanelIndexSlotCount + slot
 end
 
 function HextechRune:GetPanelRuneIconBtnIndex(playerIndex, slot)
-    return self.PanelIconBtnIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
+    return self.PanelIconBtnIndexBase + (playerIndex - 1) * self.PanelIndexSlotCount + slot
 end
 
 function HextechRune:GetPanelRuneTextIndex(playerIndex, slot)
-    return self.PanelRuneTextIndexBase + (playerIndex - 1) * self.PanelMaxRuneCount + slot
+    return self.PanelRuneTextIndexBase + (playerIndex - 1) * self.PanelIndexSlotCount + slot
 end
 
 -- 计算某玩家面板名字文字 index
 function HextechRune:GetPanelNameTextIndex(playerIndex)
     return self.PanelTextIndexBase + playerIndex
-end
-
--- 计算某玩家面板标题文字 index
-function HextechRune:GetPanelTitleTextIndex(playerIndex)
-    return self.PanelTitleTextBase + playerIndex
 end
 
 -- 计算某玩家面板关闭按钮 index
@@ -1251,123 +1286,126 @@ function HextechRune:IsPlayerAlive(playerIndex)
     return structureCount > 0
 end
 
--- 按出生点 `Player_N_Start` 的真实 X 把一行玩家从左到右排好（原地排序）。
--- Lua 4.0 没有 sort，一行只有三个元素，直接插入排序；取不到坐标返回 nil。
-function HextechRune:SortPanelSeatRowByHomeX(indexes)
-    local positions = {}
-    for i = 1, getn(indexes), 1 do
-        local pos = exWaypointGetPos(format("Player_%d_Start", indexes[i]))
-        if pos == nil then
-            return nil
-        end
-        positions[i] = pos[1]
+-- 某座位当前是否有人坐。口径与 BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices 一致：
+-- 真人看 PLAYER_IS_HUMAN_OR_AI_PERSONALITY，占位/电脑看 P[i]（P 是 UNITCOUNTERINI_0 里
+-- GetObjectByScriptName("P"..i) 拿到的本图玩家对象，空位为 nil）。
+-- 本图空位不占编号：满 6 位是 1~6，2v2 用 1、2 / 4、5，1v1 用 1 / 4，所以 2v2 时
+-- 座位 3、6 会返回 false —— 面板直接跳过它们，行序不留白。
+-- PanelVacantSeat：原玩家退出且无人继承（符文已清空）的格子，也不再占位。
+function HextechRune:IsPanelSeatOccupied(seatIndex)
+    if self.PanelVacantSeat[seatIndex] == true then
+        return false
     end
-    for i = 2, getn(indexes), 1 do
-        local playerIndex = indexes[i]
-        local playerX = positions[i]
-        local j = i - 1
-        while j >= 1 and positions[j] > playerX do
-            indexes[j + 1] = indexes[j]
-            positions[j + 1] = positions[j]
-            j = j - 1
-        end
-        indexes[j + 1] = playerIndex
-        positions[j + 1] = playerX
+    if P ~= nil and P[seatIndex] ~= nil then
+        return true
     end
-    return indexes
+    return self:IsHumanPlayer(seatIndex)
 end
 
--- 座位表：行成员按阵营侧，行内左右顺序按出生点 X 现算（地图点位是静态的，结果只算一次）。
--- 拿不到坐标时退回 PanelSeatRowGroups 的默认顺序，保证面板一定打得开。
-function HextechRune:GetPanelSeatRows()
-    if self.PanelSeatRows ~= nil then
-        return self.PanelSeatRows
-    end
-    local rows = {}
-    for row = 1, getn(self.PanelSeatRowGroups), 1 do
-        local group = {}
-        for col = 1, getn(self.PanelSeatRowGroups[row]), 1 do
-            group[col] = self.PanelSeatRowGroups[row][col]
+-- 座位表：两列按阵营分（左列 1/2/3 恶魔、右列 4/5/6 天使），列内**自上而下就按座位号**，
+-- 不再按出生点坐标排序 —— 2026-10-27 实测：2v2 时坐标排序会把玩家排到第 1、3 行，
+-- 中间留一行空白（地图上恶魔在下、天使在上）。现在按用户要求「都从上往下顺序排列、
+-- 不要中间留白、不用管玩家位置」：空座位直接跳过，剩下的人自上而下依次占第 1/2/3 行。
+-- 每次开面板现算（座位占用会随退出/继承变化，不再缓存）。
+function HextechRune:GetPanelSeatColumns()
+    local columns = {}
+    for column = 1, getn(self.PanelSeatColumnGroups), 1 do
+        local seats = {}
+        local group = self.PanelSeatColumnGroups[column]
+        for row = 1, getn(group), 1 do
+            local seatIndex = group[row]
+            if self:IsPanelSeatOccupied(seatIndex) then
+                tinsert(seats, seatIndex)
+            end
         end
-        if self:SortPanelSeatRowByHomeX(group) == nil then
-            return self.PanelSeatRowGroups
-        end
-        rows[row] = group
+        columns[column] = seats
     end
-    self.PanelSeatRows = rows
-    return rows
+    return columns
 end
 
 -- 显示面板（对单个玩家），内容为六名玩家真实拥有的符文。
 function HextechRune:ShowPanel(playerIndex)
     local playerName = "Player_" .. playerIndex
     self:EnsurePlayerRuneState(playerIndex)
-    -- 标题（固定居中于屏幕中央，不随面板整体左移）
-    local titleTextIndex = self:GetPanelTitleTextIndex(playerIndex)
-    local panelTitle = Localization.get("hextech.panel.title")
-    exCreateCustomTextForPlayer(playerName, {
-        Index = titleTextIndex,
-        Content = panelTitle,
-        X = self:GetCenteredTextLeftX(self.PanelTitleCenterX, panelTitle, 24),
-        Y = 180,
-        Color = 16777215,
-        Size = 24,
+    -- 底板（最底层）：上边角内凹的深色板 + 三层金边 + 标题带，颜色与
+    -- 「海克斯面板」金渐变标题都已烘在贴图里，不再染色、也不再画引擎标题文字。
+    exCreateCustomImageForPlayer(playerName, {
+        Index = self.PanelBgIndex,
+        TextureName = g_HextechPanelBgId,
+        X = self.PanelBgX,
+        Y = self.PanelBgY,
+        SizeX = self.PanelBgWidth,
+        SizeY = self.PanelBgHeight,
+        GroupIndex = self.PanelBgIndex,
         AlignX = "left",
-        AlignY = "center",
+        AlignY = "top",
     })
-    -- 关闭按钮（右上角，使用 hextechRemoveButton 图标，不显示悬浮详情框）
+    -- 关闭按钮（标题带右端，使用 hextechRemoveButton 图标，不显示悬浮详情框）
     local closeBtnIndex = self:GetPanelCloseBtnIndex(playerIndex)
     exCreateCustomButtonForPlayer(playerName, {
         Index = closeBtnIndex,
         TextureName = g_HextechRemoveBtnId,
         Desc = "",
-        X = self.PanelCenterX + 320,
-        Y = 175,
-        SizeX = 76,
-        SizeY = 46,
+        X = self.PanelBgX + self.PanelCloseOffsetX,
+        Y = self.PanelBgY + self.PanelCloseOffsetY,
+        SizeX = self.PanelCloseSizeX,
+        SizeY = self.PanelCloseSizeY,
         GroupIndex = closeBtnIndex,
         AlignX = "left",
         AlignY = "top",
     })
-    -- 六名玩家按座位表排布（行成员按阵营侧、行内按出生点 X）：上排名字行1 符文行2，下排符文行3 名字行4。
-    local seatRows = self:GetPanelSeatRows()
-    for col = 1, 3, 1 do
-        local colX = self.PanelCenterX + (col - 2) * self.PanelColumnGap
-        local topIndex = seatRows[1][col]
-        local bottomIndex = seatRows[2][col]
-        -- 名字行1（上排玩家名）
-        self:CreatePanelNameText(playerIndex, topIndex, colX, self.PanelRowY[1])
-        -- 符文行2（上排玩家符文）
-        self:CreatePanelRuneRow(playerIndex, topIndex, colX, self.PanelRowY[2])
-        -- 符文行3（下排玩家符文）
-        self:CreatePanelRuneRow(playerIndex, bottomIndex, colX, self.PanelRowY[3])
-        -- 名字行4（下排玩家名）
-        self:CreatePanelNameText(playerIndex, bottomIndex, colX, self.PanelRowY[4])
+    -- 底板后建，显式把关闭按钮压到底板之上。
+    exCustomBtnGroupSortDepthAboveAnotherGroup(closeBtnIndex, self.PanelBgIndex)
+    -- 两列托盘 × 至多三行：左列恶魔、右列天使；空座位已在 GetPanelSeatColumns 里跳过，
+    -- 剩下的人自上而下依次占第 1/2/3 行，中间不留白。
+    local columns = self:GetPanelSeatColumns()
+    for column = 1, getn(columns), 1 do
+        local trayX = self.PanelColumnX[column]
+        local seats = columns[column]
+        for row = 1, getn(seats), 1 do
+            if row > getn(self.PanelRowY) then
+                break
+            end
+            local targetIndex = seats[row]
+            self:CreatePanelNameText(playerIndex, targetIndex,
+                trayX + self.PanelNameOffsetX, self.PanelRowY[row])
+            self:CreatePanelRuneRow(playerIndex, targetIndex,
+                trayX + self.PanelCardOffsetX, self.PanelRowY[row])
+        end
     end
     self.PanelVisible[playerIndex] = true
 end
 
--- 创建单个玩家名文字（垂直居中于所在行；Content 用 $pNName，引擎支持时显示真实昵称）
+-- 创建单个玩家名文字（垂直居中于所在行、左对齐于名字列起点；Content 用 $pNName，
+-- 继承（退出继承）后这一格的归属者不是座位本人，名字换成继承者并用金色标出来。
 function HextechRune:CreatePanelNameText(viewerIndex, targetIndex, x, y)
     local viewerName = "Player_" .. viewerIndex
     local nameTextIndex = self:GetPanelNameTextIndex(targetIndex)
     self:EnsureRuneSlotState(targetIndex)
     local ownerIndex = self.PlayerSlotOwner[targetIndex] or targetIndex
+    local nameColor = self.PanelNameColor
+    if ownerIndex ~= targetIndex then
+        nameColor = self.PanelInheritedNameColor
+    end
     local nameText = "$p" .. ownerIndex .. "Name"
     exCreateCustomTextForPlayer(viewerName, {
         Index = nameTextIndex,
         Content = nameText,
-        X = self:GetCenteredTextLeftX(x, nameText, 16),
-        Y = y,
-        Color = 16777215,
-        Size = 16,
+        -- 引擎画 $pNName 时视觉中心偏左偏下，各补半个字宽 / 半个字高才落在名字列与行心正中
+        X = x + self.PanelNameNudgeX,
+        Y = y + self.PanelNameNudgeY,
+        Color = nameColor,
+        Size = self.PanelNameFontSize,
         AlignX = "left",
         AlignY = "center",
     })
 end
 
--- 创建某玩家的一行真实符文（当前最多显示 5 个，水平一排并居中于列）。
-function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
+-- 创建某玩家的一行真实符文（最多显示 PanelMaxRuneCount = 5 个，水平一排）。
+-- areaX 是卡区左缘：小卡接在名字后面依次右排（不再整体居中）；
+-- 间距首选 PanelRuneGap，张数多到放不下时按卡区可用宽度动态收缩，
+-- 收缩后相邻卡之间的间距依然两两相等（5 张是设计上限，收缩只在缓冲格真的被占用时才生效）。
+function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, areaX, y)
     local viewerName = "Player_" .. viewerIndex
     self:EnsureRuneSlotState(targetIndex)
     local owned = self.PlayerSlotOwnedRunes[targetIndex]
@@ -1388,9 +1426,16 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
     if count == 0 then
         return
     end
-    -- 真实符文水平一排，整体居中于列中心 colX
-    local totalWidth = self.PanelRuneWidth * count + self.PanelRuneGap * (count - 1)
-    local startX = colX - totalWidth / 2
+    -- 小卡接在名字后面从左往右依次排，不再整体居中。
+    -- 间距首选 PanelRuneGap；张数多到按首选间距放不下时，按卡区可用宽度均分收缩，
+    local gap = self.PanelRuneGap
+    if count > 1 then
+        local fitGap = (self.PanelCardAreaWidth - self.PanelRuneWidth * count) / (count - 1)
+        if fitGap < gap then
+            gap = fitGap
+        end
+    end
+    local startX = areaX
     for slot = 1, count, 1 do
         local rune = displayRunes[slot]
         local rarity = rune.Rarity
@@ -1399,7 +1444,7 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
         local runeTextIndex = self:GetPanelRuneTextIndex(targetIndex, slot)
         local runeTitle = self:GetRuneCompactTitle(rune)
         local runeTitleSize = self:GetRuneTitleFontSize(rune, self.PanelRuneHeight)
-        local x = startX + (slot - 1) * (self.PanelRuneWidth + self.PanelRuneGap)
+        local x = startX + (slot - 1) * (self.PanelRuneWidth + gap)
         local topY = y - self.PanelRuneHeight / 2
         local runeDesc = format("%s\n%s", self:GetRuneDisplayName(rune),
             self:GetRuneDescription(rune, ownerIndex))
@@ -1429,7 +1474,9 @@ function HextechRune:CreatePanelRuneRow(viewerIndex, targetIndex, colX, y)
             AlignX = "left",
             AlignY = "top",
         })
-        -- 面板重建时同样固定层级，避免黑色卡框偶发遮住图标。
+        -- 底板后建：先卡框压到底板之上，再让图标压在卡框上（顺带也高于底板），
+        -- 顺序不能反，否则最后一步会把图标重新挪到底板正上方、反而被卡框盖住。
+        exCustomBtnGroupSortDepthAboveAnotherGroup(btnIndex, self.PanelBgIndex)
         exCustomBtnGroupSortDepthAboveAnotherGroup(iconBtnIndex, btnIndex)
         exCreateCustomTextForPlayer(viewerName, {
             Index = runeTextIndex,
@@ -1450,8 +1497,9 @@ end
 function HextechRune:HidePanel(playerIndex)
     local playerName = "Player_" .. playerIndex
     -- 移除符文按钮（先隐藏再移除，避免原生悬浮详情窗残留）
+    -- 按 PanelIndexSlotCount（6，含缓冲那一格）全量清一遍，保证预留 index 不残留
     for targetIndex = 1, 6, 1 do
-        for slot = 1, self.PanelMaxRuneCount, 1 do
+        for slot = 1, self.PanelIndexSlotCount, 1 do
             local btnIndex = self:GetPanelRuneBtnIndex(targetIndex, slot)
             local iconBtnIndex = self:GetPanelRuneIconBtnIndex(targetIndex, slot)
             local runeTextIndex = self:GetPanelRuneTextIndex(targetIndex, slot)
@@ -1465,13 +1513,14 @@ function HextechRune:HidePanel(playerIndex)
         local nameTextIndex = self:GetPanelNameTextIndex(targetIndex)
         exCustomTextUpdateVisibilityForPlayer(playerName, nameTextIndex, 0)
     end
-    -- 移除标题文字
-    local titleTextIndex = self:GetPanelTitleTextIndex(playerIndex)
-    exCustomTextUpdateVisibilityForPlayer(playerName, titleTextIndex, 0)
+    -- 标题已烘进底板贴图，没有引擎文字需要隐藏
     -- 移除关闭按钮（先隐藏再移除）
     local closeBtnIndex = self:GetPanelCloseBtnIndex(playerIndex)
     exCustomBtnSetVisibilityForPlayer(playerName, closeBtnIndex, 0)
     exCustomBtnRemoveForPlayer(playerName, closeBtnIndex)
+    -- 移除底板（先隐藏再移除）
+    exCustomBtnSetVisibilityForPlayer(playerName, self.PanelBgIndex, 0)
+    exCustomBtnRemoveForPlayer(playerName, self.PanelBgIndex)
     self.PanelVisible[playerIndex] = false
 end
 
