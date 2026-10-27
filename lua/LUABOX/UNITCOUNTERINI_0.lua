@@ -620,32 +620,70 @@ function GetDrawnUnitNameFromRecycleList(playindex, unitType)
     return Localization.ObjectsTranslate(unitType)
 end
 
+-- ObjectFindObjects 不一定回条数：参照对象（P[i]）是空座位或句柄已失效时可能只回表，
+function UnitScanObjects(playerRef, filter)
+    local list, count = ObjectFindObjects(playerRef, nil, filter)
+    if type(count) ~= "number" then
+        count = 0
+        if type(list) == "table" then
+            count = getn(list)
+        end
+    end
+    if list == nil then
+        list = {}
+    end
+    return list, count
+end
+
 -- 登场的要塞自带 4 个标枪兵，现在由装车逻辑（PassengerLoadSpawn）在回合开始就清成空车，
 -- 所以它们不会跟着进单位池，回收侧不需要再扣载员额度。
 function unitgetcountanddelet (playindex)
     --exMessageAppendToMessageArea("unitgetcountanddelet")
+    if type(unitcountmax) ~= "number" or unitcountmax < 1 then
+        return
+    end
     local drawnUnitCounts = {}
+    -- P[i] 只在载入时取一次：空座位是 nil，MCV 被摧毁/替换后句柄也会失效，
+    local playerRef = P[playindex]
+    local alive = nil
+    if playerRef ~= nil then
+        alive = ObjectIsAlive(playerRef)
+    end
+    if alive == nil or alive == false or alive == 0 then
+        playerRef = GetObjectByScriptName("P" .. playindex)
+        if playerRef ~= nil then
+            P[playindex] = playerRef
+        end
+    end
     -- 先让单位下车
     for unitindex = 1 , unitcountmax , 1 do
-        local TAR, count = ObjectFindObjects(P[playindex], nil, FilterLIST[unitindex])
+        local TAR, count = UnitScanObjects(playerRef, FilterLIST[unitindex])
         for i = 1 , count , 1  do
-            if ObjectGetContainerObject(TAR[i]) ~= nil then
+            if TAR[i] ~= nil and ObjectGetContainerObject(TAR[i]) ~= nil then
                 ExecuteAction("NAMED_EXIT_BUILDING", TAR[i])
             end
         end
     end
     -- 然后再计数
     for unitindex = 1 , unitcountmax , 1 do
-        local TAR, count = ObjectFindObjects(P[playindex], nil, FilterLIST[unitindex])
+        local TAR, count = UnitScanObjects(playerRef, FilterLIST[unitindex])
         -- 海克斯“登神”：目标单位超出种子数量的部分不进入单位池，直接转为层数。
         if HextechRune ~= nil and HextechRune.FilterAscensionUnits ~= nil then
             TAR, count = HextechRune:FilterAscensionUnits(playindex, unitindex, TAR, count)
         end
+        -- 过滤器可能把整批都转成层数并回 nil；这里再过一道，避免下面的比较和 for 崩掉。
+        if type(count) ~= "number" or TAR == nil then
+            count = 0
+        end
 
         if count > 0 then
             for i = 1 , count , 1  do
-                local unitId = ObjectGetId(TAR[i])
-                if ObjectIsAlive(unitId) then
+                local tar = TAR[i]
+                local unitId = nil
+                if tar ~= nil then
+                    unitId = ObjectGetId(tar)
+                end
+                if unitId ~= nil and ObjectIsAlive(unitId) then
                     -- 如果有精确匹配的 index，优先使用该 index
                     local actualUnitIndex = g_UnitNameToUnitIndex[ObjectGetInstanceId(unitId)]
                     if not actualUnitIndex then
@@ -689,10 +727,12 @@ function unitgetcountanddelet (playindex)
                     end
 
                 end
-                if PureDrawRemoveKnownPlayerUnit ~= nil then
-                    PureDrawRemoveKnownPlayerUnit(ObjectGetId(TAR[i]))
+                if tar ~= nil then
+                    if PureDrawRemoveKnownPlayerUnit ~= nil then
+                        PureDrawRemoveKnownPlayerUnit(ObjectGetId(tar))
+                    end
+                    ExecuteAction("NAMED_DELETE", tar)
                 end
-                ExecuteAction("NAMED_DELETE", TAR[i])
             end
         end
     end
@@ -755,6 +795,13 @@ function unitgenerate ()
     ----exMessageAppendToMessageArea("unitgenerate")
     for playindex = 1 , 6 , 1 do
         local units, unitsCount = CopyPlayerRegisteredObjectSet("Player_"..playindex, "UNITS")
+        -- 同 UnitScanObjects 的道理：条数取不到时不能拿去比较/循环，退回按登记表长度算。
+        if type(unitsCount) ~= "number" then
+            unitsCount = 0
+            if type(units) == "table" then
+                unitsCount = getn(units)
+            end
+        end
         if unitsCount > 0 then
             unitgetcountanddelet (playindex)
             --exMessageAppendToMessageArea("unitgeneratedone")

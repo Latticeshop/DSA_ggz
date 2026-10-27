@@ -68,19 +68,7 @@ HextechRune.UltimateCreatureTargetTypes = {
     "CelestialAntiStructureShip",               -- 玄武级攻击潜艇
 }
 
--- 名单里的舰船条目：禁海模式（g_DisableSeaArmy == 1）下整条跳过。
-HextechRune.UltimateCreatureSeaTargetTypes = {
-    AlliedAntiNavyShipTech3 = true,                 -- 波塞冬巡洋舰
-    AlliedAntiStructureShip = true,                 -- 航母
-    AlliedThetisBattleShip = true,                  -- 忒提斯战列舰
-    SovietAntiNavyShipTech3 = true,                 -- 光荣级导弹巡洋舰
-    SovietAntiStructureShip = true,                 -- 无畏级武库舰
-    JapanAntiNavyShipTech3 = true,                  -- 太刀重巡洋舰
-    JapanAntiStructureShip = true,                  -- 将军战列舰
-    CelestialSeized_JapanAntiNavyShipTech3 = true,  -- 一式磁轨炮重巡
-    CelestialAntiNavyShipTech3 = true,              -- 玄冥级战列巡洋舰
-    CelestialAntiStructureShip = true,              -- 玄武级攻击潜艇
-}
+-- 禁海模式（g_DisableSeaArmy == 1）不用单独过滤：舰船由 BanModeIsNameBanned 按 navy 类型拦。
 
 -- 卡面单位名兜底：地编 ID 与引擎名称键不一致的单位，ObjectsTranslate 会原样返回 ID
 -- （旧联盟 Overlordtank 就是这种），这里登记回收表已经在用的名称键。

@@ -1472,13 +1472,16 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
             for i = 4, 6 do
-                local realLimit = 1
-                if GetPlayerPowerPlantLimit ~= nil then
-                    realLimit = GetPlayerPowerPlantLimit(i)
+                -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
+                local nonCelestialLimit = 5
+                local celestialLimit = 4
+                if GetPlayerPowerPlantReferenceLimit ~= nil then
+                    nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
+                    celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
                 end
                 exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 1, Localization.get("purchase_tech.level", g_angelTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", realLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", realLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
 
@@ -1528,13 +1531,16 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
             for i = 1, 3 do
-                local realLimit = 1
-                if GetPlayerPowerPlantLimit ~= nil then
-                    realLimit = GetPlayerPowerPlantLimit(i)
+                -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
+                local nonCelestialLimit = 5
+                local celestialLimit = 4
+                if GetPlayerPowerPlantReferenceLimit ~= nil then
+                    nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
+                    celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
                 end
                 exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 1, Localization.get("purchase_tech.level", g_evilTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", realLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", realLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
         end

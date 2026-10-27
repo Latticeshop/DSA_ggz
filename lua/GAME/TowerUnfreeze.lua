@@ -7,6 +7,10 @@ g_TowerUnfreezeTypes = {
     "AlliedHeavyArtilleryDefenseBase",  -- 陆地 5000：T74 / T84
     "SovietBaseDefenseAdvanced",        -- 海塔 210：T71F / T81F；缩小模式 ShrinkMode741 / 841
     "JapanBaseDefenseAdvanced",         -- 海塔 1500：T72F / T82F
+    -- 另外两种「防御塔」模板（BasicVar1: g_TargetGroupNames.DefenseTower，九头蛇/冰天雪地按它排除）：
+    -- 地图上目前没有实例，但塔防专家/缩小模式这类生成路径随时可能摆出来，先按模板兜住。
+    "CelestialBaseDefenseAir",              -- 对空型
+    "CelestialBaseDefenseAdvanced_NoCore",  -- 无核心型
     -- 市场五塔模板
     "JapanPointShieldControlTower",     -- 护盾塔
     "SovietHeavyAntiAirMissileTurret",  -- 胡杨；缩小模式 ShrinkMode742 / 842

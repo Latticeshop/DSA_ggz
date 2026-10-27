@@ -97,16 +97,18 @@ function PurchaseTechMode_Setting()
         AlignY = "top",
     })
 
-    -- 按每个玩家真实的小电上限刷新（继承队友后会变成多份），不再写死 5/4。
+    -- 两行恒为参照值：第 2 行按非神州、第 3 行按神州；份数跟实际控制的席位走，不再写死 5/4。
     for i = 1, 6, 1 do
-        local limit = 5
-        if GetPlayerPowerPlantLimit ~= nil then
-            limit = GetPlayerPowerPlantLimit(i)
+        local nonCelestialLimit = 5
+        local celestialLimit = 4
+        if GetPlayerPowerPlantReferenceLimit ~= nil then
+            nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
+            celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
         end
         exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2,
-            Localization.get("purchase_tech.power_plants", limit))
+            Localization.get("purchase_tech.power_plants", nonCelestialLimit))
         exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3,
-            Localization.get("purchase_tech.celestial_plants", limit))
+            Localization.get("purchase_tech.celestial_plants", celestialLimit))
     end
 
 end

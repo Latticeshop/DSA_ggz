@@ -268,7 +268,7 @@ end
 --     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
 -- end
 
--- ===== 金·烧福瑞 / 生异形 / 钓鱼佬：回合开始按本方份数比例替换敌方对应兵种 =====
+-- ===== 金·烧福瑞 / 生异形 / 钓鱼佬 / 樱落：回合开始按本方份数比例替换敌方对应兵种 =====
 HextechRune.BurnFurryRuneId = "gold_burn_furry"
 HextechRune.SpawnAlienRuneId = "gold_spawn_alien"
 HextechRune.AnglerRuneId = "gold_angler"
@@ -544,6 +544,36 @@ function HextechRune:IsConversionProtectedUnit(unit)
     return neverIds[instanceId] == true
 end
 
+-- 登神 / 究极生物圈中的目标单位不参与任何转化：那两张符文把加成和体积都叠在唯一一只身上，
+-- 被换掉等于白练。判定复用它们自己的登记表，不新增维护成本。
+function HextechRune:IsConversionRuneBuffTargetUnit(unit)
+    if unit == nil then
+        return false
+    end
+    if self.IsUltimateCreatureRegistered ~= nil
+        and self:IsUltimateCreatureRegistered(unit) then
+        return true
+    end
+    if g_NoStructureBuffUnitIds == nil then
+        return false
+    end
+    local objectId = ObjectGetId(unit)
+    if objectId == nil or g_NoStructureBuffUnitIds[objectId] == nil then
+        return false
+    end
+    return ObjectIsAlive(objectId)
+end
+
+-- 候选名单的统一口径：本方回收系统内、没被守护神/MCV/龙船/技能召唤占走、
+-- 也不是登神/究极生物圈中的单位。
+function HextechRune:IsConversionCandidateUnit(unit)
+    return ObjectIsAlive(unit)
+        and not self:IsPresetMapUnit(unit)
+        and not self:IsConversionProtectedUnit(unit)
+        and self:IsConversionSystemUnit(unit)
+        and not self:IsConversionRuneBuffTargetUnit(unit)
+end
+
 -- 删掉对面该比例的指定兵种，并在原地生成等量的替换单位。只动 P7/P8 的战场单位，
 -- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
 function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitType,
@@ -559,9 +589,7 @@ function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitTyp
     local candidates = {}
     local seen = {}
     for i = 1, count, 1 do
-        if ObjectIsAlive(units[i]) and not self:IsPresetMapUnit(units[i])
-            and not self:IsConversionProtectedUnit(units[i])
-            and self:IsConversionSystemUnit(units[i]) then
+        if self:IsConversionCandidateUnit(units[i]) then
             seen[units[i]] = true
             tinsert(candidates, units[i])
         end
@@ -573,10 +601,8 @@ function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitTyp
         if extraUnits ~= nil and type(extraCount) == "number" then
             for i = 1, extraCount, 1 do
                 local unit = extraUnits[i]
-                if ObjectIsAlive(unit) and not self:IsPresetMapUnit(unit)
-                    and not self:IsConversionProtectedUnit(unit)
-                    and self:IsConversionSystemUnit(unit)
-                    and seen[unit] == nil then
+                if seen[unit] == nil
+                    and self:IsConversionCandidateUnit(unit) then
                     seen[unit] = true
                     tinsert(candidates, unit)
                 end

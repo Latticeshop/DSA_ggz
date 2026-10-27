@@ -1277,8 +1277,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_rhino_tank = true,
     prepare_backpack = true,
     easy_does_it = true,
-    -- 烧福瑞 / 生异形 / 钓鱼佬：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
-    burn_furry = true, spawn_alien = true, angler = true,
+    -- 烧福瑞 / 生异形 / 钓鱼佬 / 樱落：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
+    burn_furry = true, spawn_alien = true, angler = true, sit_tight = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
     soul_interlock = true,
     ultimate_creature = true,

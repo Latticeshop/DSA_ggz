@@ -9,7 +9,7 @@ end
 g_CachedPlayersPowerPlantLimit = {}
 
 -- 玩家退出/死亡后的“小电份额”转交登记。
--- 份额只看开局存在的 P 席位：每个席位一份 = LIMITPOWERC + 1（全局统一按非神州电厂基础）。
+-- 份额只看开局存在的 P 席位：每席位一（神州 LIMITPOWERC，非神州 LIMITPOWERC + 1）。
 -- MCV 符文/抽卡获得的额外基地不增加份额。
 g_PowerSlotPresent = g_PowerSlotPresent or {}
 g_PowerSlotController = g_PowerSlotController or {}
@@ -158,9 +158,46 @@ function IsValidPowerSlotPlayerIndex(playerIndex)
     return playerIndex ~= nil and playerIndex >= 1 and playerIndex <= 6
 end
 
--- 真实小电上限：每个实际控制的席位一份 LIMITPOWERC + 1。
--- 购买科技界面用它显示，继承后也会跟着控制器变化。
+-- 一个席位的份额：非神州 = LIMITPOWERC + 1（预设 1 座 + 可再建 LIMITPOWERC 座）；
+-- 神州 = LIMITPOWERC（神州小电给钱更多，基础额度天生少一个，固有设计）。
+function GetPowerSeatShare(seatIndex)
+    if seatIndex ~= nil and g_PlayerSide ~= nil and g_PlayerSide[seatIndex] ~= nil then
+        if g_PlayerSide[seatIndex] == 4 then
+            return LIMITPOWERC
+        end
+        return LIMITPOWERC + 1
+    end
+    -- 阵营表还没就绪时按老判定：名下有非神州电厂/电厂蛋才算非神州席位。
+    if P ~= nil and seatIndex ~= nil and P[seatIndex] ~= nil then
+        local plants, plantCount = ObjectFindObjects(P[seatIndex], nil, FilterPowerPlantOrEggNotCelestial)
+        if plantCount > 0 then
+            return LIMITPOWERC + 1
+        end
+    end
+    return LIMITPOWERC
+end
+
+-- 真实小电上限：把该玩家实际控制的每个席位的份额加起来（继承后跟着控制器走）。
+-- 购买科技界面用它显示，显示值与实际限额永远同源。
 function GetPlayerPowerPlantLimit(playerIndex)
+    local limit = 0
+    if g_PowerSlotPresent ~= nil and g_PowerSlotController ~= nil then
+        for slotIndex = 1, 6, 1 do
+            if g_PowerSlotPresent[slotIndex] == 1
+                and g_PowerSlotController[slotIndex] == playerIndex then
+                limit = limit + GetPowerSeatShare(slotIndex)
+            end
+        end
+    end
+    if limit < 1 then
+        limit = GetPowerSeatShare(playerIndex)
+    end
+    return limit
+end
+
+-- 界面参照值：第 2 行「己方电厂最大数量」恒按非神州算，第 3 行「己方神州电厂最大数量」
+-- 恒按神州算，与查看者是哪一方无关；份数按实际控制的席位算，所以继承后两行会一起变多。
+function GetPlayerPowerPlantReferenceLimit(playerIndex, celestial)
     local slotCount = 0
     if g_PowerSlotPresent ~= nil and g_PowerSlotController ~= nil then
         for slotIndex = 1, 6, 1 do
@@ -173,11 +210,10 @@ function GetPlayerPowerPlantLimit(playerIndex)
     if slotCount < 1 then
         slotCount = 1
     end
-    local baseLimit = LIMITPOWERC
-    if baseLimit == nil then
-        baseLimit = 5
+    if celestial == 1 then
+        return slotCount * LIMITPOWERC
     end
-    return slotCount * (baseLimit + 1)
+    return slotCount * (LIMITPOWERC + 1)
 end
 
 -- 东风 DF41 建造上限：每控制一个玩家席位 1 辆 + 东风速递额外额度。
@@ -811,7 +847,7 @@ function LIMITPOWER()
 
     if g_PowerSlotInitialized == 1 then
         -- 每个开局存在的席位算一份；退出后份额跟着实际继承者走。
-        -- 全局统一按非神州电厂基础：每份 = LIMITPOWERC + 1。
+        -- 每份按席位阵营给（神州少一个）：见 GetPowerSeatShare。
         -- 每帧都按当前 LIMITPOWERC 重算：推塔 +2 后，继承来的席位也同步 +2。
         for slotIndex = 1, 6, 1 do
             if g_PowerSlotPresent[slotIndex] == 1 then
@@ -819,7 +855,7 @@ function LIMITPOWER()
                 if IsValidPowerSlotPlayerIndex(controllerIndex) then
                     g_CachedPlayersPowerPlantLimit[controllerIndex] =
                         (g_CachedPlayersPowerPlantLimit[controllerIndex] or 0)
-                        + LIMITPOWERC + 1
+                        + GetPowerSeatShare(slotIndex)
                 end
             end
         end
@@ -827,7 +863,7 @@ function LIMITPOWER()
         -- P 或 g_PlayerNameToIndex 尚未就绪：先按活着的 P 席位给临时上限，避免开局锁死。
         for playindex = 1, 6, 1 do
             if P[playindex] ~= nil and ObjectIsAlive(P[playindex]) then
-                g_CachedPlayersPowerPlantLimit[playindex] = LIMITPOWERC + 1
+                g_CachedPlayersPowerPlantLimit[playindex] = GetPowerSeatShare(playindex)
             end
         end
     end
