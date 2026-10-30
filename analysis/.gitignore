@@ -6,5 +6,5 @@
 *.bin
 __pycache__/
 luac.exe
-# 工具链随仓库上传（其余 .py 仍忽略）
-!自走棋海克斯系统/tools/*.py
+# tools/ 放编译与开发工具（payload、主同步、节点插入、文档搬运），随仓库上传；
+!tools/*.py
