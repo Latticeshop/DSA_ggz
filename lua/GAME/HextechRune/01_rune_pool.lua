@@ -133,12 +133,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
         Icon = "Button_PlayerPower_Telekenetic" },
     -- 烧福瑞：只对敌方步兵生效（禁步兵时对面没有步兵，整张下架）。
-    { Id = "gold_burn_furry", Rarity = 2,
+    { Id = "gold_burn_furry", Rarity = 1,
         NameKey = "hextech.rune.burn_furry.name",
         DescKey = "hextech.rune.burn_furry.desc",
         Effect = "burn_furry", RequiresType = "infantry",
         Icon = "Button_SovietScoutInfantry_small" },
-    -- 生异形 / 钓鱼佬：已上调为棱彩（Rarity 1），Id 保留 gold_ 前缀，避免排除名单与文档联动。
     -- 生异形：与烧福瑞同款回合转化，目标换成敌方载具（禁载具时整张下架）。
     { Id = "gold_spawn_alien", Rarity = 1,
         NameKey = "hextech.rune.spawn_alien.name",
