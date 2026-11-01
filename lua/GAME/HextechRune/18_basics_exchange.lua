@@ -273,8 +273,9 @@ HextechRune.BurnFurryRuneId = "gold_burn_furry"
 HextechRune.SpawnAlienRuneId = "gold_spawn_alien"
 HextechRune.AnglerRuneId = "gold_angler"
 HextechRune.SitTightRuneId = "prismatic_sit_tight"
--- 同阵营份数 → 转化比例：1/2/3 份 = 50%/75%/100%（超过 3 份按 100%）。
-HextechRune.BurnFurryPercentByCopies = { 0.50, 0.75, 1.00 }
+-- 同阵营份数 → 转化比例：1/2/3/4 份 = 25%/50%/75%/100%（超过 4 份按 100%）；
+-- 当前 3v3 最多 3 份，第 4 档实际取不到，留给将来扩桌。
+HextechRune.BurnFurryPercentByCopies = { 0.25, 0.50, 0.75, 1.00 }
 -- 生成的动物随机取一个：警犬（盟军探路兵位）/ 战熊（苏联探路兵位）。
 HextechRune.BurnFurryAnimalTypes = { "AlliedScoutInfantry", "SovietScoutInfantry" }
 -- 生异形：敌方载具 → 恐怖机器人；钓鱼佬：敌方海军 → 海翼。

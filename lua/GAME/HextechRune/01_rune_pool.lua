@@ -392,9 +392,9 @@ HextechRune.NonRepeatableRuneIds = {
     silver_easy_does_it = true,
     -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
     gold_soul_interlock = true,
-    -- 烧福瑞：队友各持一份按 50/75/100% 叠加，同一名玩家第二份不再加档。
+    -- 烧福瑞：队友各持一份按 25/50/75% 叠加，同一名玩家第二份不再加档。
     gold_burn_furry = true,
-    -- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同口径，队友各持一份按 50/75/100% 叠加，第二份不再加档。
+    -- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同口径，队友各持一份按 25/50/75% 叠加，第二份不再加档。
     gold_spawn_alien = true,
     gold_angler = true,
     prismatic_sit_tight = true,
@@ -1035,7 +1035,7 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     elseif rune.Effect == "shrink_ray" then
         return Localization.get(rune.DescKey, self:GetShrinkRayDisplayRounds(playerIndex))
     elseif rune.Effect == "burn_furry" then
-        -- 转化比例随本方（含队友）份数变化，卡面按拿到之后的份数显示 50/75/100。
+        -- 转化比例随本方（含队友）份数变化，卡面按拿到之后的份数显示 25/50/75。
         return Localization.get(rune.DescKey,
             self:GetBurnFurryDisplayPercent(playerIndex))
     elseif rune.Effect == "spawn_alien" then
