@@ -12,9 +12,11 @@ g_PlayerSide = {
     [4] = 1,
     [5] = 1,
     [6] = 1,
+    [7] = 1,
+    [8] = 1,
 }
 
-for i = 1, 6, 1 do
+for i = 1, 8, 1 do
     local playerName = "Player_" .. i
     for j = 1, 4, 1 do
         if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName, playerBaseTech[j]) then

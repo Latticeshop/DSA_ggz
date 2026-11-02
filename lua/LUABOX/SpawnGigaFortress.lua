@@ -42,8 +42,15 @@ function GetGigaFortressCountSlot()
         g_UnitCount = {}
     end
     local instanceId = FastHash("JapanGigaFortressShipEgg")
+    if g_UnitCount[instanceId] ~= nil then
+        for k = 1, 8, 1 do
+            if g_UnitCount[instanceId][k] == nil then
+                g_UnitCount[instanceId][k] = 0
+            end
+        end
+    end
     if g_UnitCount[instanceId] == nil then
-        g_UnitCount[instanceId] = { 0, 0, 0, 0, 0, 0 }
+        g_UnitCount[instanceId] = { 0, 0, 0, 0, 0, 0, 0, 0 }
     end
     return g_UnitCount[instanceId]
 end
@@ -60,17 +67,17 @@ end
 
 function SpawnGigaFortressAir_left()
     local countSlot = GetGigaFortressCountSlot();
-    for i = 1, 3 do
+    for i = 1, 4 do
         local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 4 then
+        if i >= 5 then
             landSpawnPosPrefix = "LIGHTVEH2"
         end
         local angle = 0;
-        if i >= 4 then
+        if i >= 5 then
             angle = 180
         end
         local teamIndex = 7;
-        if i >= 4 then
+        if i >= 5 then
             teamIndex = 8;
         end
         for j = 1, countSlot[i] do
@@ -89,7 +96,7 @@ function SpawnGigaFortressAir_left()
 
     for spindex = 1 , 6 , 1 do
         if  EvaluateCondition("TEAM_HAS_UNITS", AIRTEAM[7][spindex]) then
-            for levelindex = 1 , LEVELUP[7] , 1 do
+            for levelindex = 1 , (LEVELUP[7] or 0) , 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL",AIRTEAM[7][spindex],1)
             end
             ExecuteAction("TEAM_MERGE_INTO_TEAM",AIRTEAM[7][spindex],AIRATTACK[7][spindex])
@@ -100,17 +107,17 @@ end
 
 function SpawnGigaFortressAir_right()
     local countSlot = GetGigaFortressCountSlot();
-    for i = 4, 6 do
+    for i = 5, 8 do
         local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 4 then
+        if i >= 5 then
             landSpawnPosPrefix = "LIGHTVEH2"
         end
         local angle = 0;
-        if i >= 4 then
+        if i >= 5 then
             angle = 180
         end
         local teamIndex = 7;
-        if i >= 4 then
+        if i >= 5 then
             teamIndex = 8;
         end
         for j = 1, countSlot[i] do
@@ -129,7 +136,7 @@ function SpawnGigaFortressAir_right()
 
     for spindex = 1 , 6 , 1 do
         if  EvaluateCondition("TEAM_HAS_UNITS", AIRTEAM[8][spindex]) then
-            for levelindex = 1 , LEVELUP[8] , 1 do
+            for levelindex = 1 , (LEVELUP[8] or 0) , 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL",AIRTEAM[8][spindex],1)
             end
             ExecuteAction("TEAM_MERGE_INTO_TEAM",AIRTEAM[8][spindex],AIRATTACK[8][spindex])

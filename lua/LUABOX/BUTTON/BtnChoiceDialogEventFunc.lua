@@ -83,7 +83,7 @@ g_PreselectedSkillIndices = {}
 -- 1v1 = 每边 1 个、2v2 = 每边 2 个、满 6 位 = 每边 3 个。
 function BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
     local playerIndices = {}
-    for playerIndex = sideStartIndex, sideStartIndex + 2, 1 do
+    for playerIndex = sideStartIndex, sideStartIndex + 3, 1 do
         -- P[i] 是本图 6 个玩家对象（UNITCOUNTERINI_0.lua 里 GetObjectByScriptName("P"..i)），空位为 nil。
         local isHuman = EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY",
             "Player_" .. playerIndex, "Human")
@@ -99,8 +99,8 @@ end
 -- 空位因此不再占掉一项，对称模式两边同一序号必然抽到同一组。
 function BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
     local sideStartIndex = 1
-    if playerIndex >= 4 then
-        sideStartIndex = 4
+    if playerIndex >= 5 then
+        sideStartIndex = 5
     end
     local playerIndices = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
     for i = 1, getn(playerIndices), 1 do
@@ -116,7 +116,7 @@ end
 function BtnChoiceDialogEventFunc_GetPreselectSlotCount()
     local sideCount = max(
         getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(1)),
-        getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(4)))
+        getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(5)))
     if sideCount < 1 then
         return 3
     end
@@ -177,7 +177,7 @@ end
 -- 返回本方当前最前排的存活陆地防御塔；前排损失后自动依次后退到下一座塔。
 function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
     local towerNames = { "T71", "T72", "T73", "T74" }
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         towerNames = { "T81", "T82", "T83", "T84" }
     end
     for i = 1, 4, 1 do
@@ -251,7 +251,7 @@ function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
     local behindDirection = -1;
     local playerOwn = "PlyrCivilian";
     local pos = {X = 2646.5, Y = 3102.5, Z = 210};
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         behindDirection = 1;
         playerOwn = "PlyrCreeps";
         pos = {X = 4403.5, Y = 3102.5, Z = 210};
@@ -308,7 +308,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     dialogData.RefreshData = function(self)
         local playerIndex = self.PlayerIndex
         local investedMax, investedMoney = devil_max, devil_money
-        if playerIndex >= 4 then
+        if playerIndex >= 5 then
             investedMax, investedMoney = angel_max, angel_money
         end
         self.Title = Localization.get("market.title_with_investment", investedMax, investedMoney)
@@ -334,7 +334,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerB_Color = getColorText(transferToB_Index)
         
         local nextInvestmentText = Localization.get("market.next_investment.devil")
-        if playerIndex >= 4 then
+        if playerIndex >= 5 then
             nextInvestmentText = Localization.get("market.next_investment.angel")
         end
         nextInvestmentText = nextInvestmentText .. Localization.get("market.next_investment.benefit")
@@ -429,9 +429,9 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local start = exCounterGetByName("start")
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         local isInvestementMax, totalInvestedMoney = false, 0
-        if playerIndex <= 3 and devil_money >= devil_max then
+        if playerIndex <= 4 and devil_money >= devil_max then
             isInvestementMax = true
-        elseif playerIndex >= 4 and angel_money >= angel_max then
+        elseif playerIndex >= 5 and angel_money >= angel_max then
             isInvestementMax = true
         end
         if isInvestementMax then
@@ -441,7 +441,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         elseif money < 100 then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.invest.failed.insufficient"), 5)
         else
-            if playerIndex <= 3 then
+            if playerIndex <= 4 then
                 devil_money = devil_money + 100
                 totalInvestedMoney = devil_money
             else
@@ -470,7 +470,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
         local pos = {X = 2900, Y = 3187};
-        if self.PlayerIndex >= 4 then
+        if self.PlayerIndex >= 5 then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             pos = {X = 4150, Y = 3187};
@@ -509,7 +509,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
         local pos = {X = 2900, Y = 3018};
-        if self.PlayerIndex >= 4 then
+        if self.PlayerIndex >= 5 then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             pos = {X = 4150, Y = 3018};
@@ -555,7 +555,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local pos = {X = 2773.25, Y = 3102.5, Z = 210};
-        if self.PlayerIndex >= 4 then
+        if self.PlayerIndex >= 5 then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -604,7 +604,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     -- 天门神弓（神州防御塔）：限购 1 座，塔防专家半价且无视数量限制。
     dialogData.BuyCelestialEnergyRailgunBase = function(self)
         local sideName = "evil";
-        if self.PlayerIndex >= 4 then
+        if self.PlayerIndex >= 5 then
             sideName = "angel";
         end
         local objectId = g_BuyTowerId["CelestialEnergyRailgunBase"][sideName];
@@ -630,7 +630,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local towerPos = {X = 2900, Y = 3102.5, Z = 210};
-        if self.PlayerIndex >= 4 then
+        if self.PlayerIndex >= 5 then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -1372,7 +1372,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
         return
     end
     local techLevel = g_evilTechLevel
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         techLevel = g_angelTechLevel
     end
 

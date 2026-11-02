@@ -11,14 +11,14 @@ exScoreBoardSetTitle(Localization.get("board.title.troop_count"))
 -- 设置某行某列的文字
 -- row 行  范围1~7
 -- col 列  范围1~3
-for i = 1 , 6 , 1 do
+for i = 1 , 8 , 1 do
     exScoreBoardSetText(PLYNAME[i], i, 1)
 end
 exScoreBoardSetText(Localization.get("board.title.current_round"),7, 2)
 
 function boardact ()
     local counterValue= exCounterGetByName("lvc");
-    for i = 1 , 6 , 1 do
+    for i = 1 , 8 , 1 do
         exScoreBoardSetText("   "..ANYUNITCOUNT[i], i, 2)
     end
     exScoreBoardSetText(""..counterValue, 7, 3)

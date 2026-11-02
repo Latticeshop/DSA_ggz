@@ -42,7 +42,7 @@ function PureDrawInitializeKnownPlayerUnits()
             ExcludeThing = { "LuckyUnitCrateSeed", "UnitCrateNew", "UnitCrate" },
         })
     end
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         local units, count = ObjectFindObjects(P[playerIndex], nil,
             g_PureDrawKnownPlayerUnitFilter)
         for i = 1, count, 1 do

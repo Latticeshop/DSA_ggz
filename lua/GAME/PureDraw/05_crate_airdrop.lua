@@ -147,7 +147,7 @@ PureDrawRegisterNativeCrateBans(g_AirCrateUnits)
 PureDrawRegisterNativeCrateBans(g_SeaCrateUnits)
 
 function PureDrawFindAirdropOwnerTeam()
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         local playerName = "Player_" .. playerIndex
         if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human") then
             -- 与开局赠送抽卡工程师使用同一支已存在的玩家 crate 队伍。
@@ -249,7 +249,7 @@ function PureDrawOnRoundBeginRefreshQuota()
     end
     g_PureDrawLastRound = round
     if mod(round, g_PureDrawConfig.RefreshRounds) == 0 then
-        for playerIndex = 1, 6, 1 do
+        for playerIndex = 1, 8, 1 do
             PureDrawRefreshQuota(playerIndex)
         end
     end

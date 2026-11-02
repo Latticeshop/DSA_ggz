@@ -316,7 +316,7 @@ index = index + 1 ;
 step6= index-1
 unitcountmax = index-1
 -----------------------------------------
-for playindex = 1 , 6 , 1 do
+for playindex = 1 , 8 , 1 do
     UNITCOUNT[playindex] = {}
     CRATEUNITCOUNT[playindex] = {}
     for unitindex = 1 , unitcountmax , 1 do
@@ -764,7 +764,7 @@ function UpdateSovietMortarCycleBuildability()
     if exCounterGetByName("lvc") < 1 then
         return
     end
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietMortarCycle", 1)
         if PureDrawReapplyPlayerQuota ~= nil then
             PureDrawReapplyPlayerQuota(playindex)
@@ -780,7 +780,7 @@ function UpdateNoNavyTeslaBoatBuildability()
     if exCounterGetByName("lvc") < 3 then
         return
     end
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. playindex, "SovietAntiNavyShipTech1", 1)
         if PureDrawReapplyPlayerQuota ~= nil then
             PureDrawReapplyPlayerQuota(playindex)
@@ -793,7 +793,7 @@ function unitgenerate ()
     UpdateSovietMortarCycleBuildability()
     UpdateNoNavyTeslaBoatBuildability()
     ----exMessageAppendToMessageArea("unitgenerate")
-    for playindex = 1 , 6 , 1 do
+    for playindex = 1 , 8 , 1 do
         local units, unitsCount = CopyPlayerRegisteredObjectSet("Player_"..playindex, "UNITS")
         -- 同 UnitScanObjects 的道理：条数取不到时不能拿去比较/循环，退回按登记表长度算。
         if type(unitsCount) ~= "number" then
@@ -861,7 +861,7 @@ end
 
 function bigshiplimit()
     --exMessageAppendToMessageArea("ACT")
-    for i = 1 , 6 , 1 do
+    for i = 1 , 8 , 1 do
         bigshiplimitc[i] = UNITCOUNT[i][step35+4] +  UNITCOUNT[i][step35+1] +  UNITCOUNT[i][step35+2] +  UNITCOUNT[i][step35+3]
         -- MONEYINI 的定义偶尔晚于本触发器首次执行；未就绪时先显示 0，
         -- 后续调用会自动切回只统计玩家实际生产摇光的正式函数。

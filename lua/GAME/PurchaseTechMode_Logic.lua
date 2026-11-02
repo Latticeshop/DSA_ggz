@@ -98,7 +98,7 @@ function PurchaseTechMode_Setting()
     })
 
     -- 两行恒为参照值：第 2 行按非神州、第 3 行按神州；份数跟实际控制的席位走，不再写死 5/4。
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local nonCelestialLimit = 5
         local celestialLimit = 4
         if GetPlayerPowerPlantReferenceLimit ~= nil then

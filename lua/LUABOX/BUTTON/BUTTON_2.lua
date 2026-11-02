@@ -1,6 +1,6 @@
 function onUserLongTextDialogEvent(playerName, btnIndex, dialogId)
-  for i=1,6,1 do
-    if playerName=="Player_"..i and i<=3 and dialogId==200+i then
+  for i=1,8,1 do
+    if playerName=="Player_"..i and i<=4 and dialogId==200+i then
       if btnIndex==1 then
         exAddTextToPublicBoard(Localization.get("surrender.devil.choose", i), 30)
         devil_surrender=devil_surrender+1

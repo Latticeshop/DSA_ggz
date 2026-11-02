@@ -283,7 +283,7 @@ function HextechRune:ApplyAtFieldShields()
         self.AtFieldShielded = {}
         self.AtFieldShieldedRound = round
     end
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         self:EnsurePlayerRuneState(playerIndex)
         local owned = self.PlayerOwnedRunes[playerIndex]
         for runeIndex = 1, getn(owned), 1 do

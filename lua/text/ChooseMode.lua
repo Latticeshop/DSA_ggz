@@ -6,6 +6,8 @@ g_objectTeamNameToPlayerName = {
     ["teamPlayer_4"] = "Player_4",
     ["teamPlayer_5"] = "Player_5",
     ["teamPlayer_6"] = "Player_6",
+    ["teamPlayer_7"] = "Player_7",
+    ["teamPlayer_8"] = "Player_8",
 }
 -- 移除语言按钮
 exCustomBtnRemove(999)

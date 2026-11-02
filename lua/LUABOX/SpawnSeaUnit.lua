@@ -9,14 +9,14 @@ end
 
 function SpawnSeaUnit_left()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle")];
-    for i = 1, 3 do
+    for i = 1, 4 do
 
         local angle = 0;
-        if i >= 4 then
+        if i >= 5 then
             angle = 180
         end
         local teamIndex = 7;
-        if i >= 4 then
+        if i >= 5 then
             teamIndex = 8;
         end
         for j = 1, countSlot[i] do
@@ -33,7 +33,7 @@ function SpawnSeaUnit_left()
 
     for spindex = 1 , 6 , 1 do
         if  EvaluateCondition("TEAM_HAS_UNITS", SHIPTEAM[7]) then
-            for levelindex = 1 , LEVELUP[7] , 1 do
+            for levelindex = 1 , (LEVELUP[7] or 0) , 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL",SHIPTEAM[7],1)
             end
             ExecuteAction("TEAM_MERGE_INTO_TEAM",SHIPTEAM[7], SHIPTEAMATTACK[7])
@@ -44,13 +44,13 @@ end
 
 function SpawnSeaUnit_right()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle")];
-    for i = 4, 6 do
+    for i = 5, 8 do
         local angle = 0;
-        if i >= 4 then
+        if i >= 5 then
             angle = 180
         end
         local teamIndex = 7;
-        if i >= 4 then
+        if i >= 5 then
             teamIndex = 8;
         end
         for j = 1, countSlot[i] do
@@ -68,7 +68,7 @@ function SpawnSeaUnit_right()
 
     for spindex = 1 , 6 , 1 do
         if  EvaluateCondition("TEAM_HAS_UNITS", SHIPTEAM[8]) then
-            for levelindex = 1 , LEVELUP[8] , 1 do
+            for levelindex = 1 , (LEVELUP[8] or 0) , 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL",SHIPTEAM[8],1)
             end
             ExecuteAction("TEAM_MERGE_INTO_TEAM", SHIPTEAM[8], SHIPTEAMATTACK[8])

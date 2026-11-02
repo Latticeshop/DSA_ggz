@@ -148,7 +148,7 @@ function HextechRune:CheckPoachTrigger()
         return
     end
     self.PoachTriggeredRounds[round] = true
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         self:ApplyPoachToPlayer(playerIndex)
     end
 end

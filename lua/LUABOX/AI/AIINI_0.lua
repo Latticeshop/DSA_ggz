@@ -1,11 +1,11 @@
 AIFAKEMONEY = {}
-for playindex = 1 , 6 , 1 do
+for playindex = 1 , 8 , 1 do
     AIFAKEMONEY[playindex] = -500 ;
     end
 
 function FAKEMONEYGET ()
     local moneyCOUNT = LIMITPOWERC + 1 ;
-    for playindex = 1 , 6 , 1 do
+    for playindex = 1 , 8 , 1 do
     if AI[playindex] == 1 then
     AIFAKEMONEY[playindex] = AIFAKEMONEY[playindex] + 15 * moneyCOUNT ;
     end
@@ -31,7 +31,7 @@ function floor100(num)
   end
 
 function AIUNITBUILDRADOM ()
-    for playindex = 1 , 6 , 1 do   
+    for playindex = 1 , 8 , 1 do   
         if AI[playindex] == 1 then
            -- exMessageAppendToMessageArea("AI造兵")
     --local actindex = floor100(AIFAKEMONEY[playindex])

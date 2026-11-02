@@ -24,9 +24,11 @@ RescueBlockedProductions_PlayerCanBuildUnitsTables = {
     [4] = {},
     [5] = {},
     [6] = {},
+    [7] = {},
+    [8] = {},
 }
 SchedulerModule.call_every_x_frame(function()
-    for p = 1, 6, 1 do
+    for p = 1, 8, 1 do
         local unitHashsNeedUnblock = nil
 
         local playerCanBuildUnitsTable = RescueBlockedProductions_PlayerCanBuildUnitsTables[p]
@@ -55,7 +57,7 @@ function RescueBlockedProductions_CheckUnitCanBuild(playerIndex, unitType)
     if unitType == 'JapanPowerPlantEgg' then
         local units, count = ObjectFindObjects(P[playerIndex], nil, FilterAnyPowerPlantOrEgg)
         if units ~= nil then
-            return count < g_CachedPlayersPowerPlantLimit[playerIndex]
+            return count < (g_CachedPlayersPowerPlantLimit[playerIndex] or 0)
         end
         -- FLAGENPOWER 这玩意在 lua\LUABOX\moneysys\MONEYINI_3.lua 里面
         return FLAGENPOWER[playerIndex] == 1
@@ -171,7 +173,7 @@ function RescueBlockedProductions_CreateEnemyEngineer(playerName, x, y, z)
     end
     -- 获取敌对玩家 id
     local enemyPlayer = "PlyrCreeps"
-    if g_PlayerNameToIndex[playerName] >= 4 then
+    if g_PlayerNameToIndex[playerName] >= 5 then
         enemyPlayer = "PlyrCivilian"
     end
 

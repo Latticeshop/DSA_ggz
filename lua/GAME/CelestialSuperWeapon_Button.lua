@@ -6,7 +6,7 @@ CelestialSuperWeapon_Filter = CreateObjectFilter({
 
 SchedulerModule.call_every_x_frame(function()
     if g_CelestialSuperWeapon_Get then
-        for i = 1 , 6 , 1 do
+        for i = 1 , 8 , 1 do
             if g_CelestialSuperWeapon_Get[i] == 0 then
                 local cankao = GetObjectByScriptName("wan" .. i)
                 local objects, count = ObjectFindObjects(cankao, nil, CelestialSuperWeapon_Filter)

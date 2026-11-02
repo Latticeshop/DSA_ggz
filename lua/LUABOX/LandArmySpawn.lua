@@ -35,7 +35,7 @@ function SpawnNoNavyAssaultDestroyerLandForSide(playerMin, playerMax, teamIndex,
         end
     end
 
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         if EvaluateCondition("TEAM_HAS_UNITS", HEAVYVEHTEAM[teamIndex][i]) then
             for levelindex = 1, LEVELUP[teamIndex], 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL", HEAVYVEHTEAM[teamIndex][i], 1)

@@ -72,24 +72,24 @@ SchedulerModule.delay_call(function()
     ExecuteAction("NAMED_DELETE", object);
 end, 13)
 
-for i = 1, 6 do
+for i = 1, 8 do
     local playerName = "Player_" .. i
     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "alliedsuperweapon", 1)
 end
 
 SchedulerModule.delay_call(function()
     ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", "<All Players>", "SpecialPower_AlliedChronoAccelerate", "Available")
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local playerName = "Player_" .. i
         if not EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName,"PlayerTech_Allied") then
             exPlayerTechUnlockBaseTechForPlayer(playerName)
-            ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", "alliedAdditionalTech" .. tostring(i), "AlliesAdditionalPlayerTechStructure", playerName.."/team"..playerName, "wan1");
+            ExecuteAction("UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION", "alliedAdditionalTech" .. tostring(i), "AlliesAdditionalPlayerTechStructure", playerName.."/team"..playerName, "wan" .. i);
 
         end
     end
 end, 1800)
 
-for i = 1, 6, 1 do
+for i = 1, 8, 1 do
     local playerName = "Player_" .. i
     if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName,"PlayerTech_Celestial") then
         ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", "extraPower1"..tostring(i), "CelestialPowerPlant", playerName.."/team"..playerName, "navelYard" .. i);

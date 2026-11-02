@@ -1,10 +1,10 @@
 function spinfantlv1 ()
   local unitindex = {}
-  for playindex = 1 , 6 , 1 do
+  for playindex = 1 , 8 , 1 do
   unitindex [playindex] = RANDOMGENERATE(step1, 4)
   ----exMessageAppendToMessageArea("unitindex:"..unitindex [playindex])
   end
-  for playindex = 1 , 6 , 1 do  
+  for playindex = 1 , 8 , 1 do  
       local unitindexget = 0
       if unitindex[playindex] >= 0 then
           while unitindexget + 1 <=  unitindex[playindex] do
@@ -29,11 +29,11 @@ function spinfantlv1 ()
   
   function spinlightvehlv1 ()
   local unitindex = {}
-  for playindex = 1 , 6 , 1 do
+  for playindex = 1 , 8 , 1 do
   unitindex [playindex] = RANDOMGENERATE(step2, step1+1)
   --exMessageAppendToMessageArea("unitindex:"..unitindex [playindex])
   end
-  for playindex = 1 , 6 , 1 do  
+  for playindex = 1 , 8 , 1 do  
       local unitindexget = 0
       if unitindex[playindex] >= 0 then
           while unitindexget + 1 <=  unitindex[playindex] do
@@ -58,11 +58,11 @@ function spinfantlv1 ()
   
   function spinheavyvehlv1 ()
       local unitindex = {}
-      for playindex = 1 , 6 , 1 do
+      for playindex = 1 , 8 , 1 do
       unitindex [playindex] = RANDOMGENERATE(step3, step2+1)
       --exMessageAppendToMessageArea("unitindex:"..unitindex [playindex])
       end
-      for playindex = 1 , 6 , 1 do  
+      for playindex = 1 , 8 , 1 do  
           local unitindexget = 0
           if unitindex[playindex] >= 0 then
               while unitindexget + 1 <=  unitindex[playindex] do
@@ -88,11 +88,11 @@ function spinfantlv1 ()
   
   function spaircraftlv1 ()
   local unitindex = {}
-  for playindex = 1 , 6 , 1 do
+  for playindex = 1 , 8 , 1 do
   unitindex [playindex] = RANDOMGENERATE(step4, step3+1)
   --exMessageAppendToMessageArea("unitindex:"..unitindex [playindex])
   end
-  for playindex = 1 , 6 , 1 do  
+  for playindex = 1 , 8 , 1 do  
       local unitindexget = 0
       if unitindex[playindex] >= 0 then
           while unitindexget + 1 <=  unitindex[playindex] do

@@ -1,6 +1,6 @@
-LEVELUP = {}
+LEVELUP = LEVELUP or {}
 for i = 7 , 8 , 1 do
-    LEVELUP[i] = 0
+    LEVELUP[i] = LEVELUP[i] or 0
 end
 
 

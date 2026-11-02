@@ -15,18 +15,22 @@ Localization._map_sources = {
             ["Player_1"] = "恶魔",
             ["Player_2"] = "恶魔",
             ["Player_3"] = "恶魔",
-            ["Player_4"] = "天使",
+            ["Player_4"] = "恶魔",
             ["Player_5"] = "天使",
             ["Player_6"] = "天使",
-        },
+        
+            ["Player_7"] = "天使",
+            ["Player_8"] = "天使",},
         en = {
             ["Player_1"] = "Devil",
             ["Player_2"] = "Devil",
             ["Player_3"] = "Devil",
-            ["Player_4"] = "Angel",
+            ["Player_4"] = "Devil",
             ["Player_5"] = "Angel",
             ["Player_6"] = "Angel",
-        },
+        
+            ["Player_7"] = "Angel",
+            ["Player_8"] = "Angel",},
     },
 }
 

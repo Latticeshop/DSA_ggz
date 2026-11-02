@@ -140,7 +140,7 @@ function HextechRune:RollWarEfficiencyCounters()
         end
         self.WarEfficiencyRolledRound = round
     end
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         self:EnsureWarEfficiencyPlayerState(playerIndex)
         self:ExpireWarEfficiencyBuffs(playerIndex)
         self.WarEfficiencyActive[playerIndex] = self.WarEfficiencyPending[playerIndex]

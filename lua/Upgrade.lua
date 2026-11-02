@@ -24,15 +24,21 @@ PlayerIndex = {
     ["Player_4"] = 4,
     ["Player_5"] = 5,
     ["Player_6"] = 6,
+    ["Player_7"] = 7,
+    ["Player_8"] = 8,
 }
 
+-- 开局自动分队：座位号 → 该席所属阵营的 AI 队名。44 图出生点是连续两段，
+-- 下沿 Player_1~4 归恶魔 PlyrCivilian，上沿 Player_5~8 归天使 PlyrCreeps。
 PlayerToComputer = {
     ["Player_1"] = "PlyrCivilian",
     ["Player_2"] = "PlyrCivilian",
     ["Player_3"] = "PlyrCivilian",
-    ["Player_4"] = "PlyrCreeps",
+    ["Player_4"] = "PlyrCivilian",
     ["Player_5"] = "PlyrCreeps",
     ["Player_6"] = "PlyrCreeps",
+    ["Player_7"] = "PlyrCreeps",
+    ["Player_8"] = "PlyrCreeps",
 }
 
 function onPlayerGetTechEvent(playerName, techInstanceId)
@@ -146,7 +152,7 @@ exRegisterUpgradeCompleteEvent(RANK3_NAME)
 function onPlayerUpgradeCompleteEvent(playerName, upgradeInstanceId, objectId)
     local playerIndex = PlayerIndex[playerName];
 
-    local isFirstTeam = playerIndex <= 3
+    local isFirstTeam = playerIndex <= 4
 
     local factionName = PlayerSideName[playerName]
     local targetPlayer = PlayerToComputer[playerName]

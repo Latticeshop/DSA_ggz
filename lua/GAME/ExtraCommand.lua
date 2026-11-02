@@ -8,7 +8,7 @@ g_BanSeaFilter = CreateObjectFilter({
 
 function MsgCommand_BanSea()
     exMessageAppendToMessageArea(Localization.get("extra_command.ban_sea"))
-    for i = 1, 6 do
+    for i = 1, 8 do
         local playerName = "Player_" .. i
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedNavalYard", 0)
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietNavalYard", 0)
@@ -25,7 +25,7 @@ end
 
 function MsgCommand_BanInfantry()
     exMessageAppendToMessageArea(Localization.get("extra_command.ban_infantry"))
-    for i = 1, 6 do
+    for i = 1, 8 do
         local playerName = "Player_" .. i
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "AlliedBarracks", 0)
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietBarracks", 0)

@@ -18,7 +18,7 @@ CenterTopBtnFunc_InitializeAutoSurrender()
 --exCenterTopBtnShowForPlayer('Player_5', 2,'AUA_Timebelt','时空管理局(全局仅限2次)\n借助未来科技的力量时停对方单位13s')
 --exCenterTopBtnShowForPlayer('Player_6', 1,'CEL_DragonShipLand','龙行天下(全局仅限一次)\n召唤回合数减三的龙船数量于主巨炮位置,上限不得超过三艘')
 --exCenterTopBtnShowForPlayer('Player_6', 2,'Button_SovietInterceptorAircraft','空军元帅(全局可使用两次)\n请求超级苏霍伊群抵达战场对敌方的空军造成毁灭性的攻击')
-for i = 1 , 6 , 1 do
+for i = 1 , 8 , 1 do
     CenterTopBtnFunc_CreateInitialButtons(i)
     BOMB[i] = GetObjectByScriptName("BOMB"..i) ;
     local objectId = ObjectGetId(BOMB[i])

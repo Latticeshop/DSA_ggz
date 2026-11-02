@@ -11,7 +11,7 @@ local enableT4Ship = {
     [9] = 'JapanGigaFortressShipEgg',
 }
 
-for i = 1 , 3 , 1 do
+for i = 1 , 4 , 1 do
     if g_PureDrawT4ShipUnlocked ~= nil then
         g_PureDrawT4ShipUnlocked[i] = true
     end

@@ -72,6 +72,7 @@ function onUserLongTextDialogEvent(playerName, btnIndex, dialogId)
     end
 
     if btnIndex==2 then
+        local o = (PlayerIndex and PlayerIndex[playerName]) or 1
         ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT",playerName,'AlliedWallPiece','PlyrCreeps/teamPlyrCreeps','toupiaodian'..o)
         exMessageAppendToMessageArea(Localization.get("dialog.read_completed", o))
         exCustomBtnRemoveForPlayer(playerName, 999)

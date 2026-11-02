@@ -33,7 +33,7 @@ function PureLuckyCrateMode_Setting()
             ExecuteAction("NAMED_DELETE", yards[yardIndex])
         end
     end
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         PureDrawRefreshQuota(playerIndex)
     end
     SchedulerModule.delay_call(PureDrawBackupSpawnTransports, 5, {})

@@ -72,7 +72,7 @@ HextechRune.OblivionHintCenterX = 683
 HextechRune.OblivionHintY = 104
 HextechRune.OblivionHintFontSize = 16
 
-HextechRune.PanelSeatColumnGroups = { { 1, 2, 3 }, { 4, 5, 6 } }
+HextechRune.PanelSeatColumnGroups = { { 1, 2, 3, 4 }, { 5, 6, 7, 8 } }
 -- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
 HextechRune.PanelRuneWidth = 50
 HextechRune.PanelRuneHeight = 50
@@ -99,7 +99,7 @@ HextechRune.PanelBgIndex = 490
 HextechRune.PanelBgX = 103
 HextechRune.PanelBgY = 176
 HextechRune.PanelBgWidth = 960
-HextechRune.PanelBgHeight = 320
+HextechRune.PanelBgHeight = 400
 -- 两列托盘左缘 = 底板 X + 贴图内托盘左缘（22 / 496）
 HextechRune.PanelColumnX = { 125, 599 }
 -- 名字左对齐于「托盘左缘 + PanelNameOffsetX」。
@@ -121,7 +121,7 @@ HextechRune.PanelVacantSeat = {}
 HextechRune.PanelCardOffsetX = 100
 HextechRune.PanelCardAreaWidth = 335
 -- 三行行心 y = 底板 Y + 贴图内行顶（70 / 150 / 230）+ 行高 64 的一半
-HextechRune.PanelRowY = { 278, 358, 438 }
+HextechRune.PanelRowY = { 278, 358, 438, 518 }
 -- 关闭按钮：素材 hextechRemoveButton.png 是 76x46，实测偏大，等比缩到 56x34（约 74%）显示。
 -- 位置按缩后的尺寸重摆，仍落在标题带右端、与带右缘（贴图内 946）留 20px，
 -- 并避开标题带右上角 R26 的内凹圆弧，否则按钮右上角会戳到圆弧外的透明区。
@@ -552,7 +552,7 @@ end
 
 function HextechRune:IsSoloHumanGame()
     local humanCount = 0
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         if self:IsHumanPlayer(playerIndex) then
             humanCount = humanCount + 1
             if humanCount > 1 then
@@ -758,7 +758,7 @@ function HextechRune:ToggleSelectionPage(playerIndex)
 end
 
 function HextechRune:HandleSelectionHotKey(playerName)
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         if playerName == "Player_" .. playerIndex then
             return self:ToggleSelectionPage(playerIndex)
         end
@@ -1010,7 +1010,7 @@ end
 function HextechRune:ShowRuneEvent(round)
     local rarity = self:RollFieldRarity(round)
     local hasHumanEvent = false
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         -- 按槽位发放：槽位归属者可能是原玩家，也可能是退出继承后的新玩家。
         self:EnsureRuneSlotState(slotIndex)
         local ownerIndex = self.PlayerSlotOwner[slotIndex] or slotIndex
@@ -1042,7 +1042,7 @@ end
 function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
     self:EnsurePlayerRuneState(fromIndex)
     self:EnsurePlayerRuneState(toIndex)
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         self:EnsureRuneSlotState(slotIndex)
     end
     local owned = self.PlayerOwnedRunes[fromIndex]
@@ -1099,7 +1099,7 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
     self.PlayerEventQueues[fromIndex] = {}
     self.PanelVisible[fromIndex] = nil
     -- 所有仍挂在退出者名下的槽位都改挂继承者（支持 A→B 后再 B→C 的级联）。
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         if self.PlayerSlotOwner[slotIndex] == fromIndex then
             self.PlayerSlotOwner[slotIndex] = toIndex
             -- 这一格有人接手了，之前若标过「空置」要撤掉，别把继承来的行藏起来。
@@ -1142,7 +1142,7 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
         end
     end
     -- 已展开的总览面板立即按新归属重画。
-    for viewerIndex = 1, 6, 1 do
+    for viewerIndex = 1, 8, 1 do
         if self.PanelVisible[viewerIndex] then
             self:HidePanel(viewerIndex)
             self:ShowPanel(viewerIndex)
@@ -1153,13 +1153,13 @@ end
 -- 无人继承：槽位符文随资产一起消失。
 function HextechRune:ClearPlayerSlotRunes(fromIndex)
     self:EnsurePlayerRuneState(fromIndex)
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         self:EnsureRuneSlotState(slotIndex)
     end
     self.PlayerOwnedRunes[fromIndex] = {}
     self.PlayerOwnedRuneIds[fromIndex] = {}
     self.PlayerOwnedRuneCounts[fromIndex] = {}
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         if self.PlayerSlotOwner[slotIndex] == fromIndex then
             self.PlayerSlotOwnedRunes[slotIndex] = {}
             self.PlayerSlotOwnedRuneIds[slotIndex] = {}
@@ -1182,7 +1182,7 @@ function HextechRune:ClearPlayerSlotRunes(fromIndex)
     self.PlayerOptionRarity[fromIndex] = nil
     self.PlayerEventQueues[fromIndex] = {}
     self.PanelVisible[fromIndex] = nil
-    for viewerIndex = 1, 6, 1 do
+    for viewerIndex = 1, 8, 1 do
         if self.PanelVisible[viewerIndex] then
             self:HidePanel(viewerIndex)
             self:ShowPanel(viewerIndex)
@@ -1521,7 +1521,7 @@ function HextechRune:HidePanel(playerIndex)
     local playerName = "Player_" .. playerIndex
     -- 移除符文按钮（先隐藏再移除，避免原生悬浮详情窗残留）
     -- 按 PanelIndexSlotCount（6，含缓冲那一格）全量清一遍，保证预留 index 不残留
-    for targetIndex = 1, 6, 1 do
+    for targetIndex = 1, 8, 1 do
         for slot = 1, self.PanelIndexSlotCount, 1 do
             local btnIndex = self:GetPanelRuneBtnIndex(targetIndex, slot)
             local iconBtnIndex = self:GetPanelRuneIconBtnIndex(targetIndex, slot)
@@ -1605,7 +1605,7 @@ function HextechRune:RegisterCustomBtnHandler()
             local offset = index - HextechRune.CustomBtnIndexBase - 1
             local playerIndex = floor(offset / 3) + 1
             local optionIndex = mod(offset, 3) + 1
-            if playerIndex >= 1 and playerIndex <= 6 and optionIndex >= 1 and optionIndex <= 3
+            if playerIndex >= 1 and playerIndex <= 8 and optionIndex >= 1 and optionIndex <= 3
                 and playerName == "Player_" .. playerIndex then
                 if HextechRune.PlayerOptions[playerIndex] then
                     HextechRune:HandleOptionClick(playerIndex, optionIndex)

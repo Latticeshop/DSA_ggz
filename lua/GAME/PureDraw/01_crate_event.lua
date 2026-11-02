@@ -33,7 +33,7 @@ function SetPlayerEngineerProductionAvailability(enable)
     if enable and enable ~= 0 then
         availability = 1
     end
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local playerName = "Player_" .. i
         for j = 1, getn(g_PlayerEngineerTypes), 1 do
             ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, g_PlayerEngineerTypes[j], availability)
@@ -54,7 +54,7 @@ function TryEnableLuckyCrateIfAllowed()
         g_LuckyCreateEnableComplete = 1
         ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", "SpecialPower_LuckyUnitCrate", "<All Human Players>")
         ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", "SpecialPower_LuckyUnitCrateX10", "<All Human Players>")
-        for i = 1, 6, 1 do
+        for i = 1, 8, 1 do
             local playerName = "Player_" .. i
             local isHuman = EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", playerName, "Human")
             if isHuman then

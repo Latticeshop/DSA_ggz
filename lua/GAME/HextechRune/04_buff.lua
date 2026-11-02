@@ -264,14 +264,14 @@ function HextechRune:ApplyGamblingAddict(playerIndex)
 end
 
 function HextechRune:GetPlayerSideIndex(playerIndex)
-    if playerIndex <= 3 then
+    if playerIndex <= 4 then
         return 7
     end
     return 8
 end
 
 function HextechRune:GetEnemySideIndex(playerIndex)
-    if playerIndex <= 3 then
+    if playerIndex <= 4 then
         return 8
     end
     return 7
@@ -329,7 +329,7 @@ function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
 end
 
 function HextechRune:ApplyAllBroadbandJamming(sourceName)
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         self:EnsurePlayerRuneState(playerIndex)
         local owned = self.PlayerOwnedRunes[playerIndex]
         for runeIndex = 1, getn(owned), 1 do
@@ -438,7 +438,7 @@ function HextechRune:GrantFiveThunder(playerIndex)
 end
 
 function HextechRune:CheckFiveThunderTriggered()
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         local state = self.FiveThunderState[playerIndex]
         if state ~= nil and state.Owned then
             local playerName = "Player_" .. playerIndex
@@ -477,7 +477,7 @@ function HextechRune:EnsureFiveThunderMonitor()
 end
 
 function HextechRune:OnFiveThunderRoundBegin(round)
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         local state = self.FiveThunderState[playerIndex]
         if state ~= nil and state.Owned and not state.Ready
             and not state.WaitingForTriggerClear and state.ReadyRound ~= nil
@@ -573,13 +573,13 @@ end
 function HextechRune:GrantOblivionBomb(playerIndex)
     local forwardDirection = 1
     local enemyTowerPos = { X = 4030, Y = 3102.5, Z = 210 }
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         forwardDirection = -1
         enemyTowerPos = { X = 3000, Y = 3102.5, Z = 210 }
     end
-    local enemyIndex = playerIndex + 3
+    local enemyIndex = playerIndex + 4
     if enemyIndex > 6 then
-        enemyIndex = playerIndex - 3
+        enemyIndex = playerIndex - 4
     end
     local enemyFrontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(enemyIndex)
     if ObjectIsAlive(enemyFrontTower) then
@@ -618,7 +618,7 @@ function HextechRune:DeployOblivionBomb(playerIndex)
 end
 
 function HextechRune:HandleOblivionBombHotKey(playerName)
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         if playerName == "Player_" .. playerIndex then
             return self:DeployOblivionBomb(playerIndex)
         end
@@ -657,7 +657,7 @@ function HextechRune:GrantSafetyAegisTowers(playerIndex)
     local playerOwn = "PlyrCivilian"
     local behindDirection = -1
     local towerPos = { X = 2900, Y = 3102.5, Z = 210 }
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         sideName = "angel"
         playerOwn = "PlyrCreeps"
         behindDirection = 1
@@ -699,7 +699,7 @@ end
 function HextechRune:GrantBrilliantLights(playerIndex)
     local forwardDirection = 1
     local towerPos = { X = 3000, Y = 3102.5, Z = 210 }
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         forwardDirection = -1
         towerPos = { X = 4030, Y = 3102.5, Z = 210 }
     end
@@ -1292,7 +1292,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
 function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
     excludedPlayerIndex, excludedOwnershipId, typeLookup)
     typeLookup = typeLookup or self:BuildAllBattleUnitTypeLookup()
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         self:EnsurePlayerRuneState(playerIndex)
         local owned = self.PlayerOwnedRunes[playerIndex]
         for runeIndex = 1, getn(owned), 1 do
@@ -1340,7 +1340,7 @@ end
 function HextechRune:ApplyFortified(playerIndex)
     local landTowerNames = { "T71", "T72", "T73", "T74" }
     local seaTowerNames = { "T71F", "T72F", "T73F" }
-    if playerIndex >= 4 then
+    if playerIndex >= 5 then
         landTowerNames = { "T81", "T82", "T83", "T84" }
         seaTowerNames = { "T81F", "T82F", "T83F" }
     end
@@ -1447,7 +1447,7 @@ function HextechRune:GrantCenturionLayer(playerIndex)
 end
 
 function HextechRune:ApplyFiveTigerGenerals()
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         if self:GetFiveTigerGeneralsCopyCount(playerIndex) > 0 then
             self:GrantCenturionLayer(playerIndex)
         end
@@ -1659,7 +1659,7 @@ function HextechRune:ApplyRoundEffects(round)
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
     -- 登神：与以战养战同一时机播报各自的累计加成。
-    for ascensionPlayerIndex = 1, 6, 1 do
+    for ascensionPlayerIndex = 1, 8, 1 do
         self:BroadcastAscension(ascensionPlayerIndex)
     end
     -- 诸神黄昏：回合开始时把被治疗抬回一半以上的单位重新压回一半。

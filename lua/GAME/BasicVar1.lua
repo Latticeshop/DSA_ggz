@@ -1,5 +1,49 @@
 -- 讲解见 analysis/地图注释说明文档.md 附录 A.72、A.91
 
+-- ===== 4v4（8 席）人数口径：6 人时代散落各处的硬编码，集中记在这里 =====
+-- 座位号 seatIndex = 1..8（1v1/2v2/3v3 只用到前几席，空位照旧不参与任何循环）。
+-- 阵营号 sideIndex 沿用地图两方 AI 队：7 = PlyrCivilian（恶魔）/ 8 = PlyrCreeps（天使）。
+-- 44 图把出生点物理排成连续两段：下沿 Player_1~4 = 恶魔，上沿 Player_5~8 = 天使，
+-- 所以「同侧第 n 人 ↔ 对面第 n 人」的偏移量就是 g_SideSize，阵营切分是 seatIndex > g_SideSize。
+-- 注意：P[1..6] 是各席锚点对象，P[7]/P[8] 仍是两方 AI 阵营锚点 MCV（地图预设、代码不能占），
+-- 7/8 号玩家的锚点走 g_SeatAnchorNameBySeat 里的 SeatAnchor7/8（见 g_GetSeatAnchor）。
+g_PlayerCount = 8
+g_SideSize = 4
+g_SeatAnchorNameBySeat = {
+    [7] = "SeatAnchor7",
+    [8] = "SeatAnchor8",
+}
+
+-- 座位 → 阵营号（7 恶魔 / 8 天使）
+function g_SeatToSide(seatIndex)
+    if seatIndex == nil then
+        return nil
+    end
+    if seatIndex > g_SideSize then
+        return 8
+    end
+    return 7
+end
+
+-- 阵营号 → 本边第一个座位号（7 → 1，8 → 5）
+function g_SideFirstSeat(sideIndex)
+    if sideIndex == 8 then
+        return g_SideSize + 1
+    end
+    return 1
+end
+
+-- 同侧第 n 人 ↔ 对面第 n 人（±g_SideSize）
+function g_OpponentSeat(seatIndex)
+    if seatIndex == nil then
+        return nil
+    end
+    if seatIndex > g_SideSize then
+        return seatIndex - g_SideSize
+    end
+    return seatIndex + g_SideSize
+end
+
 g_PlayerDebtCount = {
     ["Player_1"] = 0,
     ["Player_2"] = 0,
@@ -7,6 +51,8 @@ g_PlayerDebtCount = {
     ["Player_4"] = 0,
     ["Player_5"] = 0,
     ["Player_6"] = 0,
+    ["Player_7"] = 0,
+    ["Player_8"] = 0,
 }
 
 g_PlayerInDebt = {
@@ -16,6 +62,8 @@ g_PlayerInDebt = {
     ["Player_4"] = 0,
     ["Player_5"] = 0,
     ["Player_6"] = 0,
+    ["Player_7"] = 0,
+    ["Player_8"] = 0,
 }
 
 g_PlayerNameToIndex = {
@@ -25,6 +73,8 @@ g_PlayerNameToIndex = {
     ["Player_4"] = 4,
     ["Player_5"] = 5,
     ["Player_6"] = 6,
+    ["Player_7"] = 7,
+    ["Player_8"] = 8,
 }
 
 g_TargetGroupNames = g_TargetGroupNames or {}

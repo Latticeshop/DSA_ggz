@@ -7,7 +7,7 @@ end
 function PureDrawGetQuotaDisplayDirection(playerIndex)
     local playerPosition = exWaypointGetPos(format("Player_%d_Start", playerIndex))
     local startXTotal = 0
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local startPosition = exWaypointGetPos(format("Player_%d_Start", i))
         startXTotal = startXTotal + startPosition[1]
     end

@@ -14,7 +14,7 @@ local freeNavalYard = {
 
 -- 抽卡模式不赠送船厂，避免赠送建筑的特殊生产序列绕过生产余额。
 if g_DrawMode ~= 2 then
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local playerName = "Player_" .. i
         for j = 1, 4, 1 do
             if EvaluateCondition("PLAYER_HAS_PLAYER_TECH", playerName, playerBaseTech[j]) then

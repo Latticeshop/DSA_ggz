@@ -16,7 +16,7 @@ function UNITSPSHIP (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
                 for i = 1 , spiunitcount , 1 do
                     --------------------------------
                     if  spindex < 6 then
-                        if playindex <= 3 then
+                        if playindex <= 4 then
                             local x, y, z = ObjectGetPosition(UNITSP[7][spindex]) ;
                             ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[7],{X=x,Y=y,Z=z},"0")
                             spindex = spindex + 1 ;
@@ -26,7 +26,7 @@ function UNITSPSHIP (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
                             spindex = spindex + 1 ;
                         end
                     elseif  spindex >= 6 then
-                        if playindex <= 3 then
+                        if playindex <= 4 then
                             local x, y, z = ObjectGetPosition(UNITSP[7][spindex]) ;
                             ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[7],{X=x,Y=y,Z=z},"0")
                             spindex =  1 ;

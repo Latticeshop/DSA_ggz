@@ -58,7 +58,7 @@ function EnforceCelestialDF41PerPlayerLimit()
     end
     -- 地编的限造脚本（DF 触发器）只认第一辆东风就会永久禁造，符文赠送的那辆
     -- 会让符文拥有者再也造不出自己的东风，因此这里按上限重新同步建造按钮。
-    for playerIndex = 1, 6, 1 do
+    for playerIndex = 1, 8, 1 do
         local limit = 1
         if GetPlayerDF41BuildLimit ~= nil then
             limit = GetPlayerDF41BuildLimit(playerIndex)

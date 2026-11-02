@@ -2,7 +2,7 @@
 
 LIMITPOWERC = 4
 FLAGENPOWER = {}
-for i = 1, 6, 1 do
+for i = 1, 8, 1 do
     FLAGENPOWER[i] = 1
 end
 
@@ -87,7 +87,7 @@ function GetPlayerYaoguangRemainingProductionQuota(playindex)
 end
 
 function LIMITYAOGUANG()
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         ReconcilePlayerProducedYaoguang(playindex)
         local remainingQuota = GetPlayerYaoguangRemainingProductionQuota(playindex)
         local playerName = "Player_" .. playindex
@@ -123,7 +123,7 @@ function GetPlayerGuardianTankCount(playindex)
 end
 
 function LIMITGUARDIANTANK()
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         local count = GetPlayerGuardianTankCount(playindex)
         local playerName = "Player_" .. playindex
         if count >= GUARDIAN_TANK_LIMIT and FLAGENGUARDIANTANK[playindex] == 1 then
@@ -779,7 +779,7 @@ function OnPlayerSpellBookDied(ownerPlayerName, dyingObjId)
     end
     local playerIndex = nil
     if g_PlayerSpellBookId ~= nil and dyingObjId ~= nil then
-        for i = 1, 6, 1 do
+        for i = 1, 8, 1 do
             if g_PlayerSpellBookId[i] == dyingObjId then
                 playerIndex = i
                 break
@@ -841,7 +841,7 @@ function LIMITPOWER()
 
     InitPowerSlotTransfers()
 
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         g_CachedPlayersPowerPlantLimit[playindex] = 0
     end
 
@@ -861,13 +861,13 @@ function LIMITPOWER()
         end
     else
         -- P 或 g_PlayerNameToIndex 尚未就绪：先按活着的 P 席位给临时上限，避免开局锁死。
-        for playindex = 1, 6, 1 do
+        for playindex = 1, 8, 1 do
             if P[playindex] ~= nil and ObjectIsAlive(P[playindex]) then
                 g_CachedPlayersPowerPlantLimit[playindex] = GetPowerSeatShare(playindex)
             end
         end
     end
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         local currentLimit = g_CachedPlayersPowerPlantLimit[playindex] or 0
         local Power, count = ObjectFindObjects(P[playindex], nil, FilterAnyPowerPlantOrEgg)
         if Power ~= nil then
