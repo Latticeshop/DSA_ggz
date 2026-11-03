@@ -203,7 +203,7 @@ g_PureDrawProductionAliases = {
 
 g_PureDrawBuildableUnitSet = {}
 g_PureDrawUnitInfoByHash = {}
-g_PureDrawQuota = { 0, 0, 0, 0, 0, 0 }
+g_PureDrawQuota = { 0, 0, 0, 0, 0, 0, 0, 0 }
 g_PureDrawTrackedCrates = {}
 g_PureDrawTrackedCrateList = {}
 g_PureDrawAirdropCrateIds = {}
@@ -219,7 +219,7 @@ g_PureDrawPendingNativeResultIds = {}
 -- 已确认由玩家生产且成功消耗余额的单位。周期回收时据此排除 producer 异常为空的生产单位。
 g_PureDrawProducedUnitIds = {}
 g_PureDrawLastRound = -1
-g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false }
+g_PureDrawT4ShipUnlocked = { false, false, false, false, false, false, false, false }
 g_PureDrawRegisteredProductionHashes = {}
 g_PureDrawAirdropSerial = 0
 g_PureDrawCustomSpawnSerial = 0

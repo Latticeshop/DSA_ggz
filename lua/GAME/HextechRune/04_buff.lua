@@ -175,12 +175,12 @@ HextechRune.CenturionSpellbookFilter = HextechRune.CenturionSpellbookFilter
     })
 g_HextechFiveTigerPendingTargets = g_HextechFiveTigerPendingTargets or {}
 
-g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0 }
+g_HextechRecycleBonus = g_HextechRecycleBonus or { 0, 0, 0, 0, 0, 0, 0, 0 }
 g_HextechBuyTwoGetOne = g_HextechBuyTwoGetOne or {}
-g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0 }
-g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
-g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0 }
-g_HextechOblivionBombCharges = g_HextechOblivionBombCharges or { 0, 0, 0, 0, 0, 0 }
+g_HextechOilDerrickSerial = g_HextechOilDerrickSerial or { 0, 0, 0, 0, 0, 0, 0, 0 }
+g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false, false, false }
+g_HextechUltimateRefreshCount = g_HextechUltimateRefreshCount or { 0, 0, 0, 0, 0, 0, 0, 0 }
+g_HextechOblivionBombCharges = g_HextechOblivionBombCharges or { 0, 0, 0, 0, 0, 0, 0, 0 }
 -- 符文赠送的埃奎斯用独立台账，与市场的两个常规购买名额互不影响（同阵营共用一条走廊）。
 g_HextechGrantAegisSlots = g_HextechGrantAegisSlots or { ["angel"] = { 0, 0 }, ["evil"] = { 0, 0 } }
 -- 东风速递符文赠送的东风不占建造额度：拥有符文的玩家保有上限从 1 提高到 2。
@@ -278,18 +278,21 @@ function HextechRune:GetEnemySideIndex(playerIndex)
 end
 
 function HextechRune:GetSidePlayerRange(sideIndex)
+    -- 8 人：返回阵营座位表（恶魔 {1,2,3,8}、天使 {4,5,7,6}），
+    -- 旧的连续区间 1..3 / 4..6 会把第 4 席整体漏掉。
     if sideIndex == 7 then
-        return 1, 3
+        return g_Seat7 or { 1, 2, 3, 8 }
     end
-    return 4, 6
+    return g_Seat8 or { 4, 5, 7, 6 }
 end
 
 -- 持有键是“符文 ID + 兵种”，带兵种的符文需要按 ownershipId 统计队伍份数。
 -- 退出继承后槽位仍算一份，所以这里按“槽位持有表”统计，不按玩家聚合表。
 function HextechRune:GetSideRuneCopyCount(sideIndex, ownershipId)
-    local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
+    local sideSeats = self:GetSidePlayerRange(sideIndex)
     local count = 0
-    for slotIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    for seatPos = 1, getn(sideSeats), 1 do
+        local slotIndex = sideSeats[seatPos]
         self:EnsureRuneSlotState(slotIndex)
         if self.PlayerSlotOwnedRuneIds[slotIndex][ownershipId] then
             count = count + 1
@@ -1134,8 +1137,8 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
     return 0
 end
 
-function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
-    lastPlayerIndex, typeLookup, skipObjects, seenObjects)
+function HextechRune:AssignNewSideBattleUnits(sideIndex, seatList,
+    typeLookup, skipObjects, seenObjects)
     local newlyAssigned = {}
     if P == nil or P[sideIndex] == nil then
         return newlyAssigned
@@ -1160,7 +1163,8 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
         end
 
         local claimed = {}
-        for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+        for seatPos = 1, getn(seatList), 1 do
+            local playerIndex = seatList[seatPos]
             local grantedCount = 0
             for unitPosition = 1, getn(newUnits), 1 do
                 if not claimed[unitPosition] then
@@ -1193,9 +1197,12 @@ function HextechRune:AssignNewBattleUnits(typeLookup, skipObjects, seenObjects)
         return result
     end
     typeLookup = typeLookup or self:BuildAllBattleUnitTypeLookup()
-    local left = self:AssignNewSideBattleUnits(7, 1, 3, typeLookup, skipObjects,
+    -- 8 人：恶魔 {1,2,3,8}、天使 {4,5,7,6}，旧的 1..3 / 4..6 区间会漏掉第 4 席
+    local leftSeats = g_Seat7 or { 1, 2, 3, 8 }
+    local rightSeats = g_Seat8 or { 4, 5, 7, 6 }
+    local left = self:AssignNewSideBattleUnits(7, leftSeats, typeLookup, skipObjects,
         seenObjects)
-    local right = self:AssignNewSideBattleUnits(8, 4, 6, typeLookup, skipObjects,
+    local right = self:AssignNewSideBattleUnits(8, rightSeats, typeLookup, skipObjects,
         seenObjects)
     for i = 1, getn(left), 1 do
         tinsert(result, left[i])

@@ -135,9 +135,9 @@ function HextechRune:GetHuntRhythmUnitTypes(playerIndex)
 end
 
 -- 本方是否有人持有狩猎律动（决定要不要为死者阵营补扫一次兵种）。
-function HextechRune:SideHasHuntRhythm(firstPlayerIndex, lastPlayerIndex)
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-        if self:GetHuntRhythmUnitTypes(playerIndex) ~= nil then
+function HextechRune:SideHasHuntRhythm(sideSeats)
+    for seatPos = 1, getn(sideSeats), 1 do
+        if self:GetHuntRhythmUnitTypes(sideSeats[seatPos]) ~= nil then
             return true
         end
     end
@@ -228,13 +228,13 @@ function HextechRune:HealHuntRhythmUnit(objectId)
 end
 
 -- 狩猎律动结算：死者兵种与持有人兵种不一致的不触发；同一次死亡里，持有人每兵种各治一只。
-function HextechRune:ApplyHuntRhythmHeal(sideIndex, firstPlayerIndex, lastPlayerIndex,
-    deadTypes)
+function HextechRune:ApplyHuntRhythmHeal(sideIndex, sideSeats, deadTypes)
     if deadTypes == nil then
         return
     end
     local lookup
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    for seatPos = 1, getn(sideSeats), 1 do
+        local playerIndex = sideSeats[seatPos]
         local heldTypes = self:GetHuntRhythmUnitTypes(playerIndex)
         if heldTypes ~= nil then
             for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
@@ -255,11 +255,12 @@ function HextechRune:ApplyHuntRhythmHeal(sideIndex, firstPlayerIndex, lastPlayer
 end
 
 -- 炽燃利息：本方每名持有者各拿一份钱，但死亡位置只飘一次字（与小电厂同款）。
-function HextechRune:PayCombustionInterest(dyingObjId, firstPlayerIndex, lastPlayerIndex)
+function HextechRune:PayCombustionInterest(dyingObjId, sideSeats)
     local interestMoney = GetCombustionInterestMoney()
     local rewarded = false
     local previous = SetWorldBuilderThisPlayer(1)
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    for seatPos = 1, getn(sideSeats), 1 do
+        local playerIndex = sideSeats[seatPos]
         self:EnsurePlayerRuneState(playerIndex)
         if self.PlayerOwnedRuneIds[playerIndex]["gold_combustion_interest"] then
             ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, interestMoney)
@@ -284,17 +285,17 @@ function HextechRune:OnDeathRewardUnitDie(dyingObjId, dyingObjInstanceId, ownerP
     if sideIndex == nil then
         return
     end
-    local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
-    self:PayCombustionInterest(dyingObjId, firstPlayerIndex, lastPlayerIndex)
+    local sideSeats = self:GetSidePlayerRange(sideIndex)
+    self:PayCombustionInterest(dyingObjId, sideSeats)
 
     local deadTypes = self.BattleUnitTypeByInstance[dyingObjInstanceId]
     if deadTypes == nil and deadSideIndex ~= nil
         and self.HuntTypeSeedTried[dyingObjInstanceId] == nil
-        and self:SideHasHuntRhythm(firstPlayerIndex, lastPlayerIndex) then
+        and self:SideHasHuntRhythm(sideSeats) then
         self.HuntTypeSeedTried[dyingObjInstanceId] = true
         self:RememberUnitTypes(self:BuildSideUnitTypeLookup(deadSideIndex))
         deadTypes = self.BattleUnitTypeByInstance[dyingObjInstanceId]
     end
     -- 缓存没见过这个模板（首次登场就阵亡）时按「不匹配」处理，宁可少治也不乱治。
-    self:ApplyHuntRhythmHeal(sideIndex, firstPlayerIndex, lastPlayerIndex, deadTypes)
+    self:ApplyHuntRhythmHeal(sideIndex, sideSeats, deadTypes)
 end

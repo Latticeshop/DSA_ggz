@@ -87,9 +87,15 @@ end
 
 -- 为“补充军队”按阵营单独生成海军，避免调用旧函数时把双方海军一起补出来。
 function UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, playerMin, playerMax, teamIndex, angle)
+    -- 8 人：按阵营座位表出兵（恶魔 1,2,3,8 / 天使 4,5,7,6）
+    local seats = g_Seat7 or { 1, 2, 3, 8 }
+    if teamIndex == 8 then
+        seats = g_Seat8 or { 4, 5, 7, 6 }
+    end
     local spindex = 1
     for unitindex = unitmin, unitmax, 1 do
-        for playindex = playerMin , BanModeSpawnCount(unitindex, playerMax) , 1 do
+        for seatPos = 1 , BanModeSpawnCount(unitindex, 4) , 1 do
+            local playindex = seats[seatPos]
             local unitCount = UNITCOUNT[playindex][unitindex]
             for i = 1, unitCount, 1 do
                 local x, y, z = ObjectGetPosition(UNITSP[teamIndex][spindex])

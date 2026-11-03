@@ -63,11 +63,11 @@ function UNITSPST_right (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
                     --------------------------------
                     if  spindex < 6 then
                         local x, y, z = ObjectGetPosition(UNITSP[8][spindex]) ;
-                        ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"0")
+                        ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"180")
                         spindex = spindex + 1 ;
                     elseif  spindex >= 6 then
                         local x, y, z = ObjectGetPosition(UNITSP[8][spindex]) ;
-                        ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"0")
+                        ExecuteAction("CREATE_OBJECT",UNITLIST[unitindex],UNITTEAM[8][spindex],{X=x,Y=y,Z=z},"180")
                         spindex =  1 ;
                     end
                     ----------------------------------------------

@@ -815,7 +815,7 @@ bigshiplimitc = {}
 
 -- 四种 T4 大船共用一个限造额度（单位池数量，按玩家个人）。讲解见 analysis/地图注释说明文档.md §3。
 BIGSHIP_LIMIT = 2
-FLAGENBIGSHIP = { 1, 1, 1, 1, 1, 1 }
+FLAGENBIGSHIP = { 1, 1, 1, 1, 1, 1, 1, 1 }
 BigShipBuildTypes = {
     "JapanAntiStructureShip",
     "JapanAntiStructureShip_Enhanced",

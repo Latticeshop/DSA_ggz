@@ -160,7 +160,7 @@ g_BuyTowerId = {
 g_MarketTowerBasePrice = {
     shield = 10000, sakura = 10000, poplar = 10000, aegis = 12000, railgun = 15000,
 }
-g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false }
+g_HextechTowerDefenseExpert = g_HextechTowerDefenseExpert or { false, false, false, false, false, false, false, false }
 
 function BtnChoiceDialogEventFunc_HasTowerDefenseExpert(playerIndex)
     return g_HextechTowerDefenseExpert ~= nil
@@ -1385,7 +1385,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
         local playerIndex2 = g_PlayerNameToIndex[self.PlayerName]
         local neededMoneyOriginal = g_techLevelNeededMoney[techLevel3]
         local roundRecord = g_evilTechBuyRound;
-        if playerIndex2 >= 4 then
+        if g_IsAngelSeat(playerIndex2) then
             roundRecord = g_angelTechBuyRound
         end
         local round = exCounterGetByName("lvc")
@@ -1403,7 +1403,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
 
             local playerIndex2 = g_PlayerNameToIndex[self.PlayerName]
             local techLevel2 = g_evilTechLevel
-            if playerIndex2 >= 4 then
+            if g_IsAngelSeat(playerIndex2) then
                 techLevel2 = g_angelTechLevel
             end
 
@@ -1487,7 +1487,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
         else
             g_evilTechLevel = g_evilTechLevel + 1
             if g_evilTechLevel < 4 then
-                for _k = 1, 4 do local i = g_Seat8[_k]
+                for _k = 1, 4 do local i = g_Seat7[_k]  -- 恶魔侧
                     exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("skill_mode.purchase.tech.success"), 20)
                     exCreateCustomButtonForPlayer("Player_" .. i, {
                         Index = 7,
@@ -1502,7 +1502,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                 end
 
             else
-                for _k = 1, 4 do local i = g_Seat8[_k]
+                for _k = 1, 4 do local i = g_Seat7[_k]  -- 恶魔侧
                     exCustomBtnSetVisibilityForPlayer("Player_" .. i, 7, 0)
                 end
             end
@@ -1529,7 +1529,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
 
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
-            for _k = 1, 4 do local i = g_Seat8[_k]
+            for _k = 1, 4 do local i = g_Seat7[_k]  -- 恶魔侧
                 -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
                 local nonCelestialLimit = 5
                 local celestialLimit = 4
@@ -1597,16 +1597,11 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 local leftCount = 0
                 count, leftCount = RemoveRecycleUnitCount(playerIndex2, recycleUnitInfo, count)
                 ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, count * recycleUnitInfo.Money * GetRecycleRate(playerIndex2)) ;
-                -- 同时也要告诉盟友
+                -- 同时也要告诉盟友（8 人：按阵营座位表遍历，不再写死三个人）
                 local msg = Localization.get("recycle.message", tostring(playerIndex2), count, recycleUnitInfo.Name, tostring(leftCount));
-                if playerIndex2 >= 4 then
-                    exAddTextToPublicBoardForPlayer("Player_4", msg, 5);
-                    exAddTextToPublicBoardForPlayer("Player_5", msg, 5);
-                    exAddTextToPublicBoardForPlayer("Player_6", msg, 5);
-                else
-                    exAddTextToPublicBoardForPlayer("Player_1", msg, 5);
-                    exAddTextToPublicBoardForPlayer("Player_2", msg, 5);
-                    exAddTextToPublicBoardForPlayer("Player_3", msg, 5);
+                local mateSeats = g_SideSeatsOf(g_SeatToSide(playerIndex2))
+                for matePos = 1, 4, 1 do
+                    exAddTextToPublicBoardForPlayer("Player_" .. mateSeats[matePos], msg, 5);
                 end
             end
 

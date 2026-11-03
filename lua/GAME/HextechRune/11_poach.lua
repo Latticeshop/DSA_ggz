@@ -60,10 +60,11 @@ function HextechRune:CollectPoachSourceUnitIndexes(playerIndex)
     if UNITCOUNT == nil or UNITLIST == nil or unitcountmax == nil then
         return indexes
     end
-    local firstPlayerIndex, lastPlayerIndex =
+    local enemySeats =
         self:GetSidePlayerRange(self:GetEnemySideIndex(playerIndex))
     local seen = {}
-    for enemyIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    for seatPos = 1, getn(enemySeats), 1 do
+        local enemyIndex = enemySeats[seatPos]
         local enemyPool = UNITCOUNT[enemyIndex]
         if enemyPool ~= nil then
             for unitIndex = 1, unitcountmax, 1 do

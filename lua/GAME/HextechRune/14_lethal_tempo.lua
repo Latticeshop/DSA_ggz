@@ -60,9 +60,10 @@ function HextechRune:ApplyAllLethalTempoBuffs()
     end
     local round = tonumber(exCounterGetByName("lvc")) or 0
     for sideIndex = 7, 8, 1 do
-        local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
+        local sideSeats = self:GetSidePlayerRange(sideIndex)
         local sideHasHolder = false
-        for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+        for seatPos = 1, getn(sideSeats), 1 do
+            local playerIndex = sideSeats[seatPos]
             if self:HasLethalTempo(playerIndex) then
                 sideHasHolder = true
             end
@@ -70,9 +71,10 @@ function HextechRune:ApplyAllLethalTempoBuffs()
         if sideHasHolder then
             local lookup = self:BuildSideUnitTypeLookup(sideIndex)
             for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
-                for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-                    if self:HasLethalTempo(playerIndex) then
-                        self:ApplyLethalTempoBuffs(playerIndex,
+                for seatPos2 = 1, getn(sideSeats), 1 do
+                    local playerIndex2 = sideSeats[seatPos2]
+                    if self:HasLethalTempo(playerIndex2) then
+                        self:ApplyLethalTempoBuffs(playerIndex2,
                             self.UnitTypeOrder[typeIndex], lookup, round)
                     end
                 end

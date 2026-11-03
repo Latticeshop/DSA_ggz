@@ -114,14 +114,11 @@ function GetCombustionInterestMoney()
 end
 
 function GetTeamSovietProductionBonusCount(playerIndex)
-    local firstPlayerIndex = 1
-    if g_IsAngelSeat(playerIndex) then
-        firstPlayerIndex = 4
-    end
-
+    -- 8 人：按阵营座位表统计，不再「取前 3 席」（第 4 席会被漏掉，影响回收倍率）
+    local sideSeats = g_SideSeatsOf(g_SeatToSide(playerIndex))
     local count = 0
-    for i = firstPlayerIndex, firstPlayerIndex + 2, 1 do
-        if g_ProductionBonus_SovietGet[i] == 1 then
+    for i = 1, 4, 1 do
+        if g_ProductionBonus_SovietGet[sideSeats[i]] == 1 then
             count = count + 1
         end
     end
@@ -200,9 +197,9 @@ function onCenterTopBtnClickEvent(playerName, btnIndex)
 end
 
 g_AutoSurrender = {
-    PlayerInitiallyPresent = { 0, 0, 0, 0, 0, 0 },
-    PlayerNowDied = { 0, 0, 0, 0, 0, 0 },
-    DidPlayerAutoSurrender = { 0, 0, 0, 0, 0, 0 },
+    PlayerInitiallyPresent = { 0, 0, 0, 0, 0, 0, 0, 0 },
+    PlayerNowDied = { 0, 0, 0, 0, 0, 0, 0, 0 },
+    DidPlayerAutoSurrender = { 0, 0, 0, 0, 0, 0, 0, 0 },
 }
 function CenterTopBtnFunc_InitializeAutoSurrender()
     for i = 1, 8, 1 do
@@ -1229,7 +1226,7 @@ function RequestRepeatSelfSpecialPower(playerIndex, self)
         end
 
     else
-                        exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("center_top.error.no_suitable_skill"), 8)
+                        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
         return false;
     end
 
@@ -1269,7 +1266,7 @@ function RequestRepeatEnemySpecialPower(playerIndex, self)
         end
 
     else
-        exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("center_top.error.no_suitable_skill"), 8)
+        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
         return false;
     end
 

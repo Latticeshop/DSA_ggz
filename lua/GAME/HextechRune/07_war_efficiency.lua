@@ -122,8 +122,9 @@ function HextechRune:OnWarEfficiencyUnitDie(dyingObjInstanceId, ownerPlayerName)
         return
     end
     -- 同一批敌方死亡对每名持有者各计一次：数值只取决于自己的份数。
-    local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
-    for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    local sideSeats = self:GetSidePlayerRange(sideIndex)
+    for seatPos = 1, getn(sideSeats), 1 do
+        local playerIndex = sideSeats[seatPos]
         if self:HasAnyWarEfficiency(playerIndex) then
             self:EnsureWarEfficiencyPlayerState(playerIndex)
             local counts = self.WarEfficiencyPending[playerIndex]
@@ -251,9 +252,10 @@ function HextechRune:ApplyAllWarEfficiencyBuffs()
         return
     end
     for sideIndex = 7, 8, 1 do
-        local firstPlayerIndex, lastPlayerIndex = self:GetSidePlayerRange(sideIndex)
+        local sideSeats = self:GetSidePlayerRange(sideIndex)
         local sideHasHolder = false
-        for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+        for seatPos = 1, getn(sideSeats), 1 do
+            local playerIndex = sideSeats[seatPos]
             if self:HasAnyWarEfficiency(playerIndex) then
                 sideHasHolder = true
             end
@@ -261,8 +263,9 @@ function HextechRune:ApplyAllWarEfficiencyBuffs()
         if sideHasHolder then
             local lookup = self:BuildSideUnitTypeLookup(sideIndex)
             for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
-                for playerIndex = firstPlayerIndex, lastPlayerIndex, 1 do
-                    self:ApplyWarEfficiencyBuffs(playerIndex,
+                for seatPos2 = 1, getn(sideSeats), 1 do
+                    local playerIndex2 = sideSeats[seatPos2]
+                    self:ApplyWarEfficiencyBuffs(playerIndex2,
                         self.UnitTypeOrder[typeIndex], lookup)
                 end
             end

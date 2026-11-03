@@ -47,9 +47,10 @@ function HextechRune:CollectDrainSourceEntries(playerIndex)
     if UNITCOUNT == nil or UNITLIST == nil or unitcountmax == nil then
         return entries
     end
-    local firstPlayerIndex, lastPlayerIndex =
+    local enemySeats =
         self:GetSidePlayerRange(self:GetEnemySideIndex(playerIndex))
-    for enemyIndex = firstPlayerIndex, lastPlayerIndex, 1 do
+    for seatPos = 1, getn(enemySeats), 1 do
+        local enemyIndex = enemySeats[seatPos]
         local enemyPool = UNITCOUNT[enemyIndex]
         if enemyPool ~= nil then
             local protected = self:BuildDrainProtectedCounts(enemyIndex)

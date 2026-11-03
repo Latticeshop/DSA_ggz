@@ -127,6 +127,8 @@ g_ShipSpawnLocation = {
     [4] = g_RightSpawnLocations,
     [5] = g_RightSpawnLocations,
     [6] = g_RightSpawnLocations,
+    [7] = g_RightSpawnLocations,
+    [8] = g_LeftSpawnLocations,
 }
 
 g_ShipTeam = {
@@ -136,6 +138,8 @@ g_ShipTeam = {
     [4] = "PlyrCreeps/SHIPTEAM",
     [5] = "PlyrCreeps/SHIPTEAM",
     [6] = "PlyrCreeps/SHIPTEAM",
+    [7] = "PlyrCreeps/SHIPTEAM",
+    [8] = "PlyrCivilian/SHIPTEAM",
 }
 
 -- 某个玩家某种单位的数量 g_PlayerShipCount["Player_1"]["ShipName"]

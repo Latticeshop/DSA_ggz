@@ -93,7 +93,7 @@ g_PlayerDragonShipRecyclePrice = 5000
 g_PlayerDragonShipYardOffsetX = 100
 g_PlayerDragonShipYardOffsetY = 100
 g_PendingPlayerDragonShips = {}
-g_PlayerDragonShipAcquireCount = { 0, 0, 0, 0, 0, 0 }
+g_PlayerDragonShipAcquireCount = { 0, 0, 0, 0, 0, 0, 0, 0 }
 
 function GetPlayerDragonShipRecycleMoney(playerIndex)
     return g_PlayerDragonShipRecyclePrice * GetRecycleRate(playerIndex)
@@ -313,7 +313,7 @@ function AlliedSuperWeaponBorn(createdObjId, createdObjInstanceId, ownerPlayerNa
 end
 
 function GetLimitCommandoUnitCreateFunc(commandoName, limitCount)
-    g_UnitCount[FastHash(commandoName)] = { 0, 0, 0, 0, 0, 0 }
+    g_UnitCount[FastHash(commandoName)] = { 0, 0, 0, 0, 0, 0, 0, 0 }
     return function(createdObjId, createdObjInstanceId, ownerPlayerName)
         local playerIndex = g_PlayerNameToIndex[ownerPlayerName]
         if playerIndex == nil then
@@ -905,12 +905,12 @@ end
 
 g_UnitCount = g_UnitCount or {}
 g_UnitCount[FastHash("JapanGigaFortressShipEgg")] =
-    g_UnitCount[FastHash("JapanGigaFortressShipEgg")] or { 0, 0, 0, 0, 0, 0 }
+    g_UnitCount[FastHash("JapanGigaFortressShipEgg")] or { 0, 0, 0, 0, 0, 0, 0, 0 }
 -- ACV 不需要特殊处理了，所以下面这两个应该是没用了？
 g_UnitCount[FastHash("AlliedAntiInfantryVehicle")] =
-    g_UnitCount[FastHash("AlliedAntiInfantryVehicle")] or { 0, 0, 0, 0, 0, 0 }
+    g_UnitCount[FastHash("AlliedAntiInfantryVehicle")] or { 0, 0, 0, 0, 0, 0, 0, 0 }
 g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")] =
-    g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")] or { 0, 0, 0, 0, 0, 0 }
+    g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")] or { 0, 0, 0, 0, 0, 0, 0, 0 }
 
 function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
     if g_PlayerNameToIndex[ownerPlayerName] == nil then
