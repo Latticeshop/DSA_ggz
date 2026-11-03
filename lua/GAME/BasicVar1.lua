@@ -1,17 +1,31 @@
 -- 讲解见 analysis/地图注释说明文档.md 附录 A.72、A.91
 
 -- ===== 4v4（8 席）人数口径：6 人时代散落各处的硬编码，集中记在这里 =====
--- 座位号 seatIndex = 1..8（1v1/2v2/3v3 只用到前几席，空位照旧不参与任何循环）。
--- 阵营号 sideIndex 沿用地图两方 AI 队：7 = PlyrCivilian（恶魔）/ 8 = PlyrCreeps（天使）。
--- 44 图把出生点物理排成连续两段：下沿 Player_1~4 = 恶魔，上沿 Player_5~8 = 天使，
--- 所以「同侧第 n 人 ↔ 对面第 n 人」的偏移量就是 g_SideSize，阵营切分是 seatIndex > g_SideSize。
--- 注意：P[1..6] 是各席锚点对象，P[7]/P[8] 仍是两方 AI 阵营锚点 MCV（地图预设、代码不能占），
--- 7/8 号玩家的锚点走 g_SeatAnchorNameBySeat 里的 SeatAnchor7/8（见 g_GetSeatAnchor）。
+-- 座位号 seatIndex = 1..8；阵营号 sideIndex 沿用地图两方 AI 队：
+--   7 = PlyrCivilian（恶魔，下方）/ 8 = PlyrCreeps（天使，上方）。
+-- 44 图实际编队（按地图坐标从左到右核对过）：
+--   下方恶魔 = Player_1, Player_2, Player_8, Player_3
+--   上方天使 = Player_4, Player_5, Player_7, Player_6
+-- 这样 6 人局（1/2/3 vs 4/5/6）自动退化成旧 3v3，7/8 号进局才变成 4v4。
+-- 关键：座位号不再连续，判侧必须查表，禁止再用 seatIndex > g_SideSize 之类的区间比较。
 g_PlayerCount = 8
 g_SideSize = 4
-g_SeatAnchorNameBySeat = {
-    [7] = "SeatAnchor7",
-    [8] = "SeatAnchor8",
+g_SideSeats = {
+    [7] = { 1, 2, 8, 3 },
+    [8] = { 4, 5, 7, 6 },
+}
+g_Seat7 = { 1, 2, 8, 3 }
+g_Seat8 = { 4, 5, 7, 6 }
+
+g_SeatSideTable = {
+    [1] = 7,
+    [2] = 7,
+    [3] = 7,
+    [8] = 7,
+    [4] = 8,
+    [5] = 8,
+    [6] = 8,
+    [7] = 8,
 }
 
 -- 座位 → 阵营号（7 恶魔 / 8 天使）
@@ -19,29 +33,134 @@ function g_SeatToSide(seatIndex)
     if seatIndex == nil then
         return nil
     end
-    if seatIndex > g_SideSize then
-        return 8
-    end
-    return 7
+    return g_SeatSideTable[seatIndex]
 end
 
--- 阵营号 → 本边第一个座位号（7 → 1，8 → 5）
+-- 判侧便捷函数（替代 g_IsDevilSeat(playerIndex) / >= 5 这类区间比较）
+function g_IsDevilSeat(seatIndex)
+    return g_SeatSideTable[seatIndex] == 7
+end
+
+function g_IsAngelSeat(seatIndex)
+    return g_SeatSideTable[seatIndex] == 8
+end
+
+-- 阵营号 → 该边座位列表（按左→右顺序）
+function g_SideSeatsOf(sideIndex)
+    return g_SideSeats[sideIndex]
+end
+
+-- 阵营号 → 本边第一个座位号（7 → 1，8 → 4）
 function g_SideFirstSeat(sideIndex)
-    if sideIndex == 8 then
-        return g_SideSize + 1
-    end
-    return 1
-end
-
--- 同侧第 n 人 ↔ 对面第 n 人（±g_SideSize）
-function g_OpponentSeat(seatIndex)
-    if seatIndex == nil then
+    local seats = g_SideSeats[sideIndex]
+    if seats == nil then
         return nil
     end
-    if seatIndex > g_SideSize then
-        return seatIndex - g_SideSize
+    return seats[1]
+end
+
+-- 同侧第 n 人 ↔ 对面第 n 人（按各自阵营内的序号对齐）
+function g_OpponentSeat(seatIndex)
+    local side = g_SeatSideTable[seatIndex]
+    if side == nil then
+        return nil
     end
-    return seatIndex + g_SideSize
+    local mine = g_SideSeats[side]
+    local other = g_SideSeats[8]
+    if side == 8 then
+        other = g_SideSeats[7]
+    end
+    for n = 1, g_SideSize, 1 do
+        if mine[n] == seatIndex then
+            return other[n]
+        end
+    end
+    return nil
+end
+
+-- 席位锚点（P1..P8 就是各席 MCV，7/8 号也已由地图补好）
+function g_GetSeatAnchor(seatIndex)
+    return GetObjectByScriptName("P" .. seatIndex)
+end
+
+-- ===== 4v4：中间 AI 阵营（7=PlyrCivilian / 8=PlyrCreeps）的扫描锚点 =====
+-- 注意：P[1..8] 是「座位」的 MCV 锚点，绝不能再拿 P[7]/P[8] 当阵营锚点用，
+-- 否则 SAME_PLAYER 过滤会扫到 Player_7 / Player_8 自己的部队。
+g_SideAnchorName = {
+    [7] = "PlyrCivilian",
+    [8] = "PlyrCreeps"
+}
+g_SideScanAnchor = {}
+g_FilterSideAnchor = CreateObjectFilter({
+    Rule = "ANY",
+    Include = "SELECTABLE"
+})
+
+function g_GetSideScanAnchor(sideIndex)
+    local anchor = g_SideScanAnchor[sideIndex]
+    if anchor ~= nil and ObjectIsAlive(anchor) then
+        return anchor
+    end
+    if sideIndex == 8 then
+        anchor = GetObjectByScriptName("T84")
+    else
+        anchor = GetObjectByScriptName("T74")
+    end
+    if anchor ~= nil and ObjectIsAlive(anchor)
+        and ObjectPlayerScriptName(anchor) == g_SideAnchorName[sideIndex] then
+        g_SideScanAnchor[sideIndex] = anchor
+        return anchor
+    end
+    local list, count = ObjectFindObjects(nil, nil, g_FilterSideAnchor)
+    if list ~= nil then
+        for i = 1, count, 1 do
+            if ObjectIsAlive(list[i])
+                and ObjectPlayerScriptName(list[i]) == g_SideAnchorName[sideIndex] then
+                g_SideScanAnchor[sideIndex] = list[i]
+                return list[i]
+            end
+        end
+    end
+    return nil
+end
+
+-- 阵营号安全的 ObjectFindObjects：7/8 走阵营锚点；其余编号沿用原 P[n] 座位锚点。
+function g_SideFindObjects(sideIndex, pos, filter)
+    local anchor = nil
+    if sideIndex == 7 or sideIndex == 8 then
+        anchor = g_GetSideScanAnchor(sideIndex)
+    else
+        anchor = P[sideIndex]
+    end
+    if anchor == nil then
+        return {}, 0
+    end
+    local list, count = ObjectFindObjects(anchor, pos, filter)
+    if list == nil then
+        list = {}
+    end
+    if type(count) ~= "number" then
+        count = getn(list)
+    end
+    return list, count
+end
+
+function g_IsAISideUnit(unit)
+    if unit == nil then
+        return 0
+    end
+    local ownerName = ObjectPlayerScriptName(unit)
+    if ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps" then
+        return 1
+    end
+    return 0
+end
+
+-- 兜底防线：只允许把中间 AI 阵营自己的单位换进 AI 队伍，玩家单位一律不动。
+function g_SetSideTeam(unit, teamName)
+    if teamName ~= nil and g_IsAISideUnit(unit) == 1 then
+        ExecuteAction("UNIT_SET_TEAM", unit, teamName)
+    end
 end
 
 g_PlayerDebtCount = {

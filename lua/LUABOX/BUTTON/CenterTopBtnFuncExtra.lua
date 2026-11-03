@@ -46,7 +46,7 @@ function g_GetEnemyBattlefieldContext(playerIndex, skipIronCurtain, skipSkillSum
         units = {},
         total = 0,
     }
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         context.sideAIPlayer = "PlyrCreeps"
         context.sideIndex = 8
         context.enemyTower = T74
@@ -139,7 +139,7 @@ end
 
 function RequestHydra(playerIndex)
     local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     local context = g_GetEnemyBattlefieldContext(playerIndex, true, true)
@@ -166,7 +166,7 @@ function RequestHydra(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.hydra", sideName))
     exMessageAppendToMessageArea(Localization.get("center_top.hydra.controlled_count", controlled))
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestHydra)
     else
         tinsert(g_angelButtonClickHistory, RequestHydra)
@@ -208,7 +208,7 @@ g_SnowstormCryoFillFallback = 60000
 
 function RequestSnowstorm(playerIndex)
     local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     local context = g_GetEnemyBattlefieldContext(playerIndex, false, true)
@@ -225,7 +225,7 @@ function RequestSnowstorm(playerIndex)
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName))
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestSnowstorm)
     else
         tinsert(g_angelButtonClickHistory, RequestSnowstorm)

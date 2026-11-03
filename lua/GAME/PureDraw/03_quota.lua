@@ -12,7 +12,7 @@ function PureDrawGetQuotaDisplayDirection(playerIndex)
         startXTotal = startXTotal + startPosition[1]
     end
     -- 左侧出生点的海岸在基地左边，因此余额展示统一放到基地右侧。
-    if playerPosition[1] < startXTotal / 6 then
+    if playerPosition[1] < startXTotal / 8 then
         return 1
     end
     return -1

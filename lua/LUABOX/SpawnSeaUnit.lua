@@ -9,7 +9,9 @@ end
 
 function SpawnSeaUnit_left()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle")];
-    for i = 1, 4 do
+    local _seatsDemon = g_SideSeatsOf(7)
+for _si = 1, 4 do
+    local i = _seatsDemon[_si]
 
         local angle = 0;
         if i >= 5 then
@@ -44,7 +46,9 @@ end
 
 function SpawnSeaUnit_right()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle")];
-    for i = 5, 8 do
+    local _seatsAngel = g_SideSeatsOf(8)
+for _si = 1, 4 do
+    local i = _seatsAngel[_si]
         local angle = 0;
         if i >= 5 then
             angle = 180

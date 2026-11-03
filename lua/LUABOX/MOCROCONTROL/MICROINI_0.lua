@@ -205,7 +205,7 @@ function IsCommandoInAttackTeam(self, playindex)
     if teamName == "ATTACK" or teamName == DEFAULTATTCKTEAM[playindex] then
         return true
     end
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         if teamName == "INFANTATTACK" .. i
             or teamName == playerName .. "/INFANTATTACK" .. i then
             return true
@@ -244,7 +244,7 @@ function JapanTsunamiTankShieldMICROCONTROL ()
     g_TsunamiShieldNextScanFrame = frame + g_TsunamiShieldScanIntervalFrames
 
     for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanTsunamiTank)
+        local units, count = g_SideFindObjects(playindex, nil, FilterJapanTsunamiTank)
         for i = 1, count, 1 do
             local self = units[i]
             local x, y, z = ObjectGetPosition(self)
@@ -274,7 +274,7 @@ function JapanTorpedoShipSpreadMICROCONTROL ()
     g_TorpedoShipSpreadNextScanFrame = frame + g_TorpedoShipSpreadScanIntervalFrames
 
     for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiVehicleShip)
+        local units, count = g_SideFindObjects(playindex, nil, FilterJapanAntiVehicleShip)
         for i = 1, count, 1 do
             local self = units[i]
             local x, y, z = ObjectGetPosition(self)
@@ -305,7 +305,7 @@ g_AirHunterTransformCommandByInstanceId = {
 -- 只在目标死亡、失效或超出作战射程时重新选择最近目标。
 function AntiAirAircraftHunterMICROCONTROL ()
     for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterAntiAirHunterAircraft)
+        local units, count = g_SideFindObjects(playindex, nil, FilterAntiAirHunterAircraft)
         for i = 1, count, 1 do
             local self = units[i]
             if not IsAirMarshalAircraft(self) then
@@ -320,7 +320,7 @@ function AntiAirAircraftHunterMICROCONTROL ()
             if wasReassigned then
                 ExecuteAction("NAMED_STOP", self)
                 ObjectSetAssignedTarget(self, nil)
-                ExecuteAction("UNIT_SET_TEAM", self, idleTeamName)
+                g_SetSideTeam(self, idleTeamName)
             end
 
             local transformCommand = g_AirHunterTransformCommandByInstanceId[ObjectGetInstanceId(selfId)]
@@ -413,13 +413,13 @@ function CommandoNoStructureMICROCONTROL ()
         return
     end
     for playindex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[playindex], nil, FilterNoStructureCommando)
+        local units, count = g_SideFindObjects(playindex, nil, FilterNoStructureCommando)
         for i = 1, count, 1 do
             local self = units[i]
             local selfId = ObjectGetId(self)
             -- 只在当前确实被放回进攻编队时分离，待命状态下不会重复换队。
             if IsCommandoInAttackTeam(self, playindex) then
-                ExecuteAction("UNIT_SET_TEAM", self, g_PrioritySiegeIdleTeam[playindex])
+                g_SetSideTeam(self, g_PrioritySiegeIdleTeam[playindex])
                 -- 离了主力编队就没人给她下推进命令，自己朝敌方 waypoints 攻击前进。
                 ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", self,
                     g_PrioritySiegeAttackWaypoint[playindex])
@@ -445,7 +445,7 @@ end
 -- 空军清理完且当前没有目标时，只在附近仍有地面敌人的情况下落地继续作战。
 function JapanIdleAirFormMICROCONTROL (unitFilter, transformCommand, updateTargetChooser)
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, unitFilter)
+        local SELF, count = g_SideFindObjects(playindex, nil, unitFilter)
         for i = 1 , count , 1 do
             local self = SELF[i]
             local target = ObjectGetTarget(self)
@@ -514,11 +514,11 @@ function PrioritySiegeAttackMoveMICROCONTROL ()
         return
     end
     for playindex = 7, 8, 1 do
-        local enemyTanks, enemyTankCount = ObjectFindObjects(P[playindex], nil, g_FilterPrioritySiegeEnemyTank)
+        local enemyTanks, enemyTankCount = g_SideFindObjects(playindex, nil, g_FilterPrioritySiegeEnemyTank)
         local enemyTankExists = enemyTankCount > 0
         g_PrioritySiegeTankPursuitActive[playindex] = enemyTankExists
 
-        local siegeUnits, siegeUnitCount = ObjectFindObjects(P[playindex], nil, FilterPrioritySiegeVehicle)
+        local siegeUnits, siegeUnitCount = g_SideFindObjects(playindex, nil, FilterPrioritySiegeVehicle)
         for i = 1, siegeUnitCount, 1 do
             local siegeUnit = siegeUnits[i]
             local teamName = ObjectTeamName(siegeUnit)
@@ -529,7 +529,7 @@ function PrioritySiegeAttackMoveMICROCONTROL ()
             end
             local wasReassigned = teamName ~= idleTeamName and teamName ~= idleTeamShortName
             if wasReassigned then
-                ExecuteAction("UNIT_SET_TEAM", siegeUnit, idleTeamName)
+                g_SetSideTeam(siegeUnit, idleTeamName)
             end
             local siegeUnitId = ObjectGetId(siegeUnit)
             local desiredMode = GetPrioritySiegeUnitMode(siegeUnit, enemyTankExists)
@@ -579,15 +579,15 @@ end
 
 function JapanAntiAirVehicleTech1MICROCONTROL ()
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiAirVehicleTech1)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterJapanAntiAirVehicleTech1)
         for i = 1 , count , 1 do
             local self = SELF[i]
             local isAirborne = EvaluateCondition("UNIT_HAS_OBJECT_STATUS", self, "AIRBORNE_TARGET")
             local x0, y0, z0 = ObjectGetPosition(self)
-            local airTargets, airTargetCount = ObjectFindObjects(P[playindex], {
+            local airTargets, airTargetCount = g_SideFindObjects(playindex, {
                 X=x0, Y=y0, Z=z0, Radius=500, DistType="CENTER_2D"
             }, FilterAIR2)
-            local groundTargets, groundTargetCount = ObjectFindObjects(P[playindex], {
+            local groundTargets, groundTargetCount = g_SideFindObjects(playindex, {
                 X=x0, Y=y0, Z=z0, Radius=400, DistType="CENTER_2D"
             }, FilterLAND)
             local currentTarget = ObjectGetTarget(self)
@@ -648,7 +648,7 @@ end
 
 function JapanFortressShipMICROCONTROL ()
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanFortressShip)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterJapanFortressShip)
         ----exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
             -- --exMessageAppendToMessageArea("TARcount"..TARcount)
@@ -666,7 +666,7 @@ function JapanAntiAirShipMICROCONTROL ()
         return
     end
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiAirShip)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterJapanAntiAirShip)
         ----exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
             -- --exMessageAppendToMessageArea("TARcount"..TARcount)
@@ -681,7 +681,7 @@ end
 
 function SovietScoutVehicleMICROCONTROL ()
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterSovietScoutVehicle)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterSovietScoutVehicle)
         ----exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
             -- --exMessageAppendToMessageArea("TARcount"..TARcount)
@@ -696,11 +696,11 @@ end
 function CelestialAntiAirShipMICROCONTROL ()
     --exMessageAppendToMessageArea("执行")
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterCelestialAntiAirShip)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterCelestialAntiAirShip)
         --exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
             local x0, y0, z0 = ObjectGetPosition(SELF[i]) ;
-            local TAR, TARcount = ObjectFindObjects(P[playindex], {
+            local TAR, TARcount = g_SideFindObjects(playindex, {
                 X=x0, Y=y0, Z=z0, Radius=500, DistType="CENTER_2D"
             }, FilterAIR)
             --exMessageAppendToMessageArea("TARcount"..TARcount)
@@ -718,7 +718,7 @@ end
 function CelestialAntiVehicleVehicleTech1MICROCONTROL ()
     --exMessageAppendToMessageArea("执行")
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterCelestialAntiVehicleVehicleTech1)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterCelestialAntiVehicleVehicleTech1)
         -- exMessageAppendToMessageArea("count"..count)
         for i = 1 , count , 1 do
             if not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "TRANSFORMATION_TOGGLE_STATE") then
@@ -732,12 +732,12 @@ end
 
 function CelestialAdvanceAircraftTech4MICROCONTROL ()
     for playindex = 7 , 8 , 1 do
-        local SELF, count = ObjectFindObjects(P[playindex], nil, FilterCelestialAdvanceAircraftTech4)
+        local SELF, count = g_SideFindObjects(playindex, nil, FilterCelestialAdvanceAircraftTech4)
         ----exMessageAppendToMessageArea("count"..count)
         local targetindex = 1
         for i = 1 , count , 1 do
             local x0, y0, z0 = ObjectGetPosition(SELF[i]) ;
-            local TAR, TARcount = ObjectFindObjects(P[playindex], {
+            local TAR, TARcount = g_SideFindObjects(playindex, {
                 X=x0, Y=y0, Z=z0, Radius=700, DistType="CENTER_2D"
             }, FilterALLENEMYUNIT)
             -- --exMessageAppendToMessageArea("TARcount"..TARcount)
@@ -746,7 +746,7 @@ function CelestialAdvanceAircraftTech4MICROCONTROL ()
                 targetindex= targetindex + 1 ;
                 if not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", SELF[i] , "TRANSFORMATION_TOGGLE_STATE")  then
                     ----exMessageAppendToMessageArea("起飞")
-                    ExecuteAction("UNIT_SET_TEAM", SELF[i] , DEFAULTATTCKTEAM[playindex])
+                    g_SetSideTeam(SELF[i], DEFAULTATTCKTEAM[playindex])
                     ObjectLoadAttributeModifier(SELF[i], "AttributeModifier_CelestialZhuRongRapidFire",9999)
                     ObjectLoadAttributeModifier(SELF[i], "AttributeModifier_CelestialInterceptorRapidFire",9999)
                     ObjectSetWeaponSetUpdateWeaponCurrentAmmoCount(SELF[i], 1, 1, 10, 10)
@@ -769,7 +769,7 @@ end
 -- g_LastJapanAntiNavyShipTech3Id_ForCustomTargetChooserData = 0
 -- function JapanAntiNavyShipTech3MICROCONTROL ()
 --     for playindex = 7 , 8 , 1 do
---         local SELF, count = ObjectFindObjects(P[playindex], nil, FilterJapanAntiNavyShipTech3)
+--         local SELF, count = g_SideFindObjects(playindex, nil, FilterJapanAntiNavyShipTech3)
 --         ----exMessageAppendToMessageArea("count"..count)
 --         for i = 1 , count , 1 do
 --             local selfId = ObjectGetId(SELF[i])
@@ -884,7 +884,7 @@ function NoStructureBuffedUnitMICROCONTROL ()
             local wasReassigned = teamName ~= idleTeamName
                 and teamName ~= idleTeamShortName
             if wasReassigned then
-                ExecuteAction("UNIT_SET_TEAM", unit, idleTeamName)
+                g_SetSideTeam(unit, idleTeamName)
                 -- 离了主力编队就没人给它下推进命令，自己朝敌方 waypoints 攻击前进。
                 -- 舰船必须走海军路点（PLANEREBORN8/7），指到陆上的 TD7/TD8 就会拐向岸边。
                 local waypointName = g_PrioritySiegeAttackWaypoint[sideIndex]

@@ -173,7 +173,7 @@ function RescueBlockedProductions_CreateEnemyEngineer(playerName, x, y, z)
     end
     -- 获取敌对玩家 id
     local enemyPlayer = "PlyrCreeps"
-    if g_PlayerNameToIndex[playerName] >= 5 then
+    if g_IsDevilSeat(g_PlayerNameToIndex[playerName]) then
         enemyPlayer = "PlyrCivilian"
     end
 

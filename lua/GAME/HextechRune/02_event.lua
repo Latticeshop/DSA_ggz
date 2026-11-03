@@ -72,7 +72,7 @@ HextechRune.OblivionHintCenterX = 683
 HextechRune.OblivionHintY = 104
 HextechRune.OblivionHintFontSize = 16
 
-HextechRune.PanelSeatColumnGroups = { { 1, 2, 3, 4 }, { 5, 6, 7, 8 } }
+HextechRune.PanelSeatColumnGroups = { { 1, 2, 8, 3 }, { 4, 5, 7, 6 } }
 -- 面板恢复原先 50x50 小卡布局；图标保留新版约三分之一的比例。
 HextechRune.PanelRuneWidth = 50
 HextechRune.PanelRuneHeight = 50
@@ -1565,9 +1565,9 @@ function HextechRune:RegisterCustomBtnHandler()
     HextechRune._btnHandlerRegistered = true
     ButtonManager:RegisterCustomButtonHandler(function(playerName, index)
         -- 海克斯面板关闭按钮（500 + playerIndex）
-        if index > HextechRune.PanelCloseBtnBase and index <= HextechRune.PanelCloseBtnBase + 6 then
+        if index > HextechRune.PanelCloseBtnBase and index <= HextechRune.PanelCloseBtnBase + 8 then
             local pIndex = index - HextechRune.PanelCloseBtnBase
-            if pIndex >= 1 and pIndex <= 6 and playerName == "Player_" .. pIndex then
+            if pIndex >= 1 and pIndex <= 8 and playerName == "Player_" .. pIndex then
                 HextechRune:HidePanel(pIndex)
                 return true
             end
@@ -1575,11 +1575,11 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 三张事件卡下方的重随按钮共享一次机会，只替换被点击的那张卡。
         if index > HextechRune.RerollBtnIndexBase
-            and index <= HextechRune.RerollBtnIndexBase + 18 then
+            and index <= HextechRune.RerollBtnIndexBase + 24 then
             local rerollOffset = index - HextechRune.RerollBtnIndexBase - 1
             local rerollPlayerIndex = floor(rerollOffset / 3) + 1
             local rerollOptionIndex = mod(rerollOffset, 3) + 1
-            if rerollPlayerIndex >= 1 and rerollPlayerIndex <= 6
+            if rerollPlayerIndex >= 1 and rerollPlayerIndex <= 8
                 and playerName == "Player_" .. rerollPlayerIndex
                 and HextechRune.PlayerOptions[rerollPlayerIndex] then
                 HextechRune:HandleRerollClick(rerollPlayerIndex, rerollOptionIndex)
@@ -1588,11 +1588,11 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 事件卡片的原生图标按钮与下层卡框按钮执行同一个选择。
         if index > HextechRune.CustomIconBtnIndexBase
-            and index <= HextechRune.CustomIconBtnIndexBase + 18 then
+            and index <= HextechRune.CustomIconBtnIndexBase + 24 then
             local iconOffset = index - HextechRune.CustomIconBtnIndexBase - 1
             local iconPlayerIndex = floor(iconOffset / 3) + 1
             local iconOptionIndex = mod(iconOffset, 3) + 1
-            if iconPlayerIndex >= 1 and iconPlayerIndex <= 6
+            if iconPlayerIndex >= 1 and iconPlayerIndex <= 8
                 and playerName == "Player_" .. iconPlayerIndex
                 and HextechRune.PlayerOptions[iconPlayerIndex] then
                 HextechRune:HandleOptionClick(iconPlayerIndex, iconOptionIndex)
@@ -1601,7 +1601,7 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 解析 index 属于哪位玩家的哪个方框
         if index > HextechRune.CustomBtnIndexBase
-            and index <= HextechRune.CustomBtnIndexBase + 18 then
+            and index <= HextechRune.CustomBtnIndexBase + 24 then
             local offset = index - HextechRune.CustomBtnIndexBase - 1
             local playerIndex = floor(offset / 3) + 1
             local optionIndex = mod(offset, 3) + 1

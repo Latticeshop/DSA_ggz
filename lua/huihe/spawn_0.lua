@@ -112,6 +112,7 @@ if countD>countA then
     ExecuteAction('PLAYER_GIVE_MONEY','Player_1',devil_money)
     ExecuteAction('PLAYER_GIVE_MONEY','Player_2',devil_money)
     ExecuteAction('PLAYER_GIVE_MONEY','Player_3',devil_money)
+ExecuteAction('PLAYER_GIVE_MONEY','Player_8',devil_money)
     exAddTextToPublicBoard(Localization.get('round.devil_win'),10)
     if devil_max>=1200 then
         exAddTextToPublicBoard(Localization.get('round.devil_end_streak'),10)
@@ -134,6 +135,7 @@ elseif countD<countA then
     ExecuteAction('PLAYER_GIVE_MONEY','Player_4',angel_money)
     ExecuteAction('PLAYER_GIVE_MONEY','Player_5',angel_money)
     ExecuteAction('PLAYER_GIVE_MONEY','Player_6',angel_money)
+ExecuteAction('PLAYER_GIVE_MONEY','Player_7',angel_money)
     exAddTextToPublicBoard(Localization.get('round.angel_win'),10)
     if devil_max>=1200 then
         exAddTextToPublicBoard(Localization.get('round.angel_on_streak'),10)

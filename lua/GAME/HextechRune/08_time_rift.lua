@@ -28,7 +28,7 @@ function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
     if P == nil or P[sideIndex] == nil then
         return
     end
-    local objects, count = ObjectFindObjects(P[sideIndex], nil,
+    local objects, count = g_SideFindObjects(sideIndex, nil,
         self.AllSideUnitsAndStructuresFilter)
     if count <= 0 then
         return

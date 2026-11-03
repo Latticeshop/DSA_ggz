@@ -12,6 +12,8 @@ g_AlliedSuperWeaponBuilt = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 }
 
 g_ProductionBonus_JapanGet = {
@@ -21,6 +23,8 @@ g_ProductionBonus_JapanGet = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 }
 
 g_ProductionBonus_SovietGet = {
@@ -30,6 +34,8 @@ g_ProductionBonus_SovietGet = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 }
 
 -- 回收倍率由经济倍率决定；苏联大生产按本队已获得协议的人数统一折算。
@@ -109,7 +115,7 @@ end
 
 function GetTeamSovietProductionBonusCount(playerIndex)
     local firstPlayerIndex = 1
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         firstPlayerIndex = 4
     end
 
@@ -138,6 +144,8 @@ g_ProductionBonus_JapanWeaponEnable = {
     [4] = 1,
     [5] = 1,
     [6] = 1,
+    [7] = 1,
+    [8] = 1,
 }
 
 -- 全体护盾的目标：载具 / 大型载具 / 舰船（原口径只有 VEHICLE，实测套盾武器对舰船同样生效，
@@ -161,6 +169,8 @@ g_CelestialSuperWeapon_Get = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 }
 
 g_CelestialSuperWeapon_CelestialWeaponEnable = {
@@ -170,6 +180,8 @@ g_CelestialSuperWeapon_CelestialWeaponEnable = {
     [4] = 1,
     [5] = 1,
     [6] = 1,
+    [7] = 1,
+    [8] = 1,
 }
 
 g_angelButtonClickHistory = {}
@@ -193,7 +205,7 @@ g_AutoSurrender = {
     DidPlayerAutoSurrender = { 0, 0, 0, 0, 0, 0 },
 }
 function CenterTopBtnFunc_InitializeAutoSurrender()
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local playerName = "Player_" .. i
         -- check if player has at least one structure
         local previous = SetWorldBuilderThisPlayer(1)
@@ -204,7 +216,7 @@ function CenterTopBtnFunc_InitializeAutoSurrender()
         end
     end
     SchedulerModule.call_every_x_frame(function()
-        for i = 1, 6, 1 do
+        for i = 1, 8, 1 do
             local playerName = "Player_" .. i
             local previous = SetWorldBuilderThisPlayer(1)
             local structures, count = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
@@ -229,7 +241,7 @@ end
 
 function RequestSurrender(playerIndex, isAutoSurrender)
     local side, sideName, sideAiPlayer, sidePlayerIndexOffset = "devil", Localization.get("side.devil"), "PlyrCivilian", 0
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         side, sideName, sideAiPlayer, sidePlayerIndexOffset = "angel", Localization.get("side.angel"), "PlyrCreeps", 3
     end
     local globalVariableName = format("%s_surrender", side)
@@ -237,8 +249,9 @@ function RequestSurrender(playerIndex, isAutoSurrender)
     exEnableWBScript(format("%s/%s_surrender", sideAiPlayer, side))
     exAddTextToPublicBoard(Localization.get("surrender.public.start", sideName, playerIndex), 10)
     local voteText = Localization.get("surrender.vote_text")
-    for i = 1, 3, 1 do
-        local p = sidePlayerIndexOffset + i
+    local voteSeats = g_SideSeatsOf(g_SeatToSide(playerIndex))
+    for i = 1, 4, 1 do
+        local p = voteSeats[i]
         local targetPlayerName = format("Player_%d", p)
         exHideCustomBtnChoiceDialogForPlayer(targetPlayerName)
         exHideLongTextDialogForPlayer(targetPlayerName)
@@ -314,7 +327,7 @@ function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
         end
     })
     
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local button = buttons[i]
         if button then
             ButtonManager:SetButton(button)
@@ -351,7 +364,7 @@ end
 -- 按当前 g_EnableHextechRune 刷新 6 个玩家的海克斯面板按钮（启用/禁用）。
 -- 在地图加载后（g_EnableHextechRune 由开局配置决定）调用，使按钮 5 状态与配置一致。
 function CenterTopBtnFunc_UpdateHextechPanelButton()
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local button = CenterTopBtnFunc_CreateHextechPanelButton(i)
         if button then
             button:FormatText()
@@ -384,15 +397,10 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
         exMessageAppendToMessageArea(Localization.get("error.invalid_kind"))
         return
     end
+    local mateSeats = g_SideSeatsOf(g_SeatToSide(playerIndex))
     for j = 1, 2 do
-        if playerIndex <= 3 then
-            for i = 1, 3 do
-                exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("button.skill_selected", playerIndex, buttons[j].Title), 8)
-            end
-        else
-            for i = 4, 6 do
-                exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("button.skill_selected", playerIndex, buttons[j].Title), 8)
-            end
+        for k = 1, 4 do
+            exAddTextToPublicBoardForPlayer("Player_" .. mateSeats[k], Localization.get("button.skill_selected", playerIndex, buttons[j].Title), 8)
         end
     end
 
@@ -441,7 +449,7 @@ function CenterTopBtnFunc_UpdatePlayer3rdButton(playerIndex)
 end
 
 function CenterTopBtnFunc_UnlockChronosphere(playerIndex)
-    if type(playerIndex) ~= "number" or playerIndex < 1 or playerIndex > 6 then
+    if type(playerIndex) ~= "number" or playerIndex < 1 or playerIndex > 8 then
         return false
     end
     g_AlliedSuperWeaponBuilt[playerIndex] = 1
@@ -757,14 +765,14 @@ end
 function RequestDestruction(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideScript = "KW"
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideScript = "KB"
     end
     exMessageAppendToMessageArea(Localization.get("center_top.used.local_destruction", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "A01_CoastalGun_ImpactExplosion")
     exEnableWBScript(sideScript)
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestDestruction)
     else
         tinsert(g_angelButtonClickHistory, RequestDestruction)
@@ -775,14 +783,14 @@ end
 function RequestDamoclesSword(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideScript = "devil_nemesisplay"
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideScript = "angel_nemesisplay"
     end
     exMessageAppendToMessageArea(Localization.get("center_top.used.damocles_struck", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "CelestialEnergyGatling_Select")
     exEnableWBScript(sideScript)
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestDamoclesSword)
     else
         tinsert(g_angelButtonClickHistory, RequestDamoclesSword)
@@ -937,7 +945,7 @@ end
 function RequestIronCurtain(playerIndex)
     local sideName = Localization.get("side.devil")
     local referenceObject = T74
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         referenceObject = T84
     end
@@ -947,7 +955,7 @@ function RequestIronCurtain(playerIndex)
     for i = 1, count, 1 do
         g_ApplyIronCurtain(units[i], 196)
     end
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestIronCurtain)
     else
         tinsert(g_angelButtonClickHistory, RequestIronCurtain)
@@ -958,14 +966,14 @@ end
 function RequestTimeStop(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideScript = "devilstop"
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideScript = "angelstop"
     end
     exMessageAppendToMessageArea(Localization.get("center_top.used.time_stop", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "ALL_Chronosphere_Off")
     exEnableWBScript(sideScript)
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestTimeStop)
     else
         tinsert(g_angelButtonClickHistory, RequestTimeStop)
@@ -991,7 +999,7 @@ function RequestDragonShip(playerIndex, count)
     local dragonshipAngle = "0"
     local waypoint = "TD7"
     local tower = T74
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideAIPlayer = "PlyrCreeps"
         -- mcvHealthScript = "MCVhealthA"
@@ -1042,7 +1050,7 @@ function RequestDragonShip(playerIndex, count)
         exMessageAppendToMessageArea(Localization.get("center_top.dragonship.hp_change", id, previousHp, currentHp))
     end
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestDragonShip)
     else
         tinsert(g_angelButtonClickHistory, RequestDragonShip)
@@ -1053,7 +1061,7 @@ end
 function RequestAirMarshal(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideScript = "devil_air"
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideScript = "angel_air"
     end
@@ -1062,7 +1070,7 @@ function RequestAirMarshal(playerIndex)
     ExecuteAction("PLAY_SOUND_EFFECT", "CEL_NukeIncoming")
     exEnableWBScript(sideScript)
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestAirMarshal)
     else
         tinsert(g_angelButtonClickHistory, RequestAirMarshal)
@@ -1120,7 +1128,7 @@ function g_NanoRepairHealSideTowers(sideIndex)
             IncludeThing = g_NanoRepairTowerTypes,
         })
     end
-    local towers, count = ObjectFindObjects(P[sideIndex], nil, g_NanoRepairTowerFilter)
+    local towers, count = g_SideFindObjects(sideIndex, nil, g_NanoRepairTowerFilter)
     for i = 1, count, 1 do
         local tower = towers[i]
         if tower ~= nil and not g_NanoRepairIsMapTower(ObjectGetId(tower)) then
@@ -1143,7 +1151,7 @@ function RequestNanoMaintainHive(playerIndex)
         { X = 3200, Y = 3300, Z = 210 },
         { X = 3200, Y = 2900, Z = 210 },
     }
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideAIPlayer = "PlyrCreeps"
         sideIndex = 8
@@ -1179,7 +1187,7 @@ function RequestNanoMaintainHive(playerIndex)
         end, 450, {ObjectGetId(object)})
     end
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestNanoMaintainHive)
     else
         tinsert(g_angelButtonClickHistory, RequestNanoMaintainHive)
@@ -1189,12 +1197,12 @@ end
 
 function RequestRepeatSelfSpecialPower(playerIndex, self)
     local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     local destPowerFunc = nil;
     local history = g_evilButtonClickHistory;
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         history = g_angelButtonClickHistory;
     end
     if getn(history) == 0 then
@@ -1229,12 +1237,12 @@ end
 
 function RequestRepeatEnemySpecialPower(playerIndex, self)
     local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     local destPowerFunc = nil;
     local history = g_angelButtonClickHistory;
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         history = g_evilButtonClickHistory;
     end
     if getn(history) == 0 then
@@ -1269,11 +1277,11 @@ end
 
 function RequestSpawnArmyImmediately(playerIndex)
     local sideName = Localization.get("side.devil")
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     exMessageAppendToMessageArea(Localization.get("center_top.used.reinforce_army", sideName))
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         SchedulerModule.delay_call(function()
             UNITSPST_left (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
             UNITSPST_left (step1+1,step2,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
@@ -1320,7 +1328,7 @@ function RequestSpawnArmyImmediately(playerIndex)
         end, 5)
     end
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestSpawnArmyImmediately)
     else
         tinsert(g_angelButtonClickHistory, RequestSpawnArmyImmediately)
@@ -1335,7 +1343,7 @@ function RequestChronosphere(playerIndex)
     end
     local sideName = Localization.get("side.devil")
     local sideScript = "PlyrCivilian/devilASuper"
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         sideScript = "PlyrCreeps/angelASuper"
     end
@@ -1352,7 +1360,7 @@ function RequestJapanShield(playerIndex)
     end
     local sideName = Localization.get("side.devil")
     local filterObj = T74
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         filterObj = T84
     end
@@ -1377,7 +1385,7 @@ end
 function RequestCashBonus(playerIndex)
     local sideName = Localization.get("side.devil")
     local filterObj = T84
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         filterObj = T74
     end
@@ -1397,7 +1405,7 @@ function RequestCashBonus(playerIndex)
         }, current)
     end
 
-    if playerIndex <= 3 then
+    if g_IsDevilSeat(playerIndex) then
         tinsert(g_evilButtonClickHistory, RequestCashBonus)
     else
         tinsert(g_angelButtonClickHistory, RequestCashBonus)
@@ -1412,7 +1420,7 @@ function RequestCelestialMorale(playerIndex)
     end
     local sideName = Localization.get("side.devil")
     local filterObj = T74
-    if playerIndex >= 4 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
         filterObj = T84
     end

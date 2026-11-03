@@ -99,7 +99,7 @@ end
 -- 空位因此不再占掉一项，对称模式两边同一序号必然抽到同一组。
 function BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
     local sideStartIndex = 1
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         sideStartIndex = 5
     end
     local playerIndices = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
@@ -177,7 +177,7 @@ end
 -- 返回本方当前最前排的存活陆地防御塔；前排损失后自动依次后退到下一座塔。
 function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
     local towerNames = { "T71", "T72", "T73", "T74" }
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         towerNames = { "T81", "T82", "T83", "T84" }
     end
     for i = 1, 4, 1 do
@@ -251,7 +251,7 @@ function BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
     local behindDirection = -1;
     local playerOwn = "PlyrCivilian";
     local pos = {X = 2646.5, Y = 3102.5, Z = 210};
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         behindDirection = 1;
         playerOwn = "PlyrCreeps";
         pos = {X = 4403.5, Y = 3102.5, Z = 210};
@@ -308,21 +308,18 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     dialogData.RefreshData = function(self)
         local playerIndex = self.PlayerIndex
         local investedMax, investedMoney = devil_max, devil_money
-        if playerIndex >= 5 then
+        if g_IsAngelSeat(playerIndex) then
             investedMax, investedMoney = angel_max, angel_money
         end
         self.Title = Localization.get("market.title_with_investment", investedMax, investedMoney)
 
-        local transferToA_Index, transferToB_Index = BtnChoiceDialogEventFunc_GetTransferMoneyIndices(playerIndex)
-        local roles = {
-            Localization.get("market.role.1"),
-            Localization.get("market.role.2"),
-            Localization.get("market.role.3"),
-            Localization.get("market.role.4"),
-            Localization.get("market.role.5"),
-            Localization.get("market.role.6"),
-        }
-        function getColorText(index)
+        local transferToA_Index, transferToB_Index, transferToC_Index = g_TfIdx(playerIndex)
+        roles = {}
+        for k = 1, 4 do
+            roles[g_Seat7[k]] = Localization.get("board.role.devil" .. k)
+            roles[g_Seat8[k]] = Localization.get("board.role.angel" .. k)
+        end
+        getColorText = function(index)
             local color = BtnChoiceDialogEventFunc_CalculateColor(index)
             if color == nil then
                 return ""
@@ -330,11 +327,12 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 return format("(%s)", color)
             end
         end
+        roleText = function(k) return roles[k] or ("Player_" .. k) end
         local playerA_Color = getColorText(transferToA_Index)
         local playerB_Color = getColorText(transferToB_Index)
         
         local nextInvestmentText = Localization.get("market.next_investment.devil")
-        if playerIndex >= 5 then
+        if g_IsAngelSeat(playerIndex) then
             nextInvestmentText = Localization.get("market.next_investment.angel")
         end
         nextInvestmentText = nextInvestmentText .. Localization.get("market.next_investment.benefit")
@@ -354,12 +352,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 Localization.get("market.back_to_main_page"), -- 6
             }
         else
+            local transferToC = transferToC_Index or transferToB_Index
             self.Choices = {
-                Localization.get("market.transfer.choice", roles[transferToA_Index], playerA_Color), -- 1
-                Localization.get("market.transfer.choice", roles[transferToB_Index], playerB_Color), -- 2
-                nextInvestmentText, -- 3
-                Localization.get("market.back_to_battle"), -- 4
-                Localization.get("market.more_defense_buildings"), -- 5
+                Localization.get("market.transfer.choice", roleText(transferToA_Index), playerA_Color), -- 1
+                Localization.get("market.transfer.choice", roleText(transferToB_Index), playerB_Color), -- 2
+                Localization.get("market.transfer.choice", roleText(transferToC), getColorText(transferToC)), -- 3
+                nextInvestmentText, -- 4
+                Localization.get("market.back_to_battle"), -- 5
+                Localization.get("market.more_defense_buildings"), -- 6
             }
         end
         --if g_PlayerDebtCount[self.PlayerName] == 0 then
@@ -393,14 +393,14 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         end
-        if buttonIndex == 1 or buttonIndex == 2 then
+        if buttonIndex >= 1 and buttonIndex <= 3 then
             self:TransferMoney(buttonIndex)
-        elseif buttonIndex == 3 then
-            self:InvestMoney()
         elseif buttonIndex == 4 then
+            self:InvestMoney()
+        elseif buttonIndex == 5 then
             -- 回到战场（因此不再显示交易市场对话框）
             return
-        elseif buttonIndex == 5 then
+        elseif buttonIndex == 6 then
             self.Page = 2
         end
         -- 重新刷新数据并显示对话框
@@ -408,10 +408,12 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         ButtonChoiceDialogManager:ShowDialog(self)
     end
     dialogData.TransferMoney = function(self, buttonIndex)
-        local transferToA_Index, transferToB_Index = BtnChoiceDialogEventFunc_GetTransferMoneyIndices(self.PlayerIndex)
+        local transferToA_Index, transferToB_Index, transferToC_Index = g_TfIdx(self.PlayerIndex)
         local transferTargetIndex = transferToA_Index
         if buttonIndex == 2 then
             transferTargetIndex = transferToB_Index
+        elseif buttonIndex == 3 then
+            transferTargetIndex = transferToC_Index or transferToB_Index
         end
         local transferTargetName = "Player_" .. transferTargetIndex
         local money = exPlayerGetCurrentMoney(self.PlayerName)
@@ -429,9 +431,9 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local start = exCounterGetByName("start")
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         local isInvestementMax, totalInvestedMoney = false, 0
-        if playerIndex <= 4 and devil_money >= devil_max then
+        if g_IsDevilSeat(playerIndex) and devil_money >= devil_max then
             isInvestementMax = true
-        elseif playerIndex >= 5 and angel_money >= angel_max then
+        elseif g_IsAngelSeat(playerIndex) and angel_money >= angel_max then
             isInvestementMax = true
         end
         if isInvestementMax then
@@ -441,7 +443,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         elseif money < 100 then
             exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.invest.failed.insufficient"), 5)
         else
-            if playerIndex <= 4 then
+            if g_IsDevilSeat(playerIndex) then
                 devil_money = devil_money + 100
                 totalInvestedMoney = devil_money
             else
@@ -470,7 +472,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
         local pos = {X = 2900, Y = 3187};
-        if self.PlayerIndex >= 5 then
+        if self.g_IsAngelSeat(PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             pos = {X = 4150, Y = 3187};
@@ -509,7 +511,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
         local pos = {X = 2900, Y = 3018};
-        if self.PlayerIndex >= 5 then
+        if self.g_IsAngelSeat(PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             pos = {X = 4150, Y = 3018};
@@ -555,7 +557,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local pos = {X = 2773.25, Y = 3102.5, Z = 210};
-        if self.PlayerIndex >= 5 then
+        if self.g_IsAngelSeat(PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -604,7 +606,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     -- 天门神弓（神州防御塔）：限购 1 座，塔防专家半价且无视数量限制。
     dialogData.BuyCelestialEnergyRailgunBase = function(self)
         local sideName = "evil";
-        if self.PlayerIndex >= 5 then
+        if self.g_IsAngelSeat(PlayerIndex) then
             sideName = "angel";
         end
         local objectId = g_BuyTowerId["CelestialEnergyRailgunBase"][sideName];
@@ -630,7 +632,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local towerPos = {X = 2900, Y = 3102.5, Z = 210};
-        if self.PlayerIndex >= 5 then
+        if self.g_IsAngelSeat(PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -690,19 +692,16 @@ end
 
 -- 假如是 Player_1，他应该转账给 Player_2 和 3；假如是 2，则应该转账给 1 和 3
 -- 假如是 4，应该转账给 5 和 6；假如是 6，则应该转账给 4 和 5
-function BtnChoiceDialogEventFunc_GetTransferMoneyIndices(playerIndex)
-    local transferToA_Index, transferToB_Index
-    if playerIndex == 1 or playerIndex == 4 then
-        transferToA_Index = playerIndex + 1
-        transferToB_Index = playerIndex + 2
-    elseif playerIndex == 2 or playerIndex == 5 then
-        transferToA_Index = playerIndex - 1
-        transferToB_Index = playerIndex + 1
-    elseif playerIndex == 3 or playerIndex == 6 then
-        transferToA_Index = playerIndex - 2
-        transferToB_Index = playerIndex - 1
+function g_TfIdx(playerIndex)
+    local seats = g_Seat7
+    if g_IsAngelSeat(playerIndex) then
+        seats = g_Seat8
     end
-    return transferToA_Index, transferToB_Index
+    local list = {}
+    for k = 1, 4 do
+        if seats[k] ~= playerIndex then tinsert(list, seats[k]) end
+    end
+    return list[1], list[2], list[3]
 end
 
 function BtnChoiceDialogEventFunc_CalculateColor(playerIndex)
@@ -833,7 +832,7 @@ function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
             if g_DisableSeaArmy == 1 then
                 -- 火炮机车同款开局限制：禁海军时磁暴快艇（陆地形态）到第 3 回合才允许生产。
                 g_NoNavyTeslaBoatUnlocked = 0
-                for i = 1, 6 do
+                for i = 1, 8 do
                     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_" .. i, "SovietAntiNavyShipTech1", 0)
                 end
             end
@@ -1341,7 +1340,7 @@ end
 
 function BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog(playerName)
     local playerIndex = g_PlayerNameToIndex[playerName]
-    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 6 then
+    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 8 then
         exMessageAppendToMessageArea(Localization.get("skill_mode.player_choose.invalid_player_name"))
         return
     end
@@ -1367,12 +1366,12 @@ end
 
 function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
     local playerIndex = g_PlayerNameToIndex[playerName]
-    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 6 then
+    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 8 then
         exMessageAppendToMessageArea(Localization.get("skill_mode.player_choose.invalid_tech_player_name"))
         return
     end
     local techLevel = g_evilTechLevel
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         techLevel = g_angelTechLevel
     end
 
@@ -1425,12 +1424,12 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
     end
 
     dialogData.onPurchaseSuccess = function(self, pIndex)
-        if pIndex >= 4 then
+        if g_IsAngelSeat(pIndex) then
             g_angelTechLevel = g_angelTechLevel + 1
             if g_angelTechLevel < 4 then
-                for i = 4, 6 do
-                    exAddTextToPublicBoardForPlayer("Player_" .. tostring(i), Localization.get("skill_mode.purchase.tech.success"), 20)
-                    exCreateCustomButtonForPlayer("Player_" .. tostring(i), {
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("skill_mode.purchase.tech.success"), 20)
+                    exCreateCustomButtonForPlayer("Player_" .. i, {
                         Index = 7,
                         TextureName = "AUA_Bribe",
                         Desc = Localization.get("skill_mode.purchase.tech.description", g_angelTechLevel),
@@ -1443,8 +1442,8 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                 end
 
             else
-                for i = 4, 6 do
-                    exCustomBtnSetVisibilityForPlayer("Player_" .. tostring(i), 7, 0)
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exCustomBtnSetVisibilityForPlayer("Player_" .. i, 7, 0)
                 end
             end
 
@@ -1471,7 +1470,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
 
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
-            for i = 4, 6 do
+            for _k = 1, 4 do local i = g_Seat8[_k]
                 -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
                 local nonCelestialLimit = 5
                 local celestialLimit = 4
@@ -1479,18 +1478,18 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                     nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
                     celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
                 end
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 1, Localization.get("purchase_tech.level", g_angelTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 1, Localization.get("purchase_tech.level", g_angelTechLevel))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
 
         else
             g_evilTechLevel = g_evilTechLevel + 1
             if g_evilTechLevel < 4 then
-                for i = 1, 3 do
-                    exAddTextToPublicBoardForPlayer("Player_" .. tostring(i), Localization.get("skill_mode.purchase.tech.success"), 20)
-                    exCreateCustomButtonForPlayer("Player_" .. tostring(i), {
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exAddTextToPublicBoardForPlayer("Player_" .. i, Localization.get("skill_mode.purchase.tech.success"), 20)
+                    exCreateCustomButtonForPlayer("Player_" .. i, {
                         Index = 7,
                         TextureName = "AUA_Bribe",
                         Desc = Localization.get("skill_mode.purchase.tech.description", g_evilTechLevel),
@@ -1503,8 +1502,8 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                 end
 
             else
-                for i = 1, 3 do
-                    exCustomBtnSetVisibilityForPlayer("Player_" .. tostring(i), 7, 0)
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exCustomBtnSetVisibilityForPlayer("Player_" .. i, 7, 0)
                 end
             end
 
@@ -1530,7 +1529,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
 
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
-            for i = 1, 3 do
+            for _k = 1, 4 do local i = g_Seat8[_k]
                 -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
                 local nonCelestialLimit = 5
                 local celestialLimit = 4
@@ -1538,15 +1537,15 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
                     nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
                     celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
                 end
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 1, Localization.get("purchase_tech.level", g_evilTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 1, Localization.get("purchase_tech.level", g_evilTechLevel))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
+                exCustomTextUpdateTextForPlayer("Player_" .. i, 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
         end
         if PureDrawReapplyPlayerQuota ~= nil then
             local firstPlayer = 1
-            if pIndex >= 4 then
+            if g_IsAngelSeat(pIndex) then
                 firstPlayer = 4
             end
             for i = firstPlayer, firstPlayer + 2, 1 do
@@ -1562,7 +1561,7 @@ end
 
 function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
     local playerIndex = g_PlayerNameToIndex[playerName]
-    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 6 then
+    if type(playerIndex) ~= 'number' or playerIndex < 1 or playerIndex > 8 then
         exMessageAppendToMessageArea(Localization.get("skill_mode.player_choose.invalid_tech_player_name"))
         return
     end

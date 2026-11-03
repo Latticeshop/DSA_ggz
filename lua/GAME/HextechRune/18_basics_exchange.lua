@@ -583,7 +583,7 @@ function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitTyp
         or filter == nil or percent <= 0 then
         return 0
     end
-    local units, count = ObjectFindObjects(P[sideIndex], nil, filter)
+    local units, count = g_SideFindObjects(sideIndex, nil, filter)
     if units == nil or type(count) ~= "number" then
         return 0
     end
@@ -598,7 +598,7 @@ function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitTyp
     -- 双形态单位（天狗/VX/心神）当前可能是载具形态，AIRCRAFT 过滤器抓不到，
     -- 再用一份按模板名的过滤器补齐。
     if extraFilter ~= nil then
-        local extraUnits, extraCount = ObjectFindObjects(P[sideIndex], nil, extraFilter)
+        local extraUnits, extraCount = g_SideFindObjects(sideIndex, nil, extraFilter)
         if extraUnits ~= nil and type(extraCount) == "number" then
             for i = 1, extraCount, 1 do
                 local unit = extraUnits[i]

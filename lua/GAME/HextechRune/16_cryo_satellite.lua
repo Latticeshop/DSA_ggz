@@ -301,7 +301,7 @@ function HextechRune:ApplyAtFieldShieldsForType(playerIndex, unitType, round)
     if filter == nil or sideIndex == nil or P[sideIndex] == nil then
         return
     end
-    local units, count = ObjectFindObjects(P[sideIndex], nil, filter)
+    local units, count = g_SideFindObjects(sideIndex, nil, filter)
     for i = 1, count, 1 do
         local unit = units[i]
         local objectId = ObjectGetId(unit)

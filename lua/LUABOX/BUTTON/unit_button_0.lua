@@ -1,7 +1,7 @@
 function onUnitTopBtnClickEvent(playerName, unitId)
   ----exMessageAppendToMessageArea("执行")
   local cutMCV = 3
-  for i = 1 , 6 , 1 do
+  for i = 1 , 8 , 1 do
   if playerName == "Player_"..i and unitId == BOMBID[i] then
     if i == 1 then
       exMessageAppendToMessageArea(Localization.get("unit_button.angel.dragonship_called"))
@@ -33,7 +33,7 @@ function onUnitTopBtnClickEvent(playerName, unitId)
     if i == 3 then 
       exMessageAppendToMessageArea(Localization.get("unit_button.angel.used_iron_curtain"))
         ExecuteAction("PLAY_SOUND_EFFECT","SOV_IronCurtain_Cast") 
-      local TAR, count = ObjectFindObjects(P[7],nil,FilterALLUNIT)
+      local TAR, count = g_SideFindObjects(7, nil,FilterALLUNIT)
       for j = 1 , count , 1 do
         g_ApplyIronCurtain(TAR[j], 600)
       end
@@ -68,7 +68,7 @@ function onUnitTopBtnClickEvent(playerName, unitId)
     if i == 6 then 
       exMessageAppendToMessageArea(Localization.get("unit_button.devil.used_iron_curtain"))
         ExecuteAction("PLAY_SOUND_EFFECT","SOV_IronCurtain_Cast") 
-      local TAR, count = ObjectFindObjects(P[8],nil,FilterALLUNIT)
+      local TAR, count = g_SideFindObjects(8, nil,FilterALLUNIT)
       for j = 1 , count , 1 do
         g_ApplyIronCurtain(TAR[j], 600)
       end

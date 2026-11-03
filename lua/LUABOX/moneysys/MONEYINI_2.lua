@@ -7,7 +7,7 @@ FilterPowerCelestial = CreateObjectFilter({
 })
 
 function addmoneyCelestial  (money)
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         local playerName = "Player_"..playindex;
         if ObjectIsAlive(P[playindex]) and g_PlayerInDebt[playerName] == 0 then
             local TAR, count = ObjectFindObjects(P[playindex], nil, FilterPowerCelestial)

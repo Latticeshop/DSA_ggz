@@ -49,7 +49,7 @@ exShowLongTextDialog(1, g_QQGroupText .. g_RuleText, '', Localization.get('dialo
 
 function onUserLongTextDialogEvent(playerName, btnIndex, dialogId)
     local o
-    for i=1,6,1 do
+    for i = 1,8,1 do
         if playerName=='Player_'..i then
             o=i
         end

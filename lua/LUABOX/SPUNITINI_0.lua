@@ -14,7 +14,8 @@ function UNITSPST_left (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     local spindex = 1
     for unitindex = unitmin , unitmax , 1 do
         -- 禁用模式：该槽位全部兵种都被禁时整槽不出兵（上限 0 让内层直接空转）。
-        for playindex = 1 , BanModeSpawnCount(unitindex, 3) , 1 do
+        for _si = 1 , BanModeSpawnCount(unitindex, getn(g_Seat7)) , 1 do
+            local playindex = g_Seat7[_si]
             local spiunitcount = UNITCOUNT[playindex][unitindex]
             if spiunitcount > 0 then
                 ------------------------------------
@@ -53,7 +54,8 @@ end
 function UNITSPST_right (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     local spindex = 1
     for unitindex = unitmin , unitmax , 1 do
-        for playindex = 4 , BanModeSpawnCount(unitindex, 6) , 1 do
+        for _si = 1 , BanModeSpawnCount(unitindex, getn(g_Seat8)) , 1 do
+            local playindex = g_Seat8[_si]
             local spiunitcount = UNITCOUNT[playindex][unitindex]
             if spiunitcount > 0 then
                 ------------------------------------

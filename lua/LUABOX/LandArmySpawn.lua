@@ -15,14 +15,15 @@ function SpawnNoNavyAmphibiousLand_right()
     SchedulerModule.delay_call(SpawnNoNavyAssaultDestroyerLand_right, 1, {})
 end
 
-function SpawnNoNavyAssaultDestroyerLandForSide(playerMin, playerMax, teamIndex, angle)
+function SpawnNoNavyAssaultDestroyerLandForSide(seats, teamIndex, angle)
     local unitIndex = g_UnitNameToUnitIndex["AlliedAntiNavyShipTech3"]
     if unitIndex == nil then
         return
     end
 
     local spindex = 1
-    for playindex = playerMin, playerMax, 1 do
+    for _si = 1, getn(seats), 1 do
+        local playindex = seats[_si]
         local unitCount = UNITCOUNT[playindex][unitIndex]
         for i = 1, unitCount, 1 do
             local x, y, z = ObjectGetPosition(HEAVYVEHSP[teamIndex][spindex])
@@ -35,7 +36,7 @@ function SpawnNoNavyAssaultDestroyerLandForSide(playerMin, playerMax, teamIndex,
         end
     end
 
-    for i = 1, 8, 1 do
+    for i = 1, 6, 1 do
         if EvaluateCondition("TEAM_HAS_UNITS", HEAVYVEHTEAM[teamIndex][i]) then
             for levelindex = 1, LEVELUP[teamIndex], 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL", HEAVYVEHTEAM[teamIndex][i], 1)
@@ -46,11 +47,11 @@ function SpawnNoNavyAssaultDestroyerLandForSide(playerMin, playerMax, teamIndex,
 end
 
 function SpawnNoNavyAssaultDestroyerLand_left()
-    SpawnNoNavyAssaultDestroyerLandForSide(1, 3, 7, 0)
+    SpawnNoNavyAssaultDestroyerLandForSide(g_Seat7, 7, 0)
 end
 
 function SpawnNoNavyAssaultDestroyerLand_right()
-    SpawnNoNavyAssaultDestroyerLandForSide(4, 6, 8, 180)
+    SpawnNoNavyAssaultDestroyerLandForSide(g_Seat8, 8, 180)
 end
 
 function SpawnNoNavyAmphibiousLand()
@@ -77,13 +78,14 @@ function SpawnNoNavySeaWingAir()
     SpawnNoNavySeaWingAir_right()
 end
 
-function SpawnSeaWingFromSeaForSide(playerMin, playerMax, teamIndex, angle)
+function SpawnSeaWingFromSeaForSide(seats, teamIndex, angle)
     local unitIndex = g_UnitNameToUnitIndex["JapanAntiAirShip"]
     if unitIndex == nil then
         return
     end
     local spindex = 1
-    for playindex = playerMin, playerMax, 1 do
+    for _si = 1, getn(seats), 1 do
+        local playindex = seats[_si]
         local unitCount = UNITCOUNT[playindex][unitIndex]
         for i = 1, unitCount, 1 do
             local x, y, z = ObjectGetPosition(AIRSP[teamIndex][spindex])
@@ -103,11 +105,11 @@ function SpawnSeaWingFromSeaForSide(playerMin, playerMax, teamIndex, angle)
 end
 
 function SpawnSeaWingFromSea_left()
-    SpawnSeaWingFromSeaForSide(1, 3, 7, 0)
+    SpawnSeaWingFromSeaForSide(g_Seat7, 7, 0)
 end
 
 function SpawnSeaWingFromSea_right()
-    SpawnSeaWingFromSeaForSide(4, 6, 8, 180)
+    SpawnSeaWingFromSeaForSide(g_Seat8, 8, 180)
 end
 
 function LandArmySpawn()

@@ -5,6 +5,8 @@ g_PlayerSpellBookId = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 }
 
 for i = 1, 32, 1 do
@@ -13,7 +15,7 @@ for i = 1, 32, 1 do
         -- 检测是否是 Player_ 开头
         if strsub(name, 1, 7) == "Player_" then
             local playerIndex = tonumber(strsub(name, 8))
-            if playerIndex >= 1 and playerIndex <= 6 then
+            if playerIndex >= 1 and playerIndex <= 8 then
                 g_PlayerSpellBookId[playerIndex] = i
             end
         end

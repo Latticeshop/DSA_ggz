@@ -155,7 +155,7 @@ function CreateButton(buttonData)
             return
         end
         local side = "devil"
-        if buttonData.PlayerIndex >= 4 then
+        if g_IsAngelSeat(buttonData.PlayerIndex) then
             side = "angel"
         end
         buttonData.SharedCooldownId = format("%s_%s", side, buttonData.SharedCooldownId)

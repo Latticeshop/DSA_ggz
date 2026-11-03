@@ -578,7 +578,7 @@ end
 function PureDrawScanNewAIUnitsNearAirdrops(markOnly)
     PureDrawInitializeAIUnitScanFilter()
     for sideIndex = 7, 8, 1 do
-        local units, count = ObjectFindObjects(P[sideIndex], nil,
+        local units, count = g_SideFindObjects(sideIndex, nil,
             g_PureDrawAIUnitScanFilter)
         for i = 1, count, 1 do
             local unit = units[i]

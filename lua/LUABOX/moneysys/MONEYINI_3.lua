@@ -22,11 +22,11 @@ g_PowerSlotDeathScheduled = g_PowerSlotDeathScheduled or {}
 g_PowerDeathRecheckFrames = 45
 
 YAOGUANG_LIMIT = 3
-FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1 }
-g_PlayerProducedYaoguangCount = g_PlayerProducedYaoguangCount or { 0, 0, 0, 0, 0, 0 }
+FLAGENYAOGUANG = { 1, 1, 1, 1, 1, 1, 1, 1 }
+g_PlayerProducedYaoguangCount = g_PlayerProducedYaoguangCount or { 0, 0, 0, 0, 0, 0, 0, 0 }
 
 GUARDIAN_TANK_LIMIT = 3
-FLAGENGUARDIANTANK = { 1, 1, 1, 1, 1, 1 }
+FLAGENGUARDIANTANK = { 1, 1, 1, 1, 1, 1, 1, 1 }
 
 function GetPlayerYaoguangCount(playindex)
     return tonumber(g_PlayerProducedYaoguangCount[playindex]) or 0
@@ -148,14 +148,14 @@ end
 -- 份额与“开局存在的玩家席位”挂钩，不与 MCV/额外基地挂钩；
 -- 每个席位一份 = LIMITPOWERC + 1（全局统一按非神州电厂基础）。
 function GetPowerSlotSideIndex(playerIndex)
-    if playerIndex ~= nil and playerIndex <= 3 then
+    if playerIndex ~= nil and g_IsDevilSeat(playerIndex) then
         return 7
     end
     return 8
 end
 
 function IsValidPowerSlotPlayerIndex(playerIndex)
-    return playerIndex ~= nil and playerIndex >= 1 and playerIndex <= 6
+    return playerIndex ~= nil and playerIndex >= 1 and playerIndex <= 8
 end
 
 -- 一个席位的份额：非神州 = LIMITPOWERC + 1（预设 1 座 + 可再建 LIMITPOWERC 座）；
@@ -182,7 +182,7 @@ end
 function GetPlayerPowerPlantLimit(playerIndex)
     local limit = 0
     if g_PowerSlotPresent ~= nil and g_PowerSlotController ~= nil then
-        for slotIndex = 1, 6, 1 do
+        for slotIndex = 1, 8, 1 do
             if g_PowerSlotPresent[slotIndex] == 1
                 and g_PowerSlotController[slotIndex] == playerIndex then
                 limit = limit + GetPowerSeatShare(slotIndex)
@@ -200,7 +200,7 @@ end
 function GetPlayerPowerPlantReferenceLimit(playerIndex, celestial)
     local slotCount = 0
     if g_PowerSlotPresent ~= nil and g_PowerSlotController ~= nil then
-        for slotIndex = 1, 6, 1 do
+        for slotIndex = 1, 8, 1 do
             if g_PowerSlotPresent[slotIndex] == 1
                 and g_PowerSlotController[slotIndex] == playerIndex then
                 slotCount = slotCount + 1
@@ -222,7 +222,7 @@ function GetPlayerDF41BuildLimit(playerIndex)
     local slotCount = 1
     if g_PowerSlotController ~= nil and g_PowerSlotPresent ~= nil then
         slotCount = 0
-        for slotIndex = 1, 6, 1 do
+        for slotIndex = 1, 8, 1 do
             if g_PowerSlotPresent[slotIndex] == 1
                 and g_PowerSlotController[slotIndex] == playerIndex then
                 slotCount = slotCount + 1
@@ -337,7 +337,7 @@ function InitPowerSlotTransfers()
     if P == nil or g_PlayerNameToIndex == nil then
         return
     end
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         g_PowerSlotPresent[slotIndex] = 0
         g_PowerSlotController[slotIndex] = nil
         g_PowerSlotVacated[slotIndex] = 0
@@ -355,7 +355,7 @@ end
 
 -- 把退出者当时控制的所有席位（含之前继承来的）一起交给新继承者。
 function AssignPowerSlotController(vacatedIndex, beneficiaryIndex)
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         if g_PowerSlotController[slotIndex] == vacatedIndex then
             g_PowerSlotController[slotIndex] = beneficiaryIndex
         end
@@ -368,7 +368,7 @@ end
 
 -- 资产被销毁或找不到继承者：这些席位不再贡献上限。
 function ClearPowerSlotController(vacatedIndex)
-    for slotIndex = 1, 6, 1 do
+    for slotIndex = 1, 8, 1 do
         if g_PowerSlotController[slotIndex] == vacatedIndex then
             g_PowerSlotController[slotIndex] = nil
         end
@@ -424,7 +424,7 @@ function FindPowerSlotBeneficiary(vacatedIndex)
         end
         local bestIndex = nil
         local bestCount = 0
-        for candidate = 1, 6, 1 do
+        for candidate = 1, 8, 1 do
             local candidateCount = tally[candidate] or 0
             if candidateCount > bestCount then
                 bestCount = candidateCount
@@ -439,7 +439,7 @@ function FindPowerSlotBeneficiary(vacatedIndex)
     -- 4. 同侧只剩一名尚未退出的队友时，直接交给他
     local teammateCount = 0
     local lastTeammateIndex = nil
-    for candidate = 1, 6, 1 do
+    for candidate = 1, 8, 1 do
         if candidate ~= vacatedIndex
             and GetPowerSlotSideIndex(candidate) == sideIndex
             and g_PowerSlotPresent[candidate] == 1
@@ -849,7 +849,7 @@ function LIMITPOWER()
         -- 每个开局存在的席位算一份；退出后份额跟着实际继承者走。
         -- 每份按席位阵营给（神州少一个）：见 GetPowerSeatShare。
         -- 每帧都按当前 LIMITPOWERC 重算：推塔 +2 后，继承来的席位也同步 +2。
-        for slotIndex = 1, 6, 1 do
+        for slotIndex = 1, 8, 1 do
             if g_PowerSlotPresent[slotIndex] == 1 then
                 local controllerIndex = g_PowerSlotController[slotIndex]
                 if IsValidPowerSlotPlayerIndex(controllerIndex) then

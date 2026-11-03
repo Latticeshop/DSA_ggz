@@ -264,14 +264,14 @@ function HextechRune:ApplyGamblingAddict(playerIndex)
 end
 
 function HextechRune:GetPlayerSideIndex(playerIndex)
-    if playerIndex <= 4 then
+    if g_IsDevilSeat(playerIndex) then
         return 7
     end
     return 8
 end
 
 function HextechRune:GetEnemySideIndex(playerIndex)
-    if playerIndex <= 4 then
+    if g_IsDevilSeat(playerIndex) then
         return 8
     end
     return 7
@@ -349,7 +349,7 @@ function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     end
     local duration = self.DivineInterventionBaseDuration
         + self.DivineInterventionExtraDurationPerCopy * (ownedCount - 1)
-    local objects, count = ObjectFindObjects(P[sideIndex], nil,
+    local objects, count = g_SideFindObjects(sideIndex, nil,
         self.AllSideUnitsAndStructuresFilter)
     for i = 1, count, 1 do
         -- 已经有铁幕的单位直接跳过：符文的铁幕不该改写技能组（或上一批符文）留下的更长期约，
@@ -573,14 +573,11 @@ end
 function HextechRune:GrantOblivionBomb(playerIndex)
     local forwardDirection = 1
     local enemyTowerPos = { X = 4030, Y = 3102.5, Z = 210 }
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         forwardDirection = -1
         enemyTowerPos = { X = 3000, Y = 3102.5, Z = 210 }
     end
-    local enemyIndex = playerIndex + 4
-    if enemyIndex > 6 then
-        enemyIndex = playerIndex - 4
-    end
+    local enemyIndex = g_OpponentSeat(playerIndex)
     local enemyFrontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(enemyIndex)
     if ObjectIsAlive(enemyFrontTower) then
         local towerX, towerY, towerZ = ObjectGetPosition(enemyFrontTower)
@@ -657,7 +654,7 @@ function HextechRune:GrantSafetyAegisTowers(playerIndex)
     local playerOwn = "PlyrCivilian"
     local behindDirection = -1
     local towerPos = { X = 2900, Y = 3102.5, Z = 210 }
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         sideName = "angel"
         playerOwn = "PlyrCreeps"
         behindDirection = 1
@@ -699,7 +696,7 @@ end
 function HextechRune:GrantBrilliantLights(playerIndex)
     local forwardDirection = 1
     local towerPos = { X = 3000, Y = 3102.5, Z = 210 }
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         forwardDirection = -1
         towerPos = { X = 4030, Y = 3102.5, Z = 210 }
     end
@@ -895,7 +892,7 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     end
     for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
         local unitType = self.UnitTypeOrder[typeIndex]
-        local units, count = ObjectFindObjects(P[sideIndex], nil, self.UnitTypeFilters[unitType])
+        local units, count = g_SideFindObjects(sideIndex, nil, self.UnitTypeFilters[unitType])
         local lookup = {}
         for i = 1, count, 1 do
             lookup[ObjectGetId(units[i])] = true
@@ -907,7 +904,7 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     local dualFilters = self:GetDualUnitTypeFilters()
     for dualIndex = 1, getn(dualFilters), 1 do
         local dual = dualFilters[dualIndex]
-        local units, count = ObjectFindObjects(P[sideIndex], nil, dual.Filter)
+        local units, count = g_SideFindObjects(sideIndex, nil, dual.Filter)
         for i = 1, count, 1 do
             local objectId = ObjectGetId(units[i])
             for typeIndex = 1, getn(dual.Types), 1 do
@@ -1144,7 +1141,7 @@ function HextechRune:AssignNewSideBattleUnits(sideIndex, firstPlayerIndex,
         return newlyAssigned
     end
     for unitIndex = 1, unitcountmax, 1 do
-        local units, count = ObjectFindObjects(P[sideIndex], nil, FilterLIST[unitIndex])
+        local units, count = g_SideFindObjects(sideIndex, nil, FilterLIST[unitIndex])
         local newUnits = {}
         for i = 1, count, 1 do
             local unit = units[i]
@@ -1231,7 +1228,7 @@ function HextechRune:BuildAllBattleUnitTypeLookup()
     local infiniteAmmoAircraft = {}
     for sideIndex = 7, 8, 1 do
         if P ~= nil and P[sideIndex] ~= nil then
-            local units, count = ObjectFindObjects(P[sideIndex], nil,
+            local units, count = g_SideFindObjects(sideIndex, nil,
                 self:GetInfiniteAmmoAircraftFilter())
             for i = 1, count, 1 do
                 infiniteAmmoAircraft[ObjectGetId(units[i])] = true
@@ -1340,7 +1337,7 @@ end
 function HextechRune:ApplyFortified(playerIndex)
     local landTowerNames = { "T71", "T72", "T73", "T74" }
     local seaTowerNames = { "T71F", "T72F", "T73F" }
-    if playerIndex >= 5 then
+    if g_IsAngelSeat(playerIndex) then
         landTowerNames = { "T81", "T82", "T83", "T84" }
         seaTowerNames = { "T81F", "T82F", "T83F" }
     end
@@ -1405,7 +1402,7 @@ function HextechRune:GrantCenturionLayer(playerIndex)
     if P[sideIndex] == nil then
         return
     end
-    local units, count = ObjectFindObjects(P[sideIndex], nil,
+    local units, count = g_SideFindObjects(sideIndex, nil,
         self.UnitTypeFilters.infantry)
     local round = tonumber(exCounterGetByName("lvc")) or 0
     local targets = {}

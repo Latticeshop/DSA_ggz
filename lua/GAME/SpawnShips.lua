@@ -141,7 +141,7 @@ g_ShipTeam = {
 -- 某个玩家某种单位的数量 g_PlayerShipCount["Player_1"]["ShipName"]
 g_PlayerShipCount = {}
 
-for playindex = 1 , 6 , 1 do
+for playindex = 1 , 8 , 1 do
     g_PlayerShipCount[playindex] = {}
     for i = 1, getn(g_ShipHashToNameIndex) do
         g_PlayerShipCount[playindex][g_ShipHashToNameIndex[i]] = 0
@@ -157,7 +157,7 @@ function onShipBuilt(createdObjId, createdObjInstanceId, ownerPlayerName)
 end
 
 function spawnShips()
-    for i = 1, 6, 1 do
+    for i = 1, 8, 1 do
         local playerName = "Player_"..i;
         local spawnLocationList = g_ShipSpawnLocation[i]
         for j = 1, getn(g_ShipHashToNameIndex) do

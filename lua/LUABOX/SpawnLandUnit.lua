@@ -8,23 +8,16 @@ end
 
 function SpawnLandUnit_left()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")];
-    for i = 1, 4 do
-        local spawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            spawnPosPrefix = "LIGHTVEH2"
-        end
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
+    local _seatsDemon = g_SideSeatsOf(7)
+for _si = 1, 4 do
+    local i = _seatsDemon[_si]
+        local teamIndex = g_SeatToSide(i)
+        local spawnPosPrefix = "LIGHTVEH" .. tostring(teamIndex - 6)
+        local landSpawnPosPrefix = spawnPosPrefix
 
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);
@@ -53,23 +46,16 @@ end
 
 function SpawnLandUnit_right()
     local countSlot = g_UnitCount[FastHash("AlliedAntiInfantryVehicle_Ground")];
-    for i = 5, 8 do
-        local spawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            spawnPosPrefix = "LIGHTVEH2"
-        end
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
+    local _seatsAngel = g_SideSeatsOf(8)
+for _si = 1, 4 do
+    local i = _seatsAngel[_si]
+        local teamIndex = g_SeatToSide(i)
+        local spawnPosPrefix = "LIGHTVEH" .. tostring(teamIndex - 6)
+        local landSpawnPosPrefix = spawnPosPrefix
 
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);

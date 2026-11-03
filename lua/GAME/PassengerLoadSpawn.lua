@@ -303,7 +303,7 @@ function g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
             IncludeThing = { carEntry.BuiltIn },
         })
     end
-    local crew, crewCount = ObjectFindObjects(P[sideIndex], nil, carEntry.CrewFilter)
+    local crew, crewCount = g_SideFindObjects(sideIndex, nil, carEntry.CrewFilter)
     if crew == nil or crewCount == nil then
         return
     end
@@ -329,7 +329,7 @@ function g_PLSpawnCandidates(sideIndex, carEntry)
             IncludeThing = carEntry.Inf,
         })
     end
-    local units, count = ObjectFindObjects(P[sideIndex], nil, carEntry.InfFilter)
+    local units, count = g_SideFindObjects(sideIndex, nil, carEntry.InfFilter)
     return g_PLSpawnKeepOwnSide(units, count, sideIndex)
 end
 
@@ -341,7 +341,7 @@ function g_PLSpawnSpecialCandidates(sideIndex, carEntry)
             IncludeThing = carEntry.SpecialInf,
         })
     end
-    local units, count = ObjectFindObjects(P[sideIndex], nil, carEntry.SpecialFilter)
+    local units, count = g_SideFindObjects(sideIndex, nil, carEntry.SpecialFilter)
     return g_PLSpawnKeepOwnSide(units, count, sideIndex)
 end
 
@@ -364,7 +364,7 @@ function g_PLSpawnFindCars(sideIndex, carEntry)
             IncludeThing = { carEntry.Template },
         })
     end
-    local cars, count = ObjectFindObjects(P[sideIndex], nil, carEntry.Filter)
+    local cars, count = g_SideFindObjects(sideIndex, nil, carEntry.Filter)
     cars, count = g_PLSpawnKeepOwnSide(cars, count, sideIndex)
     return g_PLSpawnDropGuardCars(cars, count)
 end

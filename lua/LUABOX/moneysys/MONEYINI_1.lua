@@ -11,7 +11,7 @@ FilterFreeTradePower = CreateObjectFilter({
     }
 })
 function addmoneyAllied  (money)
-    for playindex = 1, 6, 1 do
+    for playindex = 1, 8, 1 do
         local playerName = "Player_"..playindex;
         if EvaluateCondition("NAMED_NOT_DESTROYED", 'PlayerA_' .. playindex) and g_PlayerInDebt[playerName] == 0 then
 

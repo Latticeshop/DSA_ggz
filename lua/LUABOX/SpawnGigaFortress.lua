@@ -67,18 +67,14 @@ end
 
 function SpawnGigaFortressAir_left()
     local countSlot = GetGigaFortressCountSlot();
-    for i = 1, 4 do
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
+    local _seatsDemon = g_SideSeatsOf(7)
+for _si = 1, 4 do
+    local i = _seatsDemon[_si]
+        local teamIndex = g_SeatToSide(i)
+        local landSpawnPosPrefix = "LIGHTVEH" .. tostring(teamIndex - 6)
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);
@@ -107,18 +103,14 @@ end
 
 function SpawnGigaFortressAir_right()
     local countSlot = GetGigaFortressCountSlot();
-    for i = 5, 8 do
-        local landSpawnPosPrefix = "LIGHTVEH1"
-        if i >= 5 then
-            landSpawnPosPrefix = "LIGHTVEH2"
-        end
+    local _seatsAngel = g_SideSeatsOf(8)
+for _si = 1, 4 do
+    local i = _seatsAngel[_si]
+        local teamIndex = g_SeatToSide(i)
+        local landSpawnPosPrefix = "LIGHTVEH" .. tostring(teamIndex - 6)
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);

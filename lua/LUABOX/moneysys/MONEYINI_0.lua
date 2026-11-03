@@ -8,7 +8,7 @@ FilterPowerPlantOrEggNotCelestial=CreateObjectFilter({
 
 -- ADDMONEY 可能早于 BasicVar1 执行，先为欠债状态提供安全默认值。
 g_PlayerInDebt = g_PlayerInDebt or {}
-for i = 1, 6, 1 do
+for i = 1, 8, 1 do
     local playerName = "Player_" .. i
     if g_PlayerInDebt[playerName] == nil then
         g_PlayerInDebt[playerName] = 0
@@ -47,7 +47,7 @@ FilterPower=CreateObjectFilter({
     }
 })
 function addmoney  (money)
-    for playindex = 1 , 6 , 1 do
+    for playindex = 1 , 8 , 1 do
         local playerName = "Player_"..playindex;
         if ObjectIsAlive(P[playindex]) and g_PlayerInDebt[playerName] == 0 then
             local TAR, count = ObjectFindObjects(P[playindex], nil,FilterPower)

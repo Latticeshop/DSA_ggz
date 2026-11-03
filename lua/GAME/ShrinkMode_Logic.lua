@@ -54,6 +54,8 @@ function ShrinkMode_Setting()
     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_4", "AlliedAntiNavalScout", 0)
     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_5", "AlliedAntiNavalScout", 0)
     ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_6", "AlliedAntiNavalScout", 0)
+    ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_7", "AlliedAntiNavalScout", 0)
+    ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", "Player_8", "AlliedAntiNavalScout", 0)
 
     exWaypointSetPos("PLANEREBORN8", 4300, 4484, 200)
     exWaypointSetPos("PLANEREBORN7", 2684, 4512, 200)

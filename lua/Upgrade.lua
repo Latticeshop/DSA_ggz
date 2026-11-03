@@ -34,11 +34,11 @@ PlayerToComputer = {
     ["Player_1"] = "PlyrCivilian",
     ["Player_2"] = "PlyrCivilian",
     ["Player_3"] = "PlyrCivilian",
-    ["Player_4"] = "PlyrCivilian",
+    ["Player_4"] = "PlyrCreeps",
     ["Player_5"] = "PlyrCreeps",
     ["Player_6"] = "PlyrCreeps",
     ["Player_7"] = "PlyrCreeps",
-    ["Player_8"] = "PlyrCreeps",
+    ["Player_8"] = "PlyrCivilian",
 }
 
 function onPlayerGetTechEvent(playerName, techInstanceId)
@@ -152,7 +152,7 @@ exRegisterUpgradeCompleteEvent(RANK3_NAME)
 function onPlayerUpgradeCompleteEvent(playerName, upgradeInstanceId, objectId)
     local playerIndex = PlayerIndex[playerName];
 
-    local isFirstTeam = playerIndex <= 4
+    local isFirstTeam = g_IsDevilSeat(playerIndex)
 
     local factionName = PlayerSideName[playerName]
     local targetPlayer = PlayerToComputer[playerName]

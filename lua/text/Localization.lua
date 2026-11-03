@@ -15,22 +15,22 @@ Localization._map_sources = {
             ["Player_1"] = "恶魔",
             ["Player_2"] = "恶魔",
             ["Player_3"] = "恶魔",
-            ["Player_4"] = "恶魔",
+            ["Player_4"] = "天使",
             ["Player_5"] = "天使",
             ["Player_6"] = "天使",
-        
             ["Player_7"] = "天使",
-            ["Player_8"] = "天使",},
+            ["Player_8"] = "恶魔",
+        },
         en = {
             ["Player_1"] = "Devil",
             ["Player_2"] = "Devil",
             ["Player_3"] = "Devil",
-            ["Player_4"] = "Devil",
+            ["Player_4"] = "Angel",
             ["Player_5"] = "Angel",
             ["Player_6"] = "Angel",
-        
             ["Player_7"] = "Angel",
-            ["Player_8"] = "Angel",},
+            ["Player_8"] = "Devil",
+        },
     },
 }
 
@@ -360,8 +360,8 @@ Localization._text_sources = {
 
     -- === 轮次提示 ===
     ["round.begin"] = { zh = "第%d回合，开始！", en = "Round %d, begin!" },
-    ["round.angel_formation"] = { zh = "战场右侧：天使$p4Name $p5Name $p6Name", en = "Right side of battlefield: Angels $p4Name $p5Name $p6Name" },
-    ["round.devil_formation"] = { zh = "战场左侧：恶魔$p1Name $p2Name $p3Name", en = "Left side of battlefield: Devils $p1Name $p2Name $p3Name" },
+    ["round.angel_formation"] = { zh = "战场右侧：天使$p4Name $p5Name $p7Name $p6Name", en = "Right side of battlefield: Angels $p4Name $p5Name $p7Name $p6Name" },
+    ["round.devil_formation"] = { zh = "战场左侧：恶魔$p1Name $p2Name $p8Name $p3Name", en = "Left side of battlefield: Devils $p1Name $p2Name $p8Name $p3Name" },
 
     -- === 回收系统 ===
     ["recycle.choice.1"] = { zh = "回收1个", en = "Recycle 1" },
@@ -407,7 +407,9 @@ Localization._text_sources = {
     ["board.role.angel1"] = { zh = "天使1号", en = "Angel 1" },
     ["board.role.angel2"] = { zh = "天使2号", en = "Angel 2" },
     ["board.role.angel3"] = { zh = "天使3号", en = "Angel 3" },
-
+
+    ["board.role.devil4"] = { zh = "恶魔4号", en = "Devil 4" },
+    ["board.role.angel4"] = { zh = "天使4号", en = "Angel 4" },
     -- === 按钮对话框管理器 ===
     ["button_dialog.player_not_found"] = { zh = "玩家 %s 点击了按钮 %d，但没有找到对应的对话框 ID: %d", en = "Player %s clicked button %d, but no matching dialog ID was found: %d" },
     ["button_dialog.player_mismatch"] = { zh = "对话框 %d 的按钮 %d 被点击，但玩家名称不匹配: %s != %s", en = "Dialog %d button %d was clicked, but the player name does not match: %s != %s" },

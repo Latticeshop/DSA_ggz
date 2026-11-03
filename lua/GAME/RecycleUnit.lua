@@ -7,6 +7,8 @@ g_CurrentRecycleType = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 };
 
 g_CurrentClickRecycleUnit = {
@@ -16,6 +18,8 @@ g_CurrentClickRecycleUnit = {
     [4] = {},
     [5] = {},
     [6] = {},
+    [7] = {},
+    [8] = {},
 };
 
 g_RecycleBtnsShowed = {
@@ -25,6 +29,8 @@ g_RecycleBtnsShowed = {
     [4] = {},
     [5] = {},
     [6] = {},
+    [7] = {},
+    [8] = {},
 };
 
 g_RecycleLayoutGen = {
@@ -34,6 +40,8 @@ g_RecycleLayoutGen = {
     [4] = 0,
     [5] = 0,
     [6] = 0,
+    [7] = 0,
+    [8] = 0,
 };
 
 g_RecycleUnitCount = {

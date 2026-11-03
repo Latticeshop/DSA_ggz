@@ -8,7 +8,7 @@ AIRRESP[7] = {}
 AIRRESPCH[7] = {}
 AIRRESP[8] = {}
 AIRRESPCH[8] = {}
-for i = 1 , 6 , 1 do
+for i = 1 , 8 , 1 do
     AIRRESP[7][i] = GetObjectByScriptName("AIRRE1"..i) ;
     ExecuteAction("SET_UNIT_REFERENCE","AIRRESP7"..i , AIRRESP[7][i])
     AIRRESPCH[7][i] = "AIRRESP7"..i
@@ -98,7 +98,7 @@ function PLANEREBORN (UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
         end
     end
     -------------------------------------------
-    for spindex = 1 , 6 , 1 do
+    for spindex = 1 , 8 , 1 do
         if  EvaluateCondition("TEAM_HAS_UNITS", UNITTEAM[7][spindex]) then
             for levelindex = 1 , LEVELUP[7] , 1 do
                 ExecuteAction("TEAM_GAIN_LEVEL",UNITTEAM[7][spindex],1)

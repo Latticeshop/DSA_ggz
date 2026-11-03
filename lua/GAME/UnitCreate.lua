@@ -1239,21 +1239,21 @@ g_YaoguangUnitTypeHashes = {
 }
 
 g_PlayerT4TechUnlocked = g_PlayerT4TechUnlocked
-    or { false, false, false, false, false, false }
+    or { false, false, false, false, false, false, false, false }
 
 function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
-    local firstPlayerIndex = nil
+    local sideSeats = nil
     if ownerPlayerName == "PlyrCivilian" then
-        firstPlayerIndex = 1
+        sideSeats = g_Seat7
     elseif ownerPlayerName == "PlyrCreeps" then
-        firstPlayerIndex = 4
+        sideSeats = g_Seat8
     else
         return false
     end
     -- 六个 Player_N/UNLOCK3__N 脚本是所有模式最终的 T4 科技解封入口：
     -- 标准模式的推塔/自然解锁、死亡模式的开局推塔及升本模式均会执行它。
-    for playerIndex = firstPlayerIndex, firstPlayerIndex + 2, 1 do
-        if g_PlayerT4TechUnlocked[playerIndex] then
+    for seatPos = 1, 4, 1 do
+        if g_PlayerT4TechUnlocked[sideSeats[seatPos]] then
             return true
         end
     end
