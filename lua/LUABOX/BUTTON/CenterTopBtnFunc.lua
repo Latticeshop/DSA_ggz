@@ -264,7 +264,7 @@ end
 function CenterTopBtnFunc_CreateInitialButtons(playerIndex)
     local playerName = "Player_" .. playerIndex
     local buttons = {}
-    -- 技能组按「本边第几个真人」压缩发放（1v1 = 2 项、2v2 = 4 项、满 6 人 = 6 项），
+    -- 技能组按「本边第几个真人」压缩发放（1v1 = 2 项、2v2 = 4 项、满 8 人 = 8 项），
     -- 不能直接用 playerIndex 取值，否则空位会把后面玩家的技能组挤到另一项上。
     local preselectedSkillIndex = BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
     local preselectedPlayerSkillKind = nil
@@ -1115,9 +1115,6 @@ end
 
 -- 按模板扫本方全部同类建筑塔，比"购买时登记台账"更稳：符文免费送的、塔防专家的复数塔
 function g_NanoRepairHealSideTowers(sideIndex)
-    if P == nil or P[sideIndex] == nil then
-        return
-    end
     if g_NanoRepairTowerFilter == nil then
         g_NanoRepairTowerFilter = CreateObjectFilter({
             Rule = "ANY",
@@ -1134,6 +1131,16 @@ function g_NanoRepairHealSideTowers(sideIndex)
     end
 end
 
+-- 交易市场氪金塔的走廊落点：以本方最前排存活塔为锚点，再按横向偏移排到走廊两侧。
+function g_GetMarketTowerPos(playerIndex, lateralOffset, fallbackX, fallbackY)
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower)
+        return { X = towerX, Y = towerY + lateralOffset, Z = towerZ }
+    end
+    return { X = fallbackX, Y = fallbackY, Z = 210 }
+end
+
 function RequestNanoMaintainHive(playerIndex)
     local sideName = Localization.get("side.devil")
     local sideAIPlayer = "PlyrCivilian"
@@ -1141,6 +1148,9 @@ function RequestNanoMaintainHive(playerIndex)
     local tower = T74
     local seaTowers = { "T71F", "T72F", "T73F" }
     local seaSupportDirection = 1
+    -- 前线锚点：地图整体位移后写死坐标会落偏，统一改成「本方最前排存活塔 + 偏移」计算
+    local hiveOffset = 110
+    local lampOffset = 310
     local positions = { X = 3000, Y = 3104, Z = 210 }
     local position2 = {
         { X = 3200, Y = 3200, Z = 210 },
@@ -1155,6 +1165,8 @@ function RequestNanoMaintainHive(playerIndex)
         tower = T84
         seaTowers = { "T81F", "T82F", "T83F" }
         seaSupportDirection = -1
+        hiveOffset = -110
+        lampOffset = -310
         positions = { X = 4030, Y = 3104, Z = 210 }
         position2 = {
             { X = 3830, Y = 3200, Z = 210 },
@@ -1162,6 +1174,19 @@ function RequestNanoMaintainHive(playerIndex)
             { X = 3830, Y = 3300, Z = 210 },
             { X = 3830, Y = 2900, Z = 210 },
         }
+    end
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower)
+        positions = { X = towerX + hiveOffset, Y = towerY + 1.5, Z = towerZ }
+        local lampLateral = { 97.5, -102.5, 197.5, -202.5 }
+        for i = 1, 4, 1 do
+            position2[i] = {
+                X = towerX + lampOffset,
+                Y = towerY + lampLateral[i],
+                Z = towerZ,
+            }
+        end
     end
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName))

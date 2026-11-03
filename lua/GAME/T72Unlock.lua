@@ -5,6 +5,8 @@ if g_GameMode ~= 4 then
     exEnableWBScript('Player_6/UNLOCK2__6')
     ExecuteAction("UNIT_KILL_ALL_IN_AREA", "PlyrCreeps", "nofire51")
     if PureDrawReapplyPlayerQuota ~= nil then
-        for i = 5, 8, 1 do PureDrawReapplyPlayerQuota(i) end
+        local reapplySeats = g_Seat8
+        if reapplySeats == nil then reapplySeats = { 4, 5, 7, 6 } end
+        for k = 1, getn(reapplySeats), 1 do PureDrawReapplyPlayerQuota(reapplySeats[k]) end
     end
 end

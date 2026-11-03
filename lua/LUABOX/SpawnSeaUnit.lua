@@ -13,13 +13,10 @@ function SpawnSeaUnit_left()
 for _si = 1, 4 do
     local i = _seatsDemon[_si]
 
+        local teamIndex = g_SeatToSide(i)
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);
@@ -49,13 +46,10 @@ function SpawnSeaUnit_right()
     local _seatsAngel = g_SideSeatsOf(8)
 for _si = 1, 4 do
     local i = _seatsAngel[_si]
+        local teamIndex = g_SeatToSide(i)
         local angle = 0;
-        if i >= 5 then
+        if teamIndex == 8 then
             angle = 180
-        end
-        local teamIndex = 7;
-        if i >= 5 then
-            teamIndex = 8;
         end
         for j = 1, countSlot[i] do
             local suffix = mod(j, 6);

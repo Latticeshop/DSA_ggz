@@ -50,11 +50,10 @@ end
 
 -- 不走单位池配额：目标阵营的全体战斗单位都要缩小。
 function HextechRune:ApplyShrinkRayToSide(targetSideIndex, round)
-    if P == nil or P[targetSideIndex] == nil then
-        return
-    end
     local applied = self.ShrinkRayApplied[targetSideIndex]
-    local objects, count = ObjectFindObjects(P[targetSideIndex], nil,
+    -- 阵营扫描一律走 g_SideFindObjects（7/8 是「4 个座位锚点 + 阵营锚点」的并集），
+    -- 不能再拿 P[7]/P[8] 当阵营锚点，那只是「7 号座位」自己的 MCV。
+    local objects, count = g_SideFindObjects(targetSideIndex, nil,
         self.AllSideUnitsFilter)
     for i = 1, count, 1 do
         local objectId = ObjectGetId(objects[i])

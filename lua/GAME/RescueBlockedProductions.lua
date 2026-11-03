@@ -50,6 +50,15 @@ SchedulerModule.call_every_x_frame(function()
         if unitHashsNeedUnblock ~= nil then
             RescueBlockedProductions_DoRescue('Player_' .. p, unitHashsNeedUnblock)
         end
+
+        -- 大船建造栏自愈：地图的 bigshiplimit__N 是一次性禁造（DeactivateUponSuccess），
+        -- 纯抽卡模式与禁海模式的可造性另有完整规则，这里不插手。
+        if SetBigShipBuildability ~= nil and bigshiplimitc ~= nil and BIGSHIP_LIMIT ~= nil
+            and g_DrawMode ~= 2 and g_DisableSeaArmy ~= 1
+            and g_PureDrawT4ShipUnlocked ~= nil and g_PureDrawT4ShipUnlocked[p] == true
+            and (bigshiplimitc[p] or 0) < BIGSHIP_LIMIT then
+            SetBigShipBuildability(p, 1)
+        end
     end
 end, 75, nil)
 

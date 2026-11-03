@@ -6,14 +6,20 @@ local enableT4Ship = {
     [4] = 'CelestialAntiStructureShip_Enhanced',
     [5] = 'SovietAntiStructureShip',
     [6] = 'SovietAntiStructureShip_Enhanced',
-    [7] = 'SovietAntiStructureShip_Enhanced',
-    [8] = 'SovietAntiStructureShip_Enhanced',
     [7] = 'JapanAntiStructureShip',
     [8] = 'JapanAntiStructureShip_Enhanced',
     [9] = 'JapanGigaFortressShipEgg',
 }
 
-for i = 5 , 8 , 1 do
+-- 触发者：地编 MIRRORTOWER/MIRRORTOWER1__3 = 海3塔 T73F 被摧毁 → 解锁的是天使阵营。
+-- 8 人局里同一个阵营的座位不是连续的 5..8，必须按 g_Seat8 = {4,5,7,6} 逐个来：
+-- 原来写死 5..8 会让 4 号位永远拿不到解锁，还把一个恶魔座位当天使解锁。
+local unlockSeats = g_Seat8
+if unlockSeats == nil then
+    unlockSeats = { 4, 5, 7, 6 }
+end
+for seatPos = 1, getn(unlockSeats), 1 do
+    local i = unlockSeats[seatPos]
     if g_PureDrawT4ShipUnlocked ~= nil then
         g_PureDrawT4ShipUnlocked[i] = true
     end

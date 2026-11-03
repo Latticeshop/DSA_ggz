@@ -40,7 +40,8 @@ function HextechRune:BuildDrainProtectedCounts(playerIndex)
     return counts
 end
 
--- 对面三个玩家卡池里的每一个单位各占一个条目（按数量展开），所以随机是按数量加权的：
+-- 对面每个玩家卡池里的每一个单位各占一个条目（按数量展开），所以随机是按数量加权的：
+-- 8 人局每侧 4 席，对面席位一律由 GetSidePlayerRange 取（{1,2,8,3} / {4,5,7,6}）。
 -- 池子里数量多的单位被吸到的概率更大。对面符文赠予的那几份先扣掉，不参与抽取。
 function HextechRune:CollectDrainSourceEntries(playerIndex)
     local entries = {}

@@ -79,12 +79,17 @@ Localization.on_language_changed(function()
 end)
 g_PreselectedSkillIndices = {}
 
--- 本方实际占用的玩家槽位，按 Player_i 升序。真人、电脑都算（电脑也吃技能组），只有空位/关闭位不算：
--- 1v1 = 每边 1 个、2v2 = 每边 2 个、满 6 位 = 每边 3 个。
+-- 本方实际占用的玩家槽位，按座位表顺序。真人、电脑都算（电脑也吃技能组），只有空位/关闭位不算：
+-- 但席位必须取自 g_Seat7 = {1,2,8,3} / g_Seat8 = {4,5,7,6}：
 function BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
     local playerIndices = {}
-    for playerIndex = sideStartIndex, sideStartIndex + 3, 1 do
-        -- P[i] 是本图 6 个玩家对象（UNITCOUNTERINI_0.lua 里 GetObjectByScriptName("P"..i)），空位为 nil。
+    local seats = g_Seat7
+    if sideStartIndex >= 5 then
+        seats = g_Seat8
+    end
+    for seatPos = 1, 4, 1 do
+        local playerIndex = seats[seatPos]
+        -- P[i] 是本图各玩家对象（UNITCOUNTERINI_0.lua 里 GetObjectByScriptName("P"..i)），空位为 nil。
         local isHuman = EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY",
             "Player_" .. playerIndex, "Human")
         if isHuman or (P ~= nil and P[playerIndex] ~= nil) then
@@ -94,8 +99,8 @@ function BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(sideStartIndex)
     return playerIndices
 end
 
--- 玩家 → 技能组数组下标：按「本边第几个占位玩家」压缩编号（1..3 魔鬼、4..6 天使）。
--- 满 6 位时与 playerIndex 完全一致；有空位时不留洞 —— 1v1 用 1 / 4，2v2 用 1、2 / 4、5。
+-- 玩家 → 技能组数组下标：按「本边第几个占位玩家」压缩编号（1..4 魔鬼、5..8 天使）。
+-- 满 8 位时与 playerIndex 一一对应；有空位时不留洞 —— 1v1 用 1 / 5，2v2 用 1、2 / 5、6。
 -- 空位因此不再占掉一项，对称模式两边同一序号必然抽到同一组。
 function BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
     local sideStartIndex = 1
@@ -111,17 +116,17 @@ function BtnChoiceDialogEventFunc_GetSkillIndexForPlayer(playerIndex)
     return nil
 end
 
--- 房主预选/随机要定义几项技能组：按两边实到玩家数的多者（满 6 位 = 3 项、2v2 = 2 项、1v1 = 1 项），
--- 一个都认不出来（编辑器/回放）时退回 3 项。
+-- 房主预选/随机要定义几项技能组：按两边实到玩家数的多者（满 8 位 = 4 项、2v2 = 2 项、1v1 = 1 项），
+-- 一个都认不出来（编辑器/回放）时退回 4 项。
 function BtnChoiceDialogEventFunc_GetPreselectSlotCount()
     local sideCount = max(
         getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(1)),
         getn(BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(5)))
     if sideCount < 1 then
-        return 3
+        return 4
     end
-    if sideCount > 3 then
-        return 3
+    if sideCount > 4 then
+        return 4
     end
     return sideCount
 end
@@ -471,11 +476,11 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     dialogData.BuyJapanPointShieldControlTower = function(self)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
-        local pos = {X = 2900, Y = 3187};
-        if self.g_IsAngelSeat(PlayerIndex) then
+        local pos = g_GetMarketTowerPos(self.PlayerIndex, 84.5, 2900, 3187);
+        if g_IsAngelSeat(self.PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
-            pos = {X = 4150, Y = 3187};
+            pos = g_GetMarketTowerPos(self.PlayerIndex, 84.5, 4150, 3187);
         end
         local objectId = g_BuyTowerId["JapanPointShieldControlTower"][sideName];
         local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
@@ -510,11 +515,11 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     dialogData.BuySovietHeavyAntiAirMissileTurret = function(self)
         local sideName = "evil";
         local playerOwn = "PlyrCivilian";
-        local pos = {X = 2900, Y = 3018};
-        if self.g_IsAngelSeat(PlayerIndex) then
+        local pos = g_GetMarketTowerPos(self.PlayerIndex, -84.5, 2900, 3018);
+        if g_IsAngelSeat(self.PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
-            pos = {X = 4150, Y = 3018};
+            pos = g_GetMarketTowerPos(self.PlayerIndex, -84.5, 4150, 3018);
         end
         local objectId = g_BuyTowerId["SovietHeavyAntiAirMissileTurret"][sideName];
         local ignoresLimit = BtnChoiceDialogEventFunc_HasTowerDefenseExpert(self.PlayerIndex)
@@ -557,7 +562,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local pos = {X = 2773.25, Y = 3102.5, Z = 210};
-        if self.g_IsAngelSeat(PlayerIndex) then
+        if g_IsAngelSeat(self.PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -606,7 +611,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     -- 天门神弓（神州防御塔）：限购 1 座，塔防专家半价且无视数量限制。
     dialogData.BuyCelestialEnergyRailgunBase = function(self)
         local sideName = "evil";
-        if self.g_IsAngelSeat(PlayerIndex) then
+        if g_IsAngelSeat(self.PlayerIndex) then
             sideName = "angel";
         end
         local objectId = g_BuyTowerId["CelestialEnergyRailgunBase"][sideName];
@@ -632,7 +637,7 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         local playerOwn = "PlyrCivilian";
         local behindDirection = -1;
         local towerPos = {X = 2900, Y = 3102.5, Z = 210};
-        if self.g_IsAngelSeat(PlayerIndex) then
+        if g_IsAngelSeat(self.PlayerIndex) then
             sideName = "angel";
             playerOwn = "PlyrCreeps";
             behindDirection = 1;
@@ -1102,7 +1107,7 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
 
     -- （见 analysis/地图注释说明文档.md §5.3）。
     dialogData.AppendRandomSkillSide = function(self, baseIndex, sideCount, skillNamesCount)
-        for i = 1, 3, 1 do
+        for i = 1, 4, 1 do
             if i <= sideCount then
                 tinsert(g_PreselectedSkillIndices, self:RandomInteger(1, skillNamesCount))
             else
@@ -1118,24 +1123,24 @@ function BtnChoiceDialogEventFunc_ShowHostChoosePlayerSkillModeDialog(playerName
         g_PreselectedSkillIndices = {}
         g_PreselectedSkillIndices.IsRandom = true
         local skillNamesCount = getn(g_SkillNames)
-        -- 只按场上实际占用的槽位抽：满 6 位 = 3 项、2v2 = 2 项、1v1 = 1 项（空位不再占一项）。
+        -- 只按场上实际占用的槽位抽：满 8 位 = 4 项、2v2 = 2 项、1v1 = 1 项（空位不再占一项）。
         -- 电脑占的槽位也算一项（电脑同样吃技能组）；两边取人数多的那侧，对称模式两边共用同一序号池。
         local sideCount = BtnChoiceDialogEventFunc_GetPreselectSlotCount()
         self:AppendRandomSkillSide(0, sideCount, skillNamesCount)
         if isSymmetric then
             g_PreselectedSkillIndices.IsSymmetric = true
-            -- 两边共用 1..sideCount 这个池子：先在池子里修正，再整体复制到 4..6 保持对称。
+            -- 两边共用 1..sideCount 这个池子：先在池子里修正，再整体复制到 5..8 保持对称。
             self:EnsureSideHasNonCopySkill(1, copySkillIndex, 0)
-            self:EnsureSideHasNonCopySkill(4, copySkillIndex, 3)
-            for i = 1, 3, 1 do
+            self:EnsureSideHasNonCopySkill(5, copySkillIndex, 4)
+            for i = 1, 4, 1 do
                 tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i])
             end
         else
             g_PreselectedSkillIndices.IsSymmetric = false
             -- 不对称：天使侧独立再抽一整边（可以抽到和魔鬼侧相同的组，这是本模式的定义）。
-            self:AppendRandomSkillSide(3, sideCount, skillNamesCount)
+            self:AppendRandomSkillSide(4, sideCount, skillNamesCount)
             self:EnsureSideHasNonCopySkill(1, copySkillIndex, 0)
-            self:EnsureSideHasNonCopySkill(4, copySkillIndex, 0)
+            self:EnsureSideHasNonCopySkill(5, copySkillIndex, 0)
         end
     end
     dialogData.RandomInteger = function(self, min, max)
@@ -1226,10 +1231,11 @@ function BtnChoiceDialogEventFunc_ShowHostChooseSkillForAllDialog(playerName)
 
         if getn(g_PreselectedSkillIndices) >= BtnChoiceDialogEventFunc_GetPreselectSlotCount() then
             -- 已按实到人数选够技能组，可以开始游戏了。
-            for i = getn(g_PreselectedSkillIndices) + 1, 3, 1 do
+            -- 8 人局每侧 4 项：先补满 1..4，再整体复制到 5..8。
+            for i = getn(g_PreselectedSkillIndices) + 1, 4, 1 do
                 tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[1])
             end
-            for i = 1, 3, 1 do
+            for i = 1, 4, 1 do
                 tinsert(g_PreselectedSkillIndices, g_PreselectedSkillIndices[i])
             end
             -- 开始游戏
@@ -1287,7 +1293,8 @@ function BtnChoiceDialogEventFunc_InvokeStartGame()
         drawModeText = Localization.get("game_mode.pure_draw_suffix")
     end
     local preselectedSkillCount = getn(g_PreselectedSkillIndices)
-    if preselectedSkillCount == 6 then
+    -- 池子最终会补满两侧（每侧 4 项），正常开局是 8 项；6 人时代的 6 项不再匹配。
+    if preselectedSkillCount == 8 then
         if g_PreselectedSkillIndices.IsRandom then
             if g_PreselectedSkillIndices.IsSymmetric then
                 skillText = Localization.get("game.start.skill_random_symmetric")
@@ -1449,22 +1456,23 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
 
             -- TODO 自定义文本更新   解锁科技，解锁电厂数量
 
+            -- 8 人：按天使座位表 g_Seat8（4/5/7/6）解锁；原先写死 4/5/6，第 4 席（Player_7）拿不到 T1~T3。
             if g_angelTechLevel == 2 then
-                exEnableWBScript('Player_4/UNLOCK1__4')
-                exEnableWBScript('Player_5/UNLOCK1__5')
-                exEnableWBScript('Player_6/UNLOCK1__6')
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK1__' .. i)
+                end
                 LIMITPOWERC = 6
                 g_angelTechBuyRound[2] = exCounterGetByName("lvc")
             elseif g_angelTechLevel == 3 then
-                exEnableWBScript('Player_4/UNLOCK2__4')
-                exEnableWBScript('Player_5/UNLOCK2__5')
-                exEnableWBScript('Player_6/UNLOCK2__6')
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK2__' .. i)
+                end
                 LIMITPOWERC = 8
                 g_angelTechBuyRound[3] = exCounterGetByName("lvc")
             elseif g_angelTechLevel == 4 then
-                exEnableWBScript('Player_4/UNLOCK3__4')
-                exEnableWBScript('Player_5/UNLOCK3__5')
-                exEnableWBScript('Player_6/UNLOCK3__6')
+                for _k = 1, 4 do local i = g_Seat8[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK3__' .. i)
+                end
                 LIMITPOWERC = 10
             end
 
@@ -1508,22 +1516,23 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
             end
 
             LIMITPOWERC = LIMITPOWERC  + 2
+            -- 8 人：按恶魔座位表 g_Seat7（1/2/8/3）解锁；原先写死 1/2/3，第 4 席（Player_8）拿不到 T1~T3。
             if g_evilTechLevel == 2 then
-                exEnableWBScript('Player_1/UNLOCK1__1')
-                exEnableWBScript('Player_2/UNLOCK1__2')
-                exEnableWBScript('Player_3/UNLOCK1__3')
+                for _k = 1, 4 do local i = g_Seat7[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK1__' .. i)
+                end
                 LIMITPOWERC = 6
                 g_evilTechBuyRound[2] = exCounterGetByName("lvc")
             elseif g_evilTechLevel == 3 then
-                exEnableWBScript('Player_1/UNLOCK2__1')
-                exEnableWBScript('Player_2/UNLOCK2__2')
-                exEnableWBScript('Player_3/UNLOCK2__3')
+                for _k = 1, 4 do local i = g_Seat7[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK2__' .. i)
+                end
                 LIMITPOWERC = 8
                 g_evilTechBuyRound[3] = exCounterGetByName("lvc")
             elseif g_evilTechLevel == 4 then
-                exEnableWBScript('Player_1/UNLOCK3__1')
-                exEnableWBScript('Player_2/UNLOCK3__2')
-                exEnableWBScript('Player_3/UNLOCK3__3')
+                for _k = 1, 4 do local i = g_Seat7[_k]
+                    exEnableWBScript('Player_' .. i .. '/UNLOCK3__' .. i)
+                end
                 LIMITPOWERC = 10
             end
 

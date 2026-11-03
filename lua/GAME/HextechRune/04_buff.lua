@@ -308,16 +308,14 @@ end
 -- 每个玩家的干扰符文实例独立加载一次；同阵营队友也持有时允许效果叠加。
 function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
     local enemySideIndex = self:GetEnemySideIndex(playerIndex)
-    if P == nil or P[enemySideIndex] == nil then
-        return
-    end
     local effectInstanceId = "P" .. tostring(playerIndex) .. ":"
         .. self:GetRuneEffectInstanceId(rune)
     if self.BroadbandJammingApplied[effectInstanceId] == nil then
         self.BroadbandJammingApplied[effectInstanceId] = {}
     end
     local applied = self.BroadbandJammingApplied[effectInstanceId]
-    local units, count = ObjectFindObjects(P[enemySideIndex], nil, self.AllSideUnitsFilter)
+    -- 阵营扫描走 g_SideFindObjects 的并集；P[7]/P[8] 只是 7/8 号座位自己的 MCV。
+    local units, count = g_SideFindObjects(enemySideIndex, nil, self.AllSideUnitsFilter)
     for i = 1, count, 1 do
         local unit = units[i]
         local objectId = ObjectGetId(unit)
@@ -347,7 +345,7 @@ end
 function HextechRune:ApplyDivineInterventionToSide(sideIndex, sourceName)
     local ownedCount = self:GetSideOwnedRuneCount(sideIndex,
         "prismatic_divine_intervention")
-    if ownedCount <= 0 or P == nil or P[sideIndex] == nil then
+    if ownedCount <= 0 then
         return
     end
     local duration = self.DivineInterventionBaseDuration
@@ -890,9 +888,6 @@ end
 -- 构建阵营战斗单位的兵种查找表。战斗复制体属于 P7/P8，不能再按 Player_1..6 所有权扫描。
 function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     local result = {}
-    if P == nil or P[sideIndex] == nil then
-        return result
-    end
     for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
         local unitType = self.UnitTypeOrder[typeIndex]
         local units, count = g_SideFindObjects(sideIndex, nil, self.UnitTypeFilters[unitType])
@@ -1140,9 +1135,6 @@ end
 function HextechRune:AssignNewSideBattleUnits(sideIndex, seatList,
     typeLookup, skipObjects, seenObjects)
     local newlyAssigned = {}
-    if P == nil or P[sideIndex] == nil then
-        return newlyAssigned
-    end
     for unitIndex = 1, unitcountmax, 1 do
         local units, count = g_SideFindObjects(sideIndex, nil, FilterLIST[unitIndex])
         local newUnits = {}
@@ -1234,12 +1226,10 @@ function HextechRune:BuildAllBattleUnitTypeLookup()
     end
     local infiniteAmmoAircraft = {}
     for sideIndex = 7, 8, 1 do
-        if P ~= nil and P[sideIndex] ~= nil then
-            local units, count = g_SideFindObjects(sideIndex, nil,
-                self:GetInfiniteAmmoAircraftFilter())
-            for i = 1, count, 1 do
-                infiniteAmmoAircraft[ObjectGetId(units[i])] = true
-            end
+        local units, count = g_SideFindObjects(sideIndex, nil,
+            self:GetInfiniteAmmoAircraftFilter())
+        for i = 1, count, 1 do
+            infiniteAmmoAircraft[ObjectGetId(units[i])] = true
         end
     end
     result.infiniteAmmoAircraft = infiniteAmmoAircraft
@@ -1402,13 +1392,7 @@ function HextechRune:HasCenturionUpgradeObject(unit)
 end
 
 function HextechRune:GrantCenturionLayer(playerIndex)
-    if P == nil then
-        return
-    end
     local sideIndex = self:GetPlayerSideIndex(playerIndex)
-    if P[sideIndex] == nil then
-        return
-    end
     local units, count = g_SideFindObjects(sideIndex, nil,
         self.UnitTypeFilters.infantry)
     local round = tonumber(exCounterGetByName("lvc")) or 0

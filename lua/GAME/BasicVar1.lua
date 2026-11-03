@@ -125,13 +125,57 @@ function g_GetSideScanAnchor(sideIndex)
 end
 
 -- 阵营号安全的 ObjectFindObjects：7/8 走阵营锚点；其余编号沿用原 P[n] 座位锚点。
+-- 阵营锚点缺失（塔被清、中间 AI 名下暂时没有任何可选对象）时，退到本方 4 个座位锚点
+-- 逐个扫描并合并，避免整片阵营扫描直接返回空导致符文静默失效。
+function g_SideFindObjectsAppend(result, seen, list, count)
+    if list == nil then
+        return
+    end
+    if type(count) ~= "number" then
+        count = getn(list)
+    end
+    for i = 1, count, 1 do
+        local object = list[i]
+        if object ~= nil then
+            local objectId = ObjectGetId(object)
+            if objectId ~= nil and seen[objectId] == nil then
+                seen[objectId] = true
+                tinsert(result, object)
+            end
+        end
+    end
+end
+
 function g_SideFindObjects(sideIndex, pos, filter)
     local anchor = nil
     if sideIndex == 7 or sideIndex == 8 then
         anchor = g_GetSideScanAnchor(sideIndex)
-    else
-        anchor = P[sideIndex]
+        if anchor ~= nil then
+            local list, count = ObjectFindObjects(anchor, pos, filter)
+            if list == nil then
+                list = {}
+            end
+            if type(count) ~= "number" then
+                count = getn(list)
+            end
+            return list, count
+        end
+        local seats = g_Seat7
+        if sideIndex == 8 then
+            seats = g_Seat8
+        end
+        local result = {}
+        local seen = {}
+        for i = 1, getn(seats), 1 do
+            local seatAnchor = g_GetSeatAnchor(seats[i])
+            if seatAnchor ~= nil and ObjectIsAlive(seatAnchor) then
+                local list, count = ObjectFindObjects(seatAnchor, pos, filter)
+                g_SideFindObjectsAppend(result, seen, list, count)
+            end
+        end
+        return result, getn(result)
     end
+    anchor = P[sideIndex]
     if anchor == nil then
         return {}, 0
     end

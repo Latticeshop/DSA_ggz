@@ -173,8 +173,13 @@ TARGETS = [  # fmt: skip
     # 必须先登记，否则改了不会写回 ScriptsData.json。
     ('lua/LUABOX/SpawnGigaFortress.lua', ['EnsureGigaFortressAirForm',
         'g_GigaFortressBigHeadSpawnChance']),
-    # 更新日志（原先单独用 sync_update_log2.py，机制与本脚本完全一致，已并入）。
     ('lua/text/Update_0.lua', ['g_RuleText = Localization.get', 'g_UpdateBoxText']),
+    # 这四份 payload 一直只在 JSON 里，改 lua 不会写回，
+    ('lua/GAME/spellbook.lua', ['g_PlayerSpellBookId = {', 'g_PlayerSpellBookId[playerIndex] = i']),
+    ('lua/LUABOX/AI/AID_0.lua', ['AI = {', 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY']),
+    ('lua/LUABOX/SpawnLandUnit.lua', ['function SpawnLandUnit_left', 'LIGHTVEHATTACK']),
+    ('lua/LUABOX/SpawnSeaUnit.lua', ['function SpawnSeaUnit_left', 'SHIPTEAMATTACK']),
+    ('lua/LUABOX/PLANEBACK/PLANEINI_0.lua', ['PLANEcountmax = indexPLANE + 5', 'function PLANEREBORN']),
 ]
 
 

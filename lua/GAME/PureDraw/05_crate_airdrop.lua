@@ -198,8 +198,9 @@ function PureDrawSpawnAirdrop()
     end
     local lx, ly, lz = ObjectGetPosition(leftTower)
     local rx, ry, rz = ObjectGetPosition(rightTower)
-    local centerX = 3547.06
-    local centerY = 3055.49
+    -- 战场中心 = 左右前排塔的中点。地图整体下移后写死坐标会落偏，改成实时取塔位置。
+    local centerX = (lx + rx) / 2
+    local centerY = (ly + ry) / 2
     local centerZ = (lz + rz) / 2
     local ownerTeam = PureDrawFindAirdropOwnerTeam()
     if ownerTeam == nil then

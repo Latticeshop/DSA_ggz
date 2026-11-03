@@ -5,6 +5,9 @@ if g_GameMode ~= 4 then
     exEnableWBScript('Player_3/UNLOCK1__3')
     ExecuteAction("UNIT_KILL_ALL_IN_AREA", "PlyrCivilian", "nofire6")
     if PureDrawReapplyPlayerQuota ~= nil then
-        for i = 1, 4, 1 do PureDrawReapplyPlayerQuota(i) end
+        -- 恶魔席位是 {1,2,8,3}，不是 1..4；写死 1..4 时 8 号位拿不到配额重算。
+        local reapplySeats = g_Seat7
+        if reapplySeats == nil then reapplySeats = { 1, 2, 8, 3 } end
+        for k = 1, getn(reapplySeats), 1 do PureDrawReapplyPlayerQuota(reapplySeats[k]) end
     end
 end

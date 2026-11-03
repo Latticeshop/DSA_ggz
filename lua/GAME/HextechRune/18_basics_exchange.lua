@@ -579,8 +579,7 @@ end
 -- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
 function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitType,
     spawnTypes, spawnPrefix, extraFilter)
-    if P == nil or P[sideIndex] == nil or not ObjectIsAlive(P[sideIndex])
-        or filter == nil or percent <= 0 then
+    if filter == nil or percent <= 0 then
         return 0
     end
     local units, count = g_SideFindObjects(sideIndex, nil, filter)

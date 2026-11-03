@@ -159,7 +159,7 @@ Localization._text_sources = {
     ["skill_mode.player_choose.exit"] = { zh = "退出(待会再选)", en = "Exit (choose later)" },
     ["skill_mode.player_choose.invalid_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog 的参数 playerName 无效", en = "Error: invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog" },
     ["skill_mode.player_choose.invalid_tech_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPurchaseTechDialog 的参数 playerName 无效", en = "Error: invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPurchaseTechDialog" },
-    ["skill_mode.error.preselected_count"] = { zh = "错误：预选技能组数量不正确，应该是 0 或 6，但实际是 %d", en = "Error: invalid preselected skill group count; expected 0 or 6, got %d" },
+    ["skill_mode.error.preselected_count"] = { zh = "错误：预选技能组数量不正确，应该是 0 或 8，但实际是 %d", en = "Error: invalid preselected skill group count; expected 0 or 8, got %d" },
     ["skill_mode.purchase.tech.title"] = { zh = "购买下一级科技权限($%d)", en = "Buy next tech permission ($%d)" },
     ["skill_mode.purchase.tech.failed"] = { zh = "购买失败，资金不足", en = "Purchase failed: insufficient funds" },
     ["skill_mode.purchase.tech.success"] = { zh = "购买成功，解锁下一级科技等级和更多电厂", en = "Purchase successful: next tech tier and more power plants unlocked" },
@@ -407,7 +407,8 @@ Localization._text_sources = {
     ["board.role.angel1"] = { zh = "天使1号", en = "Angel 1" },
     ["board.role.angel2"] = { zh = "天使2号", en = "Angel 2" },
     ["board.role.angel3"] = { zh = "天使3号", en = "Angel 3" },
-
+
+
     ["board.role.devil4"] = { zh = "恶魔4号", en = "Devil 4" },
     ["board.role.angel4"] = { zh = "天使4号", en = "Angel 4" },
     -- === 按钮对话框管理器 ===
@@ -434,6 +435,7 @@ Localization._text_sources = {
     ["ai.infantry_built"] = { zh = "AI步兵建造完毕", en = "AI infantry build complete" },
     ["game.rules"] = { 
         zh = [[自走棋游戏规则简介：
+本地图为格格子协助开发的测试版本，具有很多实验性内容和不稳定因素，测试通过的内容会更新并合并到正式版本DSA_XXX地图中
 1. 玩家造出的单位会被记录，每个回合开始时，战场上都会重新刷出玩家造过的所有单位，由电脑控制
 2. 上方玩家（天使）单位出现在战场右侧，下方玩家（恶魔）单位出现在战场左侧
 3. 电厂提供收入，请尽快造满电厂以避免卡钱；苏联超级反应堆和神州导流尖塔不提供收入（仅解锁科技）；建造T4高科附赠精兵学院

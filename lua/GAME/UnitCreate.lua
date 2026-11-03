@@ -1250,7 +1250,7 @@ function IsYaoguangBattleSideT4Unlocked(ownerPlayerName)
     else
         return false
     end
-    -- 六个 Player_N/UNLOCK3__N 脚本是所有模式最终的 T4 科技解封入口：
+    -- 每个席位一份 Player_N/UNLOCK3__N 脚本（8 人局共 8 份）是所有模式最终的 T4 科技解封入口：
     -- 标准模式的推塔/自然解锁、死亡模式的开局推塔及升本模式均会执行它。
     for seatPos = 1, 4, 1 do
         if g_PlayerT4TechUnlocked[sideSeats[seatPos]] then
