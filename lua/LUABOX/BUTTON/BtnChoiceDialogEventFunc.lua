@@ -302,6 +302,15 @@ function onUserBtnChoiceDialogEvent(playerName, btnIndex, dialogId)
     SetWorldBuilderThisPlayer(previous)
 end
 
+-- 颜色分档在 g_PlayerColorName（lua/GAME/BasicVar1.lua），红/粉、绿/浅绿已按实际队色分开。
+function BtnChoiceDialogEventFunc_TransferColorLabel(index)
+    local colorName = g_PlayerColorName(index)
+    if colorName == nil or colorName == "" then
+        return ""
+    end
+    return format("(%s)", colorName)
+end
+
 function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     local dialogData = {
         DialogId = MARKET_DIALOG_ID_OFFSET + playerIndex,
@@ -318,23 +327,16 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         end
         self.Title = Localization.get("market.title_with_investment", investedMax, investedMoney)
 
-        local transferToA_Index, transferToB_Index, transferToC_Index = g_TfIdx(playerIndex)
+        -- 转账目标只列「本侧实际有人」的队友：空位没有玩家，不该出转账项（也不该能转钱进去）。
+        -- 名单顺序沿用座位表，选项数会随实到人数变化，点击序号由 OnChoice 按 getn 顺延。
+        local transferTargets = g_TfIdx(playerIndex)
+        self.TransferTargets = transferTargets
         roles = {}
         for k = 1, 4 do
             roles[g_Seat7[k]] = Localization.get("board.role.devil" .. k)
             roles[g_Seat8[k]] = Localization.get("board.role.angel" .. k)
         end
-        getColorText = function(index)
-            local color = BtnChoiceDialogEventFunc_CalculateColor(index)
-            if color == nil then
-                return ""
-            else
-                return format("(%s)", color)
-            end
-        end
         roleText = function(k) return roles[k] or ("Player_" .. k) end
-        local playerA_Color = getColorText(transferToA_Index)
-        local playerB_Color = getColorText(transferToB_Index)
         
         local nextInvestmentText = Localization.get("market.next_investment.devil")
         if g_IsAngelSeat(playerIndex) then
@@ -357,15 +359,17 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 Localization.get("market.back_to_main_page"), -- 6
             }
         else
-            local transferToC = transferToC_Index or transferToB_Index
-            self.Choices = {
-                Localization.get("market.transfer.choice", roleText(transferToA_Index), playerA_Color), -- 1
-                Localization.get("market.transfer.choice", roleText(transferToB_Index), playerB_Color), -- 2
-                Localization.get("market.transfer.choice", roleText(transferToC), getColorText(transferToC)), -- 3
-                nextInvestmentText, -- 4
-                Localization.get("market.back_to_battle"), -- 5
-                Localization.get("market.more_defense_buildings"), -- 6
-            }
+            local choices = {}
+            -- 转账项第二段 = 队友队色（颜色分档见 g_PlayerColorName），拿不到颜色就只有「恶魔2号」。
+            for k = 1, getn(transferTargets) do
+                local target = transferTargets[k]
+                tinsert(choices, Localization.get("market.transfer.choice", roleText(target),
+                    BtnChoiceDialogEventFunc_TransferColorLabel(target)))
+            end
+            tinsert(choices, nextInvestmentText)
+            tinsert(choices, Localization.get("market.back_to_battle"))
+            tinsert(choices, Localization.get("market.more_defense_buildings"))
+            self.Choices = choices
         end
         --if g_PlayerDebtCount[self.PlayerName] == 0 then
         --    local debtMoney = g_TowerDestroyProgress * 2600 + 4000;
@@ -398,28 +402,24 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         end
-        if buttonIndex >= 1 and buttonIndex <= 3 then
-            self:TransferMoney(buttonIndex)
-        elseif buttonIndex == 4 then
+        -- 转账项数量随「本侧有人」的队友数变化（1~3 项），后三项序号按 targetCount 顺延。
+        local targetCount = getn(self.TransferTargets or {})
+        if buttonIndex >= 1 and buttonIndex <= targetCount then
+            self:TransferMoney(self.TransferTargets[buttonIndex])
+        elseif buttonIndex == targetCount + 1 then
             self:InvestMoney()
-        elseif buttonIndex == 5 then
+        elseif buttonIndex == targetCount + 2 then
             -- 回到战场（因此不再显示交易市场对话框）
             return
-        elseif buttonIndex == 6 then
+        elseif buttonIndex == targetCount + 3 then
             self.Page = 2
         end
         -- 重新刷新数据并显示对话框
         self:RefreshData()
         ButtonChoiceDialogManager:ShowDialog(self)
     end
-    dialogData.TransferMoney = function(self, buttonIndex)
-        local transferToA_Index, transferToB_Index, transferToC_Index = g_TfIdx(self.PlayerIndex)
-        local transferTargetIndex = transferToA_Index
-        if buttonIndex == 2 then
-            transferTargetIndex = transferToB_Index
-        elseif buttonIndex == 3 then
-            transferTargetIndex = transferToC_Index or transferToB_Index
-        end
+    dialogData.TransferMoney = function(self, transferTargetIndex)
+        if transferTargetIndex == nil then return end
         local transferTargetName = "Player_" .. transferTargetIndex
         local money = exPlayerGetCurrentMoney(self.PlayerName)
         if money >= 1000 then
@@ -695,82 +695,20 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     ButtonChoiceDialogManager:ShowDialog(dialogData)
 end
 
--- 假如是 Player_1，他应该转账给 Player_2 和 3；假如是 2，则应该转账给 1 和 3
--- 假如是 4，应该转账给 5 和 6；假如是 6，则应该转账给 4 和 5
+-- 本侧可转账对象：按座位表顺序、去掉自己，且只保留「真正有玩家」的座位（空位不出现）。
+-- 满 8 人时 3 个；人少了自动变少（1v1 时为 0 个，市场里就没有转账项）。
 function g_TfIdx(playerIndex)
-    local seats = g_Seat7
+    local occupied = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(1)
     if g_IsAngelSeat(playerIndex) then
-        seats = g_Seat8
+        occupied = BtnChoiceDialogEventFunc_GetSideOccupiedPlayerIndices(5)
     end
     local list = {}
-    for k = 1, 4 do
-        if seats[k] ~= playerIndex then tinsert(list, seats[k]) end
+    for k = 1, getn(occupied) do
+        if occupied[k] ~= playerIndex then tinsert(list, occupied[k]) end
     end
-    return list[1], list[2], list[3]
+    return list
 end
 
-function BtnChoiceDialogEventFunc_CalculateColor(playerIndex)
-    local playerName = "Player_" .. playerIndex
-    local color = exPlayerGetColor(playerName)
-    if color == nil or color[1] == nil or color[1] <= 0 then
-        return nil
-    end
-    -- from 0~255 RGB values, determine human readable color
-    -- maybe we can convert RGB to HSL and determine color based on hue?
-    local red = color[1] / 255
-    local green = color[2] / 255
-    local blue = color[3] / 255
-    local maxValue = max(red, green, blue)
-    local minValue = min(red, green, blue)
-    local lightness = (maxValue + minValue) / 2
-    if lightness < 0.1 then
-        return Localization.get("color.black")
-    elseif lightness > 0.95 then
-        return Localization.get("color.white")
-    elseif maxValue == minValue then
-        return Localization.get("color.gray")
-    end
-    local d = maxValue - minValue
-    local saturation = 0
-    if lightness > 0.5 then
-        saturation = d / (2 - maxValue - minValue)
-    else
-        saturation = d / (maxValue + minValue)
-    end
-    if saturation < 0.1 then
-        return Localization.get("color.gray")
-    end
-    local hue = 0
-    if maxValue == red then
-        hue = (green - blue) / d
-    elseif maxValue == green then
-        hue = (blue - red) / d + 2
-    elseif maxValue == blue then
-        hue = (red - green) / d + 4
-    end
-    if hue < 0 then
-        hue = hue + 6
-    end
-    hue = hue * 60
-    if hue < 20 or hue >= 330 then
-        return Localization.get("color.red")
-    elseif hue < 45 then
-        return Localization.get("color.orange")
-    elseif hue < 75 then
-        return Localization.get("color.yellow")
-    elseif hue < 160 then
-        return Localization.get("color.green")
-    elseif hue < 200 then
-        return Localization.get("color.cyan")
-    elseif hue < 270 then
-        return Localization.get("color.blue")
-    elseif hue < 300 then
-        return Localization.get("color.purple")
-    elseif hue < 330 then
-        return Localization.get("color.pink")
-    end
-    return nil
-end
 
 function BtnChoiceDialogEventFunc_ShowGameModeDialog(playerName)
     local dialogData = {

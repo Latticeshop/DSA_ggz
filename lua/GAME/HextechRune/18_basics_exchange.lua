@@ -298,8 +298,7 @@ function HextechRune:GetConversionDualAirFilter()
     return self.ConversionDualAirFilter
 end
 
--- P[7]/P[8] 是 AI 阵营锚点 MCV；任何转化符文都不能把它们换掉。
--- MCV 与运兵车（转化会连带吞掉车上单位）的名单统一取自登记表。
+-- MCV 与运兵车不许被转化（运兵车一换会连带吞掉车上单位）；名单统一取自登记表。
 HextechRune.ConversionNeverConvertInstanceIds = nil
 
 function HextechRune:GetConversionNeverConvertInstanceIds()
@@ -440,7 +439,7 @@ function HextechRune:GetBurnFurryDisplayPercent(playerIndex)
     return self:GetConversionRuneDisplayPercent(playerIndex, self.BurnFurryRuneId)
 end
 
--- 对面是 AI 阵营（P7/P8），没有「出兵出队」那一步，新单位要直接进攻击队才会参战。
+-- 对面是 AI 阵营（7=PlyrCivilian / 8=PlyrCreeps），没有「出兵出队」那一步，新单位要直接进攻击队才会参战。
 function HextechRune:GetBurnFurryAttackTeam(sideIndex)
     if INFANTATTACK ~= nil and INFANTATTACK[sideIndex] ~= nil
         and INFANTATTACK[sideIndex][1] ~= nil then
@@ -575,8 +574,8 @@ function HextechRune:IsConversionCandidateUnit(unit)
         and not self:IsConversionRuneBuffTargetUnit(unit)
 end
 
--- 删掉对面该比例的指定兵种，并在原地生成等量的替换单位。只动 P7/P8 的战场单位，
--- 不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
+-- 删掉对面该比例的指定兵种，并在原地生成等量的替换单位。只动 7/8 号阵营（PlyrCivilian / PlyrCreeps）
+-- 的战场单位，不碰玩家单位池（UNITCOUNT 里的份数由玩家基地里的单位决定）。
 function HextechRune:ConvertEnemyUnitsOfType(sideIndex, percent, filter, unitType,
     spawnTypes, spawnPrefix, extraFilter)
     if filter == nil or percent <= 0 then

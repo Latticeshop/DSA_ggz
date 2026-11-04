@@ -83,6 +83,100 @@ function g_GetSeatAnchor(seatIndex)
     return GetObjectByScriptName("P" .. seatIndex)
 end
 
+-- 数据源是房间里玩家自选的队色：exPlayerGetColor("Player_N") → {0~255 的 R, G, B}。
+-- 解析成几何量；取不到返回 nil。
+function g_PlayerColorInfo(seatIndex)
+    local color = exPlayerGetColor("Player_" .. seatIndex)
+    if color == nil or type(color[1]) ~= "number" or type(color[2]) ~= "number" or type(color[3]) ~= "number" then
+        return nil
+    end
+    local red = color[1] / 255
+    local green = color[2] / 255
+    local blue = color[3] / 255
+    local maxValue = max(red, green, blue)
+    local minValue = min(red, green, blue)
+    local info = {
+        Max = maxValue,
+        Min = minValue,
+        Light = (maxValue + minValue) / 2,
+        Span = maxValue - minValue,
+        Hue = 0,
+    }
+    local span = info.Span
+    if span > 0 then
+        local hue = 0
+        if maxValue == red then
+            hue = (green - blue) / span
+        elseif maxValue == green then
+            hue = (blue - red) / span + 2
+        else
+            hue = (red - green) / span + 4
+        end
+        if hue < 0 then
+            hue = hue + 6
+        end
+        info.Hue = hue * 60
+    end
+    return info
+end
+
+-- 分档键（绿不细分，绿/浅绿由 g_PlayerColorName 按同场比较决定）
+function g_PlayerColorBucket(info)
+    if info == nil then
+        return nil
+    end
+    if info.Light < 0.1 then
+        return "color.black"
+    elseif info.Light > 0.95 then
+        return "color.white"
+    elseif info.Span == 0 then
+        return "color.gray"
+    end
+    local saturation = 0
+    if info.Light > 0.5 then
+        saturation = info.Span / (2 - info.Max - info.Min)
+    else
+        saturation = info.Span / (info.Max + info.Min)
+    end
+    if saturation < 0.1 then
+        return "color.gray"
+    end
+    local hue = info.Hue
+    if hue < 12 or hue >= 345 then
+        return "color.red"
+    elseif hue < 42 then
+        return "color.orange"
+    elseif hue < 70 then
+        return "color.yellow"
+    elseif hue < 160 then
+        return "color.green"
+    elseif hue < 200 then
+        return "color.cyan"
+    elseif hue < 260 then
+        return "color.blue"
+    elseif hue < 300 then
+        return "color.purple"
+    end
+    return "color.pink"
+end
+
+-- 绿 / 浅绿：用实测到的引擎真实 RGB 定标（不是截图取样值）。
+-- 实测 8 人：绿色 (20,105,60) → max 0.412、浅绿 (144,186,106) → max 0.729；
+-- 两者彩度几乎一样（0.333 / 0.314），所以只能按「最亮通道」分：界线 0.57，两侧各余 0.158。
+-- 其余颜色实测：(225,115,20) 橙 / (232,120,173) 粉 / (50,75,200) 蓝 / (102,207,248) 青 /
+-- (230,20,20) 红 / (237,231,47) 黄，全部落在对应色相档里。
+function g_PlayerColorName(seatIndex)
+    local info = g_PlayerColorInfo(seatIndex)
+    local bucket = g_PlayerColorBucket(info)
+    if bucket == nil then
+        return nil
+    end
+    if bucket == "color.green" and info.Max >= 0.57 then
+        return Localization.get("color.light_green")
+    end
+    return Localization.get(bucket)
+end
+
 -- ===== 4v4：中间 AI 阵营（7=PlyrCivilian / 8=PlyrCreeps）的扫描锚点 =====
 -- 注意：P[1..8] 是「座位」的 MCV 锚点，绝不能再拿 P[7]/P[8] 当阵营锚点用，
 -- 否则 SAME_PLAYER 过滤会扫到 Player_7 / Player_8 自己的部队。

@@ -243,7 +243,7 @@ function GetPlayerDF41BuildLimit(playerIndex)
     return slotCount + extraQuota
 end
 
--- 只把 Player_1..Player_6 认成有效归属；PlyrCivilian/PlyrCreeps 等返回 nil。
+-- 只把 Player_1..Player_8（8 席）认成有效归属；PlyrCivilian/PlyrCreeps 等返回 nil。
 function GetPowerSlotOwnerIndex(unit)
     if unit == nil or not ObjectIsAlive(unit) then
         return nil

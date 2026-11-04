@@ -246,7 +246,8 @@ HextechRune.AtFieldShielded = HextechRune.AtFieldShielded or {}
 HextechRune.AtFieldShieldedRound = nil
 
 -- 开火锚点照帝国全体护盾用本侧陆地塔 T74/T84（实测自锚点不出盾）；死亡模式塔被清掉，
--- 退到侧容器 P[侧号]，再不行才用单位自己。落点始终是目标单位坐标。
+-- 退到阵营锚点 g_GetSideScanAnchor（§1.18：P[1..8] 是各座位的 MCV，不能当 7/8 号阵营锚点），
+-- 再不行才用单位自己。落点始终是目标单位坐标。
 function HextechRune:GetAtFieldFireAnchor(sideIndex, unit)
     local anchor = T74
     if sideIndex == 8 then
@@ -254,8 +255,8 @@ function HextechRune:GetAtFieldFireAnchor(sideIndex, unit)
     end
     if anchor == nil or not ObjectIsAlive(anchor) then
         anchor = nil
-        if P ~= nil and sideIndex ~= nil then
-            anchor = P[sideIndex]
+        if sideIndex == 7 or sideIndex == 8 then
+            anchor = g_GetSideScanAnchor(sideIndex)
         end
     end
     if anchor == nil or not ObjectIsAlive(anchor) then

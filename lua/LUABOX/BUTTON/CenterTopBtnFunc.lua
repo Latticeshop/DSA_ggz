@@ -236,13 +236,37 @@ function CenterTopBtnFunc_InitializeAutoSurrender()
     end, 15, nil)
 end
 
-function RequestSurrender(playerIndex, isAutoSurrender)
-    local side, sideName, sideAiPlayer, sidePlayerIndexOffset = "devil", Localization.get("side.devil"), "PlyrCivilian", 0
-    if g_IsAngelSeat(playerIndex) then
-        side, sideName, sideAiPlayer, sidePlayerIndexOffset = "angel", Localization.get("side.angel"), "PlyrCreeps", 3
+-- 投降投票计票口径（4v4 沿用 3v3 规则）：同侧 4 席各投一票，
+-- 投降 +1 / 弃权 0 / 战斗 -1，合计 > 0 才算通过，平票（=0）或为负继续游戏。
+-- 票数只存在 Lua 全局 devil_surrender / angel_surrender 里：
+--   BUTTON_2 的计票回调直接对它 ±1，Dsurrendering / Asurrendering 的 payload 直接读它，
+--   所以这里复位和补票都必须改同一组全局变量。
+-- 不要再用 setglobal()：它写的是地编脚本变量，全图没有任何地编条件读它，
+-- 写成 setglobal 会导致「复位无效、自动投降那一票也不计数」。
+function g_SurrenderResetVotes(side)
+    if side == "angel" then
+        angel_surrender = 0
+    else
+        devil_surrender = 0
     end
-    local globalVariableName = format("%s_surrender", side)
-    setglobal(globalVariableName, 0)
+end
+
+function g_SurrenderAddVote(side, delta)
+    if side == "angel" then
+        angel_surrender = angel_surrender + delta
+    else
+        devil_surrender = devil_surrender + delta
+    end
+end
+
+function RequestSurrender(playerIndex, isAutoSurrender)
+    local side, sideName, sideAiPlayer = "devil", Localization.get("side.devil"), "PlyrCivilian"
+    if g_IsAngelSeat(playerIndex) then
+        side, sideName, sideAiPlayer = "angel", Localization.get("side.angel"), "PlyrCreeps"
+    end
+    -- 每次发起都从 0 重新计票：同侧 4 席每人全局各能发起一次，
+    -- 不复位会把上一轮没通过的票数带进本轮，和「本次投票投降大于战斗」的规则不符。
+    g_SurrenderResetVotes(side)
     exEnableWBScript(format("%s/%s_surrender", sideAiPlayer, side))
     exAddTextToPublicBoard(Localization.get("surrender.public.start", sideName, playerIndex), 10)
     local voteText = Localization.get("surrender.vote_text")
@@ -256,7 +280,8 @@ function RequestSurrender(playerIndex, isAutoSurrender)
     end
     if isAutoSurrender then
         exAddTextToPublicBoard(Localization.get("surrender.public.auto", sideName, playerIndex), 30)
-        setglobal(globalVariableName, getglobal(globalVariableName) + 1)
+        -- 基地被推平的席位由脚本代投一票"投降"，要和真人点击记在同一个计数器上。
+        g_SurrenderAddVote(side, 1)
     end
     return true
 end

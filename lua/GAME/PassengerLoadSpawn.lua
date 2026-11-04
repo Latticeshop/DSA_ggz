@@ -404,10 +404,6 @@ end
 
 -- 按阵营不按座位：队友单位同属 7/8
 function g_PLSpawnSide(sideIndex)
-    if P == nil or P[sideIndex] == nil then
-        return
-    end
-
     g_PLSpawnClearAllBuiltIn(sideIndex)
     for index = 1, getn(g_PLSpawnCars), 1 do
         if g_PLSpawnCars[index].SpecialInf ~= nil then

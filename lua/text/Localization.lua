@@ -181,6 +181,7 @@ Localization._text_sources = {
     ["market.next_investment.angel"] = { zh = "购买100天使投资", en = "Buy 100 Angel Investment" },
     -- 末尾的全角空白行用于撑高双行投资按钮，选择对话框接口本身没有单项高度参数。
     ["market.next_investment.benefit"] = { zh = "\n若回合胜利可获收益\n　", en = "" }, -- 英文写不下就不写了
+    -- 原来是颜色文本，大红色与桃红色会撞成同一个「红色」，玩家分不出来（见 analysis/地图注释说明文档.md §9）。
     ["market.transfer.choice"] = { zh = "向%s%s转移1000资金", en = "1000＄ to %s%s" },
     ["market.back_to_battle"] = { zh = "回到战场", en = "Back to Battle" },
     ["market.buy_shield_tower"] = { zh = "购买护盾投射塔(%d)", en = "Buy Shield Projector Tower %d＄" },
@@ -353,6 +354,7 @@ Localization._text_sources = {
     ["color.orange"] = { zh = "橙色", en = "Orange" },
     ["color.yellow"] = { zh = "黄色", en = "Yellow" },
     ["color.green"] = { zh = "绿色", en = "Green" },
+    ["color.light_green"] = { zh = "浅绿", en = "Light Green" },
     ["color.cyan"] = { zh = "青色", en = "Cyan" },
     ["color.blue"] = { zh = "蓝色", en = "Blue" },
     ["color.purple"] = { zh = "紫色", en = "Purple" },

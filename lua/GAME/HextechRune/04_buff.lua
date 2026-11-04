@@ -885,7 +885,8 @@ function HextechRune:GetAvailableUnitTypes(playerIndex)
     return BanModeEnabledUnitTypes()
 end
 
--- 构建阵营战斗单位的兵种查找表。战斗复制体属于 P7/P8，不能再按 Player_1..6 所有权扫描。
+-- 构建阵营战斗单位的兵种查找表。战斗复制体属于两个中间 AI 阵营（PlyrCivilian / PlyrCreeps），
+-- 不能再按 Player_N 所有权扫描，按阵营号走 g_SideFindObjects（说明文档 §1.18）。
 function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     local result = {}
     for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
@@ -1077,7 +1078,7 @@ function HextechRune:IsPersistentBattleRune(rune)
         or rune.Effect == "ragnarok" or rune.Effect == "war_efficiency"
         -- 阶级型（回归基本功）与双兵种型（等价交换）同样走单位池配额分配。
         or rune.Effect == "back_to_basics" or rune.Effect == "equivalent_exchange"
-        -- 百虎上将（步兵）与致命节奏（全兵种）也要走份额分配：战斗复制体属于 P7/P8，
+        -- 百虎上将（步兵）与致命节奏（全兵种）也要走份额分配：战斗复制体属于两个中间 AI 阵营，
         -- 只能靠这份登记认归属，按 Player_N 所有权是扫不出来的。
         or rune.Effect == "five_tiger_generals" or rune.Effect == "lethal_tempo"
         -- AT立场同理：只有登记里带 PlayerIndex 才能区分同侧三名玩家，整批套盾靠它筛人。

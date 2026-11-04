@@ -1,4 +1,44 @@
 
+-- ===== 开局顺序兜底：g_SideFindObjects / g_SetSideTeam 的真实定义在 BasicVar =====
+-- 本图 Lua 没有 pcall，也没有「加载完再回调」的机制，所以这里只在「还没有」时补一个最小实现；
+-- BasicVar 的 payload 一执行就会用完整版覆盖掉它们（完整版多了 7/8 阵营锚点缺失时退到 4 个座位锚点合并扫描）。
+if g_SideFindObjects == nil then
+    function g_SideFindObjects(sideIndex, pos, filter)
+        local anchor = nil
+        if sideIndex == 7 then
+            anchor = GetObjectByScriptName("PlyrCivilian")
+        elseif sideIndex == 8 then
+            anchor = GetObjectByScriptName("PlyrCreeps")
+        elseif P ~= nil then
+            anchor = P[sideIndex]
+        end
+        if anchor == nil then
+            return {}, 0
+        end
+        local list, count = ObjectFindObjects(anchor, pos, filter)
+        if list == nil then
+            list = {}
+        end
+        if type(count) ~= "number" then
+            count = getn(list)
+        end
+        return list, count
+    end
+end
+
+-- 同上的最小版：只给中间 AI 阵营（PlyrCivilian / PlyrCreeps）自己的单位换队伍。
+if g_SetSideTeam == nil then
+    function g_SetSideTeam(unit, teamName)
+        if teamName == nil then
+            return
+        end
+        local ownerName = ObjectPlayerScriptName(unit)
+        if ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps" then
+            ExecuteAction("UNIT_SET_TEAM", unit, teamName)
+        end
+    end
+end
+
 DEFAULTATTCKTEAM = {}
 DEFAULTATTCKTEAM[7] = "PlyrCivilian/ATTACK"
 DEFAULTATTCKTEAM[8] = "PlyrCreeps/ATTACK"

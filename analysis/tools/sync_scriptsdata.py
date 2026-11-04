@@ -82,6 +82,8 @@ TARGETS = [  # fmt: skip
     # 冷冻武器灌冷冻条（实测海塔仍被冻），真正管用的是这条负二次伤害的解冻循环。
     # 该节点是「停用」状态，启用后才会跑（节点开关在地图的脚本树里，导入 payload 不会改它）。
     ('lua/GAME/TowerUnfreeze.lua', ['g_TowerUnfreezeTypes', 'exObjectDealSecondaryDamage(ObjectGetId(tower)']),
+    # 防冻结那个节点的 payload 同时承担七类塔强化（伤害 ×1.5 / 陆地一塔攻速 ×1.5），
+    ('lua/GAME/TowerFreeOfFreeze.lua', ['ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", object,"IN_SHIELD_SPHERE", 1)', 'GetObjectByScriptName("T83F")']),
     # 2026-10-27 清理旧解冻循环时补登记：TOWER 节点（lua/obj/TOWER_0.lua）此前不在表里，
     # 删掉 UNFROZEN() 只改源码不会回写 JSON，audit_lua_json 会报 DRIFT。
     # needles 取删改后仍存在的两行全局赋值（BUTTON_0.lua 用的是单引号，不会误命中）。

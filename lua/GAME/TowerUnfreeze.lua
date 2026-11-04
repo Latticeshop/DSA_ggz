@@ -1,12 +1,13 @@
 -- 防御塔防冻结：周期性地把塔的冷冻条抽干。
 g_TowerUnfreezeTypes = {
-    -- 地编塔模板（清单见 map.xml 的 Structure 段，血量可核对）
-    "SovietBaseDefenseGround",          -- 陆地 450：T71 / T81
-    "CelestialBaseDefenseAdvanced",     -- 陆地 1000：T72 / T82；海塔 3400：T73F / T83F
-    "CelestialEnergyGatlingTower",      -- 陆地 2500：T73 / T83
-    "AlliedHeavyArtilleryDefenseBase",  -- 陆地 5000：T74 / T84
-    "SovietBaseDefenseAdvanced",        -- 海塔 210：T71F / T81F；缩小模式 ShrinkMode741 / 841
-    "JapanBaseDefenseAdvanced",         -- 海塔 1500：T72F / T82F
+    -- 地编塔模板（清单见 map.xml 的 Structure 段）。这里记的血量是**地编里的百分比**（`Health="450"` = 原建筑血量 ×450%），
+    -- 不是绝对值；绝对值 = 原模板血量 × 百分比，原模板血量在游戏 INI 里。
+    "SovietBaseDefenseGround",          -- 450%：T71 / T81（上限，再加就吃不住达摩剑的一击必杀）
+    "CelestialBaseDefenseAdvanced",     -- 1500%：T72 / T82；5000%：T73F / T83F（同模板两个不同百分比）
+    "CelestialEnergyGatlingTower",      -- 4000%：T73 / T83
+    "AlliedHeavyArtilleryDefenseBase",  -- 7500%：T74 / T84
+    "SovietBaseDefenseAdvanced",        -- 210%：T71F / T81F；缩小模式 ShrinkMode741 / 841
+    "JapanBaseDefenseAdvanced",         -- 2500%：T72F / T82F
     -- 另外两种「防御塔」模板（BasicVar1: g_TargetGroupNames.DefenseTower，九头蛇/冰天雪地按它排除）：
     -- 地图上目前没有实例，但塔防专家/缩小模式这类生成路径随时可能摆出来，先按模板兜住。
     "CelestialBaseDefenseAir",              -- 对空型
