@@ -74,6 +74,11 @@ TARGETS = [  # fmt: skip
     # （2026-10-14 补「删守护神展示体前解除登记」时发现，顺手登记进来）。BasicVar1 同样漏登记。
     ('lua/GAME/BasicVar1.lua', ['g_TowerGuardianUnitIds = g_TowerGuardianUnitIds or {}',
         'SpawnTowerGuardian']),
+    # mainloopfunc 节点（GAME/mainloopfunc）此前没登记：玩家建筑无碰撞的每帧入口挂在
+    # mainloop() 里（见 GAME/BasicVar1.lua 尾部），不登记的话改这行不会写回 ScriptsData.json。
+    # needles 必须两边都在：JSON 现有 payload 与新源文件都含这两行；
+    # baselib/SchedulerModule 里写的是 `__runner_function = function()`，不会被第二个 needle 误命中。
+    ('lua/GAME/mainloop.lua', ['function mainloop()', 'SchedulerModule.__runner_function()']),
     ('lua/GAME/PurchaseTechMode_Logic.lua', ['PurchaseTechMode_Setting', 'g_maxTechLevelDecreaseRate']),
     ('lua/cams/DeathMode.lua', ['GetObjectByScriptName("t533")', 'alliedAdditionalTech']),
     # 防冻结（2026-10-23）：没新开节点，直接复用地图里早就存在、一直停用的 `NO_freeze`

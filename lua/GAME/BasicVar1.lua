@@ -632,3 +632,71 @@ function ReplaceTowerGuardian(objectName, objectType, sourceTeam, attackTeam,
         spawnWaypoint, scale, orientation, infoBoxText, isFortress
     })
 end
+
+-- 玩家建筑无碰撞（NO_COLLISIONS）：P1~P8 名下建筑周期补状态，中间 AI（PlyrCivilian/PlyrCreeps）不算。
+
+-- 扫描周期：15 帧 = 1 秒，75 帧 = 5 秒（与 RescueBlockedProductions 的解卡周期同频）。
+g_BuildingNoCollisionsIntervalFrames = g_BuildingNoCollisionsIntervalFrames or 15 * 5
+
+-- 额外归属：默认空（中间 AI 的塔不动）。加 "PlyrCivilian"/"PlyrCreeps" 可一并处理。
+g_BuildingNoCollisionsExtraOwnerNames = g_BuildingNoCollisionsExtraOwnerNames or {}
+
+-- 全图建筑。DEBRIS 是残骸，不算建筑。
+g_BuildingNoCollisionsFilter = g_BuildingNoCollisionsFilter or CreateObjectFilter({
+    Rule = "ANY",
+    Include = "STRUCTURE",
+    Exclude = "DEBRIS",
+})
+
+-- 归属判定：只认 P1~P8（Player_1..Player_8）。
+-- PlyrCivilian / PlyrCreeps / Neutral 等其它脚本名一律不算。
+function g_IsBuildingNoCollisionsOwner(ownerName)
+    if type(ownerName) ~= "string" then
+        return false
+    end
+    if g_BuildingNoCollisionsExtraOwnerNames[ownerName] then
+        return true
+    end
+    if g_PlayerNameToIndex ~= nil and g_PlayerNameToIndex[ownerName] ~= nil then
+        return true
+    end
+    -- g_PlayerNameToIndex 还没加载时的兜底（本文件正常会先定义它）。
+    return strfind(ownerName, "^Player_[1-8]$") ~= nil
+end
+
+-- 扫一轮：把还没 NO_COLLISIONS 的玩家建筑补上，返回本轮补了多少个。
+function g_BuildingNoCollisionsSweep()
+    local structures, count = ObjectFindObjects(nil, nil, g_BuildingNoCollisionsFilter)
+    if structures == nil then
+        return 0
+    end
+    if type(count) ~= "number" then
+        count = getn(structures)
+    end
+    local appliedCount = 0
+    for i = 1, count, 1 do
+        local structure = structures[i]
+        if structure ~= nil
+            and g_IsBuildingNoCollisionsOwner(ObjectPlayerScriptName(structure))
+            and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", structure, "NO_COLLISIONS") then
+            ObjectSetObjectStatus(structure, "NO_COLLISIONS")
+            appliedCount = appliedCount + 1
+        end
+    end
+    return appliedCount
+end
+
+-- mainloop 每帧调用；只在首帧注册一次：先立即扫一遍，之后交给 SchedulerModule 每 75 帧跑一次。
+-- 不在加载期直接注册，是因为本节点的加载顺序可能早于 baselib/SchedulerModule。
+function g_BuildingNoCollisionsTick()
+    if g_BuildingNoCollisionsRegistered == 1 then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    g_BuildingNoCollisionsRegistered = 1
+    g_BuildingNoCollisionsSweep()
+    SchedulerModule.call_every_x_frame(g_BuildingNoCollisionsSweep,
+        g_BuildingNoCollisionsIntervalFrames, nil)
+end
