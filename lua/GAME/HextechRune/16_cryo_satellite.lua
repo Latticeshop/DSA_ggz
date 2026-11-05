@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.33
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.29
 
 HextechRune = HextechRune or {}
 
@@ -21,12 +21,6 @@ HextechRune.ProtocolGrants = {
         PlayerTech = "PlayerTech_Soviet_ProductionKickbacks",
         SpecialPower = "SpecialPower_ProductionKickbacks",
         Faction = 2, YardType = "SovietConstructionYard" },
-    -- 银·鸡汤来咯：苏联协议（毒质腐蚀）。与现金奖励同阵营，钥匙基地共用一栋、不重复生成。
-    grant_irradiate = {
-        PlayerTech = "PlayerTech_Soviet_IrradiateTarget",
-        SpecialPower = "SpecialPower_IrradiateTarget",
-        Faction = 2, YardType = "SovietConstructionYard" },
-    -- 金·享辐（2026-10-19 由彩降金）：苏联三级投毒（撒毒）协议。技能名带 Level 后缀、不是 Lvl，按 ProtocolEnum 原样取。
     grant_desolator_bomb = {
         PlayerTech = "PlayerTech_Soviet_DesolatorBomb_Rank3",
         SpecialPower = "SpecialPower_DesolatorBomb_Level3",
@@ -48,7 +42,7 @@ HextechRune.ProtocolYardOffmapX = 3324.27
 HextechRune.ProtocolYardOffmapY = 8979.87
 
 -- 钥匙基地的名字按「阵营 + 持有者」：同一方的多张协议卡共用一把钥匙（盟军神威 / 冷冻卫星 /
--- 时空炸弹，苏联现金奖励 / 毒质腐蚀 / 投毒 / 磁力奇点），已经有就不再生成第二栋。
+-- 时空炸弹，苏联现金奖励 / 投毒 / 磁力奇点），已经有就不再生成第二栋。
 function GetHextechProtocolYardName(playerName, faction)
     return "HextechProtocolYard_" .. faction .. "_" .. playerName
 end
@@ -245,9 +239,6 @@ HextechRune.AtFieldShieldWeapon = "PlayerPowerPointDefenseDronesWeapon_Individua
 HextechRune.AtFieldShielded = HextechRune.AtFieldShielded or {}
 HextechRune.AtFieldShieldedRound = nil
 
--- 开火锚点照帝国全体护盾用本侧陆地塔 T74/T84（实测自锚点不出盾）；死亡模式塔被清掉，
--- 退到阵营锚点 g_GetSideScanAnchor（§1.18：P[1..8] 是各座位的 MCV，不能当 7/8 号阵营锚点），
--- 再不行才用单位自己。落点始终是目标单位坐标。
 function HextechRune:GetAtFieldFireAnchor(sideIndex, unit)
     local anchor = T74
     if sideIndex == 8 then

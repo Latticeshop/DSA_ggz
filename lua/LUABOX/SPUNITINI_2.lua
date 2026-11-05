@@ -1,3 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.45
+
 SHIPTEAM =  {}
 SHIPTEAMATTACK = {}
 SHIPTEAMATTACK[7] = "PlyrCivilian/SHIPATTACK"
@@ -85,9 +87,6 @@ function UNITSPSHIP (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     -----------------------------------------------------------
 end
 
--- 为“补充军队”按阵营单独生成海军，避免调用旧函数时把双方海军一起补出来。
--- playerMin / playerMax 是 6 人时代的座位区间参数，现已不再使用（座位一律取自
--- g_Seat7 / g_Seat8），保留形参只为不改动调用点；传 1、4 表示每侧 4 个席位。
 function UNITSPSHIP_SIDE(unitmin, unitmax, UNITSP, UNITTEAM, UNITATTACKTEAM, playerMin, playerMax, teamIndex, angle)
     -- 8 人：按阵营座位表出兵（恶魔 1,2,3,8 / 天使 4,5,7,6）
     local seats = g_Seat7 or { 1, 2, 3, 8 }

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.37
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.31
 
 g_UnitCreateEventFunc = {}
 
@@ -83,9 +83,6 @@ end
 
 SchedulerModule.call_every_x_frame(EnforceCelestialDF41PerPlayerLimit, 15 * 10, nil)
 
--- 玩家获得青龙核心舰后不能将其作为战斗单位使用：每名玩家第一次获得时转换成伏龙殿，
--- 第二次及以后自动按现有回收规则返款。电脑所属的技能龙船不受影响。
--- 名单统一取自 BasicVar 的 DragonShip 群体。
 g_PlayerDragonShipTypes = g_TargetGroupNames.DragonShip
 g_PlayerDragonShipRecyclePrice = 5000
 -- 伏龙殿落点相对基地出生点的偏移：出生点正好压在右下方帝国 MCV 的出口上，
@@ -1062,7 +1059,7 @@ g_UnitCreateEventFunc[FastHash("SovietSledgehammerSPG_Enhanced")] = FarthestTarg
 g_UnitCreateEventFunc[FastHash("SovietSPG")] = FarthestTargetChooserBorn
 
 -- 海军优先索敌：名单取 UNITLIST 的海军段（LandArmySpawn 用 UNITSPSHIP 生成 step35+1..step4），
--- 滤网与出生钩子在 MICROINI_0.lua，讲解见 analysis/地图注释说明文档.md 附录 A.84。
+-- 滤网与出生钩子在 MICROINI_0.lua，讲解见 analysis/地图注释说明文档.md 附录 A.31。
 if g_NavalPriorityUnitHashes ~= nil and UNITLIST ~= nil and step35 ~= nil and step4 ~= nil then
     for unitIndex = step35 + 1, step4, 1 do
         local unitType = UNITLIST[unitIndex]

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.42、A.59、A.74、A.80、A.83、A.89
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47
 
 HextechRune = HextechRune or {}
 
@@ -11,7 +11,7 @@ HextechRune.AllTypeRuneEffects = { lethal_tempo = true }
 HextechRune.TypeSpecificRuneEffects = { five_tiger_generals = "infantry" }
 HextechRune.InterlockUnsyncableEffects = { infinite_ammo = true }
 
--- 每族数值加成的规格：同族多份按加算合并成一枚、异族乘算。讲解见 analysis/地图注释说明文档.md 附录 A.83。
+-- 每族数值加成的规格：同族多份按加算合并成一枚、异族乘算。讲解见 analysis/地图注释说明文档.md 附录 A.32。
 HextechRune.PerTypeStatModifierSpecs = {
     damage = { DAMAGE_MULT = 1.5 },
     rate_of_fire = { RATE_OF_FIRE = 1.5 },
@@ -713,9 +713,185 @@ function HextechRune:ApplySitTightPulse(round)
         self:GetConversionDualAirFilter())
 end
 
+-- ===== 银·鸡汤来咯：回合开始让敌方随机 N 个载具或海军获得毒质腐蚀 =====
+-- 口径与实测结论见 analysis/地图注释说明文档.md 附录 A.47。
+HextechRune.IrradiateRuneId = "silver_chicken_soup"
+HextechRune.IrradiateWeapon = "PlayerPowerIrradiateTargetWeapon"
+HextechRune.IrradiateAppliedRound = HextechRune.IrradiateAppliedRound or {}
+
+-- 「中毒」判据：2026-10-31 实测确认状态名就是 IRRADIATED。
+HextechRune.IrradiatePoisonStatusName = "IRRADIATED"
+
+function HextechRune:IsIrradiatePoisonedUnit(unit)
+    if EvaluateCondition == nil or unit == nil or not ObjectIsAlive(unit) then
+        return false
+    end
+    return EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit,
+        self.IrradiatePoisonStatusName)
+end
+
+-- 统计候选里已经有几个中毒（用来「投满 N 个就收手、不够就换目标继续投」）。
+function HextechRune:CountIrradiatePoisoned(candidates, total)
+    local count = 0
+    for i = 1, total, 1 do
+        if self:IsIrradiatePoisonedUnit(candidates[i]) then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- 候选扫描：引擎的 VEHICLE / HUGE_VEHICLE + 舰船 SHIP，不再做任何兵种过滤。
+HextechRune.IrradiateScanFilter = nil
+
+function HextechRune:GetIrradiateScanFilter()
+    if self.IrradiateScanFilter == nil then
+        self.IrradiateScanFilter = CreateObjectFilter({
+            Rule = "ANY", Relationship = "SAME_PLAYER",
+            Include = "VEHICLE HUGE_VEHICLE SHIP",
+        })
+    end
+    return self.IrradiateScanFilter
+end
+
+-- 卡面展示：三选一时候选还没到手，按「拿到之后」的份数算（与烧福瑞同一口径）。
+function HextechRune:GetIrradiateDisplayCount(playerIndex)
+    local copies = 1
+    if playerIndex ~= nil then
+        self:EnsurePlayerRuneState(playerIndex)
+        copies = self:GetSideOwnedRuneCount(self:GetPlayerSideIndex(playerIndex),
+            self.IrradiateRuneId)
+        if not self.PlayerOwnedRuneIds[playerIndex][self.IrradiateRuneId] then
+            copies = copies + 1
+        end
+    end
+    return copies
+end
+
+-- 开火锚点：本侧陆地塔 T74/T84（AT 立场的实测结论：从阵营锚点开火不出效果，要用塔）。
+function HextechRune:GetSideTowerAnchor(sideIndex)
+    local anchor = T74
+    if sideIndex == 8 then
+        anchor = T84
+    end
+    if anchor == nil or not ObjectIsAlive(anchor) then
+        return nil
+    end
+    return anchor
+end
+
+-- 通用开火：把 weaponName 这把临时武器挂到 anchor 上，朝 unit 所在坐标开火。
+function HextechRune:FireTempWeaponAtUnit(anchor, weaponName, unit)
+    if anchor == nil or weaponName == nil or unit == nil then
+        return false
+    end
+    if not ObjectIsAlive(anchor) or not ObjectIsAlive(unit) then
+        return false
+    end
+    local x, y, z = ObjectGetPosition(unit)
+    ObjectCreateAndFireTempWeaponToTarget(anchor, weaponName,
+        { X = x, Y = y, Z = z }, unit)
+    return true
+end
+
+-- 对一台载具投毒：从本侧陆地塔开一发 PlayerPowerIrradiateTargetWeapon。
+function HextechRune:FireIrradiateAtUnit(sideIndex, unit)
+    local anchor = self:GetSideTowerAnchor(sideIndex)
+    if anchor == nil then
+        return false
+    end
+    return self:FireTempWeaponAtUnit(anchor, self.IrradiateWeapon, unit)
+end
+
+-- 候选 = 敌方场上活着的载具/舰船，只排除预设单位（塔守护神 / 守护者）与技能召唤单位。
+function HextechRune:CollectIrradiateTargets(sideIndex)
+    local candidates = {}
+    local units, count = g_SideFindObjects(sideIndex, nil,
+        self:GetIrradiateScanFilter())
+    if units ~= nil and type(count) == "number" then
+        for i = 1, count, 1 do
+            local unit = units[i]
+            if unit ~= nil and ObjectIsAlive(unit)
+                and not self:IsPresetMapUnit(unit)
+                and not self:IsConversionProtectedUnit(unit) then
+                tinsert(candidates, unit)
+            end
+        end
+    end
+    return candidates
+end
+
+-- 投一发，然后隔 15 帧（1 秒）复查中毒数量：投满了就收手，没投上就换下一个目标继续投。
+function HextechRune:CastIrradiateAt(holderSideIndex, need, list, total, castIndex,
+    attempts, maxAttempts, baseline)
+    local target = list[castIndex]
+    if target ~= nil and self:FireIrradiateAtUnit(holderSideIndex, target) then
+        attempts = attempts + 1
+    end
+    SchedulerModule.delay_call(function(holder, count, cand, cnt, nextIndex, done, cap, base)
+        HextechRune:RecheckIrradiate(holder, count, cand, cnt, nextIndex, done, cap, base)
+    end, 15, { holderSideIndex, need, list, total, castIndex + 1, attempts, maxAttempts, baseline })
+end
+
+-- 复查：中毒数量补到 need 就不再投，否则换下一个候选继续投（最多 attempts 次）。
+function HextechRune:RecheckIrradiate(holderSideIndex, need, list, total, castIndex,
+    attempts, maxAttempts, baseline)
+    local poisoned = self:CountIrradiatePoisoned(list, total) - baseline
+    if poisoned >= need then
+        return
+    end
+    if castIndex > total or attempts >= maxAttempts then
+        return
+    end
+    self:CastIrradiateAt(holderSideIndex, need, list, total, castIndex, attempts,
+        maxAttempts, baseline)
+end
+
+-- 回合开始（空军 / 轻载具批次出完之后）结算一次；按施放侧 + 回合号去重，
+-- 补充军队让回合效果重走一遍也不会二次施放。
+function HextechRune:ApplyIrradiatePulse(round)
+    -- 载具与海军都被禁时没有任何可投毒目标，直接跳过。
+    if BanModeTypesAllBanned ~= nil
+        and BanModeTypesAllBanned({ "vehicle", "navy" }) == 1 then
+        return
+    end
+    if round == nil then
+        round = exCounterGetByName("lvc")
+    end
+    for holderSideIndex = 7, 8, 1 do
+        local copies = self:GetSideOwnedRuneCount(holderSideIndex,
+            self.IrradiateRuneId)
+        if copies > 0 then
+            -- 目标永远是「对面那一侧」的载具。
+            local casterSideIndex = self:GetOpposingSideIndex(holderSideIndex)
+            if self.IrradiateAppliedRound[casterSideIndex] ~= round then
+                self.IrradiateAppliedRound[casterSideIndex] = round
+                local candidates = self:CollectIrradiateTargets(casterSideIndex)
+                local total = getn(candidates)
+                if total > 0 then
+                    if copies > total then
+                        copies = total
+                    end
+                    -- 候选打乱一次，复查不过时换到的自然是别的目标。
+                    for i = total, 2, -1 do
+                        local j = self:RandomIndex(i)
+                        local swap = candidates[i]
+                        candidates[i] = candidates[j]
+                        candidates[j] = swap
+                    end
+                    local baseline = self:CountIrradiatePoisoned(candidates, total)
+                    self:CastIrradiateAt(holderSideIndex, copies, candidates, total,
+                        1, 0, copies + 3, baseline)
+                end
+            end
+        end
+    end
+end
+
 function HextechRune:ApplyAllConversionPulses(round)
     self:ApplyBurnFurryPulse(round)
     self:ApplySpawnAlienPulse(round)
     self:ApplySitTightPulse(round)
     self:ApplyAnglerPulse(round)
+    self:ApplyIrradiatePulse(round)
 end

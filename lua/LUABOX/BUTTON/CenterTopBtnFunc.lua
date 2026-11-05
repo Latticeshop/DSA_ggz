@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.10、A.51
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.10
 
 angel_money = 0
 devil_money = 0
@@ -236,13 +236,6 @@ function CenterTopBtnFunc_InitializeAutoSurrender()
     end, 15, nil)
 end
 
--- 投降投票计票口径（4v4 沿用 3v3 规则）：同侧 4 席各投一票，
--- 投降 +1 / 弃权 0 / 战斗 -1，合计 > 0 才算通过，平票（=0）或为负继续游戏。
--- 票数只存在 Lua 全局 devil_surrender / angel_surrender 里：
---   BUTTON_2 的计票回调直接对它 ±1，Dsurrendering / Asurrendering 的 payload 直接读它，
---   所以这里复位和补票都必须改同一组全局变量。
--- 不要再用 setglobal()：它写的是地编脚本变量，全图没有任何地编条件读它，
--- 写成 setglobal 会导致「复位无效、自动投降那一票也不计数」。
 function g_SurrenderResetVotes(side)
     if side == "angel" then
         angel_surrender = 0

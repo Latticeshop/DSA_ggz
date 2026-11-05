@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.36、A.49
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.30
 
 -- 死亡触发类符文：金·炽燃利息（发钱）、银·狩猎律动（回血）。
 HextechRune = HextechRune or {}

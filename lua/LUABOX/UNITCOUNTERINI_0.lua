@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.47
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.33
 
 FilterLIST = {}
 UNITLIST = {}

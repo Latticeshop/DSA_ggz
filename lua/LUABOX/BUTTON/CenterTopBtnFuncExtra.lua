@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.77、A.86
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.40
 
 -- 第 6 组技能：九头蛇万岁 + 冰天雪地。
 
@@ -87,9 +87,6 @@ function g_FillUnitCryoToFreeze(unit)
     return true
 end
 
--- 冻结敌方场上全部单位：名单与冰柱同源（g_GetEnemyBattlefieldContext），
--- 因此建筑、防御塔、地编预设守护神、技能召唤单位（空军元帅苏霍伊）都不会被冻。
--- 解冻交给引擎自然衰减。
 function g_FreezeAllEnemyFieldUnits(playerIndex)
     local context = g_GetEnemyBattlefieldContext(playerIndex, false, true)
     for i = 1, getn(context.units), 1 do

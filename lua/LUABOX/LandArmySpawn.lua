@@ -113,6 +113,11 @@ function SpawnSeaWingFromSea_right()
 end
 
 function LandArmySpawn()
+    -- 遭遇战电脑的编制同步（LUABOX/AI/AIINI_1.lua: AICOMP）：放在所有兵种批次之前，
+    -- 补齐的 UNITCOUNT 当回合就能刷出来；内部按回合号去重，地编那四个 AIUNITBUILDACT 入口也调它。
+    if AICOMP ~= nil and AICOMP.EnsureRound ~= nil then
+        AICOMP.EnsureRound()
+    end
     UNITSPST (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
     UNITSPST (step1+1,step2,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
     UNITSPST (step2+1,step3,HEAVYVEHSP,HEAVYVEHTEAM,HEAVYVEHATTACK,HEAVYVEHSPCH)

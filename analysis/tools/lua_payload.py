@@ -28,17 +28,30 @@ class LuaPayloadError(Exception):
 
 
 def find_repo_root(start_path=None):
-    """从本文件（或指定路径）向上查找包含 ScriptsData.json 的仓库根目录。
+    """从本文件（或指定路径）向上查找仓库根目录。
 
-    工具可放在任意子目录，路径不再写死本机绝对路径。
+    工具可放在任意子目录，路径不再写死本机绝对路径。判定顺序：
+    1) 环境变量 DSA_REPO_ROOT（显式指定时直接用）；
+    2) 同时含 lua/ 与 analysis/ 的目录 —— 这是本仓库（DSA_ggz）的真实布局；
+    3) 含 ScriptsData.json 的目录（老口径，兼容别的工程）。
+
+    顺序很关键：盘符根上曾有一份无关的 ScriptsData.json，按老口径会一路找到 E:\\，
+    于是所有工具都指向不存在的 E:\\lua 而空跑。
     """
+    env = os.environ.get("DSA_REPO_ROOT")
+    if env and os.path.isdir(env):
+        return os.path.abspath(env)
     path = os.path.abspath(start_path or os.path.dirname(os.path.abspath(__file__)))
     while True:
+        if os.path.isdir(os.path.join(path, "lua")) \
+                and os.path.isdir(os.path.join(path, "analysis")):
+            return path
         if os.path.exists(os.path.join(path, "ScriptsData.json")):
             return path
         parent = os.path.dirname(path)
         if parent == path:
-            raise LuaPayloadError("向上查找未找到 ScriptsData.json，无法定位仓库根目录")
+            raise LuaPayloadError("向上查找未找到仓库根目录（应含 lua/ + analysis/），"
+                                  "可用环境变量 DSA_REPO_ROOT 指定")
         path = parent
 
 

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.22、A.65
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.22
 
 function PureDrawIsHumanPlayer(playerIndex)
     return EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", "Player_" .. playerIndex, "Human")

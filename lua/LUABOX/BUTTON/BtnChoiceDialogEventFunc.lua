@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.27、A.34、A.57、A.76
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.26
 
 devil_max = 200
 angel_max = 200
@@ -131,9 +131,6 @@ function BtnChoiceDialogEventFunc_GetPreselectSlotCount()
     return sideCount
 end
 
--- 氪金塔通用收尾，五座市场塔都走这里：
---   ① IN_SHIELD_SPHERE —— 护盾球内，塔免疫冷冻（与 TowerFreeOfFreeze.lua 给 T71~T84 挂的是同一位）；
---   ② UNPACKING 清 0 —— 引擎给脚本新建的建筑挂建造期状态位，清掉后购买当帧即可用，不必等展开动画。
 function BtnChoiceDialogEventFunc_FinishMarketTower(objectId)
     local tower = GetObjectById(objectId)
     ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", tower, "IN_SHIELD_SPHERE", 1)

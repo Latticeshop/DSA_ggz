@@ -1,7 +1,5 @@
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.43
 
--- ===== 开局顺序兜底：g_SideFindObjects / g_SetSideTeam 的真实定义在 BasicVar =====
--- 本图 Lua 没有 pcall，也没有「加载完再回调」的机制，所以这里只在「还没有」时补一个最小实现；
--- BasicVar 的 payload 一执行就会用完整版覆盖掉它们（完整版多了 7/8 阵营锚点缺失时退到 4 个座位锚点合并扫描）。
 if g_SideFindObjects == nil then
     function g_SideFindObjects(sideIndex, pos, filter)
         local anchor = nil

@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.55
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.35
 
 ButtonManager = {
     _data = {},

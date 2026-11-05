@@ -1,13 +1,5 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.72、A.91
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.39
 
--- ===== 4v4（8 席）人数口径：6 人时代散落各处的硬编码，集中记在这里 =====
--- 座位号 seatIndex = 1..8；阵营号 sideIndex 沿用地图两方 AI 队：
---   7 = PlyrCivilian（恶魔，下方）/ 8 = PlyrCreeps（天使，上方）。
--- 44 图实际编队（按地图坐标从左到右核对过）：
---   下方恶魔 = Player_1, Player_2, Player_8, Player_3
---   上方天使 = Player_4, Player_5, Player_7, Player_6
--- 这样 6 人局（1/2/3 vs 4/5/6）自动退化成旧 3v3，7/8 号进局才变成 4v4。
--- 关键：座位号不再连续，判侧必须查表，禁止再用 seatIndex > g_SideSize 之类的区间比较。
 g_PlayerCount = 8
 g_SideSize = 4
 g_SideSeats = {
@@ -160,11 +152,6 @@ function g_PlayerColorBucket(info)
     return "color.pink"
 end
 
--- 绿 / 浅绿：用实测到的引擎真实 RGB 定标（不是截图取样值）。
--- 实测 8 人：绿色 (20,105,60) → max 0.412、浅绿 (144,186,106) → max 0.729；
--- 两者彩度几乎一样（0.333 / 0.314），所以只能按「最亮通道」分：界线 0.57，两侧各余 0.158。
--- 其余颜色实测：(225,115,20) 橙 / (232,120,173) 粉 / (50,75,200) 蓝 / (102,207,248) 青 /
--- (230,20,20) 红 / (237,231,47) 黄，全部落在对应色相档里。
 function g_PlayerColorName(seatIndex)
     local info = g_PlayerColorInfo(seatIndex)
     local bucket = g_PlayerColorBucket(info)
@@ -218,9 +205,6 @@ function g_GetSideScanAnchor(sideIndex)
     return nil
 end
 
--- 阵营号安全的 ObjectFindObjects：7/8 走阵营锚点；其余编号沿用原 P[n] 座位锚点。
--- 阵营锚点缺失（塔被清、中间 AI 名下暂时没有任何可选对象）时，退到本方 4 个座位锚点
--- 逐个扫描并合并，避免整片阵营扫描直接返回空导致符文静默失效。
 function g_SideFindObjectsAppend(result, seen, list, count)
     if list == nil then
         return
@@ -383,9 +367,6 @@ g_TargetGroupNames.PresetGuardian = {
     "Sea3ProtectShip7", "Sea3ProtectShip8",
 }
 
--- 守护神的旧模板名口径：仅超时空传送落点仍按模板排除；
--- 达摩剑已改为抽取时按 g_IsPresetGuardianUnit 判定，普通 Overlordtank /
--- JapanFortressShip 重新成为合法目标。
 g_TargetGroupNames.GuardianFormTemplate = {
     "Overlordtank", "JapanFortressShip", "JapanigaFortressShip",
 }

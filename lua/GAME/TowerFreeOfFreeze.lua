@@ -1,6 +1,5 @@
--- 防御塔开局统一初始化（节点名沿用历史名 TowerFreeOfFreeze，实际做两件事）：
---   ① 14 座地图塔免疫冷冻（IN_SHIELD_SPHERE）；② 七类塔伤害 ×1.5，陆地一塔攻速再 ×1.5。
--- 机制、为什么不用 MAP_* 叠层、待实机核对项见 analysis/地图注释说明文档.md §6.7；数值改下一段常量即可。
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.44
+
 local object = GetObjectByScriptName("T71")
 ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", object,"IN_SHIELD_SPHERE", 1)
 object = GetObjectByScriptName("T72")

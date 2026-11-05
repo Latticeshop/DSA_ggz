@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.18、A.30
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.18
 
 HextechRune = HextechRune or {}
 
@@ -23,9 +23,6 @@ function HextechRune:SetTimeRiftFrozen(unit, frozen, refPrefix, duration)
     end
 end
 
--- 冻结阵营 sideIndex 的全部单位和建筑，duration 帧后解除。
--- 注意：不能再拿 P[sideIndex] 当阵营锚点做存活判断——那只是 7/8 号座位自己的 MCV，
--- 座位空着或已被打掉时这个判断会把整条时停直接掐掉。阵营扫描交给 g_SideFindObjects。
 function HextechRune:FreezeSideByTimeRift(sideIndex, duration)
     local objects, count = g_SideFindObjects(sideIndex, nil,
         self.AllSideUnitsAndStructuresFilter)

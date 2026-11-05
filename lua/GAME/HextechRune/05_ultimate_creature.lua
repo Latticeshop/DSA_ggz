@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.12、A.32、A.54
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.12
 
 -- 海克斯符文“究极生物”：献祭玩家池里的 T1/T2 单位（T3 及以上保留不动），
 -- 并在每回合出兵时强化该玩家 1 只随机 T3/T4 单位。
@@ -447,6 +447,77 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     }
     RegisterNoStructureBuffUnit(unit, self:GetPlayerSideIndex(playerIndex))
     return true
+end
+
+-- ===== MCV 阵营归属（04_buff.lua: GrantForeignMCV 用；04 是本树最紧的 payload）=====
+-- 四个阵营 → MCV 模板名前缀 / 建造场模板名，与 g_PlayerSide 的 1..4 同口径。
+-- 判定「这个玩家有没有某族」要同时看**基地车**（抽卡抽到的还没展开）和**建造场**（已展开的）。
+HextechRune.McvFactionPrefixes = { "Allied", "Soviet", "Japan", "Celestial" }
+-- 建造场模板名 = 前缀 + "ConstructionYard" + 后缀。引擎里同一个建造场有好几个命名变体
+-- （展开后的强化态、倒塌态、海军态都各有自己的模板），全按后缀组合登记，别只认基础名。
+HextechRune.McvYardSuffixes = {
+    "", "_Enhanced", "_Collapse", "_Enhanced_Collapse",
+    "_Naval", "_Enhanced_Naval", "_Collapse_Naval", "_Enhanced_Collapse_Naval",
+}
+HextechRune.McvFactionHashes = nil
+HextechRune.McvScanFilter = nil
+
+-- FastHash(模板名) → 阵营号：g_TargetGroupNames.MCV 的 20 个形态按前缀折阵营，
+-- 建造场按「前缀 + 后缀」逐个生成。两张表一起懒建。
+-- 扫描器只用引擎的大类（建筑 + 载具/舰船），命中哪个阵营全靠 hash 表认，不依赖名字列表的长度。
+function HextechRune:EnsureMcvScanTables()
+    if self.McvFactionHashes ~= nil then
+        return
+    end
+    local hashes = {}
+    local all = g_TargetGroupNames.MCV
+    local yardSuffixes = self.McvYardSuffixes
+    for faction = 1, 4, 1 do
+        local prefix = self.McvFactionPrefixes[faction]
+        local prefixLength = strlen(prefix)
+        for s = 1, getn(yardSuffixes), 1 do
+            hashes[FastHash(prefix .. "ConstructionYard" .. yardSuffixes[s])] = faction
+        end
+        for i = 1, getn(all), 1 do
+            if strsub(all[i], 1, prefixLength) == prefix then
+                hashes[FastHash(all[i])] = faction
+            end
+        end
+    end
+    self.McvFactionHashes = hashes
+    self.McvScanFilter = CreateObjectFilter({
+        Rule = "ANY", Relationship = "SAME_PLAYER",
+        Include = "STRUCTURE VEHICLE HUGE_VEHICLE SHIP",
+    })
+end
+
+-- 这个玩家名下现有的基地车 / 建造场分属哪些阵营（集合形式：Faction = true）。
+function HextechRune:GetPlayerMcvFactions(playerIndex)
+    local found = {}
+    local anchor = nil
+    if g_GetSeatAnchor ~= nil then
+        anchor = g_GetSeatAnchor(playerIndex)
+    end
+    if anchor == nil then
+        anchor = P[playerIndex]
+    end
+    if anchor == nil or not ObjectIsAlive(anchor) then
+        return found
+    end
+    self:EnsureMcvScanTables()
+    local list, count = ObjectFindObjects(anchor, nil, self.McvScanFilter)
+    if type(count) ~= "number" then
+        count = getn(list) or 0
+    end
+    for i = 1, count, 1 do
+        if list[i] ~= nil and ObjectIsAlive(list[i]) then
+            local faction = self.McvFactionHashes[ObjectGetInstanceId(list[i])]
+            if faction ~= nil then
+                found[faction] = true
+            end
+        end
+    end
+    return found
 end
 
 -- 名额：每名玩家每回合只进化一只究极生物。原先只用函数内的 appliedPlayers，

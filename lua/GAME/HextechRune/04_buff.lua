@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.4、A.44、A.79
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.4
 
 -- 海克斯符文系统：首批可实测效果。
 
@@ -22,9 +22,6 @@ HextechRune.UnitTypeFilters = {
         Exclude = "STRUCTURE DEBRIS"
     }),
 }
--- 可变形单位按其两种作战形态同时归入两个兵种，不依赖当前模型形态的
--- AIRCRAFT / VEHICLE / SHIP category。这样它们能同时享受两类兵种符文。
--- 群体名单统一取自 BasicVar；本节点早于它加载，过滤器首次使用时再建。
 HextechRune.DualUnitTypeFilters = nil
 
 function HextechRune:GetDualUnitTypeFilters()
@@ -799,20 +796,34 @@ function HextechRune:GrantStartingFunds(playerIndex)
     SetWorldBuilderThisPlayer(previous)
 end
 
-function HextechRune:GrantForeignMCV(playerIndex)
-    local ownFaction = 1
+-- ===== MCV：发一个「玩家还没有」的阵营基地车 =====
+-- 扫描基地车 / 建造场的助手在 05_ultimate_creature.lua（04 是本树最紧的 payload）。
+-- 已拥有的阵营只按场上实际单位判定：基地车（含抽卡抽到的）与建造场（含 _Enhanced / _Collapse 等变体）。
+function HextechRune:GetOwnedMcvFactions(playerIndex)
+    local owned = self:GetPlayerMcvFactions(playerIndex)
     if g_PlayerSide ~= nil and g_PlayerSide[playerIndex] ~= nil then
-        ownFaction = g_PlayerSide[playerIndex]
+        owned[g_PlayerSide[playerIndex]] = true
     end
+    return owned
+end
+
+function HextechRune:GrantForeignMCV(playerIndex)
+    local owned = self:GetOwnedMcvFactions(playerIndex)
+    local candidates = {}
     local mcvTypes = {
         [1] = "AlliedMCV",
         [2] = "SovietMCV",
         [3] = "JapanMCV",
         [4] = "CelestialMCV",
     }
-    local candidates = {}
     for faction = 1, 4, 1 do
-        if faction ~= ownFaction then
+        if not owned[faction] then
+            tinsert(candidates, faction)
+        end
+    end
+    -- 四个阵营全齐：按卡面兜到随机一个。
+    if getn(candidates) == 0 then
+        for faction = 1, 4, 1 do
             tinsert(candidates, faction)
         end
     end
@@ -993,9 +1004,6 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
         return self:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitIndex,
             playerIndex)
     elseif rune.Effect == "at_field" then
-        -- AT立场不在这里出手（由 ApplyAtFieldShields 在出兵两趟扫描后各套一批）：
-        -- 这里回 true 只是让单位登记带标记活到那时，FinalizeBattleUnitAssignments
-        -- 会把"没拿到任何效果"的登记直接删掉，否则整批施加时按登记筛不出任何人。
         return true
     else
         return false
@@ -1117,9 +1125,6 @@ function HextechRune:GetPlayerBattleEffectQuota(playerIndex, unit, unitIndex,
         return 1
     end
 
-    -- 登神：目标单位只保留 1 个，其余已转化为层数。名额固定 1——原先返回 poolCount，
-    -- 兵种份额是 2 时会把两只都认领给同一名玩家、两只都登神（2026-10-20 用户实测）。
-    -- 本回合已经登神过一只时同理返回 0，第二趟扫描不再认领第二只。
     local ascensionRune = self:GetAscensionRune(playerIndex)
     if ascensionRune ~= nil and unitIndex == ascensionRune.TargetUnitIndex
         and self:GetAscensionStacks(playerIndex) > 0 then
@@ -1263,6 +1268,9 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
     grant_cryo_satellite = true, grant_chrono_rift = true,
     grant_irradiate = true, grant_desolator_bomb = true,
+    -- 鸡汤来咯改成「回合开始由本方 AI 阵营放毒质腐蚀」（见 18_basics_exchange.lua），
+    -- 同样不逐单位挂载；旧键名 grant_irradiate 留着是为了兼容老存档里的符文实例。
+    irradiate_enemy_vehicle = true,
     grant_magnetic_singularity = true, grant_time_bomb = true,
     ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
     upgrade_tachi_cruiser = true, upgrade_bullfrog = true,

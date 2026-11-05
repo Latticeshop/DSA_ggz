@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.16、A.29、A.43、A.48
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.16
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)
@@ -208,9 +208,6 @@ function NoCreatesInCenter(id)
     end
 end
 
--- 检测 AI 的 MCV（包括青龙战斗核心舰）是否在中央战场。
--- 玩家青龙核心舰已由生成事件转换为伏龙殿或自动回收；这里仅处理 AI 单位。
--- 模板名单统一取自 BasicVar 的 MCV 群体（g_MCVTypes 也在那里指向同一张表）。
 g_AIBannedTypes = {
     "CelestialTransportUAV", -- 迅雷运输艇
 }

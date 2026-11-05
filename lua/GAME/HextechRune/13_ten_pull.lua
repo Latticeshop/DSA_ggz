@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.31、A.41、A.66
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.28
 
 
 HextechRune = HextechRune or {}

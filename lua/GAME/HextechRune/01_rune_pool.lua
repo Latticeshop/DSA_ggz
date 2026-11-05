@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.3、A.39、A.46、A.71、A.73、A.82、A.88
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.3
 
 -- 海克斯符文系统：首批正式符文池与候选抽取。
 -- 抽取顺序：先确定全场稀有度，再按玩家状态筛池，最后无放回抽取 3 个。
@@ -111,11 +111,12 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.divine_might.name",
         DescKey = "hextech.rune.divine_might.desc", Effect = "grant_chrono_rift",
         Icon = "Button_PlayerPower_ChronoRift2" },
-    { Id = "silver_chicken_soup", Rarity = 3,
+    { Id = "silver_chicken_soup", Rarity = 2,
         NameKey = "hextech.rune.chicken_soup.name",
-        DescKey = "hextech.rune.chicken_soup.desc", Effect = "grant_irradiate",
-        -- 毒质腐蚀只对载具生效：禁载具时这张符文没有可用目标，整张不入池。
-        RequiresType = "vehicle",
+        DescKey = "hextech.rune.chicken_soup.desc", Effect = "irradiate_enemy_vehicle",
+        -- 目标口径 = 引擎意义上的载具 / 舰船：只要载具、海军还有一个没被禁就能抽到，
+        -- 两个都被禁（禁载具 + 禁海同开）才整张不入池。
+        RequiresAnyType = { "vehicle", "navy" },
         Icon = "Button_PlayerPower_IrradiateTarget" },
     { Id = "silver_easy_does_it", Rarity = 3,
         NameKey = "hextech.rune.easy_does_it.name",
@@ -405,12 +406,6 @@ HextechRune.NonRepeatableRuneIds = {
     -- 破烂王
     silver_recycler = true,
     silver_divine_might = true,
-    -- 金·现金奖励下架留档期间一并注释，恢复时和池内条目一起放开。
-    -- gold_cash_reward = true,
-    -- 鸡汤来咯：与现金奖励同属苏联协议，重复授予只会互相重置冷却。
-    silver_chicken_soup = true,
-    -- 金·冷冻卫星仍在下架留档中，恢复时与 16_cryo_satellite.lua 的条目一起取消注释。
-    -- gold_cryo_satellite = true,
     prismatic_broadband_jamming = true,
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,
@@ -521,6 +516,7 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         -- 候选只用于展示与判重，兵种约束是在 BuildFilteredPool 里按**原始符文**判的；
         -- 一并带上只为让候选与定义保持一致（海军的旧写法 RequiresSea 同样如此）。
         RequiresType = rune.RequiresType,
+        RequiresAnyType = rune.RequiresAnyType,
         RequiredFaction = rune.RequiredFaction,
         ExcludedFaction = rune.ExcludedFaction,
         UpgradeRarity = rune.UpgradeRarity,
@@ -770,7 +766,8 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
     return candidates
 end
 
--- ignoreFaction：跳过全部阵营判定。analysis/hextech_dev_test_backup.md）按原样贴回时用。
+-- ignoreFaction：跳过全部阵营判定。正式流程一律传 nil（照常判定），只有开发测试事件
+-- （见 analysis/自走棋海克斯系统/hextech_dev_test_backup.md）按原样贴回时才会传 true。
 function HextechRune:IsRuneFactionAvailable(playerIndex, rune, ignoreFaction)
     if ignoreFaction then
         return true
@@ -1053,6 +1050,10 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
     elseif rune.Effect == "time_rift" then
         return Localization.get(rune.DescKey,
             self:GetTimeRiftDisplaySeconds(playerIndex))
+    elseif rune.Effect == "irradiate_enemy_vehicle" then
+        -- 份数可叠加：本方（含队友）持 N 份每回合就投毒 N 台，卡面按当前份数显示。
+        return Localization.get(rune.DescKey,
+            self:GetIrradiateDisplayCount(playerIndex))
     end
     return Localization.get(rune.DescKey)
 end
@@ -1165,6 +1166,11 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             -- 通用兵种约束：只对某个兵种有效的符文（含 grant_* 直接生成单位的），该兵种被禁
             -- 时就不入池 —— 赠送路径不过出兵函数，漏声明会绕过整套禁用判定（见 §4.5.1）。
             and (rune.RequiresType == nil or BanModeIsTypeEnabled(rune.RequiresType) == 1)
+            -- 「多兵种任一可用即可」的符文（例如鸡汤来咯对载具或海军都生效）：
+            -- 列出的兵种全被禁才不入池。
+            and (rune.RequiresAnyType == nil
+                or BanModeTypesAllBanned == nil
+                or BanModeTypesAllBanned(rune.RequiresAnyType) ~= 1)
             -- 元神互锁要从可用兵种里随机抽两个配成同步组，凑不出两个时整张不发
             -- （禁用页最多同时禁 3 项，禁到 3 项就只剩一个兵种，这张牌等于空牌）。
             and (not rune.RequireTwoUnitTypes
@@ -1272,9 +1278,6 @@ function HextechRune:TransferOwnedRuneToPlayer(playerIndex, rune)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
 end
 
--- 每回合「名额」：登神 / 究极生物这类「一名玩家同一回合只能有一只」的效果共用。
--- 一回合里出兵扫描会跑两趟（固定出兵 + 延迟补扫），各自的局部标记管不住跨趟重复，
--- 所以名额按玩家存在这张表里，回合号取 lvc 计数器（与播报、以战养战同一口径）。
 HextechRune.RoundSlots = HextechRune.RoundSlots or {}
 
 function HextechRune:GetBattleRoundIndex()

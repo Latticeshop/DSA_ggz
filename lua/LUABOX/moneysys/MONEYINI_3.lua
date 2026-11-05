@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.50
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.34
 
 LIMITPOWERC = 4
 FLAGENPOWER = {}
@@ -8,9 +8,6 @@ end
 
 g_CachedPlayersPowerPlantLimit = {}
 
--- 玩家退出/死亡后的“小电份额”转交登记。
--- 份额只看开局存在的 P 席位：每席位一（神州 LIMITPOWERC，非神州 LIMITPOWERC + 1）。
--- MCV 符文/抽卡获得的额外基地不增加份额。
 g_PowerSlotPresent = g_PowerSlotPresent or {}
 g_PowerSlotController = g_PowerSlotController or {}
 g_PowerSlotVacated = g_PowerSlotVacated or {}
@@ -846,9 +843,6 @@ function LIMITPOWER()
     end
 
     if g_PowerSlotInitialized == 1 then
-        -- 每个开局存在的席位算一份；退出后份额跟着实际继承者走。
-        -- 每份按席位阵营给（神州少一个）：见 GetPowerSeatShare。
-        -- 每帧都按当前 LIMITPOWERC 重算：推塔 +2 后，继承来的席位也同步 +2。
         for slotIndex = 1, 8, 1 do
             if g_PowerSlotPresent[slotIndex] == 1 then
                 local controllerIndex = g_PowerSlotController[slotIndex]

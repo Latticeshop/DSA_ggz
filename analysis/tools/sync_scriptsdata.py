@@ -179,6 +179,11 @@ TARGETS = [  # fmt: skip
     # 这四份 payload 一直只在 JSON 里，改 lua 不会写回，
     ('lua/GAME/spellbook.lua', ['g_PlayerSpellBookId = {', 'g_PlayerSpellBookId[playerIndex] = i']),
     ('lua/LUABOX/AI/AID_0.lua', ['AI = {', 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY']),
+    # AIINI 节点（脚本树 AI/AIINI）里有两段 payload：Then[0] 是 AIINI_0.lua（旧的假金钱随机买兵，
+    # 死代码留档），Then[1] 才是 AIINI_1.lua。2026-10-30 重写 AIINI_1 成 AICOMP 编制同步时补登记：
+    # 不登记的话改了源文件也不会写回 JSON。needle 用两个只存在于 Then[1] 的旧函数名（写成
+    # `function spinfantlv1 (`，与 Then[0] 里的 `AIUNITBUILDRADOM` 区分开）。
+    ('lua/LUABOX/AI/AIINI_1.lua', ['function spinfantlv1', 'function spaircraftlv1']),
     ('lua/LUABOX/SpawnLandUnit.lua', ['function SpawnLandUnit_left', 'LIGHTVEHATTACK']),
     ('lua/LUABOX/SpawnSeaUnit.lua', ['function SpawnSeaUnit_left', 'SHIPTEAMATTACK']),
     ('lua/LUABOX/PLANEBACK/PLANEINI_0.lua', ['PLANEcountmax = indexPLANE + 5', 'function PLANEREBORN']),

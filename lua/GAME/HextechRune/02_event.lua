@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.11、A.35、A.38、A.45、A.87
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.11
 
 -- 海克斯选择对话框 ID 偏移（保留，正式事件用；当前用屏幕方框）
 HEXTECH_DIALOG_ID_OFFSET = 300
@@ -92,9 +92,6 @@ HextechRune.PanelCloseBtnBase = 500      -- 关闭按钮：玩家 i = 500 + i
 HextechRune.PanelTextIndexBase = 600     -- 名字文字：玩家 i = 600 + i
 HextechRune.PanelIconBtnIndexBase = 700  -- 小卡图标按钮：701~736
 HextechRune.PanelRuneTextIndexBase = 800 -- 小卡标题文字：801~836
--- 面板底板：g_HextechPanelBgId（960x320，上边角内凹、三层金边、标题带 + 金标题全烘进贴图）。
--- 贴图原居中位置是 683 - 480 = 203，实测偏右，2026-10-27 按用户要求整体左移两个卡宽
--- （2 * PanelRuneWidth = 100）→ 103；竖直与旧底板同心（146 + 380/2 - 160 = 176）。
 HextechRune.PanelBgIndex = 490
 HextechRune.PanelBgX = 103
 HextechRune.PanelBgY = 176
@@ -115,16 +112,10 @@ HextechRune.PanelNameColor = 16777215
 HextechRune.PanelInheritedNameColor = 16766720
 -- 原玩家退出且无人继承、符文已被清空的座位：面板不再为它留一行。
 HextechRune.PanelVacantSeat = {}
--- 小卡从「托盘左缘 + PanelCardOffsetX」开始**依次右排**（不再整体居中）。
--- 卡区可用宽 = 托盘宽 442 - 偏移 100 - 右侧留白 7 = 335：
--- 6 张时 6*50 + 5*7 = 335 正好铺满，5 张及以下维持 PanelRuneGap = 10。
 HextechRune.PanelCardOffsetX = 100
 HextechRune.PanelCardAreaWidth = 335
 -- 三行行心 y = 底板 Y + 贴图内行顶（70 / 150 / 230）+ 行高 64 的一半
 HextechRune.PanelRowY = { 278, 358, 438, 518 }
--- 关闭按钮：素材 hextechRemoveButton.png 是 76x46，实测偏大，等比缩到 56x34（约 74%）显示。
--- 位置按缩后的尺寸重摆，仍落在标题带右端、与带右缘（贴图内 946）留 20px，
--- 并避开标题带右上角 R26 的内凹圆弧，否则按钮右上角会戳到圆弧外的透明区。
 HextechRune.PanelCloseSizeX = 56
 HextechRune.PanelCloseSizeY = 34
 HextechRune.PanelCloseOffsetX = 870
@@ -152,9 +143,6 @@ HextechRune.PlayerOptionRarity = HextechRune.PlayerOptionRarity or {}
 -- 正式海克斯事件发放回合（按 g_HextechCount 取前 N 个）
 HextechRune.FormalRounds = { 3, 10, 18, 27 }
 
--- 1（默认）＝ 当下行为：本次选择三张卡共用一次重随。
--- 3 ＝ 三张卡各能重随一次（总共最多 3 次）；配合「换下去的那张不再回来」，
--- 按钮在 BtnChoiceDialogEventFunc_ShowHextechModeDialog 里，点击调 HextechRerollModeToggle。
 g_HextechRerollMode = g_HextechRerollMode or 1
 -- 房主手动点过这一行（哪怕点完又切回 1 次）＝ 明确要按次数走，单人无限重随关掉。
 g_HextechRerollManual = g_HextechRerollManual or 0
@@ -344,9 +332,6 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
         end
         return self.OptionTitleOffsetX + shift
     end
-    -- 五字标题（变形重组器 / 升级重组器，16px、无兵种后缀）实测偏左约 2/3 个字，右移 30。
-    -- 带兵种后缀的五字标题（回归基本功 / 歌莉娅巨人）字号是 14px，按 16px 那档的字号比例
-    -- 折算成 26；万用瞄准镜那三档 10px 小字号实测默认值已居中，不跟着放大。
     if characterCount == 5 then
         if isPanel then
             if rune.UnitType == nil then
@@ -450,9 +435,6 @@ function HextechRune:MarkFormalSelectionReceived(playerIndex)
         (self.PlayerFormalSelectionCount[playerIndex] or 0) + 1
 end
 
--- 棱彩已是最高阶：升不动就不该把这次机会花掉。
--- PendingRuneAscend 是**次数**（准备背包）：继承队友的待生效准备背包会叠加，
--- 但每次选择只升一阶（效果不叠加），所以 2 张就等于接下来 2 次选择各升一阶。
 function HextechRune:CanAscendRuneRarity(playerIndex, rarity)
     return (self.PendingRuneAscend[playerIndex] or 0) > 0 and rarity > 1
 end
@@ -808,9 +790,6 @@ function HextechRune:PickRerollReplacement(playerIndex, optionIndex)
     if getn(loose) > 0 then
         return loose[self:RandomIndex(getn(loose))]
     end
-    -- 单人无限重随：同阶池小到「去掉当前三张就没得换」时允许重复（含同一张），
-    -- 否则重随按钮会卡在「没有可替换的同阶符文」上，白点一次；
-    -- 多人局仍返回 nil，保持「失败不消耗」的老行为。
     if not self:IsUnlimitedReroll() then
         return nil
     end
@@ -1106,9 +1085,6 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
             self.PanelVacantSeat[slotIndex] = nil
         end
     end
-    -- 未展示/未领取的事件转给继承者，保留原槽位。
-    -- 退出者「捏着还没选」的次数一条都不能丢：队列里排队的、以及退出时正开着的那一次
-    -- 三选一，都要落到继承者名下（他继承的不只是已获得的卡，还有那些没兑现的选择）。
     if self:IsHumanPlayer(toIndex) then
         if fromQueue ~= nil and getn(fromQueue) > 0 then
             local toQueue = self:EnsurePlayerEventQueue(toIndex)
