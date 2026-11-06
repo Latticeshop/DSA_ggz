@@ -983,3 +983,375 @@ python -c "import sys,os; sys.path.insert(0,r'DSA_ggz\analysis\tools'); sys.path
 3. **电脑自动补技能组会在公共面板播报**：`CreatePlayerSkillButtons` 本来就会给 4 个队友发「Player_N 选择了 X」，电脑被自动补课时也会有这几条，属预期噪音。
 4. **`Player_8` 的 `LEVELUP` 已修**：现在 8 席与 `g_Seat7`/`g_Seat8` 完全一致（P1/P2/P3/P8 → `/LEVELUP7`，P4/P5/P7/P6 → `/LEVELUP8`）。
 5. **payload 余量**：`CenterTopBtnFunc.lua` 只剩 3326 B（自动去注释后 62210 B），**后续不要往这个文件加代码**；`AIINI_1.lua` 36002 B（余 29534 B）还很宽松。
+
+---
+
+## 8. 联机实测回归修正（2026-11-06）
+
+### 8.1 电脑跨阵营出兵（已修）
+
+**现象**：电脑出兵的单位跨阵营（科技等级、数量都正常，只有阵营不对）。
+
+**原因**：`GetCandidatePool` 里有一条跨阵营兜底：
+
+```lua
+if pool == nil or getn(pool) == 0 then
+    pool = AICOMP.BuildAllFactionPool(tier, band)   -- 把 4 个阵营的同档单位合并
+end
+```
+
+它的触发条件不是「稀有情况」而是「本阵营这一档恰好没有单位」——按 (阵营 × 阶级 × 类别) 切分后
+这种空格非常多，于是绝大多数电脑都在用合并池，看起来就是「任何阵营都会出」。
+`GetAnyTierPool`（抽卡模式）里也有同一条兜底。
+
+**修正**：删除 `AICOMP.BuildAllFactionPool` 与两处调用；两个取池函数现在只返回本阵营的列表。
+本阵营这一档没有可投单位时，`ResolveCategoryTier` 会按 T4→T3→T2→T1 往下退，
+全都没有就跳过这一段（宁可这段少兵，也不出别的阵营的兵）。
+
+**代价**：槽位 133/134（`SovietBomberAircraft` 基洛夫飞艇 / `CelestialAntiAirVehicleTech3` 神州 T3 磁弩形态）
+只有苏联与神州有，所以盟军 / 帝国的电脑第 5 段恒为 0，总量会和参照玩家差这几只。这是「只投本阵营」的唯一遗留代价。
+
+**帝国 T1 载具已补齐**：帝国没有独立的 T1 载具槽，但天狗机器人 `JapanAntiInfantryVehicle`
+是载具 & 空军双形态（槽位 77 在空军段）。`BuildFactionPool` 改为两遍收集：
+第一遍只认槽位分段，为空时第二遍按 `BanModeGetNameTypes` 登记的兵种再收一遍。
+无禁用时只有两格会用到——(帝国 × 载具 × T1)←天狗机器人、(苏联 × 空军 × T4)←基洛夫飞艇。详见附录 D.11。
+
+改动对照：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| `AICOMP.BuildAllFactionPool` | 4 阵营合并 | 删除 |
+| `AICOMP.GetCandidatePool` | 本阵营空 → 合并池 | 本阵营空 → 空表（由 `ResolveCategoryTier` 降档） |
+| `AICOMP.GetAnyTierPool` | 本阵营空 → 合并池 | 本阵营空 → 空表 |
+
+### 8.2 登神符文的目标单位核查（只查，未改动）
+
+登神的目标候选来源 = `PickBuyTwoGetOneTarget`（与买二送一共用）：
+
+```
+本阵营四类回收表 g_RecycleBtnsMapByFaction[faction]
+  ∩ g_UnitNameToUnitIndex 里有（必须在 UNITLIST 里占一个槽位）
+  ∩ g_PureDrawBuildableUnitPool 可生产（BuildBuyTwoGetOneTargetFilter）
+  ∩ 不是 LockPlayerProduction
+  ∩ 不在 HextechRune.RuneTargetExcludedTypes 黑名单
+  ∩ BanModeRecycleCategoryEnabled(类别) == 1
+```
+
+逐项核查结果：
+
+| 单位 | 回收表 | UNITLIST 槽位 | 可生产 | 黑名单 | 结论 |
+|---|---|---|---|---|---|
+| `AlliedAntiGroundAircraft`（维护者轰炸机） | `g_AirCraftAllied` 第 1 项 | 有（空军段） | T1 池 | **已加入** | **已按策划要求排除**（轰炸机不进登神/究极生物） |
+| `AlliedChronoBeacon_Vindicator` | — | — | — | **已加入** | 全项目搜不到这个单位名，条目先按防御性写好 |
+| `CelestialHeavyAntiAirVehicleTech3`（祝融雷铳战车） | `g_VehicleCelestial` | 有（载具段） | T3 池 | 不在 | **可当登神目标**，按策划要求保持不变 |
+| `CelestialAntiVehicleVehicleTech3_EMC` | 不在表内 | 不在 UNITLIST | — | — | 是 `CelestialAntiVehicleVehicleTech3` 的**生产别名**（基础型在 `g_VehicleCelestial`，可选），候选按基础型出 |
+
+**已落地的改动**：`HextechRune.RuneTargetExcludedTypes` 增加两条（该黑名单只作用于**登神**与**究极生物**，
+买二送一仍可圈维护者）：
+
+```lua
+AlliedAntiGroundAircraft = true,                -- 维护者轰炸机
+AlliedChronoBeacon_Vindicator = true,           -- 维护者轰炸机（信标形态，防御性条目）
+```
+
+究极生物本来就只从 T3/T4 独立名单里抽（维护者是 T1，本来也抽不到），这一条把口径写明。
+
+- 四阵营完整单位 / 分段 / 阶级表见 **`analysis/4阵营单位与阶级表.md`**（从源码复刻生成）；
+  4 阵营 × 5 分段 × 4 阶级共 80 格，其中 **23 格为空**——这就是改前跨阵营兜底的触发来源。
+- `AlliedChronoBeacon_Vindicator` 在整个 `lua/` 与 `ScriptsData.json` 里都搜不到；唯一的
+  `AlliedChronoBeacon_*` 是 `AlliedChronoBeacon_Harbinger`（先锋炮艇机的信标形态），
+  而它只出现在 `BUFF_1.lua` 的索敌滤镜里，不在回收表、不在抽卡池、也不在 `UNITLIST`，
+  所以它也当不了登神目标。如果策划想要这个单位，需要先把模板名确认下来。
+- `CelestialAntiVehicleVehicleTech3_EMC` 在 `g_PureDrawProductionAliases` 里挂在
+  `CelestialAntiVehicleVehicleTech3` 名下（`02_data.lua:165`），属于「升级形态」而不是独立兵种；
+  `CollectBuyTwoGetOneCandidates` 用 `info.CountType or info.Type` 取类型，所以候选里出现的是
+  基础型 `CelestialAntiVehicleVehicleTech3`（本身在 `g_VehicleCelestial` 与 `UNITLIST` 里，可选）。
+  登神的 Buff 是按槽位号匹配的（`ApplyAscensionUnits` 里 `assignment.UnitIndex == rune.TargetUnitIndex`），
+  基础型占的槽位固定，所以 EMC 形态的单位同样吃得到这份 Buff，不需要单独加一条。
+
+### 8.3 计数口径与禁用模式兼容（已核实，无需改动）
+
+**计数口径**：双形态单位只按**槽位**计一次（`CollectCategoryState` 不变）。
+理由：① 参照侧（真人）与电脑侧必须用同一套口径，否则数量永远对不齐；
+② 跨段补位受 `ApplySeat` 的 `need`（总数差）硬性封顶，偏差不会滚雪球；
+③ 全矩阵只有一格真的用到（帝国×2 载具×T1），为它改统计口径不划算。
+副作用举例：参照玩家出 4 个 T1 载具、0 空军，帝国用 4 个天狗补，天狗记在第 3 段，
+于是第 3 段变成 4、第 2 段仍是 0——总数吻合，构成偏向空军，下一回合 `need = 0` 后不再追加。
+
+**禁用模式**：`BuildFactionPool` / `CollectFactionPool` 全程用 `BanModeIsSlotBanned(unitIndex) == 0` 过滤，
+与出兵批次、抽卡池用的是同一个判定，因此「登记兵种全被禁才算禁用」的双形态规则自动生效。
+逐配置模拟见 `analysis/4阵营单位与阶级表.md` 的 E 节。禁用模式下真人自己也出不了被禁的兵，
+`refState.Cat[band]` 同样为 0，所以对应分段本来就没有缺口。
+
+**超级要塞**：不在 `UNITLIST` + 带 `CountType`，AICOMP 永远投不出，双形态登记对它无影响。
+
+### 8.4 T5 单位一律按 T4 算
+
+四阵营的 T5 不对称（青龙 / 东风是神州，奥林匹斯是盟军，千鸟 / 超级要塞是帝国），凑不齐一张 T5 表。
+`AICOMP.GetUnitTier` 新增 `g_UnitTierAtLeastFour` 名单，命中即返回 4：
+
+青龙八形态、`CelestialDF41` 东风、`AlliedGaintAirCraftCarrier_B` 奥林匹斯、
+`JapanYumiAircraftCarrier` 千鸟、`JapanGigaFortressShip` / `JapanGigaFortressShipEgg` /
+`JapanFortressShip` / `JapanGigaFortress_Land` 超级要塞四形态。
+
+改前这批单位会被判成 **T1**（不在抽卡池、名字无 `TechN`、不在回收表所以没有回收价，掉到最后一句 `return 1`），
+参照玩家带着千鸟 / 奥林匹斯时 `MaxTier` 被拉低，电脑会照着 T1 出最便宜的兵。
+`UNITLIST` 里「三样都查不到」的共 27 个，只用显式名单收 T5，其余（郁金香、守护神、夜莺、箱子坦克等）不动。
+
+至此三层兜底完整：阶级自动降级 → 双形态补位 → T5 按 T4。仍为空且无法降级的只有
+盟军 / 帝国的第 5 段（该段只有基洛夫飞艇与神州 T3 磁弩形态）。
+
+### 8.5 内测单位剔除与退档阶梯确认
+
+「`日冕单位信息汇总.txt` 里查不到中文名」= 未发布的内测单位，新增 `g_AICOMPBetaOnlyUnitTypes`
+把它们挡在电脑卡池外：`AlliedAirForceDispatchVehicle`、`SovietPineElectronicRadarTruck`、
+`JapanAntiAirVehicleTech3`（三个都在 UNITLIST 杂项段，本来就不出兵）与
+`CelestialAntiAirVehicleTech3`（槽 134，额外段，T3，剔除后「神州 × 5 额外」整段为空）。
+
+退档阶梯确认与需求一致：目标阶级 = `min(参照玩家该分段最高阶级, 本方科技)`，**从 T4 一路下退到 T1**，
+T5 不存在（按 T4 处理）。整条阶梯都空才返回 0 并跳过该分段。
+
+# 4 阵营单位与阶级表（源码解析生成，勿手改）
+
+中文名取自 `日冕地图lua例子/日冕单位信息汇总.txt`（421 条单位条目，按单位 ID / 按钮代码匹配）；分段、阶级、双形态补位、内测单位、禁用模式池子由 `UNITCOUNTERINI_0.lua` / `RecycleUnit.lua` / `02_data.lua` / `AICOMP.*` 复刻计算。
+
+阶级判定优先级：T5 超武名单（青龙 / 东风 / 奥林匹斯 / 千鸟 / 超级要塞，一律算 T4）→ 抽卡生产池 `g_PureDrawBuildableUnitPool` 的 Tier → 名字里的 `TechN` → 回收价（>3000=T4，>1800=T3，>1000=T2，其余 T1）。
+
+| 分段 | 槽位 | 出兵批次 |
+|---|---|---|
+| 1 步兵 | 1..20 | `UNITSPST(1, step1, INFANT*)` |
+| 2 载具 | 21..76 | `UNITSPST(step1+1, step3, LIGHTVEH*)` |
+| 3 空军 | 77..107 | 空军批次 |
+| 4 海军 | 108..132 | `UNITSPSHIP(step35+1, step4, AIRSP*)` |
+| 5 额外 | 133..134 | `UNITSPAIRST(step4+1, step5, INFANTSP, AIR*)` |
+
+## A. 矩阵：阵营 × 出兵分段 × 阶级（中文名）
+
+标 **（双）** 的是靠双形态跨兵种补进来的（自己槽位在别的分段）；**内测单位已剔除**，不参与任何一格。
+
+| 阵营 | 分段 | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|---|
+| 盟军 | 1 步兵 | 标枪兵`AlliedAntiVehicleInfantry`<br>游骑兵`AlliedRangerInfantry`<br>维和步兵`AlliedAntiInfantryInfantry`<br>警犬`AlliedScoutInfantry` | **—** | 冰冻军团`AlliedCryoLegionnaire`<br>谭雅`AlliedCommandoTech1` | **—** |
+| 盟军 | 2 载具 | 激流`AlliedAntiInfantryVehicle_Ground` | 光棱坦克`prismtank`<br>守护者坦克`AlliedAntiVehicleVehicleTech1` | 幻影坦克`AlliedAntiVehicleVehicleTech3`<br>雅典娜炮`AlliedAntiStructureVehicle` | 未来坦克X-1`AlliedFutureTank`<br>特洛伊突击要塞`AlliedBattleFortress` |
+| 盟军 | 3 空军 | 维护者轰炸机`AlliedAntiGroundAircraft`<br>阿波罗战斗机`AlliedFighterAircraft` | 冰冻直升机`AlliedSupportAircraft` | 世纪轰炸机`AlliedAntiStructureBomberAircraft`<br>世纪轰炸机`AlliedBomberAircraft`<br>阿瑞斯截击机`AlliedInterceptorAircraft` | 先锋武装炮艇机`AlliedAC130GunshipAircraft`<br>先锋武装炮艇机`AlliedGunshipAircraft` |
+| 盟军 | 4 海军 | 水翼船`AlliedAntiAirShip`<br>海豚`AlliedAntiNavalScout`<br>激流`AlliedAntiInfantryVehicle` | 突袭驱逐舰`AlliedAntiNavyShipTech1` | 波塞冬巡洋舰`AlliedAntiNavyShipTech3` | 航空母舰`AlliedAntiStructureShip` |
+| 盟军 | 5 额外 | **—** | **—** | **—** | **—** |
+| 苏联 | 1 步兵 | 征召兵`SovietAntiInfantryInfantry`<br>战熊`SovietScoutInfantry`<br>防空部队`SovietAntiVehicleInfantry` | 磁爆部队`SovietHeavyAntiVehicleInfantry` | 娜塔莎`SovietCommandoTech1` | **—** |
+| 苏联 | 2 载具 | 恐怖机器人`SovietScoutVehicle`<br>火炮机车`SovietMortarCycle`<br>镰刀机甲`SovietAntiInfantryVehicle` | 犀牛坦克`SovietHeavyAntiVehicleVehicleTech2`<br>磁爆坦克`SovietAntiVehicleVehicleTech2`<br>重锤突击炮`SovietSledgehammerSPG` | V4`SovietAntiStructureVehicle`<br>天启坦克`SovietAntiVehicleVehicleTech3` | 联盟重型坦克`SovietAntiVehicleVehicleTech4` |
+| 苏联 | 3 空军 | 双刃直升机`SovietAntiGroundAircraft`<br>米格战斗机`SovietFighterAircraft` | **—** | 伊尔攻击机`SovietAntiGroundAttacker`<br>纤夫运输直升机`SovietTransportAircraft`<br>苏霍伊截击机`SovietInterceptorAircraft` | 基洛夫飞艇`SovietBomberAircraft`**（双）** |
+| 苏联 | 4 海军 | 磁爆快艇`SovietAntiNavyShipTech1` | 阿库拉攻击潜艇`SovietAntiNavyShipTech2` | 光荣级导弹巡洋舰`SovietAntiNavyShipTech3` | 无畏级武库舰`SovietAntiStructureShip` |
+| 苏联 | 5 额外 | **—** | **—** | **—** | 基洛夫飞艇`SovietBomberAircraft` |
+| 帝国 | 1 步兵 | 坦克杀手`JapanAntiVehicleInfantry`<br>帝国武士`JapanAntiInfantryInfantry`<br>弓箭少女`JapanArcherInfantry` | 忍者`JapanInfiltrationInfantry` | 欧米伽百合子`JapanCommandoTech1` | **—** |
+| 帝国 | 2 载具 | 天狗机器人`JapanAntiInfantryVehicle`**（双）** | 海啸坦克`JapanAntiVehicleVehicleTech1`<br>钢铁浪人`JapanSentinelVehicle` | 波能坦克`JapanAntiStructureVehicle`<br>鬼王`JapanAntiVehicleVehicleTech3` | 鬼王X`JapanMechaX` |
+| 帝国 | 3 空军 | 天狗机器人`JapanAntiInfantryVehicle`<br>爆裂机器人`JapanScoutInfantry`<br>鬼樱特攻机`JapanSakuraAttackRocket` | 打击者-VX`JapanAntiAirVehicleTech1` | 心神机甲`JapanMissileMechaAdvanced`<br>樱花回天雷`JapanInterceptorAircraft`<br>火箭天使`JapanAntiVehicleInfantryTech3` | **—** |
+| 帝国 | 4 海军 | 长枪迷你潜艇`JapanNavyScoutShip` | 海翼`JapanAntiAirShip`<br>薙刀驱逐舰`JapanAntiVehicleShip` | 太刀重巡洋舰`JapanAntiNavyShipTech3` | 将军战列舰`JapanAntiStructureShip` |
+| 帝国 | 5 额外 | **—** | **—** | **—** | **—** |
+| 神州 | 1 步兵 | 破甲铁卫`CelestialAntiVehicleInfantry`<br>龙炎军`CelestialAntiInfantryInfantry` | 岚影刺`CelestialInfiltrationInfantry` | 迅雷天罡`CelestialAntiInfantryInfantryAdvanced` | **—** |
+| 神州 | 2 载具 | 凌波护卫战车`CelestialAntiInfantryVehicle_B`<br>磁弩防空系统`CelestialAntiAirShip`<br>磁弩高射炮`CelestialAntiAirVehicle` | 青锋导弹车`CelestialLongRangeMissileVehicle`<br>青锋导弹车`CelestialLongRangeMissileVehicle_B`<br>麒麟破阵战车`CelestialAntiVehicleVehicleTech1` | 白虎量子重炮运载车`CelestialAntiStructureVehicle`<br>祝融攻坚战车`CelestialAntiVehicleVehicleTech3`<br>祝融雷铳战车`CelestialHeavyAntiAirVehicleTech3` | 破军金甲`CelestialAntiVehicleVehicleTech4` |
+| 神州 | 3 空军 | 凤凰战机`CelestialFighterAircraft`<br>天眼哨机`CelestialScoutDrone`<br>毕方支援机`CelestialSupportAircraft` | 朱雀攻击机`CelestialAttackerAircraft` | 重明截击机`CelestialInterceptorAircraft`<br>金乌轰炸机`CelestialBomberAircraft` | 摇光巡天炮`CelestialAdvanceAircraftTech4` |
+| 神州 | 4 海军 | 乌篷猎船`CelestialAntiNavyShipTech1` | 计蒙驱逐舰`CelestialAlmightlyShip` | 玄冥级战列巡洋舰`CelestialAntiNavyShipTech3` | 玄武级攻击潜艇`CelestialAntiStructureShip` |
+| 神州 | 5 额外 | **—** | **—** | **—** | **—** |
+
+## B. 逐单位明细
+
+| 阵营 | 回收类别 | 中文名 | 模板名 | 槽 | 槽位分段 | 登记兵种 | 阶级 | 回收价 | 备注 |
+|---|---|---|---|---|---|---|---|---|---|
+| 盟军 | 步兵 | 谭雅 | `AlliedCommandoTech1` | 3 | 1 步兵 | infantry | T3 | 2000 |  |
+| 盟军 | 步兵 | 冰冻军团 | `AlliedCryoLegionnaire` | 4 | 1 步兵 | infantry | T3 | 1600 |  |
+| 盟军 | 步兵 | 维和步兵 | `AlliedAntiInfantryInfantry` | 5 | 1 步兵 | infantry | T1 | 200 |  |
+| 盟军 | 步兵 | 警犬 | `AlliedScoutInfantry` | 9 | 1 步兵 | infantry | T1 | 200 |  |
+| 盟军 | 步兵 | 游骑兵 | `AlliedRangerInfantry` | 11 | 1 步兵 | infantry | T1 | 200 |  |
+| 盟军 | 步兵 | 标枪兵 | `AlliedAntiVehicleInfantry` | 20 | 1 步兵 | infantry | T1 | 300 |  |
+| 盟军 | 载具 | 激流 | `AlliedAntiInfantryVehicle_Ground` | 21 | 2 载具 | vehicle | T1 | 750 |  |
+| 盟军 | 载具 | 守护者坦克 | `AlliedAntiVehicleVehicleTech1` | 22 | 2 载具 | vehicle | T2 | 950 |  |
+| 盟军 | 载具 | 幻影坦克 | `AlliedAntiVehicleVehicleTech3` | 23 | 2 载具 | vehicle | T3 | 1600 |  |
+| 盟军 | 载具 | 雅典娜炮 | `AlliedAntiStructureVehicle` | 43 | 2 载具 | vehicle | T3 | 1800 |  |
+| 盟军 | 载具 | 光棱坦克 | `prismtank` | 44 | 2 载具 | vehicle | T2 | 1400 |  |
+| 盟军 | 载具 | 未来坦克X-1 | `AlliedFutureTank` | 45 | 2 载具 | vehicle | T4 | 3200 |  |
+| 盟军 | 载具 | 特洛伊突击要塞 | `AlliedBattleFortress` | 54 | 2 载具 | vehicle | T4 | 4500 |  |
+| 盟军 | 空军 | 维护者轰炸机 | `AlliedAntiGroundAircraft` | 82 | 3 空军 | aircraft | T1 | 1200 |  |
+| 盟军 | 空军 | 先锋武装炮艇机 | `AlliedAC130GunshipAircraft` | 83 | 3 空军 | aircraft | T4 | 4000 |  |
+| 盟军 | 空军 | 世纪轰炸机 | `AlliedAntiStructureBomberAircraft` | 84 | 3 空军 | aircraft | T3 | 2500 |  |
+| 盟军 | 空军 | 世纪轰炸机 | `AlliedBomberAircraft` | 85 | 3 空军 | aircraft | T3 | 2500 |  |
+| 盟军 | 空军 | 先锋武装炮艇机 | `AlliedGunshipAircraft` | 86 | 3 空军 | aircraft | T4 | 4000 |  |
+| 盟军 | 空军 | 阿瑞斯截击机 | `AlliedInterceptorAircraft` | 87 | 3 空军 | aircraft | T3 | 1600 |  |
+| 盟军 | 空军 | 冰冻直升机 | `AlliedSupportAircraft` | 89 | 3 空军 | aircraft | T2 | 1600 |  |
+| 盟军 | 空军 | 阿波罗战斗机 | `AlliedFighterAircraft` | 90 | 3 空军 | aircraft | T1 | 1000 |  |
+| 盟军 | 海军 | 航空母舰 | `AlliedAntiStructureShip` | 110 | 4 海军 | navy | T4 | 5500 |  |
+| 盟军 | 海军 | 激流 | `AlliedAntiInfantryVehicle` | 112 | 4 海军 | navy | T1 | 750 |  |
+| 盟军 | 海军 | 水翼船 | `AlliedAntiAirShip` | 113 | 4 海军 | navy | T1 | 900 |  |
+| 盟军 | 海军 | 海豚 | `AlliedAntiNavalScout` | 114 | 4 海军 | navy | T1 | 750 |  |
+| 盟军 | 海军 | 波塞冬巡洋舰 | `AlliedAntiNavyShipTech3` | 115 | 4 海军 | navy | T3 | 4000 |  |
+| 盟军 | 海军 | 突袭驱逐舰 | `AlliedAntiNavyShipTech1` | 125 | 4 海军 | navy | T2 | 1600 |  |
+| 盟军 | 载具 | 多功能步兵战车 | `AlliedAntiAirVehicleTech1` | 136 | 杂项 | vehicle | T1 | 800 |  |
+| 盟军 | 载具 | **缺中文名** | `AlliedAirForceDispatchVehicle` | 137 | 杂项 | vehicle | T3 | 2500 | **内测** |
+| 苏联 | 步兵 | 娜塔莎 | `SovietCommandoTech1` | 1 | 1 步兵 | infantry | T3 | 2000 |  |
+| 苏联 | 步兵 | 征召兵 | `SovietAntiInfantryInfantry` | 15 | 1 步兵 | infantry | T1 | 100 |  |
+| 苏联 | 步兵 | 防空部队 | `SovietAntiVehicleInfantry` | 16 | 1 步兵 | infantry | T1 | 400 |  |
+| 苏联 | 步兵 | 磁爆部队 | `SovietHeavyAntiVehicleInfantry` | 17 | 1 步兵 | infantry | T2 | 850 |  |
+| 苏联 | 步兵 | 战熊 | `SovietScoutInfantry` | 19 | 1 步兵 | infantry | T1 | 225 |  |
+| 苏联 | 载具 | 镰刀机甲 | `SovietAntiInfantryVehicle` | 31 | 2 载具 | vehicle | T1 | 900 |  |
+| 苏联 | 载具 | 磁爆坦克 | `SovietAntiVehicleVehicleTech2` | 33 | 2 载具 | vehicle | T2 | 1200 |  |
+| 苏联 | 载具 | 犀牛坦克 | `SovietHeavyAntiVehicleVehicleTech2` | 34 | 2 载具 | vehicle | T2 | 1100 |  |
+| 苏联 | 载具 | 重锤突击炮 | `SovietSledgehammerSPG` | 35 | 2 载具 | vehicle | T2 | 1500 |  |
+| 苏联 | 载具 | 恐怖机器人 | `SovietScoutVehicle` | 36 | 2 载具 | vehicle | T1 | 600 |  |
+| 苏联 | 载具 | V4 | `SovietAntiStructureVehicle` | 37 | 2 载具 | vehicle | T3 | 1600 |  |
+| 苏联 | 步兵 | 火炮机车 | `SovietMortarCycle` | 42 | 2 载具 | infantry | T1 | 750 |  |
+| 苏联 | 载具 | 天启坦克 | `SovietAntiVehicleVehicleTech3` | 51 | 2 载具 | vehicle | T3 | 2000 |  |
+| 苏联 | 载具 | 联盟重型坦克 | `SovietAntiVehicleVehicleTech4` | 52 | 2 载具 | vehicle | T4 | 4500 |  |
+| 苏联 | 空军 | 双刃直升机 | `SovietAntiGroundAircraft` | 97 | 3 空军 | aircraft | T1 | 1200 |  |
+| 苏联 | 空军 | 伊尔攻击机 | `SovietAntiGroundAttacker` | 98 | 3 空军 | aircraft | T3 | 2500 |  |
+| 苏联 | 空军 | 米格战斗机 | `SovietFighterAircraft` | 99 | 3 空军 | aircraft | T1 | 1000 |  |
+| 苏联 | 空军 | 纤夫运输直升机 | `SovietTransportAircraft` | 100 | 3 空军 | aircraft | T3 | 2000 |  |
+| 苏联 | 空军 | 苏霍伊截击机 | `SovietInterceptorAircraft` | 101 | 3 空军 | aircraft | T3 | 1800 |  |
+| 苏联 | 海军 | 无畏级武库舰 | `SovietAntiStructureShip` | 109 | 4 海军 | navy | T4 | 5000 |  |
+| 苏联 | 海军 | 阿库拉攻击潜艇 | `SovietAntiNavyShipTech2` | 123 | 4 海军 | navy | T2 | 2000 |  |
+| 苏联 | 海军 | 光荣级导弹巡洋舰 | `SovietAntiNavyShipTech3` | 124 | 4 海军 | navy | T3 | 4500 |  |
+| 苏联 | 海军 | 磁爆快艇 | `SovietAntiNavyShipTech1` | 126 | 4 海军 | navy | T1 | 1000 |  |
+| 苏联 | 空军 | 基洛夫飞艇 | `SovietBomberAircraft` | 133 | 5 额外 | aircraft | T4 | 3600 |  |
+| 苏联 | 载具 | 牛蛙战车 | `SovietAntiAirShip` | 135 | 杂项 | vehicle | T1 | 900 |  |
+| 苏联 | 载具 | **缺中文名** | `SovietPineElectronicRadarTruck` | 139 | 杂项 | vehicle | T3 | 2500 | **内测** |
+| 帝国 | 步兵 | 欧米伽百合子 | `JapanCommandoTech1` | 2 | 1 步兵 | infantry | T3 | 2000 |  |
+| 帝国 | 步兵 | 帝国武士 | `JapanAntiInfantryInfantry` | 12 | 1 步兵 | infantry | T1 | 100 |  |
+| 帝国 | 步兵 | 坦克杀手 | `JapanAntiVehicleInfantry` | 13 | 1 步兵 | infantry | T1 | 300 |  |
+| 帝国 | 步兵 | 弓箭少女 | `JapanArcherInfantry` | 14 | 1 步兵 | infantry | T1 | 400 |  |
+| 帝国 | 步兵 | 忍者 | `JapanInfiltrationInfantry` | 18 | 1 步兵 | infantry | T2 | 850 |  |
+| 帝国 | 载具 | 海啸坦克 | `JapanAntiVehicleVehicleTech1` | 29 | 2 载具 | vehicle | T2 | 1400 |  |
+| 帝国 | 载具 | 钢铁浪人 | `JapanSentinelVehicle` | 30 | 2 载具 | vehicle | T2 | 1400 |  |
+| 帝国 | 载具 | 波能坦克 | `JapanAntiStructureVehicle` | 39 | 2 载具 | vehicle | T3 | 1800 |  |
+| 帝国 | 载具 | 鬼王 | `JapanAntiVehicleVehicleTech3` | 49 | 2 载具 | vehicle | T3 | 2200 |  |
+| 帝国 | 载具 | 鬼王X | `JapanMechaX` | 50 | 2 载具 | vehicle | T4 | 4500 |  |
+| 帝国 | 载具 | 天狗机器人 | `JapanAntiInfantryVehicle` | 77 | 3 空军 | vehicle、aircraft | T1 | 800 |  |
+| 帝国 | 载具 | 心神机甲 | `JapanMissileMechaAdvanced` | 78 | 3 空军 | vehicle、aircraft | T3 | 1800 |  |
+| 帝国 | 载具 | 打击者-VX | `JapanAntiAirVehicleTech1` | 79 | 3 空军 | vehicle、aircraft | T2 | 1200 |  |
+| 帝国 | 步兵 | 爆裂机器人 | `JapanScoutInfantry` | 80 | 3 空军 | infantry | T1 | 300 |  |
+| 帝国 | 步兵 | 火箭天使 | `JapanAntiVehicleInfantryTech3` | 95 | 3 空军 | infantry、aircraft | T3 | 1000 |  |
+| 帝国 | 载具 | 樱花回天雷 | `JapanInterceptorAircraft` | 96 | 3 空军 | aircraft | T3 | 850 |  |
+| 帝国 | 空军 | 鬼樱特攻机 | `JapanSakuraAttackRocket` | 104 | 3 空军 | aircraft | T1 |  |  |
+| 帝国 | 海军 | 将军战列舰 | `JapanAntiStructureShip` | 108 | 4 海军 | navy | T4 | 6300 |  |
+| 帝国 | 海军 | 薙刀驱逐舰 | `JapanAntiVehicleShip` | 119 | 4 海军 | navy | T2 | 2000 |  |
+| 帝国 | 海军 | 长枪迷你潜艇 | `JapanNavyScoutShip` | 120 | 4 海军 | navy | T1 | 800 |  |
+| 帝国 | 海军 | 海翼 | `JapanAntiAirShip` | 121 | 4 海军 | aircraft、navy | T2 | 1100 |  |
+| 帝国 | 海军 | 太刀重巡洋舰 | `JapanAntiNavyShipTech3` | 122 | 4 海军 | navy | T3 | 4500 |  |
+| 帝国 | 载具 | **缺中文名** | `JapanAntiAirVehicleTech3` | 138 | 杂项 | vehicle | T3 | 2500 | **内测** |
+| 神州 | 步兵 | 迅雷天罡 | `CelestialAntiInfantryInfantryAdvanced` | 6 | 1 步兵 | infantry | T3 | 1400 |  |
+| 神州 | 步兵 | 龙炎军 | `CelestialAntiInfantryInfantry` | 7 | 1 步兵 | infantry | T1 | 225 |  |
+| 神州 | 步兵 | 破甲铁卫 | `CelestialAntiVehicleInfantry` | 8 | 1 步兵 | infantry | T1 | 500 |  |
+| 神州 | 步兵 | 岚影刺 | `CelestialInfiltrationInfantry` | 10 | 1 步兵 | infantry | T2 | 850 |  |
+| 神州 | 载具 | 磁弩防空系统 | `CelestialAntiAirShip` | 24 | 2 载具 | vehicle | T1 | 900 |  |
+| 神州 | 载具 | 磁弩高射炮 | `CelestialAntiAirVehicle` | 25 | 2 载具 | vehicle | T1 | 900 |  |
+| 神州 | 载具 | 凌波护卫战车 | `CelestialAntiInfantryVehicle_B` | 26 | 2 载具 | vehicle | T1 | 850 |  |
+| 神州 | 载具 | 麒麟破阵战车 | `CelestialAntiVehicleVehicleTech1` | 27 | 2 载具 | vehicle | T2 | 1000 |  |
+| 神州 | 载具 | 青锋导弹车 | `CelestialLongRangeMissileVehicle` | 28 | 2 载具 | vehicle | T2 | 1400 |  |
+| 神州 | 载具 | 白虎量子重炮运载车 | `CelestialAntiStructureVehicle` | 40 | 2 载具 | vehicle | T3 | 1800 |  |
+| 神州 | 载具 | 青锋导弹车 | `CelestialLongRangeMissileVehicle_B` | 41 | 2 载具 | vehicle | T2 | 1400 |  |
+| 神州 | 载具 | 祝融攻坚战车 | `CelestialAntiVehicleVehicleTech3` | 46 | 2 载具 | vehicle | T3 | 2000 |  |
+| 神州 | 载具 | 破军金甲 | `CelestialAntiVehicleVehicleTech4` | 47 | 2 载具 | vehicle | T4 | 4500 |  |
+| 神州 | 载具 | 祝融雷铳战车 | `CelestialHeavyAntiAirVehicleTech3` | 48 | 2 载具 | vehicle | T3 | 2000 |  |
+| 神州 | 步兵 | 天眼哨机 | `CelestialScoutDrone` | 81 | 3 空军 | infantry | T1 | 200 |  |
+| 神州 | 空军 | 金乌轰炸机 | `CelestialBomberAircraft` | 91 | 3 空军 | aircraft | T3 | 2500 |  |
+| 神州 | 空军 | 凤凰战机 | `CelestialFighterAircraft` | 92 | 3 空军 | aircraft | T1 | 1000 |  |
+| 神州 | 空军 | 朱雀攻击机 | `CelestialAttackerAircraft` | 93 | 3 空军 | aircraft | T2 | 1400 |  |
+| 神州 | 空军 | 重明截击机 | `CelestialInterceptorAircraft` | 94 | 3 空军 | aircraft | T3 | 1600 |  |
+| 神州 | 空军 | 毕方支援机 | `CelestialSupportAircraft` | 102 | 3 空军 | aircraft | T1 | 1200 |  |
+| 神州 | 空军 | 摇光巡天炮 | `CelestialAdvanceAircraftTech4` | 103 | 3 空军 | aircraft | T4 | 5000 |  |
+| 神州 | 海军 | 玄武级攻击潜艇 | `CelestialAntiStructureShip` | 111 | 4 海军 | navy | T4 | 5000 |  |
+| 神州 | 海军 | 计蒙驱逐舰 | `CelestialAlmightlyShip` | 116 | 4 海军 | navy | T2 | 2000 |  |
+| 神州 | 海军 | 乌篷猎船 | `CelestialAntiNavyShipTech1` | 117 | 4 海军 | navy | T1 | 800 |  |
+| 神州 | 海军 | 玄冥级战列巡洋舰 | `CelestialAntiNavyShipTech3` | 118 | 4 海军 | navy | T3 | 4500 |  |
+| 神州 | 载具 | **缺中文名** | `CelestialAntiAirVehicleTech3` | 134 | 5 额外 | vehicle | T3 | 2500 | **内测** |
+
+## C. 内测单位（不进电脑卡池）
+
+「`日冕单位信息汇总.txt` 里查不到中文名」= 还没发布的内测内容，统一登记在 `AIINI_1.lua` 的 `g_AICOMPBetaOnlyUnitTypes`，`CollectFactionPool` 直接跳过。
+
+| 模板 | 阵营 | 槽 | 槽位分段 | 阶级 | 说明 |
+|---|---|---|---|---|---|
+| `AlliedAirForceDispatchVehicle` | 盟军 | 137 | 杂项 | T3 | 在 UNITLIST 杂项段（137），本来就不会出兵 |
+| `SovietPineElectronicRadarTruck` | 苏联 | 139 | 杂项 | T3 | 在 UNITLIST 杂项段（139），本来就不会出兵 |
+| `JapanAntiAirVehicleTech3` | 帝国 | 138 | 杂项 | T3 | 在 UNITLIST 杂项段（138），本来就不会出兵 |
+| `CelestialAntiAirVehicleTech3` | 神州 | 134 | 5 额外 | T3 | 在额外段（134），是唯一一个会出兵的，已剔除 |
+
+## D. 三层兜底与退档
+
+`AICOMP.ResolveCategoryTier`：目标阶级 = `min(参照玩家该分段最高阶级, 本方科技等级)`，本阵营该阶级投不出来就**逐级往下退到 T1**，全空返回 0 → 跳过该分段。**不会往上退。**
+
+三层兜底的顺序：① 阶级自动降级 T4→T3→T2→T1 → ② 双形态跨兵种补位 → ③ T5 单位一律按 T4。
+
+| 情况 | 空格 | 后果 |
+|---|---|---|
+| 有更低阶级可退 | 盟军步兵 T2、苏联步兵 T4、苏联空军 T2、帝国步兵 T4、帝国空军 T4、神州步兵 T4、盟军步兵 T4 | 无影响，自动退到本阵营更低阶 |
+| 第 2 遍命中双形态 | 苏联空军 T4←基洛夫、帝国载具 T1←天狗 | 数量补齐，构成略偏向双形态登记的兵种 |
+| 该分段本阵营整体没有 | 盟军 × 5 额外、帝国 × 5 额外、神州 × 5 额外 | 跳过这一段，数量少几只 |
+
+无禁用时双形态补位：苏联 × 3 空军 × T4 ← 基洛夫飞艇；帝国 × 2 载具 × T1 ← 天狗机器人。
+
+
+## E. 禁用模式 × 双形态（模拟）
+
+| 禁用 | 整段为空 | 双形态补位仍生效 |
+|---|---|---|
+| 无 | 盟军×5 额外、帝国×5 额外、神州×5 额外 | 苏联×3 空军 T4←基洛夫飞艇；帝国×2 载具 T1←天狗机器人 |
+| 禁aircraft | 盟军×3 空军、盟军×5 额外、苏联×3 空军、苏联×5 额外、帝国×5 额外、神州×5 额外 | 帝国×2 载具 T1←天狗机器人 |
+| 禁vehicle | 盟军×2 载具、盟军×5 额外、帝国×5 额外、神州×2 载具、神州×5 额外 | 苏联×3 空军 T4←基洛夫飞艇；帝国×2 载具 T1←天狗机器人；帝国×2 载具 T2←打击者-VX；帝国×2 载具 T3←心神机甲 |
+| 禁navy | 盟军×4 海军、盟军×5 额外、苏联×4 海军、帝国×5 额外、神州×4 海军、神州×5 额外 | 苏联×3 空军 T4←基洛夫飞艇；帝国×2 载具 T1←天狗机器人 |
+| 禁infantry | 盟军×1 步兵、盟军×5 额外、苏联×1 步兵、帝国×5 额外、神州×1 步兵、神州×5 额外 | 苏联×3 空军 T4←基洛夫飞艇；帝国×1 步兵 T3←火箭天使；帝国×2 载具 T1←天狗机器人 |
+| 禁aircraft+vehicle | 盟军×2 载具、盟军×3 空军、盟军×5 额外、苏联×3 空军、苏联×5 额外、帝国×2 载具、帝国×5 额外、神州×2 载具、神州×5 额外 | 帝国×3 空军 T2←海翼 |
+| 禁aircraft+navy | 盟军×3 空军、盟军×4 海军、盟军×5 额外、苏联×3 空军、苏联×4 海军、苏联×5 额外、帝国×4 海军、帝国×5 额外、神州×4 海军、神州×5 额外 | 帝国×2 载具 T1←天狗机器人 |
+| 禁navy+vehicle | 盟军×2 载具、盟军×4 海军、盟军×5 额外、苏联×4 海军、帝国×5 额外、神州×2 载具、神州×4 海军、神州×5 额外 | 苏联×3 空军 T4←基洛夫飞艇；帝国×2 载具 T1←天狗机器人；帝国×2 载具 T2←打击者-VX；帝国×2 载具 T3←心神机甲 |
+
+注：第二列只是「池子空了」。禁用模式下真人自己也出不了被禁的兵，`refState.Cat[band]` 同样是 0，对应分段本来就没有缺口。
+
+### 8.6 回归：Lua 4.0 outer-scope
+
+`g_UnitTierAtLeastFour` / `g_AICOMPBandOfCategory` 原来写成了 `local`，
+被 `AICOMP.GetUnitTier` / `AICOMP.UnitExtraBands` 引用 → Lua 4.0 解析期直接报
+`cannot access a variable in outer scope`，游戏进不去。已改为全局变量。
+
+新增 `analysis/tools/check_lua4_scope.py` 做静态检查（全库 170 个文件当前 0 违规），
+以后改 lua 要跟 `check_lua_balance.py` 一起跑。
+
+### 8.7 联机实测回归：基洛夫/超级要塞不可见导致空军不出、总数追不平
+
+`CollectCategoryState` 由「槽位分段单口径」改为「槽位分段 ∪ 登记兵种段」：
+基洛夫的槽位在 5 额外段但登记为空军，现在同时计入空军段，盟军电脑因此能看到「对面有 T4 空军」
+并出先锋武装炮艇机。`Total` 仍每单位只算一次。
+
+`ApplySeat` 增加第二轮总量兜底：第一轮逐段补完后 `need` 仍 > 0 时，轮转用本阵营投得出来的段
+继续补，阶级取 `max(该段快照, 参照整体最高阶级)` 再受自身科技封顶——低科技电脑不会被硬拉上去。
+
+超级要塞不在 `UNITLIST`，不进 `UNITCOUNT`，电脑侧看不到，无法针对性反应。
+
+### 8.8 超级要塞可见化（CountType 独立计数槽）
+
+超级要塞在 `g_AirCraftJapan` 空军页，但用独立计数槽 `g_UnitCount[FastHash("JapanGigaFortressShipEgg")]`，
+不进 `UNITCOUNT`，因此 AICOMP 之前完全看不见它。新增 `AICOMP.AddCountTypeState`，
+在 `CollectCategoryState` 末尾用 `GetRecycleUnitCount` 把本阵营回收表里 `CountType` 条目的数量
+归到它在回收页所在的段（超级要塞 → 空军段），阶级按 T5→T4。
+
+只处理没有 `UNITLIST` 槽的条目，避免和 `UNITCOUNT` 重复计数。
+`CountsTowardArmyTotal = false` 与「计入 Total」的取舍见附录 D.17。
+
+### 8.9 超级要塞统一进兵表（临时方案的退役）
+
+8.8 的 `AICOMP.AddCountTypeState` 是**临时方案**，现已删除：超级要塞正式进 `UNITLIST` 第 135 格，
+`CollectCategoryState` 直接通过 `UNITCOUNT` 就能看到它（`GetBandOfUnitIndex(135)=5`、
+`GetUnitTier=4`、`UnitExtraBands` 声明 `aircraft` → 同时计入空军段）。
+
+连带效果：`CollectFactionPool` 里 `info.CountType == nil` 的过滤因为回收表删掉了 `CountType` 而自然失效，
+电脑可以投超级要塞了。加槽后帝国「3 空军 T4」这一格由跨段补位填成超级要塞，所以：
+
+* 帝国电脑 vs 帝国真人 N 个超级要塞 → 出 N 个超级要塞
+* 帝国电脑 vs 任何 T4 空军缺口（基洛夫 / 摇光 / 炮艇机）→ 也出超级要塞（已在预期内）
+
+考古与完整改动清单见附录 D.17 / D.18。
+
+### 8.10 限额单位的退让（摇光 3 / T4 大船 2）
+
+* 上限值改读 `YAOGUANG_LIMIT` / `BIGSHIP_LIMIT`，不再写死 3 / 2。
+* 上限判定改看**池内实际持有**（`AICOMP.CountCapGroup` 累加该组槽位的 `UNITCOUNT`），
+  删掉只增不减的 `AICOMP.CapCount` / `MarkCapUsed`——否则摇光卖掉后电脑永远不再补。
+* `ApplySeat` 逐段补兵改成 `while` 循环重解析阶级：摇光满 3 个后同一段自动退到 T3 空军，
+  缺口不会掉到别的兵种段。
+
+细节与验证表见附录 D.19。

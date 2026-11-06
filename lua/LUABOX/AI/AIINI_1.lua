@@ -11,8 +11,7 @@ AICOMP.BuildableSet = AICOMP.BuildableSet
 AICOMP.MoneyMap = AICOMP.MoneyMap
 -- 电脑席位 → { [band] = tier }：模仿对象已展示过的最高阶级，只升不降
 AICOMP.TierShown = AICOMP.TierShown or {}
--- 电脑席位 → { [组下标] = 本脚本已投放数 }；符文赠送的不计入上限
-AICOMP.CapCount = AICOMP.CapCount or {}
+-- 电脑席位 → { [组下标] = ... } 的上限组定义（摇光 / T4 大船），见 EnsureCapGroups
 AICOMP.CapGroups = AICOMP.CapGroups
 -- 电脑席位 → 1：T4 解锁 + 1 星已发
 AICOMP.T4Rewarded = AICOMP.T4Rewarded or {}
@@ -321,11 +320,29 @@ function AICOMP.GetRecycleMoney(unitType)
     return AICOMP.MoneyMap[unitType] or 0
 end
 
+-- T5 超武单位：四个阵营都凑不齐对应的一张「T5」，所以参照方拿到它们时一律按 T4 算，
+-- 电脑侧也就只需要最高到 T4 的兵去对（见附录 D.12）。
+-- 必须是全局变量：Lua 4.0 的函数不能访问外层 local，写成 local 会直接解析报错（见附录 D.15）。
+g_UnitTierAtLeastFour = {
+    CelestialMCV = true, CelestialMCV_Enhanced = true,
+    CelestialMCV_Ground = true, CelestialMCV_Naval = true, CelestialMCV_Air = true,
+    CelestialMCV_Enhanced_Ground = true, CelestialMCV_Enhanced_Naval = true,
+    CelestialMCV_Enhanced_Air = true,
+    CelestialDF41 = true,
+    AlliedGaintAirCraftCarrier_B = true,
+    JapanYumiAircraftCarrier = true,
+    JapanGigaFortressShip = true, JapanGigaFortressShipEgg = true,
+    JapanFortressShip = true, JapanGigaFortress_Land = true,
+}
+
 -- 单位阶级（1..4）。顺序与 05_ultimate_creature 的 GetUltimateCreatureUnitTier 对齐：
--- 抽卡表 → 名字里的 TechN → 回收价阈值，最后按 T1 算。
+-- T5 超武 → 抽卡表 → 名字里的 TechN → 回收价阈值，最后按 T1 算。
 function AICOMP.GetUnitTier(unitType)
     if unitType == nil then
         return 1
+    end
+    if g_UnitTierAtLeastFour[unitType] then
+        return 4
     end
     if g_PureDrawUnitInfoByHash ~= nil and FastHash ~= nil then
         local info = g_PureDrawUnitInfoByHash[FastHash(unitType)]
@@ -363,7 +380,8 @@ function AICOMP.GetUnitTier(unitType)
 end
 
 -- 某个席位按类别（＝出兵分段的 5 个桶）的编制：Cat 数量、MaxTier 该类别最高阶级、Total 总数量。
--- 杂项段（step5+1..step6，band 0）不统计：没有任何出兵批次会刷它们，算进去总量永远追不平。
+-- Cat 允许一个单位计入多个桶：它登记了哪几个兵种就算进哪几段（基洛夫在第 5 额外段但登记为空军，
+-- 所以要同时计入空军段），Total 仍然只算一次（见附录 D.16）。
 function AICOMP.CollectCategoryState(seat)
     local state = { Cat = { 0, 0, 0, 0, 0 }, MaxTier = { 0, 0, 0, 0, 0 }, Total = 0 }
     if UNITCOUNT == nil or UNITCOUNT[seat] == nil or unitcountmax == nil
@@ -375,10 +393,20 @@ function AICOMP.CollectCategoryState(seat)
         if count > 0 then
             local band = AICOMP.GetBandOfUnitIndex(unitIndex)
             if band > 0 and band <= AICOMP.CategoryCount then
-                local tier = AICOMP.GetUnitTier(UNITLIST[unitIndex])
+                local unitType = UNITLIST[unitIndex]
+                local tier = AICOMP.GetUnitTier(unitType)
                 state.Cat[band] = state.Cat[band] + count
                 if tier > state.MaxTier[band] then
                     state.MaxTier[band] = tier
+                end
+                local extra = AICOMP.UnitExtraBands(unitType)
+                for other = 1, AICOMP.CategoryCount, 1 do
+                    if other ~= band and extra[other] == true then
+                        state.Cat[other] = state.Cat[other] + count
+                        if tier > state.MaxTier[other] then
+                            state.MaxTier[other] = tier
+                        end
+                    end
                 end
                 state.Total = state.Total + count
             end
@@ -441,7 +469,36 @@ function AICOMP.ResolveCategoryTier(seat, category, refTier, techLevel)
     return 0
 end
 
-function AICOMP.BuildFactionPool(faction, tier, band)
+-- 双形态单位登记的兵种分段：天狗/VX/心神=载具&空军，火箭天使=步兵&空军，海翼=空军&海军。
+-- 数据源直接问禁用模式的解析结果 BanModeGetNameTypes（它已经把例外表、回收表推导、槽位兜底
+-- 合并好，也包含「超级要塞按出生点算纯空军」这条口径），拿不到再退回例外表本身（见附录 D.11）。
+-- 必须是全局变量：Lua 4.0 的函数不能访问外层 local，写成 local 会直接解析报错（见附录 D.15）。
+g_AICOMPBandOfCategory = { infantry = 1, vehicle = 2, aircraft = 3, navy = 4 }
+function AICOMP.UnitExtraBands(unitType)
+    local extra = {}
+    if unitType == nil then
+        return extra
+    end
+    local categories = nil
+    if BanModeGetNameTypes ~= nil then
+        categories = BanModeGetNameTypes(unitType)
+    end
+    if categories == nil and g_BanModeTypeOverrides ~= nil then
+        categories = g_BanModeTypeOverrides[unitType]
+    end
+    if categories == nil then
+        return extra
+    end
+    for i = 1, getn(categories), 1 do
+        local band = g_AICOMPBandOfCategory[categories[i]]
+        if band ~= nil then
+            extra[band] = true
+        end
+    end
+    return extra
+end
+
+function AICOMP.CollectFactionPool(faction, tier, band, allowDual)
     local pool = {}
     if g_RecycleBtnsMapByFaction == nil or faction == nil
         or g_UnitNameToUnitIndex == nil then
@@ -460,15 +517,21 @@ function AICOMP.BuildFactionPool(faction, tier, band)
                 local unitType = info.Type
                 if unitType ~= nil and seen[unitType] == nil
                     and info.CountType == nil
-                    and info.CountsTowardArmyTotal ~= false then
+                    and info.CountsTowardArmyTotal ~= false
+                    and g_AICOMPBetaOnlyUnitTypes[unitType] ~= true then
                     seen[unitType] = true
                     local unitIndex = g_UnitNameToUnitIndex[unitType]
-                    if unitIndex ~= nil
-                        and AICOMP.GetBandOfUnitIndex(unitIndex) == band
-                        and AICOMP.GetUnitTier(unitType) == tier
-                        and BanModeIsSlotBanned(unitIndex) == 0
-                        and AICOMP.IsUnitObtainable(unitType) then
-                        tinsert(pool, unitIndex)
+                    if unitIndex ~= nil then
+                        local inBand = AICOMP.GetBandOfUnitIndex(unitIndex) == band
+                        if not inBand and allowDual then
+                            inBand = AICOMP.UnitExtraBands(unitType)[band] == true
+                        end
+                        if inBand
+                            and AICOMP.GetUnitTier(unitType) == tier
+                            and BanModeIsSlotBanned(unitIndex) == 0
+                            and AICOMP.IsUnitObtainable(unitType) then
+                            tinsert(pool, unitIndex)
+                        end
                     end
                 end
             end
@@ -477,22 +540,24 @@ function AICOMP.BuildFactionPool(faction, tier, band)
     return pool
 end
 
--- 全阵营合并池：本阵营这一阶级这一类别没有可投单位时的兜底（例如帝国空军表只有 1 个单位）。
-function AICOMP.BuildAllFactionPool(tier, band)
-    local merged = {}
-    local seen = {}
-    for faction = 1, 4, 1 do
-        local pool = AICOMP.BuildFactionPool(faction, tier, band)
-        for i = 1, getn(pool), 1 do
-            local unitIndex = pool[i]
-            if seen[unitIndex] == nil then
-                seen[unitIndex] = true
-                tinsert(merged, unitIndex)
-            end
-        end
+-- 本阵营本阶级该段的候选。第一遍只认槽位自己所在的分段；一个都投不出来时
+-- 才放开双形态跨兵种补位（帝国没有 T1 载具槽位，天狗是唯一能顶上 T1 载具的，见附录 D.11）。
+function AICOMP.BuildFactionPool(faction, tier, band)
+    local pool = AICOMP.CollectFactionPool(faction, tier, band, false)
+    if getn(pool) > 0 then
+        return pool
     end
-    return merged
+    return AICOMP.CollectFactionPool(faction, tier, band, true)
 end
+
+-- 内测单位：日冕单位信息汇总里查不到中文名的模板，属于还没发布的内容，不该进电脑的卡池。
+-- （见附录 D.13）。
+g_AICOMPBetaOnlyUnitTypes = {
+    AlliedAirForceDispatchVehicle = true,
+    SovietPineElectronicRadarTruck = true,
+    JapanAntiAirVehicleTech3 = true,
+    CelestialAntiAirVehicleTech3 = true,
+}
 
 -- 池子缓存的键：抽卡开关 × 阵营 × 阶级 × 类别。
 function AICOMP.PoolKey(seat, tier, band)
@@ -514,13 +579,12 @@ function AICOMP.GetCandidatePool(seat, tier, band)
         return cached
     end
     local faction = AICOMP.GetSeatFaction(seat)
-    local pool = nil
+    local pool = {}
     if faction ~= nil then
         pool = AICOMP.BuildFactionPool(faction, tier, band)
     end
-    if pool == nil or getn(pool) == 0 then
-        pool = AICOMP.BuildAllFactionPool(tier, band)
-    end
+    -- 只投本阵营的单位：本阵营这一档投不出来就留空，由 ResolveCategoryTier 往低阶级退，
+    -- 全都没有就跳过这一段。绝不跨阵营借用（见附录 D.10）。
     AICOMP.PoolCache[key] = pool
     return pool
 end
@@ -547,14 +611,23 @@ function AICOMP.EnsureCapGroups()
         return {}
     end
     local groups = {}
+    -- 上限值直接读地图自己的全局，避免以后调数值时两边对不上（见附录 D.19）。
+    local yaoguangLimit = 3
+    if tonumber(YAOGUANG_LIMIT) ~= nil then
+        yaoguangLimit = tonumber(YAOGUANG_LIMIT)
+    end
+    local shipLimit = 2
+    if tonumber(BIGSHIP_LIMIT) ~= nil then
+        shipLimit = tonumber(BIGSHIP_LIMIT)
+    end
     if g_UnitNameToUnitIndex ~= nil then
-        -- 摇光 3（普通型与加强型共用槽位）
+        -- 摇光（普通型与加强型共用槽位，UNITCOUNTERINI_0.lua 已把 _Enhanced 指向同一格）
         local yaoguang = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
         if yaoguang ~= nil then
-            tinsert(groups, { Limit = 3, Indexes = { yaoguang } })
+            tinsert(groups, { Limit = yaoguangLimit, Indexes = { yaoguang } })
         end
     end
-    -- T4 大船 2：step35+1..step35+4 四艘共享
+    -- T4 大船：step35+1..step35+4 四艘共享，与 bigshiplimitc 完全同口径
     if step35 ~= nil and UNITLIST ~= nil then
         local ships = {}
         for unitIndex = step35 + 1, step35 + 4, 1 do
@@ -563,7 +636,7 @@ function AICOMP.EnsureCapGroups()
             end
         end
         if getn(ships) > 0 then
-            tinsert(groups, { Limit = 2, Indexes = ships })
+            tinsert(groups, { Limit = shipLimit, Indexes = ships })
         end
     end
     AICOMP.CapGroups = groups
@@ -584,19 +657,31 @@ function AICOMP.FindCapGroupIndex(unitIndex)
     return nil
 end
 
+-- 该上限组「池内实际持有」多少：和地图自己的口径一致——
+-- 摇光看 UNITCOUNT[摇光槽]（GetPlayerPoolYaoguangCount），大船看 UNITCOUNT[step35+1..4]（bigshiplimitc）。
+-- 用实际持有量而不是只增不减的计数器，回收 / 死亡 / 别的来源拿到的高级兵都能正确计入（见附录 D.19）。
+function AICOMP.CountCapGroup(seat, groupIndex)
+    local groups = AICOMP.EnsureCapGroups()
+    local group = groups[groupIndex]
+    if group == nil or UNITCOUNT == nil or UNITCOUNT[seat] == nil then
+        return 0
+    end
+    local total = 0
+    for i = 1, getn(group.Indexes), 1 do
+        total = total + (tonumber(UNITCOUNT[seat][group.Indexes[i]]) or 0)
+    end
+    return total
+end
+
 function AICOMP.IsCapGroupFull(seat, groupIndex)
     if groupIndex == nil then
-        return false
-    end
-    local caps = AICOMP.CapCount[seat]
-    if caps == nil then
         return false
     end
     local groups = AICOMP.EnsureCapGroups()
     if groups[groupIndex] == nil then
         return false
     end
-    return (tonumber(caps[groupIndex]) or 0) >= groups[groupIndex].Limit
+    return AICOMP.CountCapGroup(seat, groupIndex) >= groups[groupIndex].Limit
 end
 
 -- 过滤掉已到顶的兵种（池子是共享缓存，不能就地改；每次新建一张表）
@@ -614,19 +699,6 @@ function AICOMP.FilterCappedPool(seat, pool)
     return filtered
 end
 
-function AICOMP.MarkCapUsed(seat, unitIndex)
-    local g = AICOMP.FindCapGroupIndex(unitIndex)
-    if g == nil then
-        return
-    end
-    local caps = AICOMP.CapCount[seat]
-    if caps == nil then
-        caps = {}
-        AICOMP.CapCount[seat] = caps
-    end
-    caps[g] = (tonumber(caps[g]) or 0) + 1
-end
-
 -- 电脑唯一的入池出口（有符文系统就走符文钩子，见附录 D.4）
 function AICOMP.CollectUnit(seat, unitIndex)
     if HextechRune ~= nil and HextechRune.CollectPoolUnits ~= nil then
@@ -642,7 +714,7 @@ function AICOMP.CollectUnit(seat, unitIndex)
     return 1
 end
 
--- 抽卡模式专用：该段不限阶级的候选并集（优先本阵营，本阵营整段为空才退到全阵营）。
+-- 抽卡模式专用：该段不限阶级的候选并集（同样只取本阵营，见附录 D.10）。
 function AICOMP.GetAnyTierPool(seat, band)
     local faction = AICOMP.GetSeatFaction(seat)
     local factionKey = 0
@@ -660,18 +732,6 @@ function AICOMP.GetAnyTierPool(seat, band)
     if faction ~= nil then
         for tier = 1, 4, 1 do
             local list = AICOMP.BuildFactionPool(faction, tier, band)
-            for i = 1, getn(list), 1 do
-                local unitIndex = list[i]
-                if seen[unitIndex] == nil then
-                    seen[unitIndex] = true
-                    tinsert(pool, unitIndex)
-                end
-            end
-        end
-    end
-    if getn(pool) == 0 then
-        for tier = 1, 4, 1 do
-            local list = AICOMP.BuildAllFactionPool(tier, band)
             for i = 1, getn(list), 1 do
                 local unitIndex = list[i]
                 if seen[unitIndex] == nil then
@@ -703,7 +763,6 @@ function AICOMP.AddRandomUnits(seat, band, tier, amount)
         end
         local unitIndex = pool[RANDOMGENERATE(total, 1)]
         if AICOMP.CollectUnit(seat, unitIndex) > 0 then
-            AICOMP.MarkCapUsed(seat, unitIndex)
             added = added + 1
         end
     end
@@ -728,7 +787,6 @@ function AICOMP.AddAnyTierUnits(seat, band, amount)
         end
         local unitIndex = pool[RANDOMGENERATE(total, 1)]
         if AICOMP.CollectUnit(seat, unitIndex) > 0 then
-            AICOMP.MarkCapUsed(seat, unitIndex)
             added = added + 1
         end
     end
@@ -770,18 +828,59 @@ function AICOMP.ApplySeat(aiSeat)
         end
         local deficit = refState.Cat[category] - ownState.Cat[category]
         if deficit > 0 then
-            local tier = AICOMP.ResolveCategoryTier(aiSeat, category,
-                AICOMP.GetShownTier(aiSeat, category, refState.MaxTier[category]),
-                techLevel)
-            if tier > 0 then
-                local take = deficit
-                if take > need then
-                    take = need
+            local take = deficit
+            if take > need then
+                take = need
+            end
+            -- 上限到顶（摇光 3 / T4 大船 2）时，同一兵种段继续往下退阶级——摇光满了就出降级空军，
+            -- 而不是让缺口掉到别的兵种段去（见附录 D.19）。没有进展就退出，避免死循环。
+            local guard = 0
+            while take > 0 and guard < 8 do
+                guard = guard + 1
+                local tier = AICOMP.ResolveCategoryTier(aiSeat, category,
+                    AICOMP.GetShownTier(aiSeat, category, refState.MaxTier[category]),
+                    techLevel)
+                if tier <= 0 then
+                    break
                 end
                 local added = AICOMP.AddRandomUnits(aiSeat, category, tier, take)
-                if added > 0 then
-                    need = need - added
+                if added <= 0 then
+                    break
                 end
+                take = take - added
+                need = need - added
+            end
+        end
+    end
+    -- （见附录 D.16）。
+    if need > 0 then
+        local refMax = 0
+        for band = 1, AICOMP.CategoryCount, 1 do
+            local shownTier = AICOMP.GetShownTier(aiSeat, band, refState.MaxTier[band])
+            if shownTier > refMax then
+                refMax = shownTier
+            end
+        end
+        local sweep = 0
+        while need > 0 and sweep < 8 do
+            sweep = sweep + 1
+            local progressed = 0
+            for band = 1, AICOMP.CategoryCount, 1 do
+                if need > 0 then
+                    local shownTier = AICOMP.GetShownTier(aiSeat, band, refState.MaxTier[band])
+                    if shownTier < refMax then
+                        shownTier = refMax
+                    end
+                    local tier = AICOMP.ResolveCategoryTier(aiSeat, band, shownTier, techLevel)
+                    if tier > 0 then
+                        local added = AICOMP.AddRandomUnits(aiSeat, band, tier, 1)
+                        need = need - added
+                        progressed = progressed + added
+                    end
+                end
+            end
+            if progressed <= 0 then
+                break
             end
         end
     end

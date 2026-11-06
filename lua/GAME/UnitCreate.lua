@@ -914,8 +914,14 @@ function UnitCountFunc(createdObjId, createdObjInstanceId, ownerPlayerName)
         return
     end
     SchedulerModule.delay_call(function(id, instanceId, playerName)
-        local count = g_UnitCount[instanceId][g_PlayerNameToIndex[playerName]];
-        g_UnitCount[instanceId][g_PlayerNameToIndex[playerName]] = count + 1;
+        local playerIndex = g_PlayerNameToIndex[playerName]
+        -- 超级要塞核心已统一进 UNITLIST 兵表（见附录 D.18），记账交给 SpawnGigaFortress.lua；
+        -- 其余仍走独立计数槽，方便回收表按 CountType 查数量。
+        if CountGigaFortressCore == nil or instanceId ~= FastHash("JapanGigaFortressShipEgg")
+            or CountGigaFortressCore(playerIndex) == false then
+            local count = g_UnitCount[instanceId][playerIndex];
+            g_UnitCount[instanceId][playerIndex] = count + 1;
+        end
         if ObjectIsAlive(id) then
             ExecuteAction("NAMED_DELETE", GetObjectById(id))
         end

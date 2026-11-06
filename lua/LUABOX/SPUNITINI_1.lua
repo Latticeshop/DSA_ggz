@@ -6,10 +6,14 @@ end
 function UNITSPAIRST_left (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     local spindex = 1
     for unitindex = unitmin , unitmax , 1 do
+        -- 超级要塞由 SpawnGigaFortressAir 专用生成（随机形态 + 变形复查），通用批次跳过这一格，
+        -- 避免双倍出货（见附录 D.18）。
+        local skipGigaFortress = (UNITLIST[unitindex] == "JapanGigaFortressShipEgg")
         -- 禁用模式：该槽位全部兵种都被禁时整槽不出兵（上限 0 让内层直接空转）。
         for _si = 1 , BanModeSpawnCount(unitindex, getn(g_Seat7)) , 1 do
             local playindex = g_Seat7[_si]
             local spiunitcount = UNITCOUNT[playindex][unitindex]
+            if skipGigaFortress then spiunitcount = 0 end
             if spiunitcount > 0 then
                 ------------------------------------
                 for i = 1 , spiunitcount , 1 do
@@ -46,9 +50,13 @@ end
 function UNITSPAIRST_right (unitmin,unitmax,UNITSP,UNITTEAM,UNITATTACKTEAM,UNITCH)
     local spindex = 1
     for unitindex = unitmin , unitmax , 1 do
+        -- 超级要塞由 SpawnGigaFortressAir 专用生成（随机形态 + 变形复查），通用批次跳过这一格，
+        -- 避免双倍出货（见附录 D.18）。
+        local skipGigaFortress = (UNITLIST[unitindex] == "JapanGigaFortressShipEgg")
         for _si = 1 , BanModeSpawnCount(unitindex, getn(g_Seat8)) , 1 do
             local playindex = g_Seat8[_si]
             local spiunitcount = UNITCOUNT[playindex][unitindex]
+            if skipGigaFortress then spiunitcount = 0 end
             if spiunitcount > 0 then
                 ------------------------------------
                 for i = 1 , spiunitcount , 1 do

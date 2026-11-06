@@ -186,14 +186,13 @@ function HextechRune:ApplyRecombobulator(playerIndex, isUpgrade)
         end
     end
 
-    -- 超级要塞核心走独立计数槽，按普通 T4 来源同规则重滚后清空；核心原本不计入
-    -- ANYUNITCOUNT（见 05_ultimate_creature.lua），转成常规战斗单位后补上数量。
+    -- 超级要塞核心走兵表（UNITLIST 第 135 格），按普通 T4 来源同规则重滚；
+    -- 下面的整表清零会把这一格一起清掉，所以只在这里读数量（见附录 D.18）。
     local eggCount = 0
-    if g_UnitCount ~= nil then
-        local gigaSlot = g_UnitCount[FastHash("JapanGigaFortressShipEgg")]
-        if gigaSlot ~= nil then
-            eggCount = tonumber(gigaSlot[playerIndex]) or 0
-            gigaSlot[playerIndex] = 0
+    if UNITCOUNT ~= nil and UNITCOUNT[playerIndex] ~= nil and g_UnitNameToUnitIndex ~= nil then
+        local gigaIndex = g_UnitNameToUnitIndex["JapanGigaFortressShipEgg"]
+        if gigaIndex ~= nil then
+            eggCount = tonumber(UNITCOUNT[playerIndex][gigaIndex]) or 0
         end
     end
     for egg = 1, eggCount, 1 do

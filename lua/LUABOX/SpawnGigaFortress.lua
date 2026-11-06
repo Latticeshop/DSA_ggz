@@ -36,23 +36,36 @@ function SpawnRandomGigaFortress(name, team, spawnPos)
     SchedulerModule.delay_call(EnsureGigaFortressAirForm, 30, {name})
 end
 
--- UnitCreate 的初始化触发器可能晚于首轮出兵，先为超级要塞计数准备安全槽位。
-function GetGigaFortressCountSlot()
-    if g_UnitCount == nil then
-        g_UnitCount = {}
+-- 超级要塞已统一进 UNITLIST 兵表（UNITCOUNTERINI_0.lua 第 135 格），旧的独立计数槽 g_UnitCount
+-- 整体退役（见附录 D.18）。这一格只存数量，实际生成仍由本文件的专用函数负责。
+function GetGigaFortressUnitIndex()
+    if g_UnitNameToUnitIndex == nil then
+        return nil
     end
-    local instanceId = FastHash("JapanGigaFortressShipEgg")
-    if g_UnitCount[instanceId] ~= nil then
-        for k = 1, 8, 1 do
-            if g_UnitCount[instanceId][k] == nil then
-                g_UnitCount[instanceId][k] = 0
-            end
-        end
+    return g_UnitNameToUnitIndex["JapanGigaFortressShipEgg"]
+end
+
+function GetGigaFortressCount(playerIndex)
+    local unitIndex = GetGigaFortressUnitIndex()
+    if unitIndex == nil or UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil then
+        return 0
     end
-    if g_UnitCount[instanceId] == nil then
-        g_UnitCount[instanceId] = { 0, 0, 0, 0, 0, 0, 0, 0 }
+    return tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0
+end
+
+-- 核心实体入池：UnitCreate.lua 的 UnitCountFunc 在生成 8 帧后调这里，然后再把核心实体删掉。
+-- 所以这里必须和 UNITCOUNT 成对累加，否则超级要塞只进兵表不进部队数量（见附录 D.20）。
+function CountGigaFortressCore(playerIndex)
+    local unitIndex = GetGigaFortressUnitIndex()
+    if unitIndex == nil or UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil then
+        return false
     end
-    return g_UnitCount[instanceId]
+    UNITCOUNT[playerIndex][unitIndex] =
+        (tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0) + 1
+    if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[playerIndex] ~= nil then
+        ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
+    end
+    return true
 end
 
 function SpawnGigaFortressAir()
@@ -66,7 +79,6 @@ function spawnGigafortressAir()
 end
 
 function SpawnGigaFortressAir_left()
-    local countSlot = GetGigaFortressCountSlot();
     local _seatsDemon = g_SideSeatsOf(7)
 for _si = 1, 4 do
     local i = _seatsDemon[_si]
@@ -76,7 +88,7 @@ for _si = 1, 4 do
         if teamIndex == 8 then
             angle = 180
         end
-        for j = 1, countSlot[i] do
+        for j = 1, GetGigaFortressCount(i) do
             local suffix = mod(j, 6);
             if suffix == 0 then
                 suffix = 6;
@@ -102,7 +114,6 @@ for _si = 1, 4 do
 end
 
 function SpawnGigaFortressAir_right()
-    local countSlot = GetGigaFortressCountSlot();
     local _seatsAngel = g_SideSeatsOf(8)
 for _si = 1, 4 do
     local i = _seatsAngel[_si]
@@ -112,7 +123,7 @@ for _si = 1, 4 do
         if teamIndex == 8 then
             angle = 180
         end
-        for j = 1, countSlot[i] do
+        for j = 1, GetGigaFortressCount(i) do
             local suffix = mod(j, 6);
             if suffix == 0 then
                 suffix = 6;

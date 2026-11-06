@@ -112,6 +112,41 @@ function SpawnSeaWingFromSea_right()
     SpawnSeaWingFromSeaForSide(g_Seat8, 8, 180)
 end
 
+------------------------------------------------------------------------------
+-- 火炮机车（UNITLIST 第 42 格，轻型载具段）移速快，跟通用 LIGHTVEH 批一起出生会送
+-- 刷兵仍走 UNITSPST*；WB 脚本 attackLIGHTVEH__7/__8 每 8 帧重下发一次 attack-move，会自己接管。
+g_MortarCycleDelayFrames = 25     -- 25 帧 ≈ 0.8 秒（30 帧/秒）；调大 = 更晚出发
+
+-- 延迟回调。mode 为 "both" 时左右一起刷（UNITSPST），"left"/"right" 只在补充军队技能里用。
+function SpawnMortarCycleLand(mode)
+    local mortarIndex = g_UnitNameToUnitIndex["SovietMortarCycle"]
+    if mortarIndex == nil then
+        return
+    end
+    if mode == "left" then
+        UNITSPST_left(mortarIndex, mortarIndex, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+    elseif mode == "right" then
+        UNITSPST_right(mortarIndex, mortarIndex, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+    else
+        UNITSPST(mortarIndex, mortarIndex, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+    end
+end
+
+-- 轻型载具段的通用批：跳过火炮机车那一格，它改由 SpawnMortarCycleLand 延迟生成。
+function SpawnLightVehicleBatch(spawnBatch, mode)
+    local mortarIndex = g_UnitNameToUnitIndex["SovietMortarCycle"]
+    if mortarIndex == nil or mortarIndex <= step1 or mortarIndex > step2 then
+        spawnBatch(step1+1, step2, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+        return
+    end
+    spawnBatch(step1+1, mortarIndex-1, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+    spawnBatch(mortarIndex+1, step2, LIGHTVEHSP, LIGHTVEHTEAM, LIGHTVEHATTACK, LIGHTVEHSPCH)
+    if mode == nil then
+        mode = "both"
+    end
+    SchedulerModule.delay_call(SpawnMortarCycleLand, g_MortarCycleDelayFrames, {mode})
+end
+
 function LandArmySpawn()
     -- 遭遇战电脑的编制同步（LUABOX/AI/AIINI_1.lua: AICOMP）：放在所有兵种批次之前，
     -- 补齐的 UNITCOUNT 当回合就能刷出来；内部按回合号去重，地编那四个 AIUNITBUILDACT 入口也调它。
@@ -119,7 +154,7 @@ function LandArmySpawn()
         AICOMP.EnsureRound()
     end
     UNITSPST (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
-    UNITSPST (step1+1,step2,LIGHTVEHSP,LIGHTVEHTEAM,LIGHTVEHATTACK,LIGHTVEHSPCH)
+    SpawnLightVehicleBatch(UNITSPST)
     UNITSPST (step2+1,step3,HEAVYVEHSP,HEAVYVEHTEAM,HEAVYVEHATTACK,HEAVYVEHSPCH)
 
     SpawnLandUnit()

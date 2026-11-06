@@ -302,6 +302,10 @@ UNITLIST [index] = "SovietBomberAircraft"
 index = index + 1 ;
 UNITLIST [index] = "CelestialAntiAirVehicleTech3"
 index = index + 1 ;
+-- 超级要塞统一进兵表：这一格只负责计数，实际生成仍走 LUABOX/SpawnGigaFortress.lua 的专用函数
+-- （随机形态 + 落地后变形），通用批次会跳过这一格（见附录 D.18）。
+UNITLIST [index] = "JapanGigaFortressShipEgg"
+index = index + 1 ;
 step5= index-1
 UNITLIST [index] = "SovietAntiAirShip"
 index = index + 1 ;
@@ -709,9 +713,14 @@ function unitgetcountanddelet (playindex)
                     if g_PureDrawProducedUnitIds ~= nil then
                         g_PureDrawProducedUnitIds[unitId] = nil
                     end
-                    ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
-                    UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
-
+                    -- 超级要塞核心：船厂生产的那只已经由创建事件（UnitCreate.lua 的 UnitCountFunc
+                    -- 无生产者凭证（符文赠送等）仍由本扫描记账，两条路径天然不重叠（见附录 D.20）。
+                    local gigaEggSlot = g_UnitNameToUnitIndex["JapanGigaFortressShipEgg"]
+                    local skipCount = (gigaEggSlot ~= nil and unitindex == gigaEggSlot and isProducedUnit)
+                    if not skipCount then
+                        ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
+                        UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
+                    end
                     -- 摇光限造 3 个只统计玩家实际生产的单位。
                     -- 海克斯/箱子赠送没有生产者，不增加此独立计数。
                     if isProducedUnit

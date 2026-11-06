@@ -446,6 +446,8 @@ HextechRune.RuneTargetExcludedTypes = {
     AlliedBomberAircraft = true,                    -- 世纪轰炸机
     AlliedAntiStructureBomberAircraft = true,       -- 世纪轰炸机（对建筑）
     AlliedAntiStructureBomberAircraft_Enhanced = true,
+    AlliedAntiGroundAircraft = true,                -- 维护者轰炸机
+    AlliedChronoBeacon_Vindicator = true,           -- 维护者轰炸机（信标形态，防御性条目）
     SovietAntiGroundAttacker = true,                -- 伊尔攻击机
     SovietAntiGroundAttacker_Enhanced = true,
     CelestialBomberAircraft = true,                 -- 金乌轰炸机
@@ -748,7 +750,7 @@ function HextechRune:CollectBuyTwoGetOneCandidates(factionPool, producible, alia
                     local allowed = producible == nil
                         or (producible[countType] == true and aliasOnly[countType] == nil)
                         or (ownedReplacement ~= nil and ownedReplacement[countType] == true)
-                    if unitIndex ~= nil and info.CountsTowardArmyTotal ~= false
+                    if unitIndex ~= nil and info.ExcludedFromBonusPool ~= true
                         and allowed and locked[countType] == nil
                         and seen[countType] == nil
                         and (excluded == nil or excluded[countType] == nil) then
