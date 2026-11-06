@@ -357,3 +357,31 @@ function HextechRune:ApplyAscensionUnits(assignments)
         end
     end
 end
+
+-- ===== 电脑（AICOMP）入池：走与真人单位相同的符文管线（见附录 D.4）=====
+function HextechRune:CollectPoolUnits(playerIndex, unitIndex, amount)
+    if unitIndex == nil or UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil then
+        return 0
+    end
+    local added = 0
+    for i = 1, amount, 1 do
+        local targetIndex = self:ResolveCollectedUnitIndex(playerIndex, unitIndex)
+        if targetIndex ~= nil then
+            -- 登神：池内已有种子 ⇒ 本只转层数，不占池（与 unitgetcountanddelet 同口径）。
+            if self:AbsorbBuyTwoGetOneBonus(playerIndex, targetIndex) then
+                self:OnPlayerUnitCollected(playerIndex, targetIndex)
+            else
+                UNITCOUNT[playerIndex][targetIndex] =
+                    (tonumber(UNITCOUNT[playerIndex][targetIndex]) or 0) + 1
+                if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[playerIndex] ~= nil then
+                    ANYUNITCOUNT[playerIndex] =
+                        (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
+                end
+                added = added + 1
+                self:OnPlayerUnitCollected(playerIndex, targetIndex)
+            end
+        end
+    end
+    self:TrimAscensionPoolSurplus(playerIndex)
+    return added
+end

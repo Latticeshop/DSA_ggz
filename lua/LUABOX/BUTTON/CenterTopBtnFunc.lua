@@ -419,12 +419,22 @@ function CenterTopBtnFunc_CreatePlayerSkillButtons(playerIndex, kind)
         end
     end
 
+    -- 技能组按钮打标，供 ButtonManager 的释放钩子与电脑镜像识别（见附录 D.7）
+    for j = 1, 2, 1 do
+        if buttons[j] ~= nil then
+            buttons[j].SkillKind = kind
+        end
+    end
     -- “终极刷新”可能早于技能组选择获得；创建技能时补上此前累计的次数。
     if HextechRune ~= nil and HextechRune.ApplyUltimateRefreshToButtons ~= nil then
         HextechRune:ApplyUltimateRefreshToButtons(playerIndex, buttons)
     end
     ButtonManager:SetButton(buttons[1])
     ButtonManager:SetButton(buttons[2])
+    -- 自选技能组模式：给对面板电脑补同一组（见附录 D.8）
+    if g_OnPlayerSkillGroupAssigned ~= nil then
+        g_OnPlayerSkillGroupAssigned(playerIndex, kind)
+    end
 end
 
 function CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
@@ -719,6 +729,8 @@ function CreateChronosphereButton(playerIndex)
         PlayerName = "Player_" .. playerIndex,
         PlayerIndex = playerIndex,
         ButtonIndex = 3,
+        -- 阵营技能也打标，编号从 101 起避开技能组的 1..6（见附录 D.9）
+        SkillKind = 101,
         IconId = 'AUA_Aegis_Shield',
         Title = Localization.get("center_top.temporal_raid.title"),
         Description = Localization.get("center_top.temporal_raid.description"),
@@ -740,6 +752,7 @@ function CreateJapanShieldButton(playerIndex)
         PlayerName = "Player_" .. playerIndex,
         PlayerIndex = playerIndex,
         ButtonIndex = 3,
+        SkillKind = 102,
         IconId = 'Button_PlayerPower_PointDefenseDrones',
         Title = Localization.get("center_top.japan_shield.title"),
         Description = Localization.get("center_top.japan_shield.description"),
@@ -761,6 +774,7 @@ function CreateCelestialMoraleButton(playerIndex)
         PlayerName = "Player_" .. playerIndex,
         PlayerIndex = playerIndex,
         ButtonIndex = 3,
+        SkillKind = 103,
         IconId = 'CelestialLightningTroop_Lv3',
         Title = Localization.get("center_top.morale_boost.title"),
         Description = Localization.get("center_top.morale_boost.description"),

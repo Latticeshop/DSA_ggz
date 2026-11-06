@@ -95,10 +95,13 @@ function ButtonManager.SharedCooldown(self, buttonData)
     for i = 1, getn(list) do
         local currentButton = list[i]
         if currentButton ~= buttonData then -- 避免自己触发自己的冷却
-            if type(currentButton.SharedCooldown) == "function" then
-                currentButton:SharedCooldown()
+            -- 电脑席位 CD 互相独立，不吃公共冷却（见附录 D.7）
+            if g_IsAutoChessComputerSeat == nil or not g_IsAutoChessComputerSeat(currentButton.PlayerIndex) then
+                if type(currentButton.SharedCooldown) == "function" then
+                    currentButton:SharedCooldown()
                 else
-                exMessageAppendToMessageArea(Localization.get("button_manager.error.no_sharedcooldown_handler", currentButton.PlayerName or "?", currentButton.Title or Localization.get("button.default.unknown")))
+                    exMessageAppendToMessageArea(Localization.get("button_manager.error.no_sharedcooldown_handler", currentButton.PlayerName or "?", currentButton.Title or Localization.get("button.default.unknown")))
+                end
             end
         end
     end
@@ -195,12 +198,19 @@ function CreateButton(buttonData)
             return
         end
 
-        -- 触发其他玩家的共享冷却
+        -- 触发同侧其他玩家的共享冷却（电脑席位不参与，见附录 D.7）
         if self.SharedCooldownId then
-            ButtonManager:SharedCooldown(self)
+            if g_IsAutoChessComputerSeat == nil or not g_IsAutoChessComputerSeat(self.PlayerIndex) then
+                ButtonManager:SharedCooldown(self)
+            end
         end
 
         self._usedCount = self._usedCount + 1
+
+        -- 电脑模仿释放（只有带 SkillKind 的技能按钮会触发；此处已确认释放成功）
+        if self.SkillKind ~= nil and g_OnPlayerSkillCast ~= nil then
+            g_OnPlayerSkillCast(self.PlayerIndex, self.ButtonIndex, self.SkillKind)
+        end
 
         local canStillUse = self.MaxUseCount == nil or self._usedCount < self.MaxUseCount
         if not canStillUse then
