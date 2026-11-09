@@ -244,7 +244,7 @@ Localization._text_sources = {
     ["center_top.nano_repair.title"] = { zh = "纳米维修", en = "Nano Repair" },
     ["center_top.nano_repair.description"] = { zh = "在陆地前线生成1个纳米维修立场和大型维修天灯，治愈己方部队和前线海陆防御塔", en = "Deploy repair fields and repair drones to support land fronts, heal both land and sea towers" },
     ["center_top.reinforce_army.title"] = { zh = "补充军队", en = "Reinforce Army" },
-    ["center_top.reinforce_army.description"] = { zh = "立即触发一次陆地、空中生成 (冷却70秒)", en = "Immediately reinforce land and air forces (70s cooldown)" },
+    ["center_top.reinforce_army.description"] = { zh = "立即触发一次陆地、空中、海上生成 (冷却70秒)", en = "Immediately reinforce land, air and naval forces (70s cooldown)" },
     ["center_top.temporal_raid.title"] = { zh = "超时空突袭", en = "ChronoSphere Raid" },
     ["center_top.temporal_raid.description"] = { zh = "请建造盟军小超武「超时空传送仪」以解锁此按钮", en = "Build the Allied Chronosphere to unlock this button" },
     ["center_top.morale_boost.title"] = { zh = "士气提升", en = "Morale Boost" },

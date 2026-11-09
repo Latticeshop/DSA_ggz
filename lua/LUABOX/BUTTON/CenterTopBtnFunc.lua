@@ -1340,6 +1340,13 @@ function RequestSpawnArmyImmediately(playerIndex)
             UNITSPST_left (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
             SpawnLightVehicleBatch(UNITSPST_left, "left")
             UNITSPST_left (step2+1,step3,HEAVYVEHSP,HEAVYVEHTEAM,HEAVYVEHATTACK,HEAVYVEHSPCH)
+            -- 禁海模式跟 LandArmySpawn 同口径：改用两栖陆地版 + 海翼空版，不刷船。
+            if g_DisableSeaArmy == 0 then
+                UNITSPSHIP_left (step35+1,step4,AIRSP,SHIPTEAM,SHIPTEAMATTACK)
+            else
+                SpawnNoNavyAmphibiousLand_left()
+                SpawnNoNavySeaWingAir_left()
+            end
             UNITSPAIRST_left (step4+1,step5,INFANTSP,AIRTEAM,AIRATTACK,INFANTSPCH)
             SpawnGigaFortressAir_left()
             SpawnLandUnit_left()
@@ -1348,6 +1355,7 @@ function RequestSpawnArmyImmediately(playerIndex)
             exEnableWBScript('PlyrCivilian/attackHEAVYVEHVEH__7')
             exEnableWBScript('PlyrCivilian/attackINFANT__7')
             exEnableWBScript('PlyrCivilian/attackLIGHTVEH__7')
+            exEnableWBScript('PlyrCivilian/ATTACKSHIP__7')
             exEnableWBScript('BUFFACTONCE')
             exEnableWBScript('ShrinkMode_Trigger')
 
@@ -1363,6 +1371,12 @@ function RequestSpawnArmyImmediately(playerIndex)
             UNITSPST_right (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
             SpawnLightVehicleBatch(UNITSPST_right, "right")
             UNITSPST_right (step2+1,step3,HEAVYVEHSP,HEAVYVEHTEAM,HEAVYVEHATTACK,HEAVYVEHSPCH)
+            if g_DisableSeaArmy == 0 then
+                UNITSPSHIP_right (step35+1,step4,AIRSP,SHIPTEAM,SHIPTEAMATTACK)
+            else
+                SpawnNoNavyAmphibiousLand_right()
+                SpawnNoNavySeaWingAir_right()
+            end
             UNITSPAIRST_right (step4+1,step5,INFANTSP,AIRTEAM,AIRATTACK,INFANTSPCH)
             SpawnGigaFortressAir_right()
             SpawnLandUnit_right()
@@ -1371,6 +1385,7 @@ function RequestSpawnArmyImmediately(playerIndex)
             exEnableWBScript('PlyrCreeps/attackHEAVYVEHVEH__8')
             exEnableWBScript('PlyrCreeps/attackINFANT__8')
             exEnableWBScript('PlyrCreeps/attackLIGHTVEH__8')
+            exEnableWBScript('PlyrCreeps/ATTACKSHIP__8')
             exEnableWBScript('BUFFACTONCE')
             exEnableWBScript('ShrinkMode_Trigger')
 

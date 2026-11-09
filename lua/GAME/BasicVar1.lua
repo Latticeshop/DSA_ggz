@@ -700,3 +700,97 @@ function g_BuildingNoCollisionsTick()
     SchedulerModule.call_every_x_frame(g_BuildingNoCollisionsSweep,
         g_BuildingNoCollisionsIntervalFrames, nil)
 end
+
+-- === 卖船区（地编脚本树 GAME/SHIPMONEY 的 GETSHIP__7 / GETSHIP__8）===
+--   · 排除 AIRBORNE_TARGET —— 海翼 / 超级要塞的飞行形态模板是船，但在天上不该被卖；
+--   · 一次只扫一遍「全图舰船」（Include=SHIP，物量很小），按脚本名认归属，
+g_SellShipZones = {
+    -- 天使侧（side 8 = PlyrCreeps）的卖船区，卖掉的船给天使侧各座席发钱
+    { Owner = "PlyrCreeps", Area = "GETSHIP7", Side = 8 },
+    -- 恶魔侧（side 7 = PlyrCivilian）的卖船区
+    { Owner = "PlyrCivilian", Area = "GETSHIP8", Side = 7 },
+}
+g_SellShipMoney = 300
+g_SellShipScanIntervalFrames = 30
+g_SellShipNextScanFrame = g_SellShipNextScanFrame or 0
+g_SellShipDisabledWBScripts = g_SellShipDisabledWBScripts or 0
+
+g_SellShipFilter = g_SellShipFilter or CreateObjectFilter({
+    Rule = "ANY",
+    Include = "SHIP",
+})
+
+function g_SellShipDisableWBScripts()
+    if g_SellShipDisabledWBScripts == 1 then
+        return
+    end
+    g_SellShipDisabledWBScripts = 1
+    -- 裸脚本 id 就够（与 exEnableWBScript("DeathMode") / exDisableWBScript("NATURALUNLOCK__1") 同一种写法）。
+    exDisableWBScript("GETSHIP__7")
+    exDisableWBScript("GETSHIP__8")
+end
+
+-- 返回本轮卖掉的船数。
+function g_SellShipSweep()
+    g_SellShipDisableWBScripts()
+
+    local frame = GetFrame()
+    if frame < g_SellShipNextScanFrame then
+        return 0
+    end
+    g_SellShipNextScanFrame = frame + g_SellShipScanIntervalFrames
+
+    local ships, count = ObjectFindObjects(nil, nil, g_SellShipFilter)
+    if ships == nil then
+        return 0
+    end
+    if type(count) ~= "number" then
+        count = getn(ships)
+    end
+
+    local soldTotal = 0
+    for i = 1, count, 1 do
+        local ship = ships[i]
+        if ship ~= nil and ObjectIsAlive(ship) then
+            local ownerName = ObjectPlayerScriptName(ship)
+            local zone = nil
+            for z = 1, getn(g_SellShipZones), 1 do
+                if g_SellShipZones[z].Owner == ownerName then
+                    zone = g_SellShipZones[z]
+                    break
+                end
+            end
+            if zone ~= nil
+                and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", ship, "AIRBORNE_TARGET")
+                and EvaluateCondition("NAMED_INSIDE_AREA", ship, zone.Area) then
+                -- 与原实现一样走「击杀」：死亡事件、掉落、播报口径都不变。
+                ExecuteAction("NAMED_KILL", ship)
+                soldTotal = soldTotal + 1
+                -- 每卖一艘结算一次；座席表按阵营号取（4v4 与 3v3 各自的座席表都自动对得上）。
+                local seats = nil
+                if g_SideSeatsOf ~= nil then
+                    seats = g_SideSeatsOf(zone.Side)
+                end
+                if seats ~= nil then
+                    for s = 1, getn(seats), 1 do
+                        ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. seats[s], g_SellShipMoney)
+                    end
+                end
+            end
+        end
+    end
+    return soldTotal
+end
+
+-- mainloop 每帧调用；只注册一次周期扫描（不在加载期注册，理由同 g_BuildingNoCollisionsTick）。
+function g_SellShipTick()
+    g_SellShipDisableWBScripts()
+    if g_SellShipRegistered == 1 then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    g_SellShipRegistered = 1
+    SchedulerModule.call_every_x_frame(g_SellShipSweep, g_SellShipScanIntervalFrames, nil)
+end

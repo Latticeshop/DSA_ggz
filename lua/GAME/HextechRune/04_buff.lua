@@ -1574,6 +1574,9 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "grant_free_trade" then
         -- 自由贸易同属被动协议（没有技能按钮、不用基地车），走它自己的授予以复用协议流程。
         self:GrantFreeTrade(playerIndex)
+    elseif self.ProtocolPointRunes[rune.Effect] ~= nil then
+        -- 落墨 / 一言九鼎：拿一份发一份（协议点溢出无副作用），实现见 16_cryo_satellite.lua。
+        self:GrantProtocolPointRune(playerIndex, rune)
     elseif self.ProtocolGrants[rune.Effect] ~= nil then
         -- ProtocolGrants，新增一张协议符文只改那张表和符文池，派发不用动。
         self:GrantProtocol(playerIndex, rune.Effect)

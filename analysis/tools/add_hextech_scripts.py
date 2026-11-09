@@ -9,10 +9,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lua_payload import build_payload, find_repo_root  # noqa: E402
+from lua_payload import build_payload, find_repo_root, find_scriptsdata_path  # noqa: E402
 
 BASE = find_repo_root()
-JSON_PATH = os.path.join(BASE, "ScriptsData.json")
+JSON_PATH = find_scriptsdata_path(BASE)
 LUA_DIR = os.path.join(BASE, "lua")
 
 

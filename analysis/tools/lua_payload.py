@@ -55,6 +55,39 @@ def find_repo_root(start_path=None):
         path = parent
 
 
+# 当前开发中的地图：DSA_XXX%COR_44（4v4）。
+# DSA_XXX%COR_33 是旧版 3v3 备份，**不再同步、不用管理**，所以默认只认 44。
+DEV_MAP_ID = "44"
+
+
+def find_scriptsdata_path(repo_root=None, map_id=None):
+    """返回要同步/校验的 ScriptsData.json 绝对路径。
+
+    本仓库的真实布局是 `lua/` 在 DSA_ggz 根、脚本数据在 `DSA_XXX%COR_44/` 下，
+    所以「仓库根 / ScriptsData.json」这种老口径是不存在的。判定顺序：
+    1) 显式指定的 map_id；
+    2) DEV_MAP_ID（44）那张 4v4 地图；
+    3) 仓库根下的 ScriptsData.json（兼容别的工程布局）。
+    """
+    root = repo_root or find_repo_root()
+    for candidate_id in (map_id, DEV_MAP_ID):
+        if candidate_id:
+            path = os.path.join(root, "DSA_XXX%%COR_%s" % candidate_id, "ScriptsData.json")
+            if os.path.exists(path):
+                return path
+    legacy = os.path.join(root, "ScriptsData.json")
+    if os.path.exists(legacy):
+        return legacy
+    raise LuaPayloadError(
+        "找不到 ScriptsData.json：既没有 DSA_XXX%%COR_%s/ScriptsData.json，也没有仓库根的 ScriptsData.json"
+        % (map_id or DEV_MAP_ID))
+
+
+def find_map_dir(repo_root=None, map_id=None):
+    """返回地图目录（含 ScriptsData.json 与 map.xml），供需要读脚本树/资源清单的工具用。"""
+    return os.path.dirname(find_scriptsdata_path(repo_root, map_id))
+
+
 def normalize_crlf(value):
     return re.sub(r"\r?\n", "\r\n", value)
 

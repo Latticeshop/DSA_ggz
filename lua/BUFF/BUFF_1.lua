@@ -4,7 +4,9 @@ FilterJapanSentinelVehicle=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "JapanSentinelVehicle","JapanAntiVehicleVehicleTech3","JapanMechaX","JapanMissileMechaAdvanced","CelestialAntiVehicleVehicleTech4","AlliedAntiVehicleVehicleTech1","CelestialAntiVehicleVehicleTech1","JapanAntiVehicleVehicleTech1","SovietHeavyAntiVehicleVehicleTech2"
+        "JapanSentinelVehicle","JapanAntiVehicleVehicleTech3","JapanMechaX","JapanMissileMechaAdvanced","CelestialAntiVehicleVehicleTech4","AlliedAntiVehicleVehicleTech1","CelestialAntiVehicleVehicleTech1","JapanAntiVehicleVehicleTech1","SovietHeavyAntiVehicleVehicleTech2",
+        -- 衍生形态（g_PureDrawProductionAliases）
+        "JapanAntiVehicleVehicleTech3_Movie","JapanKingOniXMecha_Enhanced","JapanMissileMechaAdvanced_Enhanced","JapanMissileMechaAdvanced_Enhanced_Water","CelestialAntiVehicleVehicleTech4_Enhanced","CelestialAntiVehicleVehicleTech4_S01","AlliedAntiVehicleVehicleTech1_Enhanced","CelestialAntiVehicleVehicleTech1_EMC","JapanAntiVehicleVehicleTech1_Naval","SovietHeavyAntiVehicleVehicleTech2_Enhanced"
     }
 })
 
@@ -40,6 +42,7 @@ FilterAlliedAntiStructureVehicle=CreateObjectFilter({
 
     IncludeThing = {
         "AlliedAntiStructureVehicle",
+        "AlliedAntiStructureVehicle_Enhanced",
     }
 })
 
@@ -62,7 +65,10 @@ FilterDamange75Percent=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "SovietSledgehammerSPG","CelestialAlmightlyShip"
+        "SovietSledgehammerSPG","CelestialAlmightlyShip",
+        -- 衍生形态（g_PureDrawProductionAliases）；这条是减益，形态也必须一起减，
+        -- 否则变成「转成强化形态就躲掉 25% 伤害惩罚」。
+        "SovietSledgehammerSPG_Enhanced","CelestialAlmightlyShip_AA","CelestialAlmightlyShip_Enhanced","CelestialAlmightlyShip_FireWork","CelestialAlmightlyShip_Old"
     }
 })
 --重锤,激萌,宫女DEBUFF
@@ -80,7 +86,10 @@ FilterCelestialLongRangeMissileVehicle=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "CelestialLongRangeMissileVehicle"
+        -- 生产池里青锋是 _B（UNITLIST 里就是它），"CelestialLongRangeMissileVehicle" 是它的
+        -- 变形形态别名（见 02_data.lua 的 g_PureDrawProductionAliases 反向条目），两个都要列，
+        -- 只写裸名会让上场的那一型完全吃不到射程强化。
+        "CelestialLongRangeMissileVehicle_B","CelestialLongRangeMissileVehicle"
     }
 })
 
@@ -100,7 +109,9 @@ FilterMIDDLEENHANCE=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "JapanMechaX","CelestialAntiVehicleInfantry","JapanAntiAirVehicleTech1"
+        "JapanMechaX","CelestialAntiVehicleInfantry","JapanAntiAirVehicleTech1",
+        -- 衍生形态（g_PureDrawProductionAliases）
+        "JapanKingOniXMecha_Enhanced","CelestialAntiVehicleInfantry_EMC","JapanAntiAirVehicleTech1_Enhanced","JapanAntiAirVehicleTech1_Enhanced_Water"
     }
 })
 
@@ -136,7 +147,9 @@ FilterANTIGROUNDAIRCRAFT=CreateObjectFilter({
 
     IncludeThing = {
         "CelestialAttackerAircraft","AlliedSupportAircraft","SovietAntiGroundAircraft","SovietAntiGroundAttacker",
-        "CelestialSupportAircraft"
+        "CelestialSupportAircraft",
+        -- 衍生形态（g_PureDrawProductionAliases）
+        "AlliedSupportAircraft_Enhanced","SovietAntiGroundAircraft_Enhanced","SovietAntiGroundAttacker_Enhanced"
     }
 })
 
@@ -189,15 +202,22 @@ FilterLARGEENHANCE=CreateObjectFilter({
     Rule="ANY",
 
     IncludeThing = {
-        "CelestialBomberAircraft","SovietHeavyAntiVehicleInfantry",
-        "AlliedGunshipAircraft","CelestialAntiVehicleVehicleTech4"
+        -- 它改吃下方的磁爆组（伤害 ×2 + 射程 ×1.25，无生命）。
+        "CelestialBomberAircraft",
+        "AlliedGunshipAircraft","CelestialAntiVehicleVehicleTech4",
+        -- 衍生形态（g_PureDrawProductionAliases）
+        "CelestialBomberAircraft_Enhanced",
+        "CelestialAntiVehicleVehicleTech4_Enhanced","CelestialAntiVehicleVehicleTech4_S01"
+        -- 先锋炮艇机的其余形态故意不列：标准型吃这里的 1.5 倍生命，其余形态由
+        -- FilterAlliedGunshipAircraftAll 统一给 2 倍（见 LARGEENHANCEBUFF 里的注释）。
     }
 })
 
 FilterSovietBomberAircraft=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
-        "SovietBomberAircraft"
+        "SovietBomberAircraft",
+        "SovietBomberAircraft_Movie"
     }
 })
 
@@ -215,14 +235,16 @@ FilterAlliedGunshipAircraftAll=CreateObjectFilter({
 FilterSovietInterceptorAircraft=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
-        "SovietInterceptorAircraft"
+        "SovietInterceptorAircraft",
+        "SovietInterceptorAircraft_Enhanced"
     }
 })
 
 FilterCelestialInterceptorAircraft=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
-        "CelestialInterceptorAircraft"
+        "CelestialInterceptorAircraft",
+        "CelestialInterceptorAircraft_Enhanced"
     }
 })
 
@@ -245,9 +267,29 @@ FilterJapanInterceptorAircraft=CreateObjectFilter({
 FilterSovietTeslaBoat=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
-        "SovietAntiNavyShipTech1"
+        "SovietAntiNavyShipTech1",
+        -- 衍生形态（g_PureDrawProductionAliases）
+        "SovietAntiNavyShipTech1_AirAssault","SovietAntiNavyShipTech1_Enhanced"
     }
 })
+
+-- 磁爆组（2026-11）：苏联三件套统一吃「伤害 ×2 + 射程 ×1.25」，**一律不给生命加成**。
+FilterTeslaBoost=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietHeavyAntiVehicleInfantry","SovietHeavyAntiVehicleInfantry_Enhanced",
+        "SovietAntiVehicleVehicleTech2",
+        "SovietAntiNavyShipTech1","SovietAntiNavyShipTech1_AirAssault","SovietAntiNavyShipTech1_Enhanced"
+    }
+})
+
+function TESLABOOSTBUFF ()
+    local TAR , COUNTX = ObjectFindObjects(nil, nil, FilterTeslaBoost)
+    for i = 1 , COUNTX ,1 do
+        ObjectLoadAttributeModifier(TAR[i], "AttributeMod_AlliedTeslaBoost",9999)
+        ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
+    end
+end
 
 if not g_SukhoiHealthX2Modifier then
     g_SukhoiHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
@@ -325,4 +367,9 @@ function LARGEENHANCEBUFF ()
     for i = 1 , TeslaBoatCount ,1 do
         ObjectLoadAttributeModifier(TeslaBoat[i], g_SovietTeslaBoatRateOfFireX125Modifier)
     end
+
+    -- 磁爆组（部队 / 坦克 / 快艇）：伤害 ×2 + 射程 ×1.25，无生命加成。
+    -- 放在本函数末尾调用，是为了跟着 BUFFACTONCE__AIR 这个「每回合出兵后 / 每次补充军队」
+    -- 的既有节点走，不必新开 WB 脚本节点（ScriptsData 里的脚本树不动）。
+    TESLABOOSTBUFF ()
 end

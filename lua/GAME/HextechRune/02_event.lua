@@ -18,6 +18,12 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
+-- 开发测试开关：开局前几回合固定显示指定的三张符文（发版前整段删除）。
+-- OpeningTestRounds = 2 表示第 1、2 回合各发一次同一组三张卡；只测一次就改成 1。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestRounds = 2
+HextechRune.OpeningTestTriggered = {}
+
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
 -- 正式事件已触发的回合（防止重复触发）
@@ -1016,6 +1022,80 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
+function HextechRune:ShowOpeningTestEvent()
+    local testRuneIds = {
+        -- 测哪几张就把 Id 写进这三格（按 Id 直取符文池模板，不过筛池）。
+        -- 本轮测协议进度：一言九鼎（棱彩，+9 点 / 开 5 层）+ 落墨 ×2（银，+1 点 / 开 1 层，可重复）。
+        -- 第三格重复落墨是为了同时验「可重复叠加」与「一言九鼎不可重复」两条规则。
+        "prismatic_nine_words",
+        "silver_ink_drop",
+        "silver_ink_drop",
+    }
+    -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
+    local testUnitTypeByIndex = { "vehicle", "navy" }
+    -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
+    local testTargetOverrides = {
+    }
+    -- 4v4 共 8 个座席（`PanelSeatColumnGroups = { {1,2,8,3}, {4,5,7,6} }`），逐座位发同一组三张卡；
+    -- 没有建筑的座席自动跳过。旧版 3v3 备份里这里是 `for playerIndex = 1, 6, 1`。
+    for playerIndex = 1, 8, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, getn(testRuneIds), 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = testUnitTypeByIndex[i]
+                -- 不需要兵种的符文（如落墨 / 一言九鼎）不能塞兵种：
+                -- 候选会把 UnitType 一起带上，判重键就变成「Id:兵种」，面板也会多出一段兵种名。
+                if template ~= nil and not template.NeedsUnitType then
+                    unitType = nil
+                end
+                if unitType == nil and template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                -- 一律走正式入口：等价交换这类要在候选里随机抽定兵种，直接复制模板会带着空兵种被点选。
+                -- 测试局跳过阵营判定（第 4 个参数）：苏联座席也能拿到大生产，用来验协议栏是否被选。
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template,
+                        unitType, true)
+                end
+                if candidate ~= nil then
+                    local overrideType = testTargetOverrides[candidate.Id]
+                    if overrideType ~= nil then
+                        candidate.TargetUnitType = overrideType
+                        candidate.TargetUnitIndex = self:LookupUnitPoolIndex(overrideType)
+                        candidate.TargetUnitName = self:GetReplacementTargetName(playerIndex, overrideType)
+                    end
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) > 0 then
+                self.PlayerOptionCount[playerIndex] = getn(options)
+                self.PlayerOptions[playerIndex] = options
+                self:ResetRerollState(playerIndex, options)
+                for i = 1, getn(options), 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
+end
+
 -- 退出继承：退出者名下的全部符文（含之前继承来的）并进继承者的效果聚合；
 -- 各槽位的展示列表保持原样，只把槽位归属名字改成继承者。
 function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
@@ -1031,10 +1111,14 @@ function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
         local ownershipId = self:GetRuneOwnershipId(rune)
         local alreadyOwned = self.PlayerOwnedRuneIds[toIndex][ownershipId] == true
         self:TransferOwnedRuneToPlayer(toIndex, rune)
-        -- 协议是逐玩家授予的：继承者没有同一协议时，必须重新授予科技/技能；
-        -- 基地已由引擎转交，ReregisterInheritedProtocol 内部会跳过重建基地。
-        if not alreadyOwned and self:IsInheritedProtocolRune(rune)
+        if self.ProtocolPointRunes[rune.Effect] ~= nil then
+            -- 落墨 / 一言九鼎：协议点溢出在游戏里没有副作用，所以**每继承一份就补发一份**，
+            -- 不按 Effect 去重、也不看继承者是否已经持有同款。
+            self:GrantProtocolPointRune(toIndex, rune)
+        elseif not alreadyOwned and self:IsInheritedProtocolRune(rune)
             and protocolSeen[rune.Effect] == nil then
+            -- 协议是逐玩家授予的：继承者没有同一协议时，必须重新授予科技/技能；
+            -- 基地已由引擎转交，ReregisterInheritedProtocol 内部会跳过重建基地。
             protocolSeen[rune.Effect] = true
             self:ReregisterInheritedProtocol(toIndex, rune)
         end
@@ -1599,6 +1683,14 @@ function HextechRune:OnRoundBegin(round)
     self:OnFiveThunderRoundBegin(round)
     -- 单人遭遇战：开局评估一次并播报（消息区小字），此后重随不限次数；多人局不播也不放开。
     self:InitSoloUnlimitedReroll()
+    -- 开发测试：开局前几回合的固定三选一必须先于正式事件判断。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and round <= self.OpeningTestRounds
+        and not self.OpeningTestTriggered[round] then
+        self.OpeningTestTriggered[round] = true
+        self:ShowOpeningTestEvent()
+        return
+    end
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true

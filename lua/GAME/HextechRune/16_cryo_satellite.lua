@@ -116,6 +116,8 @@ function HextechRune:GrantProtocol(playerIndex, grantKey)
 end
 
 -- 退出继承：协议是逐玩家授予的，必须给继承者重新授予科技/技能；基地已自动转交，不再重建。
+-- 落墨 / 一言九鼎 不走这里：它们是「拿一份发一份」，在 TransferPlayerSlotRunes 里逐份补发，
+-- 详见那里的注释（每份都要发，不能按 Effect 去重）。
 function HextechRune:IsInheritedProtocolRune(rune)
     if rune == nil then
         return false
@@ -304,4 +306,101 @@ function HextechRune:ApplyAtFieldShieldsForType(playerIndex, unitType, round)
             self:ApplyAtFieldShieldToUnit(unit, sideIndex)
         end
     end
+end
+
+-- ============ 协议进度类符文：落墨（银） / 一言九鼎（棱彩）============
+-- 落墨  ：+1 协议点，解锁下一层协议；可重复。
+-- 一言九鼎：+9 协议点，解锁 5 层协议；不可重复（见 01_rune_pool.lua 的 NonRepeatableRuneIds）。
+--
+-- 两条都不挂单位、不留持续 BUFF，拿到就当场结算一次。
+-- **不做任何累计记账**：协议点多出来在游戏里没有副作用，所以重复拿、继承多份就重复发，
+-- 不需要「按持有份数重算总量」那套。唯一必须记的只有协议层数：
+-- exUnlockPlayerGenericRankTech 是「开到第几行」的绝对值接口，不知道当前第几行就会把层数调低。
+HextechRune.ProtocolPointRunes = {
+    protocol_point_ink = { Points = 1, Rows = 1 },
+    protocol_point_nine = { Points = 9, Rows = 5 },
+}
+
+-- 协议层数只能靠 exUnlockPlayerGenericRankTech(玩家, 开到第几行) 往上推，引擎没有读取接口，
+-- 只能自己记。死亡模式在第 3 回合由 DeathMode_GivePowerPoint 一次性开到 10 行，
+-- 所以该模式下一开始就记成 10，避免随后被符文「解锁下一层」调到更低的层数。
+HextechRune.RankTechRows = HextechRune.RankTechRows or {}
+HextechRune.RankTechRowCap = 10
+
+function HextechRune:GetRankTechRows(playerIndex)
+    if self.RankTechRows[playerIndex] == nil then
+        if g_GameMode == 2 then
+            self.RankTechRows[playerIndex] = self.RankTechRowCap
+        else
+            self.RankTechRows[playerIndex] = 1
+        end
+    end
+    return self.RankTechRows[playerIndex]
+end
+
+-- 读协议点：引擎没有 getter，只能穷举比较（与日冕例图 getProtocolPointPlayer 同一写法）。
+-- 读到 20 点还比不出来就返回 -1，调用方跳过本次加点，宁可不给也不乱给。
+function HextechRune:GetPlayerPowerPoints(playerName)
+    local previous = SetWorldBuilderThisPlayer(1)
+    for i = 0, 20, 1 do
+        if EvaluateCondition("PLAYER_HAS_COMPARISON_POWER_POINTS", playerName, "EQ", i) then
+            SetWorldBuilderThisPlayer(previous)
+            return i
+        end
+    end
+    SetWorldBuilderThisPlayer(previous)
+    return -1
+end
+
+-- 加协议点：必须先把上限抬够，否则设置值会被夹掉（默认上限只有 7，一言九鼎一次给 9 点就超了）。
+-- 上限地板取 10：死亡模式要发到 7 点、协议树本身 9~10 行，压低上限会把那边的点数一起夹掉。
+function HextechRune:GrantPlayerPowerPoints(playerName, amount)
+    if amount <= 0 then
+        return 0
+    end
+    local current = self:GetPlayerPowerPoints(playerName)
+    if current < 0 then
+        return 0
+    end
+    local target = current + amount
+    local maxPoints = target
+    if maxPoints < 10 then
+        maxPoints = 10
+    end
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SET_MAX_PLAYER_POWER_POINTS", playerName, maxPoints)
+    ExecuteAction("PLAYER_SET_PLAYER_POWER_POINTS", playerName, target)
+    SetWorldBuilderThisPlayer(previous)
+    return amount
+end
+
+-- 解锁协议层数：exUnlockPlayerGenericRankTech 的参数是「开到第几行」，取值范围 [2, 10]。
+function HextechRune:UnlockRankTechRows(playerIndex, rows)
+    if rows <= 0 then
+        return 0
+    end
+    local unlocked = self:GetRankTechRows(playerIndex)
+    local target = unlocked + rows
+    if target > self.RankTechRowCap then
+        target = self.RankTechRowCap
+    end
+    if target <= unlocked then
+        return 0
+    end
+    exUnlockPlayerGenericRankTech("Player_" .. playerIndex, target)
+    self.RankTechRows[playerIndex] = target
+    return target - unlocked
+end
+
+-- 选符当场、以及退出继承，都只调这一个：拿一份就发一份。
+function HextechRune:GrantProtocolPointRune(playerIndex, rune)
+    if rune == nil then
+        return
+    end
+    local grant = self.ProtocolPointRunes[rune.Effect]
+    if grant == nil then
+        return
+    end
+    self:GrantPlayerPowerPoints("Player_" .. playerIndex, grant.Points)
+    self:UnlockRankTechRows(playerIndex, grant.Rows)
 end

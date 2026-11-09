@@ -298,10 +298,11 @@ function JapanTsunamiTankShieldMICROCONTROL ()
     end
 end
 
--- 剃刀巡洋舰：附近有非空中敌人时尝试开 F（五连装鱼雷散射）。
--- AI 不会自己开 F，只能由这里周期触发；技能原生 40 秒 CD，这里用 20 秒间隔粗当冷却闸。
+-- 剃刀巡洋舰：附近有非空中敌人时尝试开 F，AI 不会自己开 F，只能由这里周期触发。
+-- 现在把闸门放到 50 秒（15 帧 = 1 秒 → 750 帧），实际周期从 40 秒拉到 50 秒。
+-- 闸门是整个阵营共用一个 nextScanFrame。
 g_TorpedoShipSpreadEnemyRange = 600
-g_TorpedoShipSpreadScanIntervalFrames = 15 * 20
+g_TorpedoShipSpreadScanIntervalFrames = 15 * 50
 g_TorpedoShipSpreadNextScanFrame = g_TorpedoShipSpreadNextScanFrame or 0
 
 function JapanTorpedoShipSpreadMICROCONTROL ()

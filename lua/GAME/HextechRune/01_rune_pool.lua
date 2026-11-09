@@ -371,6 +371,18 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.free_trade.desc",
         Effect = "grant_free_trade", ExcludedFaction = 1,
         Icon = "Button_PlayerPower_FreeTrade" },
+    -- 落墨（银）：协议点 + 协议层数。可重复 —— 每多一份就再 +1 点、再往下开一层，
+    { Id = "silver_ink_drop", Rarity = 3,
+        NameKey = "hextech.rune.ink_drop.name",
+        DescKey = "hextech.rune.ink_drop.desc",
+        Effect = "protocol_point_ink",
+        Icon = "Button_CelestialCore" },
+    -- 一言九鼎（棱彩）：+9 协议点、解锁 5 层协议。不可重复，见 NonRepeatableRuneIds。
+    { Id = "prismatic_nine_words", Rarity = 1,
+        NameKey = "hextech.rune.nine_words.name",
+        DescKey = "hextech.rune.nine_words.desc",
+        Effect = "protocol_point_nine",
+        Icon = "Button_CelestialTechStructure" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -437,6 +449,8 @@ HextechRune.NonRepeatableRuneIds = {
     gold_free_trade = true,
     -- AT立场：兵种版按 OwnershipId 判重（Id:UnitType），载具与舰船各自独立占位。
     gold_at_field = true,
+    -- 一言九鼎：+9 协议点、开 5 层协议，多份等于把协议树直接买空，故唯一。
+    prismatic_nine_words = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -1312,4 +1326,15 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
         Round = self:GetBattleRoundIndex(),
         ObjectId = ObjectGetId(unit)
     }
+end
+
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池（发版前与测试事件一并删除）。
+-- 只服务于开局的自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent）。
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
 end

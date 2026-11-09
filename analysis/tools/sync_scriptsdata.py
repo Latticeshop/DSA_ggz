@@ -20,11 +20,11 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua_payload import (  # noqa: E402
     PAYLOAD_HARD_LIMIT, PAYLOAD_WARN_LIMIT, LuaPayloadError, build_payload,
-    find_repo_root, normalize_crlf, split_sections,
+    find_repo_root, find_scriptsdata_path, normalize_crlf, split_sections,
 )
 
 REPO_ROOT = find_repo_root()
-JSON_PATH = os.path.join(REPO_ROOT, 'ScriptsData.json')
+JSON_PATH = find_scriptsdata_path(REPO_ROOT)
 
 TARGETS = [  # fmt: skip
     ('lua/GAME/MIRRORTOWER/unlockT4Ship.lua', ['local enableT4Ship = {', 'Sea3ProtectShip8']),
