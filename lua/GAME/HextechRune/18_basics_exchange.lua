@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47、A.48
 
 HextechRune = HextechRune or {}
 
@@ -6,8 +6,8 @@ HextechRune = HextechRune or {}
 -- 阶级型（不看兵种）目前没有符文：回归基本功自 2026-10-19 起改成按兵种拆四份，表留空备用。
 HextechRune.TierWideRuneEffects = {}
 HextechRune.DualUnitTypeRuneEffects = { equivalent_exchange = true }
--- 全兵种型（致命节奏：步兵/载具/飞机/海军全都要）与固定兵种型（百虎上将：只认步兵）。
-HextechRune.AllTypeRuneEffects = { lethal_tempo = true }
+-- 全兵种型（致命节奏、泰坦的坚决：步兵/载具/飞机/海军全都要）与固定兵种型（百虎上将：只认步兵）。
+HextechRune.AllTypeRuneEffects = { lethal_tempo = true, titan_resolve = true }
 HextechRune.TypeSpecificRuneEffects = { five_tiger_generals = "infantry" }
 HextechRune.InterlockUnsyncableEffects = { infinite_ammo = true }
 
@@ -99,6 +99,219 @@ if not g_HextechExchangeDebuffModifier then
         RATE_OF_FIRE = 0.5, RANGE = 0.5,
     }, 1)
 end
+
+-- ===== 护甲值系统=====
+-- 护甲值 -> 减伤/增伤的换算口径、正负两支为什么能写成一条式子、以及为什么要在引擎的
+-- ARMOR 之上再加这一层，讲解都搬到了 analysis/地图注释说明文档.md 附录 A.48
+
+-- 护甲值 -> 减伤比例（正=减伤，负=增伤），四位小数。
+function HextechRune.GetArmorReduction(armor)
+    if armor == 0 then
+        return 0
+    end
+    local denominator = 100 + armor
+    if armor < 0 then
+        -- 负护甲：分母取 100 + |护甲值|，避免 -100 时分母为 0。
+        denominator = 100 - armor
+    end
+    return HextechRune.RoundToFourDecimals(armor / denominator)
+end
+
+-- 四位小数四舍五入（Lua 4.0 没有 round）。
+function HextechRune.RoundToFourDecimals(value)
+    local scaled = value * 10000
+    if scaled >= 0 then
+        return floor(scaled + 0.5) / 10000
+    end
+    return -floor(-scaled + 0.5) / 10000
+end
+
+-- 护甲值 -> COR 的 ARMOR 属性值（受伤倍率）。**给 BUFF 时一律走这里**，不要手写 ARMOR。
+function HextechRune.GetArmorAttributeValue(armor)
+    return HextechRune.RoundToFourDecimals(1 - HextechRune.GetArmorReduction(armor))
+end
+
+-- 护甲类符文：Effect -> 每份护甲点数。可重复，份数直接在护甲值上加算（边际效益递减）。
+HextechRune.ArmorRunePoints = {
+    armor_light = 25,      -- 锁子甲（白银）
+    armor_heavy = 50,      -- 玄铁甲（黄金）
+    armor_prismatic = 100, -- 金麟甲（棱彩）
+    armor_shock = 25,      -- 装甲冲击（黄金）：25 点护甲，另外把护甲 1:1 折成伤害
+    titan_resolve = 25,    -- 泰坦的坚决（棱彩）：25 点护甲，全兵种（不带 UnitType）
+}
+
+-- 护甲按「玩家 × 兵种」独立记账。兵种键与 UnitTypeOrder 一致。
+HextechRune.ArmorUnitTypes = { "infantry", "vehicle", "aircraft", "navy" }
+-- 非符文来源的护甲加成（预留给以后的技能 / 建筑 / 模式），加在符文护甲之上。
+HextechRune.ArmorFlatBonus = { {}, {}, {}, {}, {}, {}, {}, {} }
+-- 护甲值 -> ARMOR 修改器缓存（同一个护甲值只建一次）。
+HextechRune.ArmorModifiers = {}
+
+-- 某玩家某兵种当前的总护甲值 = 该兵种护甲类符文点数之和 + 全兵种护甲 + 非符文加成。
+-- 元神互锁（数值 BUFF 两边同步）也照顾：锁住的伙伴兵种那侧的护甲同样加到这一侧。
+-- 全兵种型（泰坦的坚决）在这里**只加一次**：如果塞进 GetPlayerArmorRunePoints，
+-- 互锁那两个兵种的两次调用会把同一份点数算两遍。
+function HextechRune:GetPlayerUnitTypeArmor(playerIndex, unitType)
+    if playerIndex == nil or unitType == nil then
+        return 0
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local total = self:GetPlayerArmorRunePoints(playerIndex, unitType)
+    local partner = self:GetInterlockPartnerType(playerIndex, unitType)
+    if partner ~= nil then
+        total = total + self:GetPlayerArmorRunePoints(playerIndex, partner)
+    end
+    total = total + self:GetPlayerAllTypeArmorPoints(playerIndex)
+    local flat = self.ArmorFlatBonus[playerIndex]
+    if flat ~= nil then
+        total = total + (flat[unitType] or 0)
+        if partner ~= nil then
+            total = total + (flat[partner] or 0)
+        end
+    end
+    return total
+end
+
+-- 全兵种护甲类符文（不带 UnitType 的，如泰坦的坚决）的点数之和：每个兵种都吃这同一份。
+function HextechRune:GetPlayerAllTypeArmorPoints(playerIndex)
+    local total = 0
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        local points = self.ArmorRunePoints[rune.Effect]
+        if points ~= nil and rune.UnitType == nil then
+            total = total + points
+        end
+    end
+    return total
+end
+
+-- 该兵种自己的护甲类符文点数之和（不含互锁外溢与非符文加成）。
+function HextechRune:GetPlayerArmorRunePoints(playerIndex, unitType)
+    local total = 0
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        local points = self.ArmorRunePoints[rune.Effect]
+        if points ~= nil and rune.UnitType == unitType then
+            total = total + points
+        end
+    end
+    return total
+end
+
+-- 给某玩家某兵种加一笔非符文护甲（负数就是减甲）。
+function HextechRune:AddPlayerUnitTypeArmorFlat(playerIndex, unitType, points)
+    local flat = self.ArmorFlatBonus[playerIndex]
+    if flat == nil then
+        flat = {}
+        self.ArmorFlatBonus[playerIndex] = flat
+    end
+    flat[unitType] = (flat[unitType] or 0) + points
+end
+
+-- 按护甲值取（并缓存）ARMOR 修改器；护甲值为 0 时返回 nil（不需要挂）。
+function HextechRune:GetArmorModifier(armor)
+    if armor == 0 then
+        return nil
+    end
+    local cacheKey = tostring(armor)
+    local modifier = self.ArmorModifiers[cacheKey]
+    if modifier == nil then
+        modifier = exAttributeModifierCreate(
+            { ARMOR = HextechRune.GetArmorAttributeValue(armor) }, 1)
+        self.ArmorModifiers[cacheKey] = modifier
+    end
+    return modifier
+end
+
+-- 装甲冲击（黄金）：持有这张符文的兵种，把「该兵种的总护甲值」按 1:1 折成伤害。
+-- 口径 DAMAGE_MULT = 1 + 护甲值/100：护甲 25 → 1.25（+25% 伤害），护甲 -25 → 0.75（-25% 伤害）。
+-- 负护甲这一段只有拿了这张符文才会生效——没拿的玩家负护甲仍然只是"更容易被打"。
+-- 多份只是护甲 +25，伤害跟着护甲一起涨，所以不需要按份数另外叠。
+HextechRune.ArmorShockRuneEffect = "armor_shock"
+-- 护甲值 -> 伤害修改器缓存（同一个护甲值只建一次）。
+HextechRune.ArmorShockModifiers = {}
+
+-- 该玩家这个兵种有没有装甲冲击（元神互锁锁住的伙伴兵种那侧的也算，和护甲记账口径一致）。
+function HextechRune:HasArmorShockRuneForType(playerIndex, unitType)
+    if playerIndex == nil or unitType == nil then
+        return false
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    local partner = self:GetInterlockPartnerType(playerIndex, unitType)
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        if rune.Effect == self.ArmorShockRuneEffect then
+            if rune.UnitType == unitType then
+                return true
+            end
+            if partner ~= nil and rune.UnitType == partner then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- 护甲值 -> 伤害修改器（1:1 折算）；护甲为 0 时返回 nil，不用挂。
+function HextechRune:GetArmorShockModifier(armor)
+    if armor == 0 then
+        return nil
+    end
+    local cacheKey = tostring(armor)
+    local modifier = self.ArmorShockModifiers[cacheKey]
+    if modifier == nil then
+        modifier = exAttributeModifierCreate(
+            { DAMAGE_MULT = HextechRune.RoundToFourDecimals(1 + armor / 100) }, 1)
+        self.ArmorShockModifiers[cacheKey] = modifier
+    end
+    return modifier
+end
+
+-- 把「登记玩家 × 该单位所属兵种」的护甲换算成 ARMOR 挂到单位上；拿了装甲冲击的兵种
+-- 顺带把同一份护甲 1:1 折成伤害（DAMAGE_MULT）一起挂。
+-- 同一只单位只挂一次（assignment.ArmorApplied）：护甲值是加算后再一次性换算的，
+-- 绝不能按符文份数各挂一次，否则 25+25 会变成 0.8×0.8=0.64（36% 减伤）而不是正确的 33.3%。
+function HextechRune:ApplyArmorToAssignment(assignment, typeLookup)
+    if assignment == nil or assignment.ArmorApplied then
+        return false
+    end
+    local unit = assignment.Unit
+    if unit == nil or not ObjectIsAlive(unit) then
+        return false
+    end
+    assignment.ArmorApplied = true
+    local objectId = ObjectGetId(unit)
+    for typeIndex = 1, getn(self.ArmorUnitTypes), 1 do
+        local unitType = self.ArmorUnitTypes[typeIndex]
+        local lookup = typeLookup[unitType]
+        if lookup ~= nil and lookup[objectId] == true then
+            local armor = self:GetPlayerUnitTypeArmor(assignment.PlayerIndex, unitType)
+            local applied = false
+            local modifier = self:GetArmorModifier(armor)
+            if modifier ~= nil then
+                ObjectLoadAttributeModifier(unit, modifier, self.PersistentBuffDuration)
+                applied = true
+            end
+            if self:HasArmorShockRuneForType(assignment.PlayerIndex, unitType) then
+                local shockModifier = self:GetArmorShockModifier(armor)
+                if shockModifier ~= nil then
+                    ObjectLoadAttributeModifier(unit, shockModifier,
+                        self.PersistentBuffDuration)
+                    applied = true
+                end
+            end
+            -- 这一档没挂上任何东西就继续看下一档（多形态单位可能同时命中两个兵种表）。
+            if applied then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 
 -- 指定兵种槽的命中判定：等价交换的第二个兵种挂在 rune.UnitType2 上，
 -- 04_buff.lua 的 IsUnitInRuneType 只认 rune.UnitType，这里补一个按兵种名取表的版本。

@@ -45,7 +45,18 @@ g_UpdateBoxText = {
 
 g_UpdateBoxTextNum = getn(g_UpdateBoxText);
 g_QQGroupText = Localization.get('game.qq_group');
-exShowLongTextDialog(1, g_QQGroupText .. g_RuleText, '', Localization.get('dialog.read_done'), Localization.get('dialog.update_log'))
+
+-- 第 1 页（游戏规则页）必须走"单玩家版" exShowLongTextDialogForPlayer 逐人显示。
+-- 没有 EvaluateCondition 时退回旧的全局调用，保证不会因为少一个函数而整段脚本中断。
+if EvaluateCondition ~= nil then
+    for i = 1, 8, 1 do
+        if EvaluateCondition("PLAYER_IS_HUMAN_OR_AI_PERSONALITY", 'Player_'..i, "Human") then
+            exShowLongTextDialogForPlayer('Player_'..i, 1, g_QQGroupText .. g_RuleText, '', Localization.get('dialog.read_done'), Localization.get('dialog.update_log'))
+        end
+    end
+else
+    exShowLongTextDialog(1, g_QQGroupText .. g_RuleText, '', Localization.get('dialog.read_done'), Localization.get('dialog.update_log'))
+end
 
 function onUserLongTextDialogEvent(playerName, btnIndex, dialogId)
     local o
@@ -124,7 +135,8 @@ ButtonManager:RegisterCustomButtonHandler(function(playerName, index)
     g_RuleText = Localization.get("game.rules")
     g_UpdateBoxTextNum = getn(g_UpdateBoxText);
     g_QQGroupText = Localization.get('game.qq_group');
-    exShowLongTextDialog(1, g_QQGroupText .. g_RuleText, '', Localization.get('dialog.read_done'), Localization.get('dialog.update_log'))
+    -- 切语言后重弹规则页，同样改走单玩家版（这个回调只对本机玩家生效）
+    exShowLongTextDialogForPlayer(playerName, 1, g_QQGroupText .. g_RuleText, '', Localization.get('dialog.read_done'), Localization.get('dialog.update_log'))
     return 1
 end)
 

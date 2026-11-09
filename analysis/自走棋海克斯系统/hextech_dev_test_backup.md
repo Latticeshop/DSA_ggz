@@ -23,11 +23,14 @@
 
 ```lua
 -- 开发测试开关：开局前几回合固定显示指定的三张符文（发版前整段删除）。
--- OpeningTestRounds = 2 表示第 1、2 回合各发一次同一组三张卡；只测一次就改成 1。
+-- OpeningTestRounds = 1 表示只在第 1 回合发一次同一组三张卡（实测发 2 次会连着弹两轮，只测一次就够了）。
 HextechRune.EnableOpeningRealTest = true
-HextechRune.OpeningTestRounds = 2
+HextechRune.OpeningTestRounds = 1
 HextechRune.OpeningTestTriggered = {}
 ```
+
+> ⚠ `OpeningTestRounds` 默认写 **1**：发 2 次等于连着两回合各弹一次三选一，实测会觉得"开局选了两次"。
+> 真要连着看两回合，再临时改成 2。
 
 - 事件本体（放在 `ShowFormalEvent` 之后）：
 

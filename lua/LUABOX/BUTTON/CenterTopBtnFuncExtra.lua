@@ -94,6 +94,55 @@ function g_FreezeAllEnemyFieldUnits(playerIndex)
     end
 end
 
+-- ===== 九头蛇万岁：心控比例随回合衰减 =====
+-- 技能是第 3 回合才发放的，所以基数取 60%，即**第一次能用到时正好 60%**，
+-- 想改衰减速度只动 PercentPerRound；想改首回合数值只动 BasePercent（第 3 回合起算）。
+g_HydraControlBasePercent = 66
+g_HydraControlPercentPerRound = 2
+
+-- 本回合的心控比例（整数百分比），下限 0：归零之后技能照样能放，只是心控 0 个单位。
+function g_GetHydraControlPercent()
+    local round = tonumber(exCounterGetByName("lvc")) or 0
+    local percent = g_HydraControlBasePercent - round * g_HydraControlPercentPerRound
+    if percent < 0 then
+        return 0
+    end
+    return percent
+end
+
+-- 心控数量 = 场上敌方单位数 × 比例，**向下取整**：
+function g_GetHydraControlCount(total)
+    return floor(total * g_GetHydraControlPercent() / 100)
+end
+
+-- 所以这里登记句柄，再挂一个「每回合开始」的常驻回调统一重刷文案。
+-- 刷新前按 ButtonManager 自己的口径确认这只按钮还在面板上（被换掉/重选技能组后不再复活它）。
+g_HydraButtons = {}
+function g_RefreshHydraButtonTexts()
+    local percent = g_GetHydraControlPercent()
+    for playerIndex = 1, 8, 1 do
+        local button = g_HydraButtons[playerIndex]
+        if button ~= nil
+            and ButtonManager:GetButton(button.PlayerName, button.ButtonIndex) == button then
+            button.Description = Localization.get("button.hydra.description", percent)
+            button:FormatText()
+            ButtonManager:SetButton(button)
+        end
+    end
+end
+
+function g_RegisterHydraButton(playerIndex, buttonData)
+    if g_HydraButtonsRegistered == nil then
+        g_HydraButtonsRegistered = true
+        if RoundLuaManager ~= nil and RoundLuaManager.CallOnEveryRoundBegin ~= nil then
+            RoundLuaManager.CallOnEveryRoundBegin(function()
+                g_RefreshHydraButtonTexts()
+            end, {})
+        end
+    end
+    g_HydraButtons[playerIndex] = buttonData
+end
+
 function CreateHydraButton(playerIndex)
     local buttonData = {
         PlayerName = "Player_" .. playerIndex,
@@ -101,7 +150,8 @@ function CreateHydraButton(playerIndex)
         ButtonIndex = 1,
         IconId = 'Button_AlliedInfiltrationInfantry_on',
         Title = Localization.get("button.hydra.title"),
-        Description = Localization.get("button.hydra.description"),
+        Description = Localization.get("button.hydra.description",
+            g_GetHydraControlPercent()),
         IsEnabled = true,
         MaxUseCount = 1,
         CooldownSeconds = 70,
@@ -111,6 +161,7 @@ function CreateHydraButton(playerIndex)
             return RequestHydra(self.PlayerIndex)
         end,
     }
+    g_RegisterHydraButton(playerIndex, buttonData)
     return CreateButton(buttonData)
 end
 
@@ -140,8 +191,9 @@ function RequestHydra(playerIndex)
         sideName = Localization.get("side.angel")
     end
     local context = g_GetEnemyBattlefieldContext(playerIndex, true, true)
-    -- 存活单位的一半，向上取整（5 个心控 3 个）。
-    local picked = g_PickRandomIndices(context.total, floor((context.total + 1) / 2))
+    -- 心控数量 = 存活敌方单位数 × 本回合比例（60% 起每回合 -2%，30 回合归 0），向下取整。
+    local picked = g_PickRandomIndices(context.total,
+        g_GetHydraControlCount(context.total))
     local attackTeam = context.sideAIPlayer .. "/ATTACK"
     local controlled = 0
     for k = 1, getn(picked), 1 do

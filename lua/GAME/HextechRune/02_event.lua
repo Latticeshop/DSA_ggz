@@ -19,9 +19,9 @@ HextechRune.RarityFrameImageIds = {
 }
 
 -- 开发测试开关：开局前几回合固定显示指定的三张符文（发版前整段删除）。
--- OpeningTestRounds = 2 表示第 1、2 回合各发一次同一组三张卡；只测一次就改成 1。
+-- OpeningTestRounds = 1 表示只在第 1 回合发一次同一组三张卡（实测发 2 次会连着弹两轮，只测一次就够了）。
 HextechRune.EnableOpeningRealTest = true
-HextechRune.OpeningTestRounds = 2
+HextechRune.OpeningTestRounds = 1
 HextechRune.OpeningTestTriggered = {}
 
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
@@ -1025,15 +1025,14 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        -- 测哪几张就把 Id 写进这三格（按 Id 直取符文池模板，不过筛池）。
-        -- 本轮测协议进度：一言九鼎（棱彩，+9 点 / 开 5 层）+ 落墨 ×2（银，+1 点 / 开 1 层，可重复）。
-        -- 第三格重复落墨是为了同时验「可重复叠加」与「一言九鼎不可重复」两条规则。
-        "prismatic_nine_words",
-        "silver_ink_drop",
-        "silver_ink_drop",
+        -- 本轮测护甲值系统：装甲冲击（金，25 点护甲 + 护甲 1:1 转伤害）/ 泰坦的坚决（棱彩，全兵种 25 点）/ 金麟甲（棱彩，100 点）。
+        -- 兵种按下面 testUnitTypeByIndex 取：只有 NeedsUnitType 的符文才吃这一列，泰坦的坚决不带兵种。
+        "armor_shock",
+        "titan_resolve",
+        "prismatic_golden_scale",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
-    local testUnitTypeByIndex = { "vehicle", "navy" }
+    local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
     local testTargetOverrides = {
     }

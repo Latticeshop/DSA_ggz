@@ -383,6 +383,38 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.nine_words.desc",
         Effect = "protocol_point_nine",
         Icon = "Button_CelestialTechStructure" },
+    -- ===== 护甲类=====
+    -- 玩家侧只认「护甲值」，换算成 ARMOR 的公式在 18_basics_exchange.lua（GetArmorReduction）：
+    -- 三张都可重复：多份直接在护甲值上加算，边际效益递减，永远堆不到 100%。
+    { Id = "silver_chain_mail", Rarity = 3,
+        NameKey = "hextech.rune.chain_mail.name",
+        DescKey = "hextech.rune.chain_mail.desc",
+        Effect = "armor_light", NeedsUnitType = true,
+        Icon = "CelestialArmorBreakerToggleATGUN" },
+    { Id = "gold_iron_armor", Rarity = 2,
+        NameKey = "hextech.rune.iron_armor.name",
+        DescKey = "hextech.rune.iron_armor.desc",
+        Effect = "armor_heavy", NeedsUnitType = true,
+        Icon = "SovietCompositeArmorUpgrade" },
+    { Id = "prismatic_golden_scale", Rarity = 1,
+        NameKey = "hextech.rune.golden_scale.name",
+        DescKey = "hextech.rune.golden_scale.desc",
+        Effect = "armor_prismatic", NeedsUnitType = true,
+        Icon = "Button_CelestialWarship" },
+    -- 装甲冲击（黄金）：护甲族的一员，给 25 点护甲，另外把这份护甲的护甲值 1:1 折成伤害——
+    -- 换算在 18_basics_exchange.lua 的 ApplyArmorToAssignment 里，和 ARMOR 一起挂。
+    { Id = "armor_shock", Rarity = 2,
+        NameKey = "hextech.rune.armor_shock.name",
+        DescKey = "hextech.rune.armor_shock.desc",
+        Effect = "armor_shock", NeedsUnitType = true,
+        Icon = "JUA_Kagami_Armor" },
+    -- 泰坦的坚决（棱彩）：全兵种护甲。
+    -- 护甲点数对每个兵种各算一次（GetPlayerAllTypeArmorPoints），不会漏也不会双算。
+    { Id = "titan_resolve", Rarity = 1,
+        NameKey = "hextech.rune.titan_resolve.name",
+        DescKey = "hextech.rune.titan_resolve.desc",
+        Effect = "titan_resolve",
+        Icon = "AUA_Destroyer_BlackHoleArmor" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。

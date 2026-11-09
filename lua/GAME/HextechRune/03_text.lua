@@ -259,6 +259,29 @@ g_LocalizationExtraText = {
     ["hextech.rune.nine_words.desc"] =
         { zh = "获得 9 协议点，并解锁五层协议。",
             en = "Gain 9 protocol points and unlock five protocol rows." },
+    -- 实现与公式见 18_basics_exchange.lua 的 GetArmorReduction。
+    ["hextech.rune.chain_mail.name"] = { zh = "锁子甲", en = "Chain Mail" },
+    ["hextech.rune.chain_mail.desc"] =
+        { zh = "你的 %s 单位获得 25 点护甲。",
+            en = "Your %s units gain 25 armor." },
+    ["hextech.rune.iron_armor.name"] = { zh = "玄铁甲", en = "Iron Armor" },
+    ["hextech.rune.iron_armor.desc"] =
+        { zh = "你的 %s 单位获得 50 点护甲。",
+            en = "Your %s units gain 50 armor." },
+    ["hextech.rune.golden_scale.name"] = { zh = "金麟甲", en = "Golden Scale" },
+    ["hextech.rune.golden_scale.desc"] =
+        { zh = "你的 %s 单位获得 100 点护甲。",
+            en = "Your %s units gain 100 armor." },
+    -- 装甲冲击：护甲 1:1 折伤害，换算见 18_basics_exchange.lua 的 GetArmorShockModifier。
+    ["hextech.rune.armor_shock.name"] = { zh = "装甲冲击", en = "Armor Shock" },
+    ["hextech.rune.armor_shock.desc"] =
+        { zh = "你单位的护甲还会提供等比例的伤害加成。\n你的 %s 单位获得 25 点护甲。",
+            en = "Your units' armor also grants an equal share of bonus damage.\nYour %s units gain 25 armor." },
+    -- 泰坦的坚决：全兵种护甲（不带兵种，所以文案里没有 %s），见 18_basics_exchange.lua。
+    ["hextech.rune.titan_resolve.name"] = { zh = "泰坦的坚决", en = "Titan's Resolve" },
+    ["hextech.rune.titan_resolve.desc"] =
+        { zh = "你的单位获得 25 点护甲。",
+            en = "Your units gain 25 armor." },
 
     -- === 重随、广播与提示 ===
     ["hextech.reroll.available"] = { zh = "重随该符文（本次选择限用一次）", en = "Reroll this rune (once per selection)" },

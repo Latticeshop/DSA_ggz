@@ -974,6 +974,9 @@ function HextechRune:ApplyPersistentRuneToUnit(playerIndex, rune, unit, typeLook
     elseif rune.Effect == "goliath" then
         ObjectLoadAttributeModifier(unit, statMod or g_HextechGoliathModifier,
             self.PersistentBuffDuration)
+    elseif self.ArmorRunePoints[rune.Effect] ~= nil then
+        -- 「该玩家该兵种的总护甲值」一次性换算后挂载（见 18_basics_exchange.lua）。
+        return true
     elseif rune.Effect == "ragnarok" then
         local objectId = ObjectGetId(unit)
         ObjectLoadAttributeModifier(unit, statMod or g_HextechRagnarokModifier,
@@ -1091,6 +1094,9 @@ function HextechRune:IsPersistentBattleRune(rune)
         or rune.Effect == "five_tiger_generals" or rune.Effect == "lethal_tempo"
         -- AT立场同理：只有登记里带 PlayerIndex 才能区分同侧三名玩家，整批套盾靠它筛人。
         or rune.Effect == "at_field"
+        -- 护甲类（锁子甲 / 玄铁甲 / 金麟甲 / 装甲冲击 / 泰坦的坚决）也走单位池配额分配；
+        -- 换算与挂载在 18_basics_exchange.lua。
+        or self.ArmorRunePoints[rune.Effect] ~= nil
 end
 
 -- 只有该玩家真正有效果可施加到这只单位时，才占用其单位池配额。
@@ -1312,6 +1318,11 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
                 end
             end
         end
+    end
+    -- 护甲：与具体符文实例无关，按「登记玩家 × 该单位兵种」的总护甲值换算成 ARMOR 挂一次
+    -- （幂等，同一只单位只挂一次；换算是加算后一次性做的，绝不能按份数重复挂）。
+    for i = 1, getn(assignments), 1 do
+        self:ApplyArmorToAssignment(assignments[i], typeLookup)
     end
 end
 

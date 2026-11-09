@@ -231,7 +231,8 @@ Localization._text_sources = {
     ["button.air_marshal.title"] = { zh = "空军元帅", en = "Air Marshal" },
     ["button.air_marshal.description"] = { zh = "请求超级苏霍伊群抵达战场对敌方的空军造成毁灭性的伤害\n【仅对空、不可攻击敌方空军元帅】", en = "Request a super Sukhoi squad to reach the battlefield and deal devastating damage to enemy air units\n[Air only; cannot attack the enemy Air Marshal]" },
     ["button.hydra.title"] = { zh = "九头蛇万岁", en = "Hail Hydra" },
-    ["button.hydra.description"] = { zh = "派出间谍渗透敌后，战场上随机一半的敌方单位心控为己方单位(冷却70秒)", en = "Send spies behind enemy lines; half of the enemy field units are mind-controlled into your side (70s cooldown)" },
+    -- 第 3 回合首次发放时 60%，每回合 -2%，第 33 回合归零后仍可施放（心控 0 个、流程照走）。
+    ["button.hydra.description"] = { zh = "派出间谍渗透敌后，战场上 %d%% 的敌方单位心控为己方单位", en = "Send spies behind enemy lines; %d%% of the enemy field units are mind-controlled into your side" },
     ["button.snowstorm.title"] = { zh = "冰天雪地", en = "Frozen Wasteland" },
     ["button.snowstorm.description"] = { zh = "召唤极地寒流覆盖战场，敌方场上全部单位立刻冻结！\n【不含防御塔与建筑】", en = "An arctic front covers the battlefield: every enemy field unit is frozen at once!\n[Towers and buildings excluded]" },
     ["button.skill_selected"] = { zh = "$p%dName选择了%s", en = "$p%dName selected %s" },
@@ -448,6 +449,7 @@ Localization._text_sources = {
 抽卡功能：可以使用抽卡技能获得额外单位。禁止在战场中央抽卡！
 抽卡模式：开局开放抽卡；每3回合内只能生产5个单位，抽卡结果有一半概率替换为全阵营加权生产单位，场地中间会有随机空投！
 海克斯符文：发放回合为第 3/10/18/27 回合，每次全场统一发放稀有度为 棱彩/黄金/白银 的海克斯符文，为战场带来随机可能性！按 J 键可收起/重新展开选择界面，上方技能栏有海克斯面板可查看全场玩家符文。
+护甲计算公式：减伤百分比＝护甲值／（护甲值＋100）
 可点击下方"更新日志"按钮查看更新内容]],
         en = [[DSA Game Rules:
 This map is developed with assistance from Latticeshop. It contains many experimental features and may be unstable. Features that pass testing will be updated and merged into the official DSA_XXX map.
@@ -461,6 +463,7 @@ Shrink Mode: Units on the battlefield receive the Shrink buff!
 Lucky Crate Feature: Use the Lucky Crate skill to gain extra units. Do not use it in the central battlefield!
 Pure Draw Mode: Lucky Crates are available from the start. Only 5 units may be produced during each 3-round cycle. Half of all draws are replaced with weighted buildable units from all factions, and random airdrops appear in the center of the battlefield!
 Hextech Runes: Granted on rounds 3/10/18/27, each time with one rarity for the whole field (Prismatic/Gold/Silver), bringing random twists to battle! Press J to hide or restore the selection screen. Use the Hextech Panel in the top button bar to view every player's runes.
+Armor formula: damage reduction ratio = armor / (armor + 100)
 Click the "Update Log" button below to view update details.]]
     },
     ["game.qq_group"] = { 
