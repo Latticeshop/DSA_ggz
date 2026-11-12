@@ -83,7 +83,133 @@ function GetPlayerYaoguangRemainingProductionQuota(playindex)
     return remaining
 end
 
+-- ===== 摇光单位池上限与超额自动回收 =====
+-- 超出的部分按回收价自动卖掉（给钱 + 播报，同神州龙船 / MCV 的自动回收），保证池内 <= 上限。
+g_YaoguangExcessRecyclePrice = 5000
+-- 海克斯「穿云定海」赠送的摇光：每送一辆多开一个池位，且不计入生产限造。
+g_PlayerGrantedYaoguangCount = g_PlayerGrantedYaoguangCount or { 0, 0, 0, 0, 0, 0, 0, 0 }
+
+function GetPlayerGrantedYaoguangCount(playindex)
+    return tonumber(g_PlayerGrantedYaoguangCount[playindex]) or 0
+end
+
+function RecordPlayerGrantedYaoguang(playindex, count)
+    local addCount = tonumber(count) or 0
+    if addCount <= 0 then
+        return
+    end
+    g_PlayerGrantedYaoguangCount[playindex] =
+        GetPlayerGrantedYaoguangCount(playindex) + addCount
+end
+
+-- 实际控制的席位数：继承一个队友就多一个席位（与小电 / 东风同一套判法）。
+function GetPlayerControlledSeatCount(playerIndex)
+    local slotCount = 0
+    if g_PowerSlotController ~= nil and g_PowerSlotPresent ~= nil then
+        for slotIndex = 1, 8, 1 do
+            if g_PowerSlotPresent[slotIndex] == 1
+                and g_PowerSlotController[slotIndex] == playerIndex then
+                slotCount = slotCount + 1
+            end
+        end
+    end
+    if slotCount < 1 then
+        slotCount = 1
+    end
+    return slotCount
+end
+
+-- 摇光池上限：每控制一个席位 3 辆（继承一个席位 +3），再加上海克斯赠送的额外额度。
+function GetPlayerYaoguangPoolCap(playindex)
+    local cap = YAOGUANG_LIMIT * GetPlayerControlledSeatCount(playindex)
+        + GetPlayerGrantedYaoguangCount(playindex)
+    -- 兜底：席位表还没就绪时按实有产量放宽，避免把正常生产的摇光当超额卖掉。
+    local produced = GetPlayerYaoguangCount(playindex)
+    if produced > cap then
+        cap = produced
+    end
+    return cap
+end
+
+-- 先扣非生产来源（箱子 / 赠送 / 重组器），只有连生产部分都超了才动限造计数，
+-- 否则卖掉箱子摇光反而把生产额度又放回去，会变成「造 → 超 → 卖」的循环刷钱。
+function RecycleExcessPlayerYaoguang(playerIndex)
+    if playerIndex == nil or UNITCOUNT == nil or g_UnitNameToUnitIndex == nil then
+        return 0
+    end
+    local unitIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
+    if unitIndex == nil then
+        return 0
+    end
+    local poolCount = GetPlayerPoolYaoguangCount(playerIndex)
+    local excess = poolCount - GetPlayerYaoguangPoolCap(playerIndex)
+    if excess <= 0 then
+        return 0
+    end
+    local nonProduced = poolCount - GetPlayerYaoguangCount(playerIndex)
+    if nonProduced < 0 then
+        nonProduced = 0
+    end
+    local fromProduced = excess - nonProduced
+    if fromProduced < 0 then
+        fromProduced = 0
+    end
+    UNITCOUNT[playerIndex][unitIndex] = poolCount - excess
+    if ANYUNITCOUNT ~= nil then
+        local anyCount = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) - excess
+        if anyCount < 0 then
+            anyCount = 0
+        end
+        ANYUNITCOUNT[playerIndex] = anyCount
+    end
+    if fromProduced > 0 and RemovePlayerProducedYaoguangFromPool ~= nil then
+        RemovePlayerProducedYaoguangFromPool(playerIndex, fromProduced)
+    end
+    local rate = 1
+    if GetRecycleRate ~= nil then
+        rate = tonumber(GetRecycleRate(playerIndex)) or 1
+    end
+    local money = floor(excess * g_YaoguangExcessRecyclePrice * rate + 0.5)
+    local previous = nil
+    if SetWorldBuilderThisPlayer ~= nil then
+        previous = SetWorldBuilderThisPlayer(1)
+    end
+    ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, money)
+    if previous ~= nil then
+        SetWorldBuilderThisPlayer(previous)
+    end
+    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
+        Localization.get("yaoguang.excess.recycled", excess, money), 8)
+    return excess
+end
+
+g_YaoguangRecyclingGuard = g_YaoguangRecyclingGuard or 0
+
+function RecycleAllExcessPlayerYaoguang()
+    -- 重入保护：下面会由 LIMITYAOGUANG 调用，卖出后又需要重新同步建造按钮。
+    if g_YaoguangRecyclingGuard == 1 then
+        return 0
+    end
+    g_YaoguangRecyclingGuard = 1
+    local totalSold = 0
+    for playindex = 1, 8, 1 do
+        totalSold = totalSold + RecycleExcessPlayerYaoguang(playindex)
+    end
+    g_YaoguangRecyclingGuard = 0
+    return totalSold
+end
+
+-- 兜底周期扫描：箱子 / 十连 / 重组器绕过回收流程塞进来的超额摇光也能清掉。
+-- 只在真的超额时才动钱、才播报，正常对局不会触发。
+if SchedulerModule ~= nil and SchedulerModule.call_every_x_frame ~= nil then
+    SchedulerModule.call_every_x_frame(RecycleAllExcessPlayerYaoguang, 15 * 10, nil)
+end
+
 function LIMITYAOGUANG()
+    -- 先清掉箱子 / 十连 / 重组器塞进池子的超额摇光，再按池子现算额度开关按钮。
+    if RecycleAllExcessPlayerYaoguang ~= nil then
+        RecycleAllExcessPlayerYaoguang()
+    end
     for playindex = 1, 8, 1 do
         ReconcilePlayerProducedYaoguang(playindex)
         local remainingQuota = GetPlayerYaoguangRemainingProductionQuota(playindex)
@@ -530,6 +656,15 @@ function TransferPlayerUnitPools(fromIndex, toIndex)
             end
         end
     end
+    -- 海克斯赠送的摇光池位跟着走，否则继承者的池上限会缩水，把继承来的赠送摇光当超额卖掉。
+    if g_PlayerGrantedYaoguangCount ~= nil then
+        local granted = tonumber(g_PlayerGrantedYaoguangCount[fromIndex]) or 0
+        if granted > 0 then
+            g_PlayerGrantedYaoguangCount[toIndex] =
+                (tonumber(g_PlayerGrantedYaoguangCount[toIndex]) or 0) + granted
+            g_PlayerGrantedYaoguangCount[fromIndex] = 0
+        end
+    end
     if ANYUNITCOUNT ~= nil then
         ANYUNITCOUNT[toIndex] = (tonumber(ANYUNITCOUNT[toIndex]) or 0)
             + (tonumber(ANYUNITCOUNT[fromIndex]) or 0)
@@ -583,6 +718,9 @@ function ZeroPlayerUnitPools(fromIndex)
     if g_PlayerProducedYaoguangCount ~= nil then
         g_PlayerProducedYaoguangCount[fromIndex] = 0
     end
+    if g_PlayerGrantedYaoguangCount ~= nil then
+        g_PlayerGrantedYaoguangCount[fromIndex] = 0
+    end
     if ANYUNITCOUNT ~= nil then
         ANYUNITCOUNT[fromIndex] = 0
     end
@@ -614,6 +752,21 @@ function TransferPlayerRuneState(fromIndex, toIndex)
         g_HextechOblivionBombCharges[fromIndex] = 0
         if HextechRune.RefreshOblivionBombHint ~= nil then
             HextechRune:RefreshOblivionBombHint(toIndex)
+        end
+    end
+    if g_HextechIlBeaconCharges ~= nil then
+        g_HextechIlBeaconCharges[toIndex] =
+            (g_HextechIlBeaconCharges[toIndex] or 0)
+            + (g_HextechIlBeaconCharges[fromIndex] or 0)
+        g_HextechIlBeaconCharges[fromIndex] = 0
+        -- 冷却跟着一起搬：谁手上有次数听谁的。
+        if g_HextechIlBeaconCooldown ~= nil then
+            g_HextechIlBeaconCooldown[toIndex] =
+                g_HextechIlBeaconCooldown[fromIndex] or 0
+            g_HextechIlBeaconCooldown[fromIndex] = 0
+        end
+        if HextechRune.RefreshIlBeaconHint ~= nil then
+            HextechRune:RefreshIlBeaconHint(toIndex)
         end
     end
     if g_HextechOilDerrickSerial ~= nil then
@@ -715,6 +868,15 @@ function ClearPlayerRuneState(fromIndex)
     end
     if g_HextechOblivionBombCharges ~= nil then
         g_HextechOblivionBombCharges[fromIndex] = 0
+    end
+    if g_HextechIlBeaconCharges ~= nil then
+        g_HextechIlBeaconCharges[fromIndex] = 0
+        if g_HextechIlBeaconCooldown ~= nil then
+            g_HextechIlBeaconCooldown[fromIndex] = 0
+        end
+        if HextechRune.RefreshIlBeaconHint ~= nil then
+            HextechRune:RefreshIlBeaconHint(fromIndex)
+        end
     end
     if g_HextechUltimateRefreshCount ~= nil then
         g_HextechUltimateRefreshCount[fromIndex] = 0

@@ -144,6 +144,10 @@ function HextechRune:SideHasHuntRhythm(sideSeats)
     return false
 end
 
+HextechRune.ExtraVariantTemplates = HextechRune.ExtraVariantTemplates or {
+    { Variant = "AlliedChronoBeacon_Vindicator", Base = "AlliedAntiGroundAircraft" },
+}
+
 function HextechRune:GetVariantPoolIndex()
     if self.HuntVariantPoolIndex ~= nil then
         return self.HuntVariantPoolIndex
@@ -169,7 +173,38 @@ function HextechRune:GetVariantPoolIndex()
             result[FastHash(entry.ReplacementType)] = poolIndex
         end
     end
+    -- 生产别名表没登记的衍生形态，在这里补（维护者的超时空信标形态）。
+    for i = 1, getn(self.ExtraVariantTemplates), 1 do
+        local entry = self.ExtraVariantTemplates[i]
+        local poolIndex = g_UnitNameToUnitIndex[entry.Base]
+        if poolIndex ~= nil then
+            result[FastHash(entry.Variant)] = poolIndex
+        end
+    end
     self.HuntVariantPoolIndex = result
+    return result
+end
+
+-- 符文按兵种槽派发（AssignNewSideBattleUnits 只按 UNITLIST 的精确模板名扫 FilterLIST），
+function HextechRune:GetSideVariantUnitsByIndex(sideIndex)
+    local result = {}
+    local variantIndex = self:GetVariantPoolIndex()
+    local units, count = g_SideFindObjects(sideIndex, nil, self.AllSideUnitsFilter)
+    for i = 1, count, 1 do
+        local unit = units[i]
+        local instanceId = ObjectGetInstanceId(unit)
+        -- 本体模板有自己的池槽位，FilterLIST 已经扫到了，这里只补衍生形态。
+        if g_UnitNameToUnitIndex == nil
+            or g_UnitNameToUnitIndex[instanceId] == nil then
+            local poolIndex = variantIndex[instanceId]
+            if poolIndex ~= nil then
+                if result[poolIndex] == nil then
+                    result[poolIndex] = {}
+                end
+                tinsert(result[poolIndex], unit)
+            end
+        end
+    end
     return result
 end
 

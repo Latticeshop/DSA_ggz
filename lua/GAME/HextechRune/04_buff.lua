@@ -547,6 +547,10 @@ function HextechRune:MarkNextSpawnAsKnownPureDrawUnit()
 end
 
 function HextechRune:GrantYaoguang(playerIndex)
+    -- 赠送的摇光不占生产限造，但要同步多开一个单位池位（见 MONEYINI_3 的池上限口径）。
+    if RecordPlayerGrantedYaoguang ~= nil then
+        RecordPlayerGrantedYaoguang(playerIndex, 1)
+    end
     self:MarkNextSpawnAsKnownPureDrawUnit()
     ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
         "CelestialAdvanceAircraftTech4",
@@ -771,19 +775,22 @@ function HextechRune:EnableTowerDefenseExpert(playerIndex)
     g_HextechTowerDefenseExpert[playerIndex] = true
 end
 
-function HextechRune:GrantOilDerricks(playerIndex)
+-- 石油王给 2 个油井、石油佬给 1 个：份数由调用方传，单个摆正中，两个左右各偏 170。
+function HextechRune:GrantOilDerricks(playerIndex, count)
+    count = count or 2
     local teamName = format("Player_%d/teamPlayer_%d", playerIndex, playerIndex)
     g_HextechOilDerrickSerial[playerIndex] = g_HextechOilDerrickSerial[playerIndex] + 1
     local serial = g_HextechOilDerrickSerial[playerIndex]
-    for i = 1, 2, 1 do
-        local sideOffset = -170
-        if i == 2 then
-            sideOffset = 170
-        end
+    local spacing = 0
+    if count > 1 then
+        spacing = 170
+    end
+    for i = 1, count, 1 do
         ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION",
             format("HextechOilDerrick_%d_%d_%d", playerIndex, serial, i),
             "oilderrick", teamName,
-            self:GetPlayerHomeSpawnPosition(playerIndex, 180, sideOffset), 0)
+            self:GetPlayerHomeSpawnPosition(playerIndex, 180,
+                (i - 1) * spacing * 2 - spacing), 0)
     end
 end
 
@@ -1147,11 +1154,23 @@ end
 function HextechRune:AssignNewSideBattleUnits(sideIndex, seatList,
     typeLookup, skipObjects, seenObjects)
     local newlyAssigned = {}
+    -- 衍生形态（_Enhanced / _Ground / _Water 等）不在 UNITLIST 里，按兵种槽并回本体后一起认领。
+    local variantUnits = self:GetSideVariantUnitsByIndex(sideIndex)
     for unitIndex = 1, unitcountmax, 1 do
         local units, count = g_SideFindObjects(sideIndex, nil, FilterLIST[unitIndex])
-        local newUnits = {}
+        local candidates = {}
         for i = 1, count, 1 do
-            local unit = units[i]
+            tinsert(candidates, units[i])
+        end
+        local variantList = variantUnits[unitIndex]
+        if variantList ~= nil then
+            for i = 1, getn(variantList), 1 do
+                tinsert(candidates, variantList[i])
+            end
+        end
+        local newUnits = {}
+        for i = 1, getn(candidates), 1 do
+            local unit = candidates[i]
             local objectId = ObjectGetId(unit)
             if seenObjects ~= nil then
                 seenObjects[objectId] = true
@@ -1267,9 +1286,11 @@ end
 HextechRune.SkipPerUnitAssignmentEffects = {
     starting_funds = true, fortified = true, recycler = true,
     broadband_jamming = true, divine_intervention = true, grant_foreign_mcv = true,
-    grant_yaoguang = true, oil_king = true, buy_two_get_one = true,
+    grant_yaoguang = true, oil_king = true, oil_tycoon = true,
+    buy_two_get_one = true,
     five_thunder = true, combustion_interest = true, tesla_air_assault = true,
     grant_olympus_carrier = true, grant_oblivion_bomb = true,
+    grant_il_beacon = true,
     grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
     grant_cryo_satellite = true, grant_chrono_rift = true,
@@ -1286,6 +1307,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     upgrade_rhino_tank = true,
     prepare_backpack = true,
     easy_does_it = true,
+    -- 精挑细选：只在「摆候选」那一刻起作用（多摆一张），不逐单位挂载。
+    extra_rune_option = true,
     -- 烧福瑞 / 生异形 / 钓鱼佬 / 樱落：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
     burn_furry = true, spawn_alien = true, angler = true, sit_tight = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
@@ -1507,6 +1530,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:GrantOlympusCarrier(playerIndex)
     elseif rune.Effect == "grant_oblivion_bomb" then
         self:AddOblivionBombCharge(playerIndex)
+    elseif rune.Effect == "grant_il_beacon" then
+        self:OnIlBeaconChosen(playerIndex)
     elseif rune.Effect == "grant_giga_fortress" then
         self:GrantGigaFortress(playerIndex)
     elseif rune.Effect == "grant_dongfeng_express" then
@@ -1533,7 +1558,9 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "grant_foreign_mcv" then
         self:GrantForeignMCV(playerIndex)
     elseif rune.Effect == "oil_king" then
-        self:GrantOilDerricks(playerIndex)
+        self:GrantOilDerricks(playerIndex, 2)
+    elseif rune.Effect == "oil_tycoon" then
+        self:GrantOilDerricks(playerIndex, 1)
     elseif rune.Effect == "buy_two_get_one" then
         self:EnableBuyTwoGetOne(playerIndex, rune)
     elseif rune.Effect == "starting_funds" then

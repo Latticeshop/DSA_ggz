@@ -56,12 +56,15 @@ HextechRune.AsciiWidthWeight = 0.55
 -- 纯 ASCII 长标题相对估宽需要额外右移的「字母宽度」个数。
 HextechRune.AsciiLongTitleShiftLetters = 1
 HextechRune.PlayerNameEstimatedUnits = 3
--- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*3 + j
--- 回收单位按钮占用 31~230；事件卡改用 251~268，避免同一次点击误入回收处理器。
+-- 每组事件卡最多几张：默认 3 张，持有「精挑细选」时摆 4 张。
+-- 每种按钮/文字的 index 都按 4 张预留（8 人 × 4 = 32），下面各基址的间距都够。
+HextechRune.MaxOptionsPerPlayer = 4
+-- 自定义按钮 index 基础：玩家 i 的方框 j = CustomBtnIndexBase + (i-1)*4 + j
+-- 回收单位按钮占用 31~230；事件卡改用 251~282，避免同一次点击误入回收处理器。
 HextechRune.CustomBtnIndexBase = 250
--- 事件卡片顶部原生图标按钮 index（每玩家 3 个）
+-- 事件卡片顶部原生图标按钮 index（每玩家 4 个）
 HextechRune.CustomIconBtnIndexBase = 300
--- 每张事件卡正下方的重随按钮（每玩家 3 个）
+-- 每张事件卡正下方的重随按钮（每玩家 4 个）
 HextechRune.RerollBtnIndexBase = 350
 HextechRune.RerollButtonWidth = 57
 HextechRune.RerollButtonHeight = 35
@@ -188,22 +191,26 @@ function HextechRerollModeApply(dialog)
     ButtonChoiceDialogManager:ShowDialog(dialog)
 end
 
--- 计算某玩家某个方框的按钮 index
+-- 计算某玩家某个方框的按钮 index（按每人 MaxOptionsPerPlayer 张预留）
 function HextechRune:GetOptionBtnIndex(playerIndex, optionIndex)
-    return self.CustomBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+    return self.CustomBtnIndexBase
+        + (playerIndex - 1) * self.MaxOptionsPerPlayer + optionIndex
 end
 
 -- 计算某玩家某个方框的文字 index
 function HextechRune:GetOptionTextIndex(playerIndex, optionIndex)
-    return self.CustomTextIndexBase + (playerIndex - 1) * 3 + optionIndex
+    return self.CustomTextIndexBase
+        + (playerIndex - 1) * self.MaxOptionsPerPlayer + optionIndex
 end
 
 function HextechRune:GetOptionIconBtnIndex(playerIndex, optionIndex)
-    return self.CustomIconBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+    return self.CustomIconBtnIndexBase
+        + (playerIndex - 1) * self.MaxOptionsPerPlayer + optionIndex
 end
 
 function HextechRune:GetRerollBtnIndex(playerIndex, optionIndex)
-    return self.RerollBtnIndexBase + (playerIndex - 1) * 3 + optionIndex
+    return self.RerollBtnIndexBase
+        + (playerIndex - 1) * self.MaxOptionsPerPlayer + optionIndex
 end
 
 function HextechRune:GetSelectionHintTextIndex(playerIndex)
@@ -455,6 +462,8 @@ function HextechRune:CommitAscendRuneRarity(playerIndex, targetRarity)
     end
     exAddTextToPublicBoard(Localization.get("hextech.ascend.broadcast", playerIndex,
         Localization.get("hextech.rarity." .. self.RarityNames[targetRarity])), 10)
+    -- 这一份准备背包的效果已经兑现，面板文案末尾补「（已生效）」。
+    self:MarkRuneEffectConsumed(playerIndex, "prepare_backpack")
 end
 
 -- 顺手的事也是**次数**：一次只多拿一张（不叠加），但继承来的会排队，
@@ -465,6 +474,8 @@ function HextechRune:ConsumePendingExtraPick(playerIndex)
     else
         self.PendingExtraRunePick[playerIndex] = nil
     end
+    -- 这一份顺手的事已经兑现，面板文案末尾补「（已生效）」。
+    self:MarkRuneEffectConsumed(playerIndex, "easy_does_it")
 end
 
 -- 本次事件的卡片张数可能少于 3（高一阶筛池候选不足），整排按实际张数居中。
@@ -647,7 +658,7 @@ function HextechRune:RefreshRerollButtons(playerIndex)
     -- 顺手的事重排之后候选可能少于 3 张：只重建实际还在的那些，
     -- 否则空位（尤其整排已按较少张数居中时的右侧空位）会留一颗没用的重随按钮。
     local count = self.PlayerOptionCount[playerIndex] or 3
-    for optionIndex = 1, 3, 1 do
+    for optionIndex = 1, self.MaxOptionsPerPlayer, 1 do
         local buttonIndex = self:GetRerollBtnIndex(playerIndex, optionIndex)
         exCustomBtnSetVisibilityForPlayer(playerName, buttonIndex, 0)
         exCustomBtnRemoveForPlayer(playerName, buttonIndex)
@@ -715,7 +726,7 @@ function HextechRune:SetSelectionPageVisible(playerIndex, visible)
     if visible then
         visibility = 1
     end
-    for optionIndex = 1, 3, 1 do
+    for optionIndex = 1, self.MaxOptionsPerPlayer, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, optionIndex)
         local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, optionIndex)
         local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, optionIndex)
@@ -1025,11 +1036,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        -- 本轮测护甲值系统：装甲冲击（金，25 点护甲 + 护甲 1:1 转伤害）/ 泰坦的坚决（棱彩，全兵种 25 点）/ 金麟甲（棱彩，100 点）。
-        -- 兵种按下面 testUnitTypeByIndex 取：只有 NeedsUnitType 的符文才吃这一列，泰坦的坚决不带兵种。
-        "armor_shock",
-        "titan_resolve",
-        "prismatic_golden_scale",
+        "gold_los_strike",
+        "silver_oil_tycoon",
+        "silver_easy_does_it",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
@@ -1250,10 +1259,10 @@ function HextechRune:ClearPlayerSlotRunes(fromIndex)
 end
 
 -- 移除某玩家当前的候选卡（卡框 / 图标 / 重随按钮 / 标题），不动 PlayerOptions。
--- 关页与「顺手的事」重排都走这里，避免两处各写一份 3 连循环。
+-- 关页与「顺手的事」重排都走这里，避免两处各写一份重复循环。
 function HextechRune:RemoveOptionBoxes(playerIndex)
     local playerName = "Player_" .. playerIndex
-    for i = 1, 3, 1 do
+    for i = 1, self.MaxOptionsPerPlayer, 1 do
         local btnIndex = self:GetOptionBtnIndex(playerIndex, i)
         local iconBtnIndex = self:GetOptionIconBtnIndex(playerIndex, i)
         local rerollBtnIndex = self:GetRerollBtnIndex(playerIndex, i)
@@ -1634,10 +1643,11 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 三张事件卡下方的重随按钮共享一次机会，只替换被点击的那张卡。
         if index > HextechRune.RerollBtnIndexBase
-            and index <= HextechRune.RerollBtnIndexBase + 24 then
+            and index <= HextechRune.RerollBtnIndexBase
+                + HextechRune.MaxOptionsPerPlayer * 8 then
             local rerollOffset = index - HextechRune.RerollBtnIndexBase - 1
-            local rerollPlayerIndex = floor(rerollOffset / 3) + 1
-            local rerollOptionIndex = mod(rerollOffset, 3) + 1
+            local rerollPlayerIndex = floor(rerollOffset / HextechRune.MaxOptionsPerPlayer) + 1
+            local rerollOptionIndex = mod(rerollOffset, HextechRune.MaxOptionsPerPlayer) + 1
             if rerollPlayerIndex >= 1 and rerollPlayerIndex <= 8
                 and playerName == "Player_" .. rerollPlayerIndex
                 and HextechRune.PlayerOptions[rerollPlayerIndex] then
@@ -1647,10 +1657,11 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 事件卡片的原生图标按钮与下层卡框按钮执行同一个选择。
         if index > HextechRune.CustomIconBtnIndexBase
-            and index <= HextechRune.CustomIconBtnIndexBase + 24 then
+            and index <= HextechRune.CustomIconBtnIndexBase
+                + HextechRune.MaxOptionsPerPlayer * 8 then
             local iconOffset = index - HextechRune.CustomIconBtnIndexBase - 1
-            local iconPlayerIndex = floor(iconOffset / 3) + 1
-            local iconOptionIndex = mod(iconOffset, 3) + 1
+            local iconPlayerIndex = floor(iconOffset / HextechRune.MaxOptionsPerPlayer) + 1
+            local iconOptionIndex = mod(iconOffset, HextechRune.MaxOptionsPerPlayer) + 1
             if iconPlayerIndex >= 1 and iconPlayerIndex <= 8
                 and playerName == "Player_" .. iconPlayerIndex
                 and HextechRune.PlayerOptions[iconPlayerIndex] then
@@ -1660,11 +1671,13 @@ function HextechRune:RegisterCustomBtnHandler()
         end
         -- 解析 index 属于哪位玩家的哪个方框
         if index > HextechRune.CustomBtnIndexBase
-            and index <= HextechRune.CustomBtnIndexBase + 24 then
+            and index <= HextechRune.CustomBtnIndexBase
+                + HextechRune.MaxOptionsPerPlayer * 8 then
             local offset = index - HextechRune.CustomBtnIndexBase - 1
-            local playerIndex = floor(offset / 3) + 1
-            local optionIndex = mod(offset, 3) + 1
-            if playerIndex >= 1 and playerIndex <= 8 and optionIndex >= 1 and optionIndex <= 3
+            local playerIndex = floor(offset / HextechRune.MaxOptionsPerPlayer) + 1
+            local optionIndex = mod(offset, HextechRune.MaxOptionsPerPlayer) + 1
+            if playerIndex >= 1 and playerIndex <= 8
+                and optionIndex >= 1 and optionIndex <= HextechRune.MaxOptionsPerPlayer
                 and playerName == "Player_" .. playerIndex then
                 if HextechRune.PlayerOptions[playerIndex] then
                     HextechRune:HandleOptionClick(playerIndex, optionIndex)
@@ -1680,6 +1693,8 @@ end
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
     self:OnFiveThunderRoundBegin(round)
+    -- 视距打击：还持有这张符文就每回合补 1 次伊尔信标部署次数（实现在 01_rune_pool.lua 尾部）。
+    self:OnIlBeaconRoundBegin(round)
     -- 单人遭遇战：开局评估一次并播报（消息区小字），此后重随不限次数；多人局不播也不放开。
     self:InitSoloUnlimitedReroll()
     -- 开发测试：开局前几回合的固定三选一必须先于正式事件判断。

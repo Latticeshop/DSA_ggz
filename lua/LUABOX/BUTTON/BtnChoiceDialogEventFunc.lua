@@ -1547,6 +1547,13 @@ function BtnChoiceDialogEventFunc_RecycleUnitDialog(playerName)
                 for matePos = 1, 4, 1 do
                     exAddTextToPublicBoardForPlayer("Player_" .. mateSeats[matePos], msg, 5);
                 end
+                -- 回收摇光时顺带清理超额：箱子/十连等来源顶到上限之上的那几辆自动回收（给钱 + 播报）。
+                if RecycleExcessPlayerYaoguang ~= nil
+                    and (recycleUnitInfo.CountType == "CelestialAdvanceAircraftTech4"
+                        or recycleUnitInfo.Type == "CelestialAdvanceAircraftTech4"
+                        or recycleUnitInfo.Type == "CelestialAdvanceAircraftTech4_Enhanced") then
+                    RecycleExcessPlayerYaoguang(playerIndex2)
+                end
             end
 
             SetWorldBuilderThisPlayer(previous)

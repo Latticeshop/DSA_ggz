@@ -950,3 +950,328 @@ function NoStructureBuffedUnitMICROCONTROL ()
         end
     end
 end
+
+-- 轰炸机全图索敌优先攻敌方陆地炮车。
+-- 名单收四种轰炸机：维护者（含超时空信标形态）、伊尔攻击机、金乌轰炸机、樱花回天雷（含陆基/船坞形态）。
+-- 世纪轰炸机刻意不收：它投弹必须贴脸，追着炮车飞过去等于送死，这是设定。
+-- 鬼樱特攻机（JapanSakuraAttackRocket，秒速五厘米的升级形态）也不收：它更适合炸前排。
+g_BomberPriorityUnitTypes = {
+    "AlliedAntiGroundAircraft",             -- 维护者轰炸机
+    "AlliedChronoBeacon_Vindicator",        -- 维护者轰炸机（超时空信标形态）
+    "SovietAntiGroundAttacker",             -- 伊尔攻击机
+    "SovietAntiGroundAttacker_Enhanced",    -- 伊尔攻击机（升级形态）
+    "CelestialBomberAircraft",              -- 金乌轰炸机
+    "CelestialBomberAircraft_Enhanced",     -- 金乌轰炸机（升级形态）
+    "JapanInterceptorAircraft",             -- 樱花回天雷
+    "JapanInterceptorAircraft_Ground",      -- 樱花回天雷（陆基形态）
+    "JapanInterceptorAircraft_WarfactoryWater" -- 樱花回天雷（船坞/水上形态）
+}
+
+-- 优先档：敌方陆地炮车（白虎 / V4 / 波能 / 雅典娜 / 郁金香）及其升级形态。
+-- 超级要塞大头形态与“菊花”导弹车不列进来：它们由 PrioritySiegeAttackMove 的炮车 AI 另管一档。
+g_FilterBomberPrioritySiegeVehicle = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "ENEMIES",
+    IncludeThing = {
+        "CelestialAntiStructureVehicle",             -- 白虎量子重炮运载车
+        "CelestialAntiStructureVehicle_Enhanced",
+        "SovietAntiStructureVehicle",                -- V4 导弹发射车
+        "SovietAntiStructureVehicle_Enhanced",
+        "JapanAntiStructureVehicle",                 -- 波能坦克
+        "JapanAntiStructureVehicle_Enhanced",
+        "AlliedAntiStructureVehicle",                -- 雅典娜炮
+        "AlliedAntiStructureVehicle_Enhanced",
+        "SovietHeavyMortarVehicle"                   -- 郁金香自行迫击炮
+    }
+})
+
+-- 自己方轰炸机的过滤器只需要一个：阵营由 g_SideFindObjects 的锚点（PlyrCivilian / PlyrCreeps）
+-- 决定，SAME_PLAYER 是相对锚点算的，和 FilterPrioritySiegeVehicle 同一套写法。
+g_FilterBomberPrioritySelf = CreateObjectFilter({
+    Rule = "ANY",
+    Relationship = "SAME_PLAYER",
+    IncludeThing = g_BomberPriorityUnitTypes
+})
+
+-- 轰炸机只认这两个 AI 阵营名下的东西：PlyrCivilian = 恶魔侧，PlyrCreeps = 天使侧。
+-- CreateObjectFilter 只认模板名 / KindOf，拿不到归属，所以「别炸玩家的东西」只能在 lua 这层筛：
+g_BomberOwnerFilterEnabled = true
+
+function IsBomberAllowedTarget(target)
+    if target == nil then
+        return false
+    end
+    if not g_BomberOwnerFilterEnabled then
+        return true
+    end
+    local ownerName = ObjectPlayerScriptName(target)
+    return ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps"
+end
+
+-- 候选表按归属过一遍，返回筛完的新表（Lua 4：手写下标，不用 tinsert）。
+function FilterBomberCandidatesByOwner(list, count)
+    local result = {}
+    local resultCount = 0
+    if list ~= nil then
+        if type(count) ~= "number" then
+            count = getn(list)
+        end
+        for i = 1, count, 1 do
+            if IsBomberAllowedTarget(list[i]) then
+                resultCount = resultCount + 1
+                result[resultCount] = list[i]
+            end
+        end
+    end
+    return result, resultCount
+end
+
+-- 只写 CompareFilterList、不写 CustomFilter：能打谁完全交回引擎，
+-- 轰炸机会自己飞过去，而不是先就近随便找个步兵开火。
+function ConfigureBomberPriorityTargetChooser(unit)
+    ObjectSetCustomTargetChooserData(unit, {
+        CompareFilterList = { g_FilterBomberPrioritySiegeVehicle },
+        ReverseRangeCompare = false,
+        PreferTargetInsideRange = false
+    })
+    ObjectSetTargetChooserNextAutoAcquireDelay(unit, 0)
+end
+
+function BomberPrioritySiegeTargetChooserBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    if ownerPlayerName ~= "PlyrCreeps" and ownerPlayerName ~= "PlyrCivilian" then
+        return
+    end
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ConfigureBomberPriorityTargetChooser(GetObjectById(id))
+        end
+    end, 1, {createdObjId})
+end
+
+-- 引擎索敌扫描半径未必够到全图，所以再用一次“整侧只查一遍全图”的搜索把轰炸机拽过去。
+-- 频率对齐其它单位微操：TGMICRO 本身就是每 3 帧一次，PrioritySiegeAttackMoveMICROCONTROL
+g_BomberPrioritySiegeScanIntervalFrames = 3
+g_BomberPrioritySiegeNextScanFrame = g_BomberPrioritySiegeNextScanFrame or 0
+g_BomberPrioritySiegeTargetByUnitId = g_BomberPrioritySiegeTargetByUnitId or {}
+g_BomberAmmoSlotByUnitId = g_BomberAmmoSlotByUnitId or {}
+
+-- 弹药打空的轰炸机会自动回机场补给；这时候压攻击令会把补给流程顶掉，
+-- 一架永远回不去机场的轰炸机等于永久废掉，所以强制索敌前先放行返航。
+-- 武器槽序号由模板决定（AI 维护者主武器在第 5 号），首次按区间扫一遍并把命中的槽记下来。
+function BomberHasWeaponAmmo(self, selfId)
+    if ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount == nil then
+        return true
+    end
+    local slot = g_BomberAmmoSlotByUnitId[selfId]
+    if slot ~= nil then
+        local ammo = ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount(
+            self, slot.Hardpoint, slot.Ordering, slot.WeaponIndex)
+        if ammo ~= nil then
+            return ammo ~= 0
+        end
+        g_BomberAmmoSlotByUnitId[selfId] = nil
+    end
+    local sawWeapon = false
+    for hardpoint = 1, 2, 1 do
+        for weaponIndex = 1, 6, 1 do
+            local ammo = ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount(
+                self, hardpoint, 1, weaponIndex)
+            if ammo ~= nil then
+                sawWeapon = true
+                if ammo ~= 0 then
+                    g_BomberAmmoSlotByUnitId[selfId] = {
+                        Hardpoint = hardpoint,
+                        Ordering = 1,
+                        WeaponIndex = weaponIndex
+                    }
+                    return true
+                end
+            end
+        end
+    end
+    -- 一个武器都读不到（单位没有 WeaponSetUpdate 组件）：不拦，交给引擎判断。
+    return not sawWeapon
+end
+
+-- 不在攻击编队里的轰炸机 = 被摘进 idle 队的那些（例如视距打击召唤的信标机）。
+-- 常规轰炸机那样把目标交回原生逻辑，得补一个保底目标，否则它会呆在原地不动也不开火。
+function IsBomberTeamDetached(self)
+    local teamName = ObjectTeamName(self)
+    if teamName == nil then
+        return false
+    end
+    if teamName == DEFAULTIDLETEAM[7] or teamName == DEFAULTIDLETEAM[8] then
+        return true
+    end
+    -- 日冕的编队名有全名和短名两种写法，idle 队的短名是这两个。
+    return teamName == "teamPlyrCivilian" or teamName == "teamPlyrCreeps"
+end
+
+function GetBomberSideIndex(self)
+    if ObjectPlayerScriptName(self) == "PlyrCreeps" then
+        return 8
+    end
+    return 7
+end
+
+-- 摘出去之前记一下原来在哪支编队：弹药打空时要塞回去，好让引擎的返航补给流程接管。
+g_BomberOriginalTeamByUnitId = g_BomberOriginalTeamByUnitId or {}
+
+function DetachBomberFromAttackTeam(self, selfId)
+    if IsBomberTeamDetached(self) then
+        return
+    end
+    g_BomberOriginalTeamByUnitId[selfId] =
+        g_BomberOriginalTeamByUnitId[selfId] or ObjectTeamName(self)
+    ExecuteAction("NAMED_STOP", self)
+    ObjectSetAssignedTarget(self, nil)
+    g_SetSideTeam(self, DEFAULTIDLETEAM[GetBomberSideIndex(self)])
+end
+
+-- 弹药打空：塞回原编队，把返航补给交给引擎。摘出编队的飞机没人指挥，
+-- 压攻击令又会顶掉补给流程，所以这一步必须做，否则它会一直挂在原地发呆。
+function ReattachBomberForRearm(self, selfId)
+    local originalTeam = g_BomberOriginalTeamByUnitId[selfId]
+    if originalTeam == nil or not IsBomberTeamDetached(self) then
+        return
+    end
+    g_BomberOriginalTeamByUnitId[selfId] = nil
+    ExecuteAction("NAMED_STOP", self)
+    ObjectSetAssignedTarget(self, nil)
+    g_SetSideTeam(self, originalTeam)
+end
+
+-- 没有炮车时的保底目标：最近的可攻击地面单位（含建筑、不含空中 —— 轰炸机打不了飞机）。
+-- 候选按「侧 + 帧」缓存：引擎的敌对关系是按玩家算的，同一侧所有轰炸机的可攻击集合完全相同，
+g_BomberFallbackCache = g_BomberFallbackCache or { Frame = nil, BySide = {} }
+
+function GetBomberSideFallbackCandidates(self, sideIndex)
+    local frame = GetFrame()
+    if g_BomberFallbackCache.Frame ~= frame then
+        g_BomberFallbackCache.Frame = frame
+        g_BomberFallbackCache.BySide = {}
+    end
+    local cached = g_BomberFallbackCache.BySide[sideIndex]
+    if cached ~= nil then
+        return cached.List, cached.Count
+    end
+    local list = {}
+    local count = 0
+    if g_FilterOptimizedGroundEnemy ~= nil then
+        local found, foundCount = ObjectFindObjects(self, nil, g_FilterOptimizedGroundEnemy)
+        list, count = FilterBomberCandidatesByOwner(found, foundCount)
+    end
+    if count == 0 and FilterALLENEMYUNIT ~= nil then
+        local found, foundCount = ObjectFindObjects(self, nil, FilterALLENEMYUNIT)
+        list, count = FilterBomberCandidatesByOwner(found, foundCount)
+    end
+    g_BomberFallbackCache.BySide[sideIndex] = { List = list, Count = count }
+    return list, count
+end
+
+function FindNearestBomberFallbackTarget(self, sideIndex)
+    if sideIndex == nil then
+        sideIndex = GetBomberSideIndex(self)
+    end
+    local list, count = GetBomberSideFallbackCandidates(self, sideIndex)
+    return FindNearestTargetFromList(self, list, count)
+end
+
+function UpdateBomberPrioritySiegeTarget(self, sieges, siegeCount, sideIndex)
+    local selfId = ObjectGetId(self)
+    if not BomberHasWeaponAmmo(self, selfId) then
+        -- 弹药打空的轰炸机要自己飞回机场补给，这时候压攻击令会把返航顶掉。
+        ReattachBomberForRearm(self, selfId)
+        return
+    end
+    local current = ObjectGetTarget(self)
+    local currentId = nil
+    local droppedPlayerTarget = false
+    if current ~= nil and ObjectIsAlive(current) then
+        if IsBomberAllowedTarget(current) then
+            currentId = ObjectGetId(current)
+        else
+            -- 当前目标是玩家的东西（Player_N 名下）：立刻丢掉，下面重挑一个合法目标。
+            -- 实测轰炸机偶尔会挑上符文送的单位，丢掉之后不再交回引擎（引擎还会挑同一个）。
+            ObjectSetAssignedTarget(self, nil)
+            droppedPlayerTarget = true
+        end
+    end
+    local nearest = FindNearestTargetFromList(self, sieges, siegeCount)
+    if nearest == nil then
+        if IsBomberTeamDetached(self) then
+            -- 本来就不在编队里的（信标机）：没有炮车就打最近的其它可攻击目标。
+            nearest = FindNearestBomberFallbackTarget(self, sideIndex)
+            if nearest == nil then
+                return
+            end
+        elseif droppedPlayerTarget then
+            -- 刚丢掉的是玩家的东西：改压一个合法目标，别再让引擎自己挑一遍。
+            nearest = FindNearestBomberFallbackTarget(self, sideIndex)
+            if nearest == nil then
+                return
+            end
+        else
+            -- 编队里的常规轰炸机：撤掉自己压过的目标，把索敌交回引擎原生逻辑。
+            -- 这里不下 NAMED_STOP：它们还在编队里，刹停反而会把它们钉在原地。
+            if g_BomberPrioritySiegeTargetByUnitId[selfId] ~= nil then
+                g_BomberPrioritySiegeTargetByUnitId[selfId] = nil
+                ObjectSetAssignedTarget(self, nil)
+                ConfigureBomberPriorityTargetChooser(self)
+            end
+            return
+        end
+    end
+    -- 要压目标了：先确保它不在公共编队里，否则引擎的编队攻击令会把目标顶掉。
+    if not IsBomberTeamDetached(self) then
+        DetachBomberFromAttackTeam(self, selfId)
+        currentId = nil
+    end
+    if currentId ~= nil and ObjectGetId(nearest) == currentId then
+        -- 目标没变就不重复下令，免得抖航路。
+        g_BomberPrioritySiegeTargetByUnitId[selfId] = currentId
+        return
+    end
+    ObjectSetAssignedTarget(self, nearest)
+    ExecuteAction("NAMED_ATTACK_NAMED", self, nearest)
+    g_BomberPrioritySiegeTargetByUnitId[selfId] = ObjectGetId(nearest)
+end
+
+-- 挂在 TGMICRO 周期段（每 3 帧一次），内部再按帧数节流。
+g_BomberPriorityChooserConfiguredByUnitId =
+    g_BomberPriorityChooserConfiguredByUnitId or {}
+
+function EnsureBomberPriorityTargetChooser(unit)
+    local unitId = ObjectGetId(unit)
+    if unitId == nil or g_BomberPriorityChooserConfiguredByUnitId[unitId] then
+        return
+    end
+    g_BomberPriorityChooserConfiguredByUnitId[unitId] = true
+    ConfigureBomberPriorityTargetChooser(unit)
+end
+
+-- 效果就是只要场上还有炮车就一直压炮车，清空了才把目标交回原生逻辑（脱队单位则改打保底目标）。
+-- 只有一路：每 tick 全扫一遍轰炸机与炮车，扫完就分配 —— 不再分「5 帧补令 / 15 帧全扫」两级节流，
+-- 那两级节流是目标丢失后发呆的根源。
+function BomberPrioritySiegeMICROCONTROL()
+    if g_FilterBomberPrioritySiegeVehicle == nil or g_FilterBomberPrioritySelf == nil then
+        return
+    end
+    local frame = GetFrame()
+    if frame < g_BomberPrioritySiegeNextScanFrame then
+        return
+    end
+    g_BomberPrioritySiegeNextScanFrame = frame + g_BomberPrioritySiegeScanIntervalFrames
+    for playindex = 7, 8, 1 do
+        local bombers, bomberCount = g_SideFindObjects(playindex, nil,
+            g_FilterBomberPrioritySelf)
+        local sieges, siegeCount = g_SideFindObjects(playindex, nil,
+            g_FilterBomberPrioritySiegeVehicle)
+        -- 炮车候选也只留两个 AI 阵营名下的：玩家席位名下的单位不是轰炸机的菜。
+        sieges, siegeCount = FilterBomberCandidatesByOwner(sieges, siegeCount)
+        for i = 1, bomberCount, 1 do
+            EnsureBomberPriorityTargetChooser(bombers[i])
+            UpdateBomberPrioritySiegeTarget(bombers[i], sieges, siegeCount, playindex)
+        end
+    end
+end

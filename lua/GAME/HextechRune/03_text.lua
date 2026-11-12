@@ -56,6 +56,9 @@ g_LocalizationExtraText = {
     ["hextech.rune.oblivion_bomb.name"] = { zh = "湮灭炸弹", en = "Oblivion Bomb" },
     ["hextech.rune.oblivion_bomb.desc"] = { zh = "获得 1 次湮灭炸弹部署次数。", en = "Gain 1 Oblivion Bomb deployment charge." },
     ["hextech.oblivion_bomb.hotkey_hint"] = { zh = "按'K'键部署湮灭炸弹", en = "Press 'K' to deploy an Oblivion Bomb" },
+    ["hextech.rune.los_strike.name"] = { zh = "视距打击", en = "Standoff Strike" },
+    ["hextech.rune.los_strike.desc"] = { zh = "获得伊尔信标部署次数，冷却为 3 回合。", en = "Gain an Il Beacon deployment charge. 3-round cooldown." },
+    ["hextech.il_beacon.hotkey_hint"] = { zh = "按'K'键部署伊尔攻击机", en = "Press 'K' to deploy Il attack aircraft" },
     ["hextech.rune.burn_furry.name"] = { zh = "烧福瑞", en = "Burning Furry" },
     ["hextech.rune.burn_furry.desc"] = { zh = "回合开始时，将敌方 %d%% 的步兵变成警犬或战熊。", en = "At the start of each round, %d%% of enemy infantry become police dogs or war bears." },
     ["hextech.rune.spawn_alien.name"] = { zh = "生异形", en = "Xenomorph" },
@@ -90,6 +93,9 @@ g_LocalizationExtraText = {
     ["hextech.rune.cloudbreaker.desc"] = { zh = "获得 1 个摇光。", en = "Gain 1 Yaoguang." },
     ["hextech.rune.oil_king.name"] = { zh = "石油王", en = "Oil King" },
     ["hextech.rune.oil_king.desc"] = { zh = "获得两个油井。", en = "Gain two Oil Derricks." },
+    ["hextech.rune.oil_tycoon.name"] = { zh = "石油佬", en = "Oil Baron" },
+    ["hextech.rune.oil_tycoon.desc"] = { zh = "获得一个油井。", en = "Gain one Oil Derrick." },
+    ["hextech.rune.effect_consumed"] = { zh = "（已生效）", en = " (Used)" },
     ["hextech.rune.free_trade.name"] = { zh = "自由贸易", en = "Free Trade" },
     ["hextech.rune.free_trade.desc"] = { zh = "获得自由贸易协议。", en = "Gain the Free Trade protocol." },
     ["hextech.rune.at_field.name"] = { zh = "AT立场", en = "AT Field" },
@@ -230,6 +236,10 @@ g_LocalizationExtraText = {
     ["hextech.rune.easy_does_it.desc"] =
         { zh = "你下次符文选择可以多拿一张。",
             en = "Your next rune selection lets you take one extra card." },
+    ["hextech.rune.careful_selection.name"] = { zh = "精挑细选", en = "Handpicked" },
+    ["hextech.rune.careful_selection.desc"] =
+        { zh = "你后续符文选择会多一个选项。",
+            en = "Your future rune selections get one extra option." },
     ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
@@ -291,10 +301,9 @@ g_LocalizationExtraText = {
     -- 房主把重随次数设成 3 次时：每张卡各一次。
     ["hextech.reroll.available_three"] = { zh = "重随该符文（本次每张卡各限一次）", en = "Reroll this rune (once per card this selection)" },
     -- 房主选项页（选海克斯符文数量那一页）的「重随次数」开关。
-    -- 值只留「1次 / 3次」：对话框按钮是单行文字，长文案会溢出。
     ["hextech.reroll_mode.label"] = { zh = "重随次数：", en = "Rerolls: " },
     ["hextech.reroll_mode.1"] = { zh = "1次", en = "1" },
-    ["hextech.reroll_mode.3"] = { zh = "3次", en = "3" },
+    ["hextech.reroll_mode.3"] = { zh = "各1次", en = "1 each" },
     ["hextech.solo.unlimited_reroll"] = { zh = "检测到单人游玩，开启无限重随符文", en = "Single-player detected: unlimited rune rerolls enabled" },
     -- 单人局里房主点了「重随次数」那一行：无限重随关掉，改按 1 / 3 次走。
     ["hextech.solo.unlimited_reroll_off"] = { zh = "已改为按次重随：无限重随关闭", en = "Switched to per-selection rerolls: unlimited rerolls off" },

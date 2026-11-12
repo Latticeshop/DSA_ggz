@@ -231,7 +231,10 @@ def main():
             print('ERROR: expected %d ScriptsData payload(s) for %s, found %d' % (
                 expect, label, len(candidates)))
             sys.exit(1)
-        with open(os.path.join(REPO_ROOT, target_path), 'r', encoding='utf-8', newline='') as f:
+        # utf-8-sig：源文件若被编辑器/脚本写进了 UTF-8 BOM，BOM 会原样进 payload，
+        # 而 Lua 4 不认识它 —— 游戏内报 `last token read: _ ... line 2` 那种语法错误。
+        # 这里统一按 utf-8-sig 读，BOM 直接吃掉。
+        with open(os.path.join(REPO_ROOT, target_path), 'r', encoding='utf-8-sig', newline='') as f:
             body = f.read()
         if section is not None:
             sections = split_sections(body) or {}

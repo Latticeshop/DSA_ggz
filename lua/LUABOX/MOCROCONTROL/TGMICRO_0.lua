@@ -4,6 +4,8 @@ JapanTorpedoShipSpreadMICROCONTROL ()
 AntiAirAircraftHunterMICROCONTROL ()
 JapanAntiAirVehicleTech1MICROCONTROL ()
 PrioritySiegeAttackMoveMICROCONTROL ()
+-- 轰炸机（维护者 / 伊尔 / 金乌）全图优先打陆地炮车，其次是原生索敌。
+BomberPrioritySiegeMICROCONTROL ()
 -- 超级要塞形态只在登场时由 SpawnGigaFortress.lua 随机决定，不再周期切换。
 JapanAntiAirShipMICROCONTROL ()
 SovietScoutVehicleMICROCONTROL ()

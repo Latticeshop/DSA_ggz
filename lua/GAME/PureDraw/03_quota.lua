@@ -93,8 +93,14 @@ function PureDrawCanEnableUnit(playerIndex, info)
             return false
         end
     end
+    -- 生产额度按「实际生产数」卡；池子实有数到池上限（3×控制席位 + 海克斯赠送）时也不再抽，
     if info.IsYaoguang and GetPlayerYaoguangCount ~= nil and YAOGUANG_LIMIT ~= nil
         and GetPlayerYaoguangCount(playerIndex) >= YAOGUANG_LIMIT then
+        return false
+    end
+    if info.IsYaoguang and GetPlayerPoolYaoguangCount ~= nil
+        and GetPlayerYaoguangPoolCap ~= nil
+        and GetPlayerPoolYaoguangCount(playerIndex) >= GetPlayerYaoguangPoolCap(playerIndex) then
         return false
     end
     return true

@@ -36,7 +36,8 @@ end
 
 -- J：展开/隐藏当前玩家尚未完成的海克斯选择页。
 exRegisterHotKey(74, 0, 2)
--- K：消耗一次玩家持有的湮灭炸弹部署次数。
+-- K：消耗一次玩家持有的部署类符文次数。湮灭炸弹与视距打击共用这个键，
+-- 两张符文互斥（见 01_rune_pool.lua），同一名玩家最多只持有其中一张。
 exRegisterHotKey(75, 0, 3)
 
 function onUserHotKeyEvent(playerName, commandCode, mouseWorldPos)
@@ -46,6 +47,7 @@ function onUserHotKeyEvent(playerName, commandCode, mouseWorldPos)
     end
     if commandCode == 3 and HextechRune ~= nil then
         HextechRune:HandleOblivionBombHotKey(playerName)
+        HextechRune:HandleIlBeaconHotKey(playerName)
         return
     end
     if 1 then return end

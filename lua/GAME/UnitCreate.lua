@@ -1109,6 +1109,14 @@ g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle")] = PrioritySiegeTarg
 g_UnitCreateEventFunc[FastHash("JapanAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle")] = PrioritySiegeTargetChooserBorn
 g_UnitCreateEventFunc[FastHash("AlliedAntiStructureVehicle_Enhanced")] = PrioritySiegeTargetChooserBorn
+
+-- 三种轰炸机（维护者 / 伊尔 / 金乌）全图优先打陆地炮车，其次原生索敌；细节见 MICROINI_0.lua。
+if g_BomberPriorityUnitTypes ~= nil then
+    for bomberIndex = 1, getn(g_BomberPriorityUnitTypes), 1 do
+        RegisterUnitCreateCallback(g_BomberPriorityUnitTypes[bomberIndex],
+            BomberPrioritySiegeTargetChooserBorn)
+    end
+end
 -- 专职对空飞机使用独立编队和锁定式最近目标 AI。
 g_UnitCreateEventFunc[FastHash("AlliedFighterAircraft")] = AntiAirHunterBorn
 g_UnitCreateEventFunc[FastHash("AlliedFighterAircraft_Enhanced")] = AntiAirHunterBorn

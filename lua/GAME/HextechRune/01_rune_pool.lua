@@ -100,6 +100,19 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.prepare_backpack.desc",
         Effect = "prepare_backpack", ExcludeOnLastFormalRound = true,
         Icon = "SUA_Unpack" },
+    -- 精挑细选：持有后每次符文选择多给一张候选（三选一变四选一，不叠加）。
+    { Id = "silver_careful_selection", Rarity = 3,
+        NameKey = "hextech.rune.careful_selection.name",
+        DescKey = "hextech.rune.careful_selection.desc",
+        Effect = "extra_rune_option", ExcludeOnLastFormalRound = true,
+        Icon = "Button_PlayerPower_RoboticAssembly" },
+    -- 石油佬：石油王（gold_oil_king）的低阶版本，只给 1 个油井。同一个 GrantOilDerricks，
+    -- 份数参数不同；可重复（多选几次就是多几个油井），与石油王一致不进 NonRepeatableRuneIds。
+    { Id = "silver_oil_tycoon", Rarity = 3,
+        NameKey = "hextech.rune.oil_tycoon.name",
+        DescKey = "hextech.rune.oil_tycoon.desc",
+        Effect = "oil_tycoon", ExcludeOnLastFormalRound = true,
+        Icon = "Button_PlayerPower_FreeTrade" },
     { Id = "silver_tulip_mortar", Rarity = 3,
         NameKey = "hextech.rune.tulip_mortar.name",
         DescKey = "hextech.rune.tulip_mortar.desc",
@@ -129,10 +142,22 @@ HextechRune.RunePool = {
         Icon = "Button_AlliedSalvageShip" },
 
     -- 黄金
+    -- K 键符文两张互斥：湮灭炸弹与视距打击共用 K，选到其中一张后本局另一张不再入池
+    -- （BuildFilteredPool 里按 ExclusiveRuneIds 判，点击时 02_event 再拦一次）。
     { Id = "gold_oblivion_bomb", Rarity = 2,
         NameKey = "hextech.rune.oblivion_bomb.name",
         DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
+        ExclusiveRuneIds = { gold_los_strike = true },
         Icon = "Button_PlayerPower_Telekenetic" },
+    -- 视距打击：每回合 +1 次「伊尔信标」部署次数，按 K 放出携带轰炸信标的伊尔攻击机。
+    -- 苏联专属（RequiredFaction = 2）：伊尔是苏联机型，别的阵营拿了也放不出对应单位。
+    { Id = "gold_los_strike", Rarity = 2,
+        NameKey = "hextech.rune.los_strike.name",
+        DescKey = "hextech.rune.los_strike.desc", Effect = "grant_il_beacon",
+        RequiresType = "aircraft",
+        RequiredFaction = 2,
+        ExclusiveRuneIds = { gold_oblivion_bomb = true },
+        Icon = "Button_SovietAntiGroundAttacker" },
     -- 烧福瑞：只对敌方步兵生效（禁步兵时对面没有步兵，整张下架）。
     { Id = "gold_burn_furry", Rarity = 1,
         NameKey = "hextech.rune.burn_furry.name",
@@ -433,6 +458,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_wheeled_cannon = true,
     -- 准备背包：每人一份升阶机会；第二份在「下一次已是本场最后一次」时也无从兑现。
     silver_prepare_backpack = true,
+    -- 精挑细选：每人一份；两份会把四选一叠成五选一，一次选择看得太多反而失去取舍。
+    silver_careful_selection = true,
     -- 顺手的事：每人一份；两份会把「下一次多拿一张」叠在同一处，整局张数还会顶到 6。
     silver_easy_does_it = true,
     -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
@@ -568,6 +595,8 @@ function HextechRune:CopyRuneForCandidate(rune, unitType)
         RequiredFaction = rune.RequiredFaction,
         ExcludedFaction = rune.ExcludedFaction,
         UpgradeRarity = rune.UpgradeRarity,
+        -- 互斥名单必须跟着候选一起走：02_event.lua 的点击兜底是拿**候选**去判的，
+        ExclusiveRuneIds = rune.ExclusiveRuneIds,
     }
 end
 
@@ -934,6 +963,21 @@ function HextechRune:IsRuneExclusiveBlocked(playerIndex, rune)
     return false
 end
 
+-- 两张符文任意一方把另一方登记进 ExclusiveRuneIds 就算互斥。推荐双向登记（这样
+-- 持有后互相都不再入池），单边登记也能拦住同一批候选。
+function HextechRune:IsRunePairExclusive(runeA, runeB)
+    if runeA == nil or runeB == nil then
+        return false
+    end
+    if runeA.ExclusiveRuneIds ~= nil and runeA.ExclusiveRuneIds[runeB.Id] ~= nil then
+        return true
+    end
+    if runeB.ExclusiveRuneIds ~= nil and runeB.ExclusiveRuneIds[runeA.Id] ~= nil then
+        return true
+    end
+    return false
+end
+
 -- 元神互锁：持有者的「同步组」= 那张符文候选生成时随机定下的两个兵种。
 -- 判定每次都实时查持有状态，所以先拿到的 buff 与后拿到的 buff 走同一组同步。
 function HextechRune:GetInterlockUnitTypes(playerIndex)
@@ -1024,7 +1068,7 @@ end
 
 -- 动态描述：playerIndex 是“符文详情的视角玩家”。三选一卡传选择者自己（候选符文还没到手），
 -- 面板详情传符文的持有者。只有需要按持有状态算数值的符文会用到它。
-function HextechRune:GetRuneDescription(rune, playerIndex)
+function HextechRune:GetRuneDescriptionBase(rune, playerIndex)
     if rune == nil then
         return ""
     end
@@ -1104,6 +1148,62 @@ function HextechRune:GetRuneDescription(rune, playerIndex)
             self:GetIrradiateDisplayCount(playerIndex))
     end
     return Localization.get(rune.DescKey)
+end
+
+-- ===== 一次性符文的「已生效」标记 =====
+-- 记的是「玩家 + 实例 ID」（OwnedInstanceId = 归属 ID#第几份），同名多份各记各的。
+HextechRune.ConsumableRuneEffects = {
+    prepare_backpack = true,
+    easy_does_it = true,
+}
+HextechRune.ConsumedRuneInstanceIds = HextechRune.ConsumedRuneInstanceIds or {}
+
+function HextechRune:GetConsumedRuneKey(playerIndex, rune)
+    if rune == nil or rune.OwnedInstanceId == nil then
+        return nil
+    end
+    return "P" .. playerIndex .. ":" .. rune.OwnedInstanceId
+end
+
+function HextechRune:IsRuneEffectConsumed(playerIndex, rune)
+    if playerIndex == nil or rune == nil
+        or self.ConsumableRuneEffects[rune.Effect] == nil then
+        return false
+    end
+    local key = self:GetConsumedRuneKey(playerIndex, rune)
+    if key == nil then
+        return false
+    end
+    return self.ConsumedRuneInstanceIds[key] == true
+end
+
+-- 用掉一次：按持有顺序把这一效果里最早还没标记的那份标上（先选的先生效）。
+function HextechRune:MarkRuneEffectConsumed(playerIndex, effect)
+    if playerIndex == nil or self.ConsumableRuneEffects[effect] == nil then
+        return false
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        if rune.Effect == effect then
+            local key = self:GetConsumedRuneKey(playerIndex, rune)
+            if key ~= nil and self.ConsumedRuneInstanceIds[key] ~= true then
+                self.ConsumedRuneInstanceIds[key] = true
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function HextechRune:GetRuneDescription(rune, playerIndex)
+    local desc = self:GetRuneDescriptionBase(rune, playerIndex)
+    -- 一次性效果已经吃掉了：末尾补「（已生效）」，面板里一眼能看出哪张用过了。
+    if self:IsRuneEffectConsumed(playerIndex, rune) then
+        desc = desc .. Localization.get("hextech.rune.effect_consumed")
+    end
+    return desc
 end
 
 -- 神圣干预与时间裂隙共用：份数 → 文案里的名义秒数（1/2/3 份 = 3/4.5/6 秒）。
@@ -1259,21 +1359,58 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
     return filtered
 end
 
+-- 某玩家是否持有指定 Effect 的符文。
+function HextechRune:HasOwnedRuneEffect(playerIndex, effect)
+    if effect == nil then
+        return false
+    end
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        if owned[i].Effect == effect then
+            return true
+        end
+    end
+    return false
+end
+
+-- 这次选择摆几张候选：默认 3 张；持有精挑细选就摆 4 张（每人一份，不叠加）。
+function HextechRune:GetRuneOptionDrawCount(playerIndex)
+    if self:HasOwnedRuneEffect(playerIndex, "extra_rune_option") then
+        return self.MaxOptionsPerPlayer or 4
+    end
+    return 3
+end
+
 function HextechRune:PickThreeRunes(playerIndex, rarity)
     local pool = self:BuildFilteredPool(playerIndex, rarity)
-    -- 不足 3 张时按实际张数发（有几张展示几张），只有 0 张才放弃本次事件。
+    -- 不足目标张数时按实际张数发（有几张展示几张），只有 0 张才放弃本次事件。
     if getn(pool) < 1 then
         return nil
     end
     local picked = {}
     local drawCount = getn(pool)
-    if drawCount > 3 then
-        drawCount = 3
+    local drawLimit = self:GetRuneOptionDrawCount(playerIndex)
+    if drawCount > drawLimit then
+        drawCount = drawLimit
     end
     for i = 1, drawCount, 1 do
+        -- 互斥剔除可能把池子清空，抽到一半没牌了就按实际张数发。
+        if getn(pool) < 1 then
+            break
+        end
         local poolIndex = self:RandomIndex(getn(pool))
-        tinsert(picked, pool[poolIndex])
+        local chosen = pool[poolIndex]
+        tinsert(picked, chosen)
         tremove(pool, poolIndex)
+        -- 互斥的两张（例如共用 K 键的湮灭炸弹与视距打击）不进同一批候选：
+        local dropIndex = getn(pool)
+        while dropIndex >= 1 do
+            if self:IsRunePairExclusive(chosen, pool[dropIndex]) then
+                tremove(pool, dropIndex)
+            end
+            dropIndex = dropIndex - 1
+        end
     end
     return picked
 end
@@ -1370,3 +1507,6 @@ function HextechRune:FindRuneById(runeId)
     end
     return nil
 end
+
+-- 符文条目与互斥判定留在这里，效果层不再往这个节点里加。
+

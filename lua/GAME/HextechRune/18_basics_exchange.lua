@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47、A.48
+﻿-- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47、A.48
 
 HextechRune = HextechRune or {}
 
@@ -1107,4 +1107,474 @@ function HextechRune:ApplyAllConversionPulses(round)
     self:ApplySitTightPulse(round)
     self:ApplyAnglerPulse(round)
     self:ApplyIrradiatePulse(round)
+end
+
+-- ===== 视距打击（伊尔信标）=====
+-- 按 K 一次消耗 1 次、放出 n 架。次数不随份数膨胀，只有单次出机数量叠加。
+-- 3 回合冷却：使用后 cd = 3，之后每个回合开始 -1，归零才补回 1 次。
+g_HextechIlBeaconCharges = g_HextechIlBeaconCharges or { 0, 0, 0, 0, 0, 0, 0, 0 }
+g_HextechIlBeaconCooldown = g_HextechIlBeaconCooldown or { 0, 0, 0, 0, 0, 0, 0, 0 }
+HextechRune.IlBeaconCooldownRounds = 3
+
+-- 部署出来的兵种取「带轰炸信标」的那一版：_Enhanced（升级形态）。
+HextechRune.IlBeaconUnitType = "SovietAntiGroundAttacker_Enhanced"
+-- 信标形态是伊尔的「变形切换」形态：带信标的单位对象状态上带着 TRANSFORMATION_TOGGLE_STATE。
+HextechRune.IlBeaconTransformStatus = "TRANSFORMATION_TOGGLE_STATE"
+HextechRune.IlBeaconTransformState = 1
+-- 每架只给 1 发弹药 —— 它那一发就是「轰炸信标」。
+HextechRune.IlBeaconShotsPerAircraft = 1
+HextechRune.IlBeaconSpawnSerial = 0
+-- 召唤点固定用轻型载具出生点第 3 个：LIGHTVEH13（恶魔侧）/ LIGHTVEH23（天使侧）。
+-- 组名 + 侧号 + 序号，与 AIRRE1x / AIRRE2x 同一套写法（侧 7 = 恶魔 = "1"，侧 8 = 天使 = "2"）。
+HextechRune.IlBeaconSpawnPointIndex = 3
+-- 信标机的基础 buff：3 倍血量 + 2 倍移速。它是符文白送的临时单位、不占玩家配额，
+HextechRune.IlBeaconHealthMultiplier = 3
+HextechRune.IlBeaconSpeedMultiplier = 2
+-- 这架不是正常出兵流程的编制，所以单独记账，由看门狗盯着：一飞回本方机场的换弹区就删掉。
+HextechRune.IlBeaconMarkByObjectId = HextechRune.IlBeaconMarkByObjectId or {}
+HextechRune.IlBeaconWatchIntervalFrames = 5     -- 每 5 帧查一次
+HextechRune.IlBeaconArmDelayFrames = 15         -- 出生后 1 秒内不判定
+HextechRune.IlBeaconRearmRadius = 500           -- 与 PLANEREBORN 删除返航飞机的半径同口径
+HextechRune.IlBeaconWatchdogStarted = false
+-- 下回合发次数时提示重新长出来。帧级窗口会让按钮“按了没反应、其实已经放出去”，所以不用它。
+g_HextechIlBeaconUsedThisRound = g_HextechIlBeaconUsedThisRound or {}
+-- 兜底寿命：万一既没飞回换弹区也没被打掉，到点直接删，不留场。
+HextechRune.IlBeaconMaxLifetimeFrames = 900
+-- 屏幕提示与湮灭炸弹同一行（两张符文 K 键互斥，不可能同时持有，所以不会叠字）。
+HextechRune.IlBeaconHintTextIndexBase = 920
+HextechRune.IlBeaconHintCenterX = 683
+HextechRune.IlBeaconHintY = 104
+HextechRune.IlBeaconHintFontSize = 16
+
+-- 持有份数 = 已选到这张可重复符文的次数；同时也是每次部署的架数。
+function HextechRune:GetIlBeaconCopyCount(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    local count = 0
+    for i = 1, getn(owned), 1 do
+        if owned[i].Effect == "grant_il_beacon" then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function HextechRune:AddIlBeaconCharge(playerIndex)
+    g_HextechIlBeaconCharges[playerIndex] =
+        (g_HextechIlBeaconCharges[playerIndex] or 0) + 1
+    if self.RefreshIlBeaconHint ~= nil then
+        self:RefreshIlBeaconHint(playerIndex)
+    end
+end
+
+-- 由 02_event.lua 的 OnRoundBegin 驱动（与五雷轰顶同一条回调链）。
+function HextechRune:OnIlBeaconRoundBegin(round)
+    for playerIndex = 1, 8, 1 do
+        g_HextechIlBeaconUsedThisRound[playerIndex] = nil
+        if self:GetIlBeaconCopyCount(playerIndex) > 0 then
+            local cooldown = g_HextechIlBeaconCooldown[playerIndex] or 0
+            if cooldown > 0 then
+                cooldown = cooldown - 1
+                g_HextechIlBeaconCooldown[playerIndex] = cooldown
+            end
+            if cooldown <= 0
+                and (g_HextechIlBeaconCharges[playerIndex] or 0) <= 0 then
+                self:AddIlBeaconCharge(playerIndex)
+            end
+        end
+    end
+end
+
+-- 04_buff.lua 的 OnRuneChosen 分发过来：选到当刻先把这一回合的次数发下去，不必等下一回合。
+function HextechRune:OnIlBeaconChosen(playerIndex)
+    self:AddIlBeaconCharge(playerIndex)
+end
+
+-- 座位 → 本方阵营号。空军侧一共两个阵营（恶魔 7 / 天使 8）。
+function HextechRune:GetIlBeaconSideIndex(playerIndex)
+    if g_SeatToSide == nil then
+        return nil
+    end
+    return g_SeatToSide(playerIndex)
+end
+
+-- 这架飞机挂在「本方 AI 阵营的空军攻击队」里，由飞机 AI 自己管控，不走玩家队伍。
+function HextechRune:GetIlBeaconAircraftTeam(sideIndex)
+    if AIRATTACK ~= nil and AIRATTACK[sideIndex] ~= nil
+        and AIRATTACK[sideIndex][1] ~= nil then
+        return AIRATTACK[sideIndex][1]
+    end
+    if AIRTEAM ~= nil and AIRTEAM[sideIndex] ~= nil
+        and AIRTEAM[sideIndex][1] ~= nil then
+        return AIRTEAM[sideIndex][1]
+    end
+    if DEFAULTATTCKTEAM ~= nil and DEFAULTATTCKTEAM[sideIndex] ~= nil then
+        return DEFAULTATTCKTEAM[sideIndex]
+    end
+    if sideIndex == 7 then
+        return "PlyrCivilian/teamPlyrCivilian"
+    end
+    return "PlyrCreeps/teamPlyrCreeps"
+end
+
+-- 日冕里伊尔的空对地弹药就是「轰炸信标」本身。把弹药压到 1 发，保证一次部署只打一次信标：
+-- 打完这架 AI 飞机就飞回机场，随后被空军重生流程（LUABOX/PLANEBACK/PLANEINI_0.lua）在
+-- 机场附近收掉换成新的一架 —— 也就是「一回合一次信标」。
+-- 弹药槽的读法照 MICROINI_0.lua: BomberHasWeaponAmmo（hardpoint 1~2 × 武器序号 1~6）。
+-- 两个弹药接口任一缺失时不动，保留原生弹药，不至于把飞机改成打不出东西。
+function HextechRune:LimitIlBeaconAmmo(unit)
+    if unit == nil then
+        return
+    end
+    if ObjectSetWeaponSetUpdateWeaponCurrentAmmoCount == nil
+        or ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount == nil then
+        return
+    end
+    local shots = self.IlBeaconShotsPerAircraft or 1
+    for hardpoint = 1, 2, 1 do
+        for weaponIndex = 1, 6, 1 do
+            local ammo = ObjectGetWeaponSetUpdateWeaponCurrentAmmoCount(
+                unit, hardpoint, 1, weaponIndex)
+            -- 只压「确实有弹药且多于 1 发」的槽，空槽不去碰。
+            if ammo ~= nil and ammo > shots then
+                ObjectSetWeaponSetUpdateWeaponCurrentAmmoCount(
+                    unit, hardpoint, 1, weaponIndex, shots)
+            end
+        end
+    end
+end
+
+-- 召唤点：轻型载具出生点 LIGHTVEH13（恶魔侧）/ LIGHTVEH23（天使侧），
+-- 即 LIGHTVEH1..3 / LIGHTVEH2..3，与 AIRRE1x / AIRRE2x 的「组名 + 侧号 + 序号」同规则。
+-- 新点取不到就退回改之前的老点位 AIRRE11 / AIRRE21（AIRRESP[阵营][1] → AIRRE1/2..1），
+function HextechRune:GetIlBeaconSpawnPosition(sideIndex)
+    local pointIndex = self.IlBeaconSpawnPointIndex or 3
+    if GetObjectByScriptName ~= nil then
+        local prefix = "LIGHTVEH1"
+        if sideIndex == 8 then
+            prefix = "LIGHTVEH2"
+        end
+        local point = GetObjectByScriptName(prefix .. pointIndex)
+        if point ~= nil then
+            local x, y, z = ObjectGetPosition(point)
+            if x ~= nil then
+                return { X = x, Y = y, Z = z }
+            end
+        end
+    end
+    -- 兜底点位的序号与轻型载具点无关，固定用老口径的第 1 个。
+    local fallbackIndex = 1
+    if AIRRESP ~= nil and AIRRESP[sideIndex] ~= nil
+        and AIRRESP[sideIndex][fallbackIndex] ~= nil then
+        local x, y, z = ObjectGetPosition(AIRRESP[sideIndex][fallbackIndex])
+        if x ~= nil then
+            return { X = x, Y = y, Z = z }
+        end
+    end
+    if GetObjectByScriptName ~= nil then
+        local prefix = "AIRRE1"
+        if sideIndex == 8 then
+            prefix = "AIRRE2"
+        end
+        local point = GetObjectByScriptName(prefix .. fallbackIndex)
+        if point ~= nil then
+            local x, y, z = ObjectGetPosition(point)
+            if x ~= nil then
+                return { X = x, Y = y, Z = z }
+            end
+        end
+    end
+    return nil
+end
+
+-- 本方机场（换弹区中心）：与 PLANEREBORN 用同一个锚点 AIRFIELD[阵营]。
+function HextechRune:GetIlBeaconAirfield(sideIndex)
+    if AIRFIELD ~= nil and AIRFIELD[sideIndex] ~= nil then
+        return AIRFIELD[sideIndex]
+    end
+    if GetObjectByScriptName ~= nil then
+        local airfield = GetObjectByScriptName("AIRFIELD" .. sideIndex)
+        if airfield ~= nil then
+            return airfield
+        end
+        airfield = GetObjectByScriptName("AirField" .. sideIndex)
+        if airfield ~= nil then
+            return airfield
+        end
+    end
+    return nil
+end
+
+
+-- 看门狗：只遍历 IlBeaconMarkByObjectId 里登记过的那几架，正常出兵的伊尔不受影响。
+-- 判定走位置不走弹药：这架飞机一飞回本方机场的换弹区（半径 IlBeaconRearmRadius，
+-- 与 PLANEREBORN 删返航飞机同口径）就地删掉，不给空军重生流程把它补回编制的机会。
+function HextechRune:UpdateIlBeaconAircraft()
+    local marks = self.IlBeaconMarkByObjectId
+    local step = self.IlBeaconWatchIntervalFrames
+    local radius = self.IlBeaconRearmRadius
+    for objectId, mark in marks do
+        local unit = GetObjectById(objectId)
+        if unit == nil or not ObjectIsAlive(unit) then
+            -- 被打掉 / 已经不在场上了，直接销账。
+            marks[objectId] = nil
+        else
+            mark.AgeFrames = (mark.AgeFrames or 0) + step
+            if mark.AgeFrames >= self.IlBeaconMaxLifetimeFrames then
+                -- 兜底寿命：既不返航也不挨打的飞机到点直接删，别让它一直挂在场。
+                ExecuteAction("NAMED_DELETE", unit)
+                marks[objectId] = nil
+            else
+                local airfield = self:GetIlBeaconAirfield(mark.SideIndex)
+                if airfield ~= nil and mark.AgeFrames >= self.IlBeaconArmDelayFrames then
+                    local ux, uy = ObjectGetPosition(unit)
+                    local ax, ay = ObjectGetPosition(airfield)
+                    if ux ~= nil and ax ~= nil then
+                        local dx = ux - ax
+                        local dy = uy - ay
+                        -- 用平方比，省掉开方（平面距离，和 CENTER_2D 同口径）。
+                        if dx * dx + dy * dy <= radius * radius then
+                            ExecuteAction("NAMED_DELETE", unit)
+                            marks[objectId] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function HextechRune:EnsureIlBeaconWatchdog()
+    -- 备用取机用的过滤器（只有脚本名取不到时才用到），运行时才建，避开加载顺序。
+    -- 两个形态都算：召唤的是 _Enhanced，万一引擎回落的又是基础型也得认得出来。
+    if g_FilterIlBeaconAircraft == nil and CreateObjectFilter ~= nil then
+        g_FilterIlBeaconAircraft = CreateObjectFilter({
+            Rule = "ANY",
+            Relationship = "SAME_PLAYER",
+            IncludeThing = { "SovietAntiGroundAttacker",
+                             "SovietAntiGroundAttacker_Enhanced" },
+        })
+    end
+    if self.IlBeaconWatchdogStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    self.IlBeaconWatchdogStarted = true
+    SchedulerModule.call_every_x_frame(function()
+        HextechRune:UpdateIlBeaconAircraft()
+    end, self.IlBeaconWatchIntervalFrames, nil, {})
+end
+
+-- 取回刚召唤出来的那一架：先按脚本名取（UNIT_SPAWN_NAMED_LOCATION_ORIENTATION 的 name），
+-- 取不到就在召唤点附近捞一次本阵营的伊尔，挑第一个还没记账的 —— 保证看门狗一定拿得到句柄。
+function HextechRune:FindIlBeaconAircraft(sideIndex, position, name)
+    if GetObjectByScriptName ~= nil then
+        local named = GetObjectByScriptName(name)
+        if named ~= nil then
+            return named
+        end
+    end
+    if g_SideFindObjects == nil or g_FilterIlBeaconAircraft == nil then
+        return nil
+    end
+    local units, count = g_SideFindObjects(sideIndex,
+        { X = position.X, Y = position.Y, Z = position.Z, Radius = 200,
+          DistType = "CENTER_2D" },
+        g_FilterIlBeaconAircraft)
+    for i = 1, count, 1 do
+        local candidate = units[i]
+        if candidate ~= nil and ObjectIsAlive(candidate) then
+            if self.IlBeaconMarkByObjectId[ObjectGetId(candidate)] == nil then
+                return candidate
+            end
+        end
+    end
+    return nil
+end
+
+-- 切到信标形态：直接改对象状态即可切换武器组，写法和
+-- GAME/CelestialBomberAircraft_ChangeMode.lua 一致（它在两个形态之间就是靠这条状态位来回切）。
+function HextechRune:EnableIlBeaconMode(unit)
+    if unit == nil or ExecuteAction == nil then
+        return
+    end
+    if EvaluateCondition ~= nil
+        and EvaluateCondition("UNIT_HAS_OBJECT_STATUS", unit,
+            self.IlBeaconTransformStatus) then
+        return
+    end
+    ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", unit,
+        self.IlBeaconTransformStatus, self.IlBeaconTransformState)
+end
+
+-- 移速修正器延迟创建：本节点在 map.xml 里排最前，别在加载期碰这些 ex* 接口。
+function HextechRune:GetIlBeaconSpeedModifier()
+    if g_HextechIlBeaconSpeedModifier == nil and exAttributeModifierCreate ~= nil then
+        g_HextechIlBeaconSpeedModifier = exAttributeModifierCreate(
+            { SPEED = self.IlBeaconSpeedMultiplier }, 1)
+    end
+    return g_HextechIlBeaconSpeedModifier
+end
+
+-- 信标机的基础 buff：3 倍血量 + 2 倍移速。
+function HextechRune:ApplyIlBeaconBaseBuffs(unit)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return
+    end
+    local speedMod = self:GetIlBeaconSpeedModifier()
+    if speedMod ~= nil then
+        ObjectLoadAttributeModifier(unit, speedMod,
+            self.PersistentBuffDuration or 9999)
+    end
+    if exObjectGetMaxHealth == nil or ExecuteAction == nil then
+        return
+    end
+    local objectId = ObjectGetId(unit)
+    local maxHealth = exObjectGetMaxHealth(objectId)
+    if maxHealth == nil or maxHealth <= 0 then
+        return
+    end
+    local reference = "hextech_il_beacon_" .. objectId
+    ExecuteAction("SET_UNIT_REFERENCE", reference, unit)
+    ExecuteAction("NAMED_SET_MAX_HEALTH", reference,
+        floor(maxHealth * self.IlBeaconHealthMultiplier), "TRUE")
+end
+
+-- 独立 AI 队列：照 UnitCreate.lua: AntiAirHunterBorn 的做法，把飞机从公共 AIRATTACK
+-- 编队摘出来放进 idle 队。这样引擎不会再给它下编队攻击令，索敌完全由看门狗
+function HextechRune:ReleaseIlBeaconToIdleTeam(unit, sideIndex)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return
+    end
+    if g_SetSideTeam == nil or DEFAULTIDLETEAM == nil
+        or DEFAULTIDLETEAM[sideIndex] == nil then
+        return
+    end
+    ExecuteAction("NAMED_STOP", unit)
+    ObjectSetAssignedTarget(unit, nil)
+    g_SetSideTeam(unit, DEFAULTIDLETEAM[sideIndex])
+end
+
+function HextechRune:SummonIlBeaconAircraft(playerIndex)
+    local sideIndex = self:GetIlBeaconSideIndex(playerIndex)
+    if sideIndex == nil then
+        return false
+    end
+    local position = self:GetIlBeaconSpawnPosition(sideIndex)
+    if position == nil then
+        return false
+    end
+    self.IlBeaconSpawnSerial = (self.IlBeaconSpawnSerial or 0) + 1
+    local name = format("HextechIlBeacon%d", self.IlBeaconSpawnSerial)
+    -- 赠送路径不过出兵函数，先占一个「已知的脚本生成单位」标记，
+    -- 免得纯抽卡 / 余额墙把它当成本回合正式生产的单位。
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    -- 朝向照 PLANEREBORN 的写法定：恶魔侧 0、天使侧 180。
+    local orientation = 0
+    if sideIndex == 8 then
+        orientation = 180
+    end
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", name,
+        self.IlBeaconUnitType,
+        self:GetIlBeaconAircraftTeam(sideIndex),
+        position, orientation)
+    self:EnsureIlBeaconWatchdog()
+    local unit = self:FindIlBeaconAircraft(sideIndex, position, name)
+    if unit ~= nil then
+        -- 独立标记：一次性信标机单独记账，看门狗只认这张表。
+        local unitId = ObjectGetId(unit)
+        self.IlBeaconMarkByObjectId[unitId] =
+            { AgeFrames = 0, SideIndex = sideIndex }
+        -- 先切信标形态，再上 buff / 压弹药：变形会换武器组、也可能重建模型，
+        -- 顺序反了会压到旧的那一组上。变形要下一帧才真正生效，所以这些都延迟 1 帧再上。
+        self:EnableIlBeaconMode(unit)
+        if SchedulerModule ~= nil and SchedulerModule.delay_call ~= nil then
+            SchedulerModule.delay_call(function(id, side)
+                local target = GetObjectById(id)
+                if target ~= nil and ObjectIsAlive(target) then
+                    HextechRune:ApplyIlBeaconBaseBuffs(target)
+                    HextechRune:LimitIlBeaconAmmo(target)
+                    HextechRune:ReleaseIlBeaconToIdleTeam(target, side)
+                end
+            end, 1, { unitId, sideIndex })
+        else
+            self:ApplyIlBeaconBaseBuffs(unit)
+            self:LimitIlBeaconAmmo(unit)
+            self:ReleaseIlBeaconToIdleTeam(unit, sideIndex)
+        end
+        if ConfigureBomberPriorityTargetChooser ~= nil then
+            ConfigureBomberPriorityTargetChooser(unit)
+        end
+    end
+    return true
+end
+
+function HextechRune:DeployIlBeacon(playerIndex)
+    -- 一回合只放一次：本回合已经走完召唤逻辑就直接拒绝，不再用帧窗口
+    -- （帧窗口会造成“按钮按不动、但其实已经放出去了”的错觉）。
+    if g_HextechIlBeaconUsedThisRound[playerIndex] then
+        return false
+    end
+    local charges = g_HextechIlBeaconCharges[playerIndex] or 0
+    if charges <= 0 then
+        return false
+    end
+    local copyCount = self:GetIlBeaconCopyCount(playerIndex)
+    if copyCount <= 0 then
+        return false
+    end
+    -- 禁空军时整张符文本来就不入池（RequiresType），这里再兜一次：中途被禁也不放出来。
+    if BanModeIsTypeEnabled ~= nil and BanModeIsTypeEnabled("aircraft") == 0 then
+        return false
+    end
+    g_HextechIlBeaconCharges[playerIndex] = charges - 1
+    g_HextechIlBeaconUsedThisRound[playerIndex] = true
+    -- 使用之后才开始冷确：3 个回合之后（回合开始 -1）才补回下一次。
+    g_HextechIlBeaconCooldown[playerIndex] = self.IlBeaconCooldownRounds
+    for i = 1, copyCount, 1 do
+        self:SummonIlBeaconAircraft(playerIndex)
+    end
+    -- 走完召唤逻辑就把 K 键提示（按钮）强制摘掉，下回合发次数时再长出来。
+    self:HideIlBeaconHint(playerIndex)
+    return true
+end
+
+function HextechRune:HandleIlBeaconHotKey(playerName)
+    for playerIndex = 1, 8, 1 do
+        if playerName == "Player_" .. playerIndex then
+            return self:DeployIlBeacon(playerIndex)
+        end
+    end
+    return false
+end
+
+-- 强制摘掉 K 键提示（按钮）。走完召唤逻辑就调它，本回合不再显示。
+function HextechRune:HideIlBeaconHint(playerIndex)
+    exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex,
+        self.IlBeaconHintTextIndexBase + playerIndex, 0)
+end
+
+function HextechRune:RefreshIlBeaconHint(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local textIndex = self.IlBeaconHintTextIndexBase + playerIndex
+    exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, 0)
+    local charges = g_HextechIlBeaconCharges[playerIndex] or 0
+    -- 本回合已经部署过就不再显示：按钮只在这回合的次数到手时出现一次。
+    if charges <= 0 or g_HextechIlBeaconUsedThisRound[playerIndex] then
+        return
+    end
+    local hint = Localization.get("hextech.il_beacon.hotkey_hint")
+    exCreateCustomTextForPlayer(playerName, {
+        Index = textIndex,
+        Content = hint,
+        X = self:GetCenteredTextLeftX(self.IlBeaconHintCenterX, hint,
+            self.IlBeaconHintFontSize),
+        Y = self.IlBeaconHintY,
+        Color = 16777215,
+        Size = self.IlBeaconHintFontSize,
+        AlignX = "left",
+        AlignY = "top",
+    })
 end
