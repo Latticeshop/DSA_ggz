@@ -26,14 +26,12 @@ function HextechRune:GetAmmoAircraftUnitTypes()
     end
     return self.AmmoAircraftUnitTypes
 end
--- playerIndex → 已累计层数（= 掷骰次数，配额与播报都看它）。
+-- playerIndex → 已累计层数（= 掷骰次数，配额与面板后缀都看它）。
 HextechRune.AscensionStacks = HextechRune.AscensionStacks or {}
 -- playerIndex → { Health, Damage, RateOfFire, Range, Ammo }，各维已掷到的次数。
 HextechRune.AscensionBonusCounts = HextechRune.AscensionBonusCounts or {}
 -- 已转化过的对象，防止删除延迟导致同一只单位被重复计数。
 HextechRune.AscensionConsumedUnitIds = HextechRune.AscensionConsumedUnitIds or {}
--- playerIndex → 已播报过的回合号，保证同一回合只播报一次（见 BroadcastAscension）。
-HextechRune.AscensionBroadcastRound = HextechRune.AscensionBroadcastRound or {}
 
 function HextechRune:GetAscensionRune(playerIndex)
     self:EnsurePlayerRuneState(playerIndex)
@@ -135,36 +133,27 @@ function HextechRune:AddAscensionStacks(playerIndex, count)
     end
 end
 
-function HextechRune:BroadcastAscension(playerIndex)
-    local round = tonumber(exCounterGetByName("lvc")) or 0
-    if round >= 1 then
-        if self.AscensionBroadcastRound[playerIndex] == round then
-            return
-        end
-        self.AscensionBroadcastRound[playerIndex] = round
+-- 累计数值不再全图播报：玩家打开海克斯面板看这张符文时，由 01_rune_pool.lua 的
+-- GetRuneDescription 在详情末尾挂上数值后缀（与准备背包的「（已生效）」同一处）。
+function HextechRune:GetAscensionBonusText(playerIndex, rune)
+    if playerIndex == nil or rune == nil then
+        return nil
     end
-    local rune = self:GetAscensionRune(playerIndex)
-    local stacks = self:GetAscensionStacks(playerIndex)
-    if rune == nil or stacks <= 0 then
-        return
+    if self:GetAscensionStacks(playerIndex) <= 0 then
+        return nil
     end
-    -- 播报各维累计到现在的加成；每层的幅度按目标单位阶级取档。
     local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
     local health = self:GetAscensionBonusCount(playerIndex, "Health") * percent
     local damage = self:GetAscensionBonusCount(playerIndex, "Damage") * percent
     local rateOfFire = self:GetAscensionBonusCount(playerIndex, "RateOfFire") * percent
     local range = self:GetAscensionBonusCount(playerIndex, "Range") * percent
-    local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
-    local text
     if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
-        text = Localization.get("hextech.rune.ascension.broadcast_ammo", targetName,
+        return Localization.get("hextech.rune.bonus_values_ammo",
             health, damage, rateOfFire, range,
             self:GetAscensionBonusCount(playerIndex, "Ammo") * percent)
-    else
-        text = Localization.get("hextech.rune.ascension.broadcast", targetName,
-            health, damage, rateOfFire, range)
     end
-    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
+    return Localization.get("hextech.rune.bonus_values",
+        health, damage, rateOfFire, range)
 end
 
 -- 目标单位在回收表里的配置项。超级要塞等使用 CountType 独立计数，需要一并匹配。

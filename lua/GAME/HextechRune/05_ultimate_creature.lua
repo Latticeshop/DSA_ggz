@@ -311,26 +311,31 @@ function HextechRune:SacrificeUnitPoolForUltimateCreature(playerIndex)
     return tierCounts
 end
 
--- 回收完成后按以战养战同款格式播报，让持有者看清献祭换到了多少数值：
--- 血量/伤害来自 T1 数量，攻速/射程来自 T2 数量；带弹药的飞机再报一维弹药。
-function HextechRune:BroadcastUltimateCreature(playerIndex, tierCounts, hasAmmo)
+-- 数值展示不走全图播报了：玩家打开海克斯面板看这张符文时，由 01_rune_pool.lua 的
+-- 血量/伤害来自献祭的 T1 数量，攻速/射程来自 T2 数量；没有献祭到任何单位就不挂后缀。
+function HextechRune:GetUltimateCreatureBonusText(playerIndex)
+    if playerIndex == nil then
+        return nil
+    end
+    local state = self.UltimateCreatureStates[playerIndex]
+    if state == nil or state.TierCounts == nil then
+        return nil
+    end
+    local tierCounts = state.TierCounts
     if tierCounts[1] + tierCounts[2] <= 0 then
-        return
+        return nil
     end
     local health = tierCounts[1] * self.UltimateCreatureT1HealthPercent
     local damage = tierCounts[1] * self.UltimateCreatureT1DamagePercent
     local rateOfFire = tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent
     local range = tierCounts[2] * self.UltimateCreatureT2RangePercent
-    local text
-    if hasAmmo then
-        text = Localization.get("hextech.rune.ultimate_creature.broadcast_ammo",
+    if state.HasAmmo then
+        return Localization.get("hextech.rune.bonus_values_ammo",
             health, damage, rateOfFire, range,
             tierCounts[1] * self.UltimateCreatureT1AmmoPercent)
-    else
-        text = Localization.get("hextech.rune.ultimate_creature.broadcast",
-            health, damage, rateOfFire, range)
     end
-    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
+    return Localization.get("hextech.rune.bonus_values",
+        health, damage, rateOfFire, range)
 end
 
 function HextechRune:CreateUltimateCreature(playerIndex, rune)
@@ -342,7 +347,6 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
         UnitType = rune.TargetUnitType,
         HasAmmo = hasAmmo,
     }
-    self:BroadcastUltimateCreature(playerIndex, tierCounts, hasAmmo)
 
     -- 目标单位在选卡那一刻随机定好（见 CreateRuneCandidateForPlayer 的 minTier 分支）。
     -- T3 及以上的池子不再清空，所以这里按「加一只」补进池子，而不是清空后重设。

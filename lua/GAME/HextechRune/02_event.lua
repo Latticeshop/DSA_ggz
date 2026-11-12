@@ -1036,8 +1036,8 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "gold_los_strike",
-        "silver_oil_tycoon",
+        "prismatic_ultimate_creature",
+        "gold_ascension",
         "silver_easy_does_it",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。

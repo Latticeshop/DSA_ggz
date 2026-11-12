@@ -1693,13 +1693,8 @@ function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObje
 end
 
 function HextechRune:ApplyRoundEffects(round)
-    -- 投资已于 2026-10-13 改成选符当场结算（见 12_investment.lua），回合开始时不再有到期返还。
     -- 以战养战：本回合用上一回合累计的敌方死亡数，之后重新从零累计。
     self:RollWarEfficiencyCounters()
-    -- 登神：与以战养战同一时机播报各自的累计加成。
-    for ascensionPlayerIndex = 1, 8, 1 do
-        self:BroadcastAscension(ascensionPlayerIndex)
-    end
     -- 诸神黄昏：回合开始时把被治疗抬回一半以上的单位重新压回一半。
     self:ApplyAllRagnarokHealthClamps()
     -- 缩小射线：到点的阵营让对手全体单位缩小一回合。

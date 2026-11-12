@@ -1197,11 +1197,32 @@ function HextechRune:MarkRuneEffectConsumed(playerIndex, effect)
     return false
 end
 
+-- 究极生物 / 登神 / 以战养战的累计数值：以前每回合走全图播报，现在只在符文详情末尾挂后缀
+-- 只对这三种符文分发，其余符文一律返回 nil（不挂后缀）。
+function HextechRune:GetRuneBonusValuesText(rune, playerIndex)
+    if rune == nil or playerIndex == nil or rune.Effect == nil then
+        return nil
+    end
+    if rune.Effect == "ultimate_creature" then
+        return self:GetUltimateCreatureBonusText(playerIndex)
+    elseif rune.Effect == "ascension" then
+        return self:GetAscensionBonusText(playerIndex, rune)
+    elseif rune.Effect == "war_efficiency" then
+        return self:GetWarEfficiencyBonusText(playerIndex, rune)
+    end
+    return nil
+end
+
 function HextechRune:GetRuneDescription(rune, playerIndex)
     local desc = self:GetRuneDescriptionBase(rune, playerIndex)
     -- 一次性效果已经吃掉了：末尾补「（已生效）」，面板里一眼能看出哪张用过了。
     if self:IsRuneEffectConsumed(playerIndex, rune) then
         desc = desc .. Localization.get("hextech.rune.effect_consumed")
+    end
+    -- 究极生物 / 登神 / 以战养战：末尾补当前累计数值，例：(21%血量,9%伤害,28%攻速,12%射程)。
+    local bonusText = self:GetRuneBonusValuesText(rune, playerIndex)
+    if bonusText ~= nil then
+        desc = desc .. bonusText
     end
     return desc
 end

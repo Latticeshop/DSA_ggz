@@ -29,7 +29,7 @@ function HextechRune:GetWarEfficiencyBonusPerDeath()
 end
 
 -- 百分比文案：分档值是 0.25% 的整数倍，所以按百分之一算再消掉多余的零：
--- 1.25 → "1.25"、0.75 → "0.75"、0.5 → "0.5"、2 → "2"（卡面简介与回合播报共用这一份换算）。
+-- 1.25 → "1.25"、0.75 → "0.75"、0.5 → "0.5"、2 → "2"（卡面简介与面板后缀共用这一份换算）。
 function HextechRune:FormatWarEfficiencyPercent(percent)
     local hundredths = floor(percent * 100 + 0.5)
     local whole = floor(hundredths / 100)
@@ -146,31 +146,27 @@ function HextechRune:RollWarEfficiencyCounters()
         self:ExpireWarEfficiencyBuffs(playerIndex)
         self.WarEfficiencyActive[playerIndex] = self.WarEfficiencyPending[playerIndex]
         self.WarEfficiencyPending[playerIndex] = { 0, 0, 0, 0 }
-        self:BroadcastWarEfficiency(playerIndex)
     end
 end
 
-function HextechRune:BroadcastWarEfficiency(playerIndex)
+-- T1~T4 的敌方死亡数 × 本人该兵种份数 × 每死基础百分比。
+-- counts 是**本回合**生效值（回合开始才从 Pending 滚存过来），还没统计到死亡就返回 nil。
+function HextechRune:GetWarEfficiencyBonusText(playerIndex, rune)
+    if playerIndex == nil or rune == nil or rune.UnitType == nil then
+        return nil
+    end
+    local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, rune.UnitType)
     local counts = self.WarEfficiencyActive[playerIndex]
-    if counts == nil or counts[1] + counts[2] + counts[3] + counts[4] <= 0 then
-        return
+    if copies <= 0 or counts == nil
+        or counts[1] + counts[2] + counts[3] + counts[4] <= 0 then
+        return nil
     end
     local percentPerDeath = self:GetWarEfficiencyBonusPerDeath() * 100
-    for typeIndex = 1, getn(self.UnitTypeOrder), 1 do
-        local unitType = self.UnitTypeOrder[typeIndex]
-        -- 元神互锁：另一个兵种同步过来的那一份也要播报，否则玩家看不到自己的载具在吃加成。
-        local sourceType = self:GetWarEfficiencySourceType(playerIndex, unitType)
-        if sourceType ~= nil then
-            local copies = self:GetPlayerWarEfficiencyCopies(playerIndex, sourceType)
-            local text = Localization.get("hextech.rune.war_efficiency.broadcast",
-                Localization.get("hextech.unit_type." .. unitType),
-                self:FormatWarEfficiencyPercent(counts[1] * copies * percentPerDeath),
-                self:FormatWarEfficiencyPercent(counts[2] * copies * percentPerDeath),
-                self:FormatWarEfficiencyPercent(counts[3] * copies * percentPerDeath),
-                self:FormatWarEfficiencyPercent(counts[4] * copies * percentPerDeath))
-            exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, text, 10)
-        end
-    end
+    return Localization.get("hextech.rune.war_efficiency.bonus_values",
+        self:FormatWarEfficiencyPercent(counts[1] * copies * percentPerDeath),
+        self:FormatWarEfficiencyPercent(counts[2] * copies * percentPerDeath),
+        self:FormatWarEfficiencyPercent(counts[3] * copies * percentPerDeath),
+        self:FormatWarEfficiencyPercent(counts[4] * copies * percentPerDeath))
 end
 
 -- 同一玩家的多份符文直接相加：每份让同一个死亡单位多提供一份基础加成

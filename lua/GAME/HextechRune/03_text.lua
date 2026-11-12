@@ -96,6 +96,9 @@ g_LocalizationExtraText = {
     ["hextech.rune.oil_tycoon.name"] = { zh = "石油佬", en = "Oil Baron" },
     ["hextech.rune.oil_tycoon.desc"] = { zh = "获得一个油井。", en = "Gain one Oil Derrick." },
     ["hextech.rune.effect_consumed"] = { zh = "（已生效）", en = " (Used)" },
+    -- 四维顺序固定为 血量 / 伤害 / 攻速 / 射程；目标是带弹药的飞机时多一维弹药，单开一条。
+    ["hextech.rune.bonus_values"] = { zh = "(%d%%血量,%d%%伤害,%d%%攻速,%d%%射程)", en = "(%d%% hp, %d%% dmg, %d%% rof, %d%% rng)" },
+    ["hextech.rune.bonus_values_ammo"] = { zh = "(%d%%血量,%d%%伤害,%d%%攻速,%d%%射程,%d%%弹药)", en = "(%d%% hp, %d%% dmg, %d%% rof, %d%% rng, %d%% ammo)" },
     ["hextech.rune.free_trade.name"] = { zh = "自由贸易", en = "Free Trade" },
     ["hextech.rune.free_trade.desc"] = { zh = "获得自由贸易协议。", en = "Gain the Free Trade protocol." },
     ["hextech.rune.at_field.name"] = { zh = "AT立场", en = "AT Field" },
@@ -141,7 +144,8 @@ g_LocalizationExtraText = {
     ["hextech.rune.combustion_interest.desc"] = { zh = "敌方每个死亡单位令你获得 %d 资金。", en = "Gain %d credits whenever an enemy unit dies." },
     ["hextech.rune.war_efficiency.name"] = { zh = "以战养战", en = "War foraging" },
     ["hextech.rune.war_efficiency.desc"] = { zh = "敌方每一个单位死亡都会为下回合你的 %s 单位提供增益！每一个T1/T2/T3/T4单位分别提供%s%%的血量/伤害/攻速/射程。", en = "Every enemy unit death empowers your %s units next round! Each T1/T2/T3/T4 unit grants %s%% health/damage/attack speed/range." },
-    ["hextech.rune.war_efficiency.broadcast"] = { zh = "本回合以战养战（%s）加成：%s血量%%,%s伤害%%,%s攻速%%,%s射程%%", en = "This round's War foraging (%s) bonus: %s health%%, %s damage%%, %s attack speed%%, %s range%%" },
+    -- （与 hextech.rune.bonus_values 同一处展示；数值带小数，所以槽位是 %s 而不是 %d）。
+    ["hextech.rune.war_efficiency.bonus_values"] = { zh = "(本回合加成：%s%%血量,%s%%伤害,%s%%攻速,%s%%射程)", en = "(This round: %s%% health, %s%% damage, %s%% attack speed, %s%% range)" },
     ["hextech.rune.hunt_rhythm.name"] = { zh = "狩猎律动", en = "Hunt Rhythm" },
     ["hextech.rune.hunt_rhythm.desc"] = { zh = "敌方每个 %s 死亡单位，使你的一个随机 %s 单位回复 10%% 血量。", en = "Each enemy %s death heals one random %s unit of yours for 10%% of its max health." },
     ["hextech.rune.time_rift.name"] = { zh = "The World", en = "The World" },
@@ -159,21 +163,17 @@ g_LocalizationExtraText = {
         zh = "你的一个 %s 单位进化成为究极生物！回收你当前的T1和T2单位，每回收一个T1/T2单位，分别增加7%%血量和3%%伤害/14%%攻速和6%%射程。获得一个 %s 单位。",
         en = "One of your %s units evolves into an Ultimate Creature! Recycle your current T1 and T2 units; each recycled T1 unit grants 7%% health and 3%% damage, each recycled T2 unit grants 14%% attack speed and 6%% range. Gain 1 %s unit."
     },
-    ["hextech.rune.ultimate_creature.broadcast"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
     -- 带弹药的飞机（阿波罗/阿瑞斯/凤凰/重明/米格/苏霍伊）额外吃一维弹药，文案单开一条。
     ["hextech.rune.ultimate_creature.desc_ammo"] = {
         zh = "你的一个 %s 单位进化成为究极生物！回收你当前的T1和T2单位，每回收一个T1/T2单位，分别增加7%%血量和3%%伤害和1%%弹药/14%%攻速和6%%射程。获得一个 %s 单位。",
         en = "One of your %s units evolves into an Ultimate Creature! Recycle your current T1 and T2 units; each recycled T1 unit grants 7%% health, 3%% damage and 1%% ammo, each recycled T2 unit grants 14%% attack speed and 6%% range. Gain 1 %s unit."
     },
-    ["hextech.rune.ultimate_creature.broadcast_ammo"] = { zh = "究极生物加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%,%d弹药%%", en = "Ultimate Creature: %d hp%%, %d dmg%%, %d rof%%, %d rng%%, %d ammo%%" },
     ["hextech.rune.dongfeng_express.name"] = { zh = "东风速递", en = "Dongfeng Express" },
     ["hextech.rune.dongfeng_express.desc"] = { zh = "获得 1 辆东风洲际导弹发射车。", en = "Gain 1 Dongfeng ICBM Launcher." },
     ["hextech.rune.ascension.name"] = { zh = "登神", en = "Ascension" },
     ["hextech.rune.ascension.desc"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+%d%%血量/+%d%%伤害/+%d%%攻速/+%d%%射程。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +%d%% health / +%d%% damage / +%d%% attack speed / +%d%% range." },
-    ["hextech.rune.ascension.broadcast"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%" },
     -- 带弹药的飞机把「伤害」的 10% 让给「弹药」：血量 40% / 伤害 20% / 攻速 20% / 射程 10% / 弹药 10%。
     ["hextech.rune.ascension.desc_ammo"] = { zh = "你的 %s 单位只保留 1 个，多余的会自动回收，每回收一个获得一次以下随机加成：+%d%%血量/+%d%%伤害/+%d%%攻速/+%d%%射程/+%d%%弹药。", en = "Only 1 of your %s units is kept; every extra one is auto-recycled into one random bonus: +%d%% health / +%d%% damage / +%d%% attack speed / +%d%% range / +%d%% ammo." },
-    ["hextech.rune.ascension.broadcast_ammo"] = { zh = "（%s）登神加成：%d血量%%,%d伤害%%,%d攻速%%,%d射程%%,%d弹药%%", en = "(%s) Ascension: %d hp%%, %d dmg%%, %d rof%%, %d rng%%, %d ammo%%" },
 
     -- 以下为新增符文：文案此前登记在 01_rune_pool.lua，现统一并到这里。
     ["hextech.rune.banzai_charge.name"] = { zh = "万岁冲锋", en = "Banzai Charge" },

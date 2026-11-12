@@ -1,19 +1,15 @@
 # 海克斯符文：开局测试三选一（开发用，发版前删除）
 
-> **当前状态（2026-10-31 收工）：发版态，§1 的四段代码已再次删净。**
-> 本轮测的是银·MCV：`testRuneIds` = `{ "silver_mcv", "silver_mcv", "silver_mcv" }`，
-> 触发窗口用 `HextechRune.OpeningTestRounds = 2`（第 1、2 回合各发一次同一组卡），
-> 这样连着两回合各选一次就能看出「按已拥有阵营递进」有没有生效。
-> 实测结论：第一版只登记了四个建造场基础名，**展开后的基地识别不出来**——引擎里同一个建造场有
-> `_Enhanced` / `_Collapse` / 海军态等独立模板；改成按后缀生成后实测满意、逻辑正常（详见
-> `analysis/地图注释说明文档.md` 补记之二·十一续 ⑥）。发放记录 `McvGrantedFactions` 试过又删了：
-> 占地方且冗余，真正的缺口是建筑没扫上。
-> 收工动作：删掉开关（`EnableOpeningRealTest` / `OpeningTestRounds` / `OpeningTestTriggered`）、
-> `ShowOpeningTestEvent`、`OnRoundBegin` 的测试分支、`01_rune_pool.lua` 的 `FindRuneById`。
-> 鸡汤来咯的投毒调试日志（`IrradiateDebug` / `IrradiateLog`）与电脑补兵日志（`AICOMP.Debug` / `AICOMP.Log`）
-> 更早前就已删掉，这次没有贴回。
+> **当前状态（2026-11，测试态——这段代码眼下就活在源码里）**：`testRuneIds` =
+> `{ "prismatic_ultimate_creature", "gold_ascension", "silver_easy_does_it" }`，
+> `OpeningTestRounds = 1`。本轮验的是「究极生物 / 登神不再全图播报，改成海克斯面板详情末尾的
+> 数值后缀」：选完这两张后按 J 开面板、悬浮卡片看简介末尾有没有
+> `(…%血量,…%伤害,…%攻速,…%射程)`（带弹药的飞机多一维 `…%弹药`），并且回合切换时**消息区不再刷
+> 那两条加成播报**。第三格留银·顺手的事，用来对照旧的「（已生效）」后缀仍照常显示。
+> ⚠ 上一轮（2026-10-31 银·MCV 收工）记录的「已删净、发版态」不再代表当前工作区。
 
-发版态下 `lua/` 与 `ScriptsData.json` 中没有这段代码。需要复测某几张符文时，按本文把下面几段贴回源码，再跑 `python sync44.py --map 44` 同步。
+发版前需要复测某几张符文时，按本文改 §1 的 `testRuneIds` 即可，改完跑 `python analysis/tools/sync_scriptsdata.py` 同步；
+彻底清理则按 §3 把四段代码删掉。
 
 ## 1. 代码块
 
@@ -36,16 +32,16 @@ HextechRune.OpeningTestTriggered = {}
 
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
+-- 本轮测「究极生物 / 登神」的面板数值后缀：三格分别给 彩·究极生物 / 金·登神 / 银·顺手的事，
+-- 顺带覆盖三种稀有度。前两张选完就能在 J 面板里看到详情末尾的 (…%血量,…%伤害,…%攻速,…%射程)。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "gold_at_field",
-        "gold_at_field",
-        -- 2026-10-30：第三格由 gold_free_trade 换成银·鸡汤来咯，验「回合开始敌方随机 1 个载具
-        -- 获得毒质腐蚀」这条新链路（不再是协议、不再给基地，改由本方 AI 阵营借 spellbook 下命令）。
-        "silver_chicken_soup",
+        "prismatic_ultimate_creature",
+        "gold_ascension",
+        "silver_easy_does_it",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
-    local testUnitTypeByIndex = { "vehicle", "navy" }
+    local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
     local testTargetOverrides = {
     }
@@ -61,6 +57,11 @@ function HextechRune:ShowOpeningTestEvent()
             for i = 1, getn(testRuneIds), 1 do
                 local template = self:FindRuneById(testRuneIds[i])
                 local unitType = testUnitTypeByIndex[i]
+                -- 不需要兵种的符文（如落墨 / 一言九鼎）不能塞兵种：
+                -- 候选会把 UnitType 一起带上，判重键就变成「Id:兵种」，面板也会多出一段兵种名。
+                if template ~= nil and not template.NeedsUnitType then
+                    unitType = nil
+                end
                 if unitType == nil and template ~= nil and template.NeedsUnitType then
                     local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
                     if getn(availableTypes) > 0 then
@@ -139,23 +140,30 @@ end
 - `testTargetOverrides`：固定「指定单位型」符文（登神 / 买二送一 / 究极生物）的目标单位，格式 `符文Id = "单位模板名"`。
 - 第 4 个参数 `true`：测试局跳过阵营判定，任何座席都能拿到该符文。
 
-> **当前名单（2026-10-31 末轮：测 MCV，已测完并删除）**：`{ "silver_mcv", "silver_mcv", "silver_mcv" }` ——
-> 三格都是 **银·MCV**（`Effect = "grant_foreign_mcv"`，实现见 `lua/GAME/HextechRune/04_buff.lua: GrantForeignMCV`），
-> `testUnitTypeByIndex` 与 `testTargetOverrides` 都留空。
-> **这张卡要验的三件事**：
-> ①**没拥有的阵营才会给** —— 选卡后基地车落在自家水边的前哨站（`PureDrawGetOutpostDropPosition`），
-> 阵营应该是「你还没有的那几族」之一（自身阵营永远算已有）；
-> ②**抽卡抽到的基地车也算已有** —— 场上已有某族基地车（哪怕是从抽卡池抽出来的、还没展开），就不会再发该族；
-> ③**展开成建造场之后仍算已有** —— 把发到的基地车展开，下一轮再选 MCV 时不该又发同一族
-> （判定扫的是「基地车单位 + 建造场建筑」，建造场按 `前缀 + ConstructionYard + 后缀` 把
-> `_Enhanced` / `_Collapse` / 海军态等变体全登记）。
-> 三件事都过 = `GetPlayerMcvFactions` 的扫描口径正确。**实测结果：第一版 ③ 没过（只认了基础名），
-> 补上后缀变体后满意、逻辑正常。**
-> **鸡汤来咯复测记录（2026-10-31，已收工）**：十一测「开局三选一 + 一回合出兵」全绿 ——
-> 投毒在敌方随机载具/舰船上生效，`[汤]poison 1/1 try1 st IRRADIATED` 证实中毒状态名是
-> `IRRADIATED`，预设守护神（`Overlordtank` 等六个）与技能召唤单位已被排除出候选。
-> 收工后代码里已删除 `HextechRune.IrradiateDebug` / `IrradiateLog` 及全部日志调用，
-> 现在只看实际效果；要再定位问题时临时把日志加回去即可。
+> **当前名单（2026-11：测「究极生物 / 登神」的面板数值后缀）**：
+> `{ "prismatic_ultimate_creature", "gold_ascension", "silver_easy_does_it" }` ——
+> 彩·究极生物 / 金·登神 / 银·顺手的事，`testUnitTypeByIndex` 与 `testTargetOverrides` 都留空
+> （前两张都不带兵种，目标由 `PickUltimateCreatureTarget` / `PickBuyTwoGetOneTarget` 自己随机定）。
+> **要验的三件事**：
+> ①**选完立刻有后缀** —— 究极生物按选卡那一刻献祭到的 T1/T2 数量换算，面板详情末尾应出现
+> `(…%血量,…%伤害,…%攻速,…%射程)`；一张 T1/T2 都没献祭到就不显示（不显示一排 0%）。
+> ②**登神随回收增长** —— 每回合目标单位超出 1 个的部分继续转层，面板里的四维数值随之变大；
+> 层数为 0 时不显示后缀。
+> ③**消息区不再刷播报** —— 旧实现每次结算都会发一条「究极生物加成：…」/「（xxx）登神加成：…」，
+> 现在回合切换时消息区应当**看不到**这两条（`BroadcastUltimateCreature` / `BroadcastAscension`
+> 与 `AscensionBroadcastRound` 已删除）；顺手的事的「（已生效）」后缀仍照常显示，用来对照。
+>
+> **以战养战（同批改造，未进当前名单）**：它的「本回合加成」也不再每回合逐兵种播报
+> （`BroadcastWarEfficiency` 已删），改成面板详情末尾的 `(本回合加成：1%血量,1%伤害,…)`。
+> 要复测就把某一格换成 `"prismatic_war_efficiency"`（`Effect = "war_efficiency"`、`NeedsUnitType = true`），
+> 兵种由 `testUnitTypeByIndex` 对应格子指定（例：`{ "vehicle", "navy" }` 配前两格）；
+> 因为数值是「本回合生效值」，选完当回合还没滚存，**要打一回合（有敌方单位死亡）再下一回合开面板**才看得到后缀。
+> **历史记录（更早的轮次，均已完成并删除）**：
+> **银·MCV**（2026-10-31 末轮）：三格都是 `silver_mcv`，验「没拥有的阵营才会给 / 抽卡抽到的基地车也算已有 /
+> 展开成建造场之后仍算已有」；第一版只登记了建造场基础名，③ 没过，改成按
+> `前缀 + ConstructionYard + 后缀` 生成后满意。
+> **鸡汤来咯**（2026-10-31 十一测）：投毒在敌方随机载具/舰船上生效，`IRRADIATED` 是正确的中毒状态名，
+> 预设守护神（`Overlordtank` 等六个）与技能召唤单位已排除出候选；调试日志已删。
 
 ## 3. 发版前清理（2026-10-31 已执行两次，最后一次为 MCV 收工）
 
@@ -165,8 +173,11 @@ end
 2. 删掉两类调试日志：鸡汤来咯的 `HextechRune.IrradiateDebug` / `IrradiateLog`（含 8 处调用）、
    电脑补兵的 `AICOMP.Debug` / `AICOMP.Log`（含 3 处调用与只为日志服务的 `AICOMP.BandNames` /
    `WasPoolFallback` / `PoolFallback`）。✔ 已删
-3. 回填 `ScriptsData.json`：在仓库根目录跑 `python sync44.py --map 44`（`sync_scriptsdata.py` 需要 `--map` 指定 4v4 的 JSON，根目录的 `sync44.py` 就是它的封装）。
+3. 回填 `ScriptsData.json`：在 `DSA_ggz/` 根目录跑 `python analysis/tools/sync_scriptsdata.py`
+   （4v4 的 JSON 由 `analysis/tools/lua_payload.py` 的 `DEV_MAP_ID = "44"` 自动定位到
+   `DSA_XXX%COR_44/ScriptsData.json`，不需要再传 `--map`）。
 4. `grep -n "EnableOpeningRealTest\|ShowOpeningTestEvent\|FindRuneById\|IrradiateLog\|AICOMP.Log" lua/GAME/HextechRune/*.lua lua/LUABOX/AI/*.lua` 确认全部已删净。
-5. 复核：`python audit44.py`（DRIFT 里不应再出现 `02_event.lua` / `01_rune_pool.lua`）、`python check_payload_lua4.py` 同口径的 Lua 4.0 体检通过。
+5. 复核：`python analysis/audit_lua_json.py`（DRIFT 里不应出现 `02_event.lua` / `01_rune_pool.lua`）、
+   `python analysis/check_payload_lua4.py` 同口径的 Lua 4.0 体检通过。
 
 > 恢复前先 grep：常见情况是只干跑过清理、代码其实还在。
