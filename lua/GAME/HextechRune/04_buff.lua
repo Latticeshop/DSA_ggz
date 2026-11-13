@@ -1292,6 +1292,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     grant_olympus_carrier = true, grant_oblivion_bomb = true,
     grant_il_beacon = true,
     grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
+    grant_shield_tower = true, grant_sakura_well = true,
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
     grant_cryo_satellite = true, grant_chrono_rift = true,
     grant_irradiate = true, grant_desolator_bomb = true,
@@ -1541,6 +1542,12 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
     elseif rune.Effect == "grant_railgun" then
         -- 赠送逻辑与市场购买共用，放在 BtnChoiceDialogEventFunc 的塔族里。
         BtnChoiceDialogEventFunc_CreateCelestialRailgun(playerIndex)
+    elseif rune.Effect == "grant_shield_tower" then
+        -- 安全套：护盾投射塔，与中门对狙同一套赠送流程。
+        self:GrantDefenseTower(playerIndex, "JapanPointShieldControlTower")
+    elseif rune.Effect == "grant_sakura_well" then
+        -- 大樱井：樱花井，同上。
+        self:GrantDefenseTower(playerIndex, "JapanKamikazeCommandTower")
     elseif rune.Effect == "tower_defense_expert" then
         self:EnableTowerDefenseExpert(playerIndex)
     elseif rune.Effect == "brilliant_lights" then

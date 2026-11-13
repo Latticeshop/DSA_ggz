@@ -211,6 +211,15 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.railgun_duel.name",
         DescKey = "hextech.rune.railgun_duel.desc", Effect = "grant_railgun",
         Icon = "Button_CelestialEnergyRailgunBase" },
+    -- 白银·安全套 / 白银·大樱井：即时赠送一座防御塔，
+    { Id = "silver_safe_suit", Rarity = 3,
+        NameKey = "hextech.rune.safe_suit.name",
+        DescKey = "hextech.rune.safe_suit.desc", Effect = "grant_shield_tower",
+        Icon = "Button_JapanPointShieldControlTower" },
+    { Id = "silver_big_sakura_well", Rarity = 3,
+        NameKey = "hextech.rune.big_sakura_well.name",
+        DescKey = "hextech.rune.big_sakura_well.desc", Effect = "grant_sakura_well",
+        Icon = "Button_JapanKamikazeCommandTower" },
     -- 协议授予·金·冷冻卫星：地图外钥匙基地 + HELD 禁用的机制已实测跑通，但本轮仍不上线。
     -- 恢复时取消这条注释，并同步取消 04_buff.lua 的派发分支与本表排除名单里对应行的注释。
     -- 同门的「银·神威」已按白银档上线（见上方白银段末尾）。

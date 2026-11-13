@@ -1036,14 +1036,17 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "prismatic_ultimate_creature",
-        "gold_ascension",
-        "silver_easy_does_it",
+        "gold_ascension",          -- 登神（海军推进验收用）
+        "silver_safe_suit",        -- 安全套：赠送一座护盾投射塔
+        "silver_big_sakura_well",  -- 大樱井：赠送一口樱花井
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
+    -- 登神指定成海军段模板玄冥级战列巡洋舰 CelestialAntiNavyShipTech3，
+    -- 它在 UNITLIST 海军段（step35+1..step4）里，走 NoStructureBuffedUnitMICROCONTROL 的海军分支。
     local testTargetOverrides = {
+        ["gold_ascension"] = "CelestialAntiNavyShipTech3",
     }
     -- 4v4 共 8 个座席（`PanelSeatColumnGroups = { {1,2,8,3}, {4,5,7,6} }`），逐座位发同一组三张卡；
     -- 没有建筑的座席自动跳过。旧版 3v3 备份里这里是 `for playerIndex = 1, 6, 1`。

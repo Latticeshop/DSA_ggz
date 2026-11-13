@@ -850,7 +850,7 @@ g_FilterNavalPriorityEnemyStructure=CreateObjectFilter({
     Exclude="IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
 })
 
-g_NavalPriorityUnitHashes = {}
+g_NavalPriorityUnitHashes = g_NavalPriorityUnitHashes or {}
 
 function NavalPriorityTargetChooserBorn (createdObjId, createdObjInstanceId, ownerPlayerName)
     SchedulerModule.delay_call(function(id)
@@ -868,13 +868,44 @@ function NavalPriorityTargetChooserBorn (createdObjId, createdObjInstanceId, own
     end, 1, {createdObjId})
 end
 
+-- 登神/究极生物点名的「别打」名单（下面三张滤网共用）：
+g_NoStructureBuffExcludeThingNames = {
+    -- 塔守护神 / 守护者形态（BasicVar1: GuardianFormTemplate）
+    "Overlordtank", "JapanFortressShip", "JapanigaFortressShip",
+    -- 龙船（BasicVar1: DragonShip）
+    "CelestialMCV", "CelestialMCV_Enhanced", "CelestialMCV_Ground",
+    "CelestialMCV_Naval", "CelestialMCV_Air", "CelestialMCV_Enhanced_Ground",
+    "CelestialMCV_Enhanced_Naval", "CelestialMCV_Enhanced_Air",
+    -- 超级要塞全家
+    "JapanGigaFortressShipEgg", "JapanGigaFortressShip", "JapanGigaFortress_Land",
+}
+
 -- 登神/究极生物的目标单位：只打单位，不碰任何建筑。
 -- 滤网与百合子的 g_FilterYurikoEnemy 分开定义，两边的索敌调参互不影响。
 g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
     Rule="ANY",
     Relationship="ENEMIES",
     Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT SHIP",
-    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE"
+    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
+    ExcludeThing=g_NoStructureBuffExcludeThingNames
+})
+
+-- 登神/究极生物里**舰船专用**的打击名单：只有海上和空中的敌人。
+g_FilterNoStructureBuffNavalEnemy=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="SHIP AIRCRAFT",
+    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
+    ExcludeThing=g_NoStructureBuffExcludeThingNames
+})
+
+-- 全图找「最近的敌舰」用：只认水面目标，免得被飞机牵着满地图绕。
+g_FilterNoStructureBuffNavalShipEnemy=CreateObjectFilter({
+    Rule="ANY",
+    Relationship="ENEMIES",
+    Include="SHIP",
+    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
+    ExcludeThing=g_NoStructureBuffExcludeThingNames
 })
 
 -- 按对象 ID 登记，不写模板名：这两张符文的目标单位每局随机，列不出固定名单。
@@ -885,23 +916,48 @@ g_NavalPriorityAttackWaypoint = g_NavalPriorityAttackWaypoint or {
     [7] = "PLANEREBORN8",
     [8] = "PLANEREBORN7"
 }
+-- 舰船的推进令必须周期性补发：摘进 idle 队后就没人替它下整队推进令了（讲解见附录 E.14）。
+g_NoStructureBuffNavalAdvanceIntervalFrames = 15
+g_NoStructureBuffNavalNextAdvanceFrame = g_NoStructureBuffNavalNextAdvanceFrame or 0
+-- 每只舰船各自每 1 秒全图扫一次敌舰（照拄制空机：有目标就停下打，没目标才走）。
+g_NoStructureBuffNavalScanIntervalFrames = 15
 -- 同一只单位的索敌只能有一个主人，她若被圈中就整只交回她自己的微操。
 g_NoStructureBuffSkipInstanceIds = { [FastHash("JapanCommandoTech1")] = true }
+
+-- 舰船判定：编队名里带 SHIP 就是海军（SHIPTEAM / SHIPATTACK / PlyrCreeps/SHIPATTACK）。
+-- 不依赖模板哈希表，实测靠得住（见附录 E.16）。
+function IsNavalTeamName(teamName)
+    if teamName == nil then
+        return false
+    end
+    return strfind(teamName, "SHIP") ~= nil
+end
 
 function RegisterNoStructureBuffUnit(unit, sideIndex)
     if unit == nil or sideIndex == nil then
         return
     end
-    local objectId = ObjectGetId(unit)
-    if ObjectIsAlive(unit)
-        and g_NoStructureBuffSkipInstanceIds[ObjectGetInstanceId(objectId)] == nil then
-        g_NoStructureBuffUnitIds[objectId] = { SideIndex = sideIndex }
+    local instanceId = ObjectGetInstanceId(unit)
+    if instanceId ~= nil and ObjectIsAlive(unit)
+        and g_NoStructureBuffSkipInstanceIds[instanceId] == nil then
+        -- 登记这一刻还站在主力编队里，按队名就能认出是不是船。
+        g_NoStructureBuffUnitIds[ObjectGetId(unit)] = {
+            SideIndex = sideIndex,
+            IsNaval = IsNavalTeamName(ObjectTeamName(unit))
+        }
     end
 end
 
 function NoStructureBuffedUnitMICROCONTROL ()
     if g_PrioritySiegeIdleTeam == nil or g_PrioritySiegeAttackWaypoint == nil then
         return
+    end
+    -- 舰船推进令的补发闸门：整轮循环共用一个「到点」判定，避免每帧对每条船刷指令。
+    local frame = GetFrame()
+    local navalAdvanceDue = frame >= g_NoStructureBuffNavalNextAdvanceFrame
+    if navalAdvanceDue then
+        g_NoStructureBuffNavalNextAdvanceFrame =
+            frame + g_NoStructureBuffNavalAdvanceIntervalFrames
     end
     for objectId, entry in g_NoStructureBuffUnitIds do
         local unit = GetObjectById(objectId)
@@ -916,37 +972,121 @@ function NoStructureBuffedUnitMICROCONTROL ()
                 idleTeamShortName = "teamPlyrCreeps"
             end
             local teamName = ObjectTeamName(unit)
-            -- 舰船只换终点、不换待遇（讲解见附录 A.85.1b）：跟陆军登神单位/百合子同一套，
-            -- 退出进攻编队进 idle 队，否则队级 AttackMove 会绕过自定义索敌去打海塔。
-            local isNavalUnit = g_NavalPriorityUnitHashes ~= nil
-                and g_NavalPriorityUnitHashes[ObjectGetInstanceId(objectId)] == true
+            local isNavalUnit = entry.IsNaval == true
+                or IsNavalTeamName(teamName)
             local wasReassigned = teamName ~= idleTeamName
                 and teamName ~= idleTeamShortName
+            -- 舰船也必须摘进 idle 队：留在 SHIPATTACK 里就会被地编那记整队令带着去拆塔。
+            local needAdvance = false
             if wasReassigned then
                 g_SetSideTeam(unit, idleTeamName)
-                -- 离了主力编队就没人给它下推进命令，自己朝敌方 waypoints 攻击前进。
-                -- 舰船必须走海军路点（PLANEREBORN8/7），指到陆上的 TD7/TD8 就会拐向岸边。
-                local waypointName = g_PrioritySiegeAttackWaypoint[sideIndex]
+                needAdvance = true
                 if isNavalUnit then
-                    waypointName = g_NavalPriorityAttackWaypoint[sideIndex]
-                        or "PLANEREBORN8"
+                    -- 与地编给主力海军下 TEAM_SET_STANCE 1 同理：idle 队的姿态不是进攻姿态。
+                    ExecuteAction("UNIT_SET_STANCE", unit, 1)
                 end
+            end
+            -- 先全图扫最近的敌舰，有就停下开火；
+            -- 没有才继续往海军路点走，下一拍再扫一遍，
+            local navalEngaged = false
+            if isNavalUnit then
+                if entry.NextScanFrame == nil or frame >= entry.NextScanFrame then
+                    entry.NextScanFrame = frame
+                        + g_NoStructureBuffNavalScanIntervalFrames
+                    local target = ObjectGetTarget(unit)
+                    -- 已经在打就别抢（船也会自己打飞机），只有真没目标时才去找船。（船也会自己抦飞机），只有真没目标时才去找船。
+                    navalEngaged = target ~= nil and ObjectIsAlive(target)
+                        and ObjectTestTargetObjectWithFilter(unit, target,
+                            g_FilterNoStructureBuffNavalEnemy)
+                    if not navalEngaged then
+                        local nearest = FindNearestEnemyAnywhere(unit,
+                            g_FilterNoStructureBuffNavalShipEnemy)
+                        if nearest ~= nil then
+                            navalEngaged = true
+                            ObjectSetAssignedTarget(unit, nearest)
+                            ExecuteAction("NAMED_ATTACK_NAMED", unit, nearest)
+                            entry.LastX = nil
+                            entry.LastY = nil
+                        end
+                    end
+                else
+                    navalEngaged = ObjectGetTarget(unit) ~= nil
+                end
+            end
+            if isNavalUnit then
+                if navalEngaged then
+                    -- 有目标就不推进：再下一条走位令会把正在打的目标顶掉。
+                    needAdvance = false
+                elseif navalAdvanceDue then
+                    -- 没目标也只在「这一秒几乎没位移」时才补令：正在赶路就不打扰。
+                    local nx, ny = ObjectGetPosition(unit)
+                    local movedFar = false
+                    if entry.LastX ~= nil
+                        and (nx - entry.LastX) * (nx - entry.LastX)
+                            + (ny - entry.LastY) * (ny - entry.LastY) >= 40000 then
+                        movedFar = true
+                    end
+                    entry.LastX = nx
+                    entry.LastY = ny
+                    if not movedFar and ObjectGetTarget(unit) == nil then
+                        needAdvance = true
+                    end
+                end
+            end
+            -- 舰船必须指海军路点（PLANEREBORN8/7），指到陆上的 TD7/TD8 就会拐向岸边停住。
+            local waypointName = g_PrioritySiegeAttackWaypoint[sideIndex]
+            if isNavalUnit then
+                waypointName = g_NavalPriorityAttackWaypoint[sideIndex]
+                    or "PLANEREBORN8"
+            end
+            if needAdvance then
                 ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit, waypointName)
             end
-            local targetChooserData = {
-                CustomFilter = g_FilterNoStructureBuffedEnemy,
-                ReverseRangeCompare = false,
-                PreferTargetInsideRange = true
-            }
-            if g_NavalPriorityUnitHashes ~= nil and g_FilterNavalPriorityEnemyShip ~= nil
-                and g_NavalPriorityUnitHashes[ObjectGetInstanceId(objectId)] then
-                -- 登神 / 究极生物的舰船：只排「敌舰」一档，其余走默认（海军 > 其他）。
-                targetChooserData.CompareFilterList = {
-                    g_FilterNavalPriorityEnemyShip
+            -- 索敌器：陆军每拍刷（现成可用）；舰船只在下令那一拍刷，
+            -- 免得每 3 帧重设一次索敌/自动获取，把刚下发的推进令顶掉。
+            if needAdvance or not isNavalUnit
+                or entry.ChooserSet ~= true then
+                local targetChooserData = {
+                    CustomFilter = g_FilterNoStructureBuffEnemy,
+                    ReverseRangeCompare = false,
+                    PreferTargetInsideRange = true
                 }
+                if isNavalUnit then
+                    -- 舰船只盯海上/空中的敌人：一旦把 INFANTRY / VEHICLE 这类陆上目标也放进来，
+                    -- 自动索敌会追着岸上的敌人开，船就被拽向岸边（实测的「强行调转方向」就是这个）。
+                    targetChooserData.CustomFilter = g_FilterNoStructureBuffNavalEnemy
+                    if g_FilterNavalPriorityEnemyShip ~= nil then
+                        targetChooserData.CompareFilterList = {
+                            g_FilterNavalPriorityEnemyShip
+                        }
+                    end
+                end
+                ObjectSetCustomTargetChooserData(unit, targetChooserData)
+                ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
+                entry.ChooserSet = true
             end
-            ObjectSetCustomTargetChooserData(unit, targetChooserData)
-            ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
+            -- 这里逐拍复核目标：建筑 / 塔守护神 / 技能召唤单位一律摘掉。
+            local vetoFilter = g_FilterNoStructureBuffEnemy
+            if isNavalUnit then
+                vetoFilter = g_FilterNoStructureBuffNavalEnemy
+            end
+            local currentTarget = ObjectGetTarget(unit)
+            if currentTarget ~= nil and ObjectIsAlive(currentTarget) then
+                local currentTargetId = ObjectGetId(currentTarget)
+                local targetAllowed = vetoFilter == nil
+                    or ObjectTestTargetObjectWithFilter(unit, currentTarget, vetoFilter)
+                if targetAllowed and g_IsPresetGuardianUnitId ~= nil
+                    and g_IsPresetGuardianUnitId(currentTargetId) then
+                    targetAllowed = false
+                end
+                if targetAllowed and IsSkillSummonedUnitId ~= nil
+                    and IsSkillSummonedUnitId(currentTargetId) then
+                    targetAllowed = false
+                end
+                if not targetAllowed then
+                    ObjectSetAssignedTarget(unit, nil)
+                end
+            end
         end
     end
 end
@@ -1049,8 +1189,10 @@ function BomberPrioritySiegeTargetChooserBorn(createdObjId, createdObjInstanceId
 end
 
 -- 引擎索敌扫描半径未必够到全图，所以再用一次“整侧只查一遍全图”的搜索把轰炸机拽过去。
--- 频率对齐其它单位微操：TGMICRO 本身就是每 3 帧一次，PrioritySiegeAttackMoveMICROCONTROL
-g_BomberPrioritySiegeScanIntervalFrames = 3
+-- 扫描周期 15 帧（0.5 秒）：改成「脚本统一分配目标」之后，分配结果在目标被清光 / 新炮车进场
+-- 之前一直是稳定的，每 3 帧重扫一遍纯属白烧全图搜索（13 个模板 × 两侧 × 每秒 20 次）。
+-- 旧实现的高频重扫是为了「目标丢了赶紧补令」，现在补令由分配结果驱动，慢一拍没有副作用。
+g_BomberPrioritySiegeScanIntervalFrames = 15
 g_BomberPrioritySiegeNextScanFrame = g_BomberPrioritySiegeNextScanFrame or 0
 g_BomberPrioritySiegeTargetByUnitId = g_BomberPrioritySiegeTargetByUnitId or {}
 g_BomberAmmoSlotByUnitId = g_BomberAmmoSlotByUnitId or {}
@@ -1177,7 +1319,8 @@ function FindNearestBomberFallbackTarget(self, sideIndex)
     return FindNearestTargetFromList(self, list, count)
 end
 
-function UpdateBomberPrioritySiegeTarget(self, sieges, siegeCount, sideIndex)
+-- target 是这一轮「均分」下来的那个炮车目标；为 nil 表示这一轮没分到（场上没有炮车了）。
+function UpdateBomberPrioritySiegeTarget(self, target, sideIndex)
     local selfId = ObjectGetId(self)
     if not BomberHasWeaponAmmo(self, selfId) then
         -- 弹药打空的轰炸机要自己飞回机场补给，这时候压攻击令会把返航顶掉。
@@ -1186,7 +1329,6 @@ function UpdateBomberPrioritySiegeTarget(self, sieges, siegeCount, sideIndex)
     end
     local current = ObjectGetTarget(self)
     local currentId = nil
-    local droppedPlayerTarget = false
     if current ~= nil and ObjectIsAlive(current) then
         if IsBomberAllowedTarget(current) then
             currentId = ObjectGetId(current)
@@ -1194,50 +1336,43 @@ function UpdateBomberPrioritySiegeTarget(self, sieges, siegeCount, sideIndex)
             -- 当前目标是玩家的东西（Player_N 名下）：立刻丢掉，下面重挑一个合法目标。
             -- 实测轰炸机偶尔会挑上符文送的单位，丢掉之后不再交回引擎（引擎还会挑同一个）。
             ObjectSetAssignedTarget(self, nil)
-            droppedPlayerTarget = true
+            currentId = nil
         end
     end
-    local nearest = FindNearestTargetFromList(self, sieges, siegeCount)
-    if nearest == nil then
-        if IsBomberTeamDetached(self) then
-            -- 本来就不在编队里的（信标机）：没有炮车就打最近的其它可攻击目标。
-            nearest = FindNearestBomberFallbackTarget(self, sideIndex)
-            if nearest == nil then
-                return
-            end
-        elseif droppedPlayerTarget then
-            -- 刚丢掉的是玩家的东西：改压一个合法目标，别再让引擎自己挑一遍。
-            nearest = FindNearestBomberFallbackTarget(self, sideIndex)
-            if nearest == nil then
-                return
-            end
-        else
-            -- 编队里的常规轰炸机：撤掉自己压过的目标，把索敌交回引擎原生逻辑。
-            -- 这里不下 NAMED_STOP：它们还在编队里，刹停反而会把它们钉在原地。
-            if g_BomberPrioritySiegeTargetByUnitId[selfId] ~= nil then
-                g_BomberPrioritySiegeTargetByUnitId[selfId] = nil
-                ObjectSetAssignedTarget(self, nil)
-                ConfigureBomberPriorityTargetChooser(self)
-            end
-            return
+    if target == nil then
+        -- 没分到炮车（场上炮车已经清空）：退化为「最近目标」，和制空机一个口径。
+        -- 这一档仍由脚本压目标而不是交回引擎 —— 交回引擎就是各挑各的、全撞在同一只身上，
+        -- 那正是「轰炸机有点蠢」的来源。
+        target = FindNearestBomberFallbackTarget(self, sideIndex)
+    end
+    if target == nil then
+        -- 连一个合法目标都没有：撤掉自己压过的目标、把编队还回去，让引擎的编队推进接管，
+        -- 免得摘队以后永久挂在半空（旧实现只有弹药打空才会归队）。
+        ReattachBomberForRearm(self, selfId)
+        if g_BomberPrioritySiegeTargetByUnitId[selfId] ~= nil then
+            g_BomberPrioritySiegeTargetByUnitId[selfId] = nil
+            ObjectSetAssignedTarget(self, nil)
+            ConfigureBomberPriorityTargetChooser(self)
         end
+        return
     end
     -- 要压目标了：先确保它不在公共编队里，否则引擎的编队攻击令会把目标顶掉。
     if not IsBomberTeamDetached(self) then
         DetachBomberFromAttackTeam(self, selfId)
         currentId = nil
     end
-    if currentId ~= nil and ObjectGetId(nearest) == currentId then
+    local targetId = ObjectGetId(target)
+    if currentId ~= nil and targetId == currentId then
         -- 目标没变就不重复下令，免得抖航路。
-        g_BomberPrioritySiegeTargetByUnitId[selfId] = currentId
+        g_BomberPrioritySiegeTargetByUnitId[selfId] = targetId
         return
     end
-    ObjectSetAssignedTarget(self, nearest)
-    ExecuteAction("NAMED_ATTACK_NAMED", self, nearest)
-    g_BomberPrioritySiegeTargetByUnitId[selfId] = ObjectGetId(nearest)
+    ObjectSetAssignedTarget(self, target)
+    ExecuteAction("NAMED_ATTACK_NAMED", self, target)
+    g_BomberPrioritySiegeTargetByUnitId[selfId] = targetId
 end
 
--- 挂在 TGMICRO 周期段（每 3 帧一次），内部再按帧数节流。
+-- 索敌器只需配一次：原生索敌是「压目标失败」时的兜底，仍按炮车优先排序。
 g_BomberPriorityChooserConfiguredByUnitId =
     g_BomberPriorityChooserConfiguredByUnitId or {}
 
@@ -1250,9 +1385,59 @@ function EnsureBomberPriorityTargetChooser(unit)
     ConfigureBomberPriorityTargetChooser(unit)
 end
 
--- 效果就是只要场上还有炮车就一直压炮车，清空了才把目标交回原生逻辑（脱队单位则改打保底目标）。
--- 只有一路：每 tick 全扫一遍轰炸机与炮车，扫完就分配 —— 不再分「5 帧补令 / 15 帧全扫」两级节流，
--- 那两级节流是目标丢失后发呆的根源。
+-- 把炮车目标「尽量均分」给本方轰炸机：连续的若干架打同一台（形成打击组，集火更快），
+-- 每台分到的机数最多差 1 —— 20 架打 5 台 → 每台 4 架；20 架打 3 台 → 7 / 7 / 6。
+-- 炮车比飞机多时就一对一，剩下的炮车这轮空着（下一轮前排被清掉后会重新分）。
+-- 没有炮车（siegeCount = 0）时 groupSize 保持 0，每架都走「最近目标」那一档。
+function AssignBomberTargets(bombers, bomberCount, sieges, siegeCount, sideIndex)
+    if bomberCount == nil or bomberCount <= 0 then
+        return
+    end
+    local groupSize = 0
+    if siegeCount ~= nil and siegeCount > 0 then
+        -- ceil(bomberCount / siegeCount)：Lua 4 没有整除和 %，用 floor 加补偿。
+        groupSize = floor((bomberCount + siegeCount - 1) / siegeCount)
+        if groupSize < 1 then
+            groupSize = 1
+        end
+    end
+    for i = 1, bomberCount, 1 do
+        local target = nil
+        if groupSize > 0 then
+            local slot = floor((i - 1) / groupSize) + 1
+            if slot > siegeCount then
+                slot = siegeCount
+            end
+            target = sieges[slot]
+        end
+        -- 索敌器的排序表每架都要有：炮车清空后原生索敌还会按「炮车优先」排序。
+        EnsureBomberPriorityTargetChooser(bombers[i])
+        UpdateBomberPrioritySiegeTarget(bombers[i], target, sideIndex)
+    end
+end
+
+-- 每 3 帧（TGMICRO 周期）只做一件最便宜的事：看自己压着的那台炮车还在不在。
+function BomberPrioritySiegeWatchdog()
+    if g_BomberPrioritySiegeTargetByUnitId == nil then
+        return
+    end
+    for unitId, targetId in g_BomberPrioritySiegeTargetByUnitId do
+        local bomber = GetObjectById(unitId)
+        if bomber == nil or not ObjectIsAlive(bomber) then
+            -- 引擎会复用对象 id，死机不清理就会拿旧目标一直触发重扫。
+            g_BomberPrioritySiegeTargetByUnitId[unitId] = nil
+        else
+            local target = GetObjectById(targetId)
+            if target == nil or not ObjectIsAlive(target) then
+                -- 目标没了：把下一次全图扫描提前到本拍，重新均分 + 下令都走原来那条路。
+                g_BomberPrioritySiegeNextScanFrame = 0
+                return
+            end
+        end
+    end
+end
+
+-- 每 15 帧（0.5 秒）整侧扫一遍轰炸机与炮车，然后统一分配目标。
 function BomberPrioritySiegeMICROCONTROL()
     if g_FilterBomberPrioritySiegeVehicle == nil or g_FilterBomberPrioritySelf == nil then
         return
@@ -1269,9 +1454,6 @@ function BomberPrioritySiegeMICROCONTROL()
             g_FilterBomberPrioritySiegeVehicle)
         -- 炮车候选也只留两个 AI 阵营名下的：玩家席位名下的单位不是轰炸机的菜。
         sieges, siegeCount = FilterBomberCandidatesByOwner(sieges, siegeCount)
-        for i = 1, bomberCount, 1 do
-            EnsureBomberPriorityTargetChooser(bombers[i])
-            UpdateBomberPrioritySiegeTarget(bombers[i], sieges, siegeCount, playindex)
-        end
+        AssignBomberTargets(bombers, bomberCount, sieges, siegeCount, playindex)
     end
 end

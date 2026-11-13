@@ -384,12 +384,87 @@ function HextechRune:UnlockRankTechRows(playerIndex, rows)
     if target > self.RankTechRowCap then
         target = self.RankTechRowCap
     end
-    if target <= unlocked then
-        return 0
+    if target < 2 then
+        target = 2
     end
+    local previous = SetWorldBuilderThisPlayer(1)
     exUnlockPlayerGenericRankTech("Player_" .. playerIndex, target)
+    SetWorldBuilderThisPlayer(previous)
     self.RankTechRows[playerIndex] = target
     return target - unlocked
+end
+
+-- 符文赠送的防御塔（白银：安全套 / 大樱井）：与交易市场买到的塔同型号、同属性收尾，
+-- 差别只有两点：不扣钱、不登记 g_BuyTowerId（所以不占市场那座塔的唯一名额）。
+g_HextechGrantedTowerSpecs = {
+    ["JapanPointShieldControlTower"] = { Health = 5500 },
+    ["JapanKamikazeCommandTower"] = { Health = 9000 },
+}
+
+-- 护盾投射塔：与 BuyJapanPointShieldControlTower 一模一样，
+-- 走 g_GetMarketTowerPos（前排塔 X + 向 Y 侧偏 84.5）。
+function HextechRune:GetGrantedShieldTowerPos(playerIndex)
+    local fallbackX = 2900
+    if g_IsAngelSeat(playerIndex) then
+        fallbackX = 4150
+    end
+    local pos = g_GetMarketTowerPos(playerIndex, 84.5, fallbackX, 3187)
+    return { X = pos.X, Y = pos.Y, Z = 210 }
+end
+
+-- 樱花井：与 BuyJapanKamikazeCommandTower 一模一样，
+-- 前排塔沿走廊往后 126.75（恶魔向 -X、天使向 +X）。
+function HextechRune:GetGrantedSakuraWellPos(playerIndex)
+    local behindDirection = -1
+    local pos = { X = 2773.25, Y = 3102.5, Z = 210 }
+    if g_IsAngelSeat(playerIndex) then
+        behindDirection = 1
+        pos = { X = 4276.75, Y = 3102.5, Z = 210 }
+    end
+    local frontTower = BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
+    if ObjectIsAlive(frontTower) then
+        local towerX, towerY, towerZ = ObjectGetPosition(frontTower)
+        pos = { X = towerX + behindDirection * 126.75, Y = towerY, Z = towerZ }
+    end
+    return pos
+end
+
+function HextechRune:GrantDefenseTower(playerIndex, typeName)
+    local spec = g_HextechGrantedTowerSpecs[typeName]
+    if spec == nil then
+        return nil
+    end
+    local playerOwn = "PlyrCivilian"
+    if g_IsAngelSeat(playerIndex) then
+        playerOwn = "PlyrCreeps"
+    end
+    local pos
+    if typeName == "JapanPointShieldControlTower" then
+        pos = self:GetGrantedShieldTowerPos(playerIndex)
+    else
+        pos = self:GetGrantedSakuraWellPos(playerIndex)
+    end
+    local id = exCreateObject({
+        ObjectType = FastHash(typeName),
+        TeamName = playerOwn .. "/team" .. playerOwn,
+        Position = pos,
+        Angle = 0,
+        Health = spec.Health,
+    })
+    local tower = GetObjectById(id)
+    if typeName == "JapanPointShieldControlTower" then
+        ObjectLoadAttributeModifier(tower, 'AttributeModifier_BoxRateOfFireUp', 999999)
+        ObjectLoadAttributeModifier(tower, 'AttributeModifier_BoxRangeUp', 999999)
+    else
+        -- 樱花井射程 +50%；塔不会移动，视野必须同步放大才能真正打到。
+        if not g_JapanKamikazeCommandTowerRangeX15Modifier then
+            g_JapanKamikazeCommandTowerRangeX15Modifier = exAttributeModifierCreate(
+                { RANGE = 1.5, VISION = 1.5 }, 1)
+        end
+        ObjectLoadAttributeModifier(tower, g_JapanKamikazeCommandTowerRangeX15Modifier)
+    end
+    BtnChoiceDialogEventFunc_FinishMarketTower(id)
+    return id
 end
 
 -- 选符当场、以及退出继承，都只调这一个：拿一份就发一份。

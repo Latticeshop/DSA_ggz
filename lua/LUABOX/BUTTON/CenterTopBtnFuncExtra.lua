@@ -185,25 +185,52 @@ function CreateSnowstormButton(playerIndex)
     return CreateButton(buttonData)
 end
 
+-- 能不能被九头蛇策反：排除对象与转化型符文一致 —— 登神 / 究极生物圈中的单位不参与。
+-- 判定直接复用 18_basics_exchange.lua 的 IsConversionRuneBuffTargetUnit（它同时查
+-- 究极生物的 UltimateCreatureRegisteredUnits 与登神的 g_NoStructureBuffUnitIds），
+-- 免得两边各维护一份名单、以后加符文又漏一个。符文节点万一没加载则放行（保持旧行为）。
+function g_IsHydraControllableUnit(unit)
+    if unit == nil or not ObjectIsAlive(unit) then
+        return false
+    end
+    if HextechRune ~= nil and HextechRune.IsConversionRuneBuffTargetUnit ~= nil then
+        return not HextechRune:IsConversionRuneBuffTargetUnit(unit)
+    end
+    return true
+end
+
 function RequestHydra(playerIndex)
     local sideName = Localization.get("side.devil")
     if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
     local context = g_GetEnemyBattlefieldContext(playerIndex, true, true)
-    -- 心控数量 = 存活敌方单位数 × 本回合比例（60% 起每回合 -2%，30 回合归 0），向下取整。
-    local picked = g_PickRandomIndices(context.total,
-        g_GetHydraControlCount(context.total))
+    -- 登神 / 究极生物圈中的那台不参与策反：那两张符文把加成、体积和信息框都叠在唯一
+    -- 一只身上，被换过来等于让对面白练（转化型符文早就是这个口径，见
+    -- 18_basics_exchange.lua 的 IsConversionRuneBuffTargetUnit）。这里复用同一份判定，
+    -- 不再各自维护名单；候选表按筛完的结果重新计数，心控比例才对得上「可策反的单位数」。
+    local candidates = {}
+    local candidateCount = 0
+    for i = 1, context.total, 1 do
+        local unit = context.units[i]
+        if g_IsHydraControllableUnit(unit) then
+            candidateCount = candidateCount + 1
+            candidates[candidateCount] = unit
+        end
+    end
+    -- 心控数量 = 可策反的存活敌方单位数 × 本回合比例（60% 起每回合 -2%，30 回合归 0），向下取整。
+    local picked = g_PickRandomIndices(candidateCount,
+        g_GetHydraControlCount(candidateCount))
     local attackTeam = context.sideAIPlayer .. "/ATTACK"
     local controlled = 0
     for k = 1, getn(picked), 1 do
-        local unit = context.units[picked[k]]
+        local unit = candidates[picked[k]]
         if unit ~= nil and ObjectIsAlive(unit) then
             -- 只转归属不进进攻队列的话，单位会原地待命，看起来像没生效。
             ExecuteAction("NAMED_TRANSFER_OWNERSHIP_PLAYER", unit, context.sideAIPlayer)
             ExecuteAction("UNIT_SET_TEAM", unit, attackTeam)
-            -- 登神/究极生物的微操队列按 g_NoStructureBuffUnitIds 里的阵营每帧把单位换回
-            -- 待命队，转换后必须把它从这张表里注销，否则会被拉回原阵营。
+            -- 兜底：万一某只登神/究极生物单位没被上面的判定拦住（例如符文节点尚未加载），
+            -- 也要把它从微操登记表里注销，否则每帧会被换回原阵营的待命队。
             local objectId = ObjectGetId(unit)
             if g_NoStructureBuffUnitIds ~= nil then
                 g_NoStructureBuffUnitIds[objectId] = nil
