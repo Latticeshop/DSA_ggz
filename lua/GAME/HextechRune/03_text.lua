@@ -129,9 +129,9 @@ g_LocalizationExtraText = {
     ["hextech.rune.railgun_duel.name"] = { zh = "中门对狙", en = "Mid-Door Sniper Duel" },
     ["hextech.rune.railgun_duel.desc"] = { zh = "获得一个天门神弓。", en = "Gain one Tianmen Bow." },
 ["hextech.rune.safe_suit.name"] = { zh = "安全套", en = "Safety Suit" },
-["hextech.rune.safe_suit.desc"] = { zh = "获得一座护盾投射塔（不占交易市场名额）。", en = "Gain one Shield Projection Tower (no market slot used)." },
+["hextech.rune.safe_suit.desc"] = { zh = "获得一座护盾投射塔。", en = "Gain one Shield Projection Tower." },
 ["hextech.rune.big_sakura_well.name"] = { zh = "大樱井", en = "Grand Sakura Well" },
-["hextech.rune.big_sakura_well.desc"] = { zh = "获得一口樱花井（不占交易市场名额）。", en = "Gain one Sakura Well (no market slot used)." },
+["hextech.rune.big_sakura_well.desc"] = { zh = "获得一个樱花井。", en = "Gain one Sakura Well." },
     ["hextech.rune.fortified.name"] = { zh = "固若金汤", en = "Fortified" },
     ["hextech.rune.fortified.desc"] = { zh = "最前端防御塔回满血量并增加 25%%。", en = "The frontmost defense tower is fully repaired and gains 25%% health." },
     ["hextech.rune.recycler.name"] = { zh = "破烂王", en = "Recycler" },
@@ -267,8 +267,8 @@ g_LocalizationExtraText = {
     -- 协议进度类：落墨（银·可重复）与一言九鼎（棱彩·唯一），实现见 16_cryo_satellite.lua。
     ["hextech.rune.ink_drop.name"] = { zh = "落墨", en = "Ink Drop" },
     ["hextech.rune.ink_drop.desc"] =
-        { zh = "获得 1 协议点，并解锁下一层协议。可以重复获得。",
-            en = "Gain 1 protocol point and unlock the next protocol row. Repeatable." },
+        { zh = "获得 1 协议点，并解锁下一层协议。",
+            en = "Gain 1 protocol point and unlock the next protocol row." },
     ["hextech.rune.nine_words.name"] = { zh = "一言九鼎", en = "Word of Nine" },
     ["hextech.rune.nine_words.desc"] =
         { zh = "获得 9 协议点，并解锁五层协议。",

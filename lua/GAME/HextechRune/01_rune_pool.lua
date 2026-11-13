@@ -1527,16 +1527,5 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
     }
 end
 
--- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池（发版前与测试事件一并删除）。
--- 只服务于开局的自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent）。
-function HextechRune:FindRuneById(runeId)
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
-end
-
 -- 符文条目与互斥判定留在这里，效果层不再往这个节点里加。
 
