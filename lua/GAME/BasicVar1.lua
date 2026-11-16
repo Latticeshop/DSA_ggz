@@ -391,6 +391,46 @@ g_TargetGroupNames.DualFormInfantryAir = {
     "JapanAntiVehicleInfantryTech3",
 }
 
+-- 近战/贴身自爆单位（用户裁定 2026-11-16）：这些单位没有远程输出，
+-- 海克斯侧凡是"要点名一个能打远处的单位"的地方（如虚幻武器的炮台池）都按这张表剔掉。
+g_TargetGroupNames.MeleeUnit = {
+    "AlliedScoutInfantry",                      -- 警犬
+    "AlliedScoutInfantry_Enhanced",
+    "SovietScoutInfantry",                      -- 战熊
+    "SovietScoutInfantry_Enhanced",
+    "JapanScoutInfantry",                       -- 爆裂机器人（蜻蜓）
+    "JapanScoutInfantry_Enhanced",
+    "JapanInterceptorAircraft",                 -- 樱花回天雷
+    "JapanInterceptorAircraft_Enhanced",
+    "JapanInterceptorAircraft_Ground",          -- 樱花回天雷（陆基形态）
+    "JapanInterceptorAircraft_WarfactoryWater", -- 樱花回天雷（船坞/水上形态）
+    "CelestialAntiVehicleVehicleTech4",         -- 破军金甲
+    "CelestialAntiVehicleVehicleTech4_Enhanced",
+    "CelestialAntiVehicleVehicleTech4_S01",
+    "SovietBomberAircraft",                     -- 基洛夫飞艇
+    "SovietBomberAircraft_Enhanced",
+    "SovietBomberAircraft_Movie",
+    "JapanSentinelVehicle",                     -- 钢铁浪人（近战格斗，衍生形态靠前缀匹配一并覆盖）
+}
+
+-- 近战判定：表内任一名字 + 它的衍生形态（前缀匹配）。
+function g_IsMeleeUnitType(unitType)
+    if unitType == nil then
+        return false
+    end
+    local names = g_TargetGroupNames.MeleeUnit
+    if names == nil then
+        return false
+    end
+    for i = 1, getn(names), 1 do
+        local name = names[i]
+        if unitType == name or strfind(unitType, name) == 1 then
+            return true
+        end
+    end
+    return false
+end
+
 -- 无限火力开放的六族对空战斗机（基础型）及其全部形态。
 g_TargetGroupNames.AmmoAircraftFamily = {
     "AlliedFighterAircraft", "AlliedInterceptorAircraft",

@@ -18,6 +18,12 @@ HextechRune.RarityFrameImageIds = {
     [3] = g_HextechFrameSilverId,
 }
 
+-- 开发测试开关：开局前几回合固定显示指定的三张符文（发版前整段删除，清单见
+-- analysis/自走棋海克斯系统/hextech_dev_test_backup.md）。
+HextechRune.EnableOpeningRealTest = true
+HextechRune.OpeningTestRounds = 1
+HextechRune.OpeningTestTriggered = {}
+
 
 -- PlayerOptions / PlayerOwnedRunes / PlayerOwnedRuneIds 由 01_rune_pool.lua 初始化。
 
@@ -309,12 +315,32 @@ end
 
 -- 实机字体并非严格等宽，中文与纯 ASCII 的字面留白也不同。
 function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
-    local name = Localization.get(rune.NameKey)
+    -- 虚幻武器的单位卡是假符文卡（标题就是单位名），没有 NameKey；直接按单位名分档，
+    local name = nil
+    if rune.NameKey ~= nil then
+        name = Localization.get(rune.NameKey)
+    else
+        name = rune.UnitDisplayName or ""
+    end
     local characterCount = self:GetTextMaxCharacterCount(name)
     -- ASCII 字母只有 0.55 个汉字宽，直接按 4 字档排实测偏右，折算 3.1 → 落 3 字档正好居中。
     local visualUnits = self:GetTextMaxVisualUnits(name)
     if visualUnits < characterCount then
         characterCount = floor(visualUnits + 0.5)
+    end
+    -- 虚幻武器的单位卡：单位名多是 2~4 字，符文卡的分档从 3 字起步（3→14、4→22），
+    -- 2 字若落到默认的 OptionTitleOffsetX 会被顶到右边，这里按同一斜率外推。
+    if rune.Effect == "illusory_card" then
+        if isPanel then
+            return 0
+        end
+        local offset = characterCount * 8 - 10
+        if offset < 0 then
+            offset = 0
+        elseif offset > 26 then
+            offset = 26
+        end
+        return offset
     end
     -- 全频段阻塞干扰在卡面显示为“全频段阻塞 / 干扰”，以最宽的
     -- 五字行实测校正；不用未换行的七字本地化名称分档。
@@ -1028,6 +1054,75 @@ function HextechRune:ShowFormalEvent(round)
     self:ShowRuneEvent(round)
 end
 
+-- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
+-- 本轮测「虚幻武器」（彩·虚幻武器 / 彩·究极生物 / 银·顺手的事）：选到虚幻武器后会连弹
+-- 两次单位卡（先底座后炮台），选完在 J 面板详情末尾应出现「（底座：X，炮台：Y）」。
+function HextechRune:ShowOpeningTestEvent()
+    local testRuneIds = {
+        "prismatic_illusory_weapon",
+        "prismatic_ultimate_creature",
+        "silver_easy_does_it",
+    }
+    -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
+    local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
+    -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
+    local testTargetOverrides = {}
+    -- 4v4 共 8 个座席，逐座位发同一组三张卡；没有建筑的座席自动跳过。
+    for playerIndex = 1, 8, 1 do
+        local playerName = "Player_" .. playerIndex
+        local previous = SetWorldBuilderThisPlayer(1)
+        local structures, structureCount = CopyPlayerRegisteredObjectSet(playerName, "STRUCTURES")
+        SetWorldBuilderThisPlayer(previous)
+        if structureCount > 0 then
+            local options = {}
+            for i = 1, getn(testRuneIds), 1 do
+                local template = self:FindRuneById(testRuneIds[i])
+                local unitType = testUnitTypeByIndex[i]
+                -- 不需要兵种的符文不能塞兵种：候选会把 UnitType 一起带上，判重键就变成「Id:兵种」。
+                if template ~= nil and not template.NeedsUnitType then
+                    unitType = nil
+                end
+                if unitType == nil and template ~= nil and template.NeedsUnitType then
+                    local availableTypes = self:GetRuneCandidateUnitTypes(playerIndex, template)
+                    if getn(availableTypes) > 0 then
+                        unitType = availableTypes[self:RandomIndex(getn(availableTypes))]
+                    end
+                end
+                -- 一律走正式入口；测试局跳过阵营判定（第 4 个参数 true）。
+                local candidate = nil
+                if template ~= nil then
+                    candidate = self:CreateRuneCandidateForPlayer(playerIndex, template,
+                        unitType, true)
+                end
+                if candidate ~= nil then
+                    local overrideType = testTargetOverrides[candidate.Id]
+                    if overrideType ~= nil then
+                        candidate.TargetUnitType = overrideType
+                        candidate.TargetUnitIndex = self:LookupUnitPoolIndex(overrideType)
+                        candidate.TargetUnitName = self:GetReplacementTargetName(playerIndex, overrideType)
+                    end
+                    tinsert(options, candidate)
+                end
+            end
+            if getn(options) > 0 then
+                self.PlayerOptionCount[playerIndex] = getn(options)
+                self.PlayerOptions[playerIndex] = options
+                self:ResetRerollState(playerIndex, options)
+                for i = 1, getn(options), 1 do
+                    self:CreateOptionBox(playerIndex, i, options[i].Rarity,
+                        self.RarityFrameImageIds[options[i].Rarity], options[i])
+                    self:CreateRerollButton(playerIndex, i)
+                end
+                self.PlayerSelectionVisible[playerIndex] = true
+                self:HideSelectionHint(playerIndex)
+            else
+                exAddTextToPublicBoardForPlayer(playerName,
+                    Localization.get("hextech.error.not_enough_candidates"), 10)
+            end
+        end
+    end
+end
+
 -- 退出继承：退出者名下的全部符文（含之前继承来的）并进继承者的效果聚合；
 -- 各槽位的展示列表保持原样，只把槽位归属名字改成继承者。
 function HextechRune:TransferPlayerSlotRunes(fromIndex, toIndex)
@@ -1219,6 +1314,17 @@ end
 
 -- 处理玩家点击方框（记录选择并关闭方框）
 function HextechRune:HandleOptionClick(playerIndex, optionIndex)
+    -- 虚幻武器的两次单位选卡走自己的点选处理（实现见 17_death_triggers.lua 末尾的虚幻武器段）。
+    -- 只在"此刻屏幕上摆的确实是单位卡"时才截流：否则一旦卡面没弹出来（池子为空 / 加载失败），
+    -- 玩家的符文点击会被永远吞掉，等于再也拿不到符文。
+    local illusoryCards = self.PlayerOptions[playerIndex]
+    if self.IllusoryPending ~= nil and self.IllusoryPending[playerIndex] ~= nil
+        and illusoryCards ~= nil and illusoryCards[1] ~= nil
+        and illusoryCards[1].Effect == "illusory_card"
+        and self.HandleIllusoryCardClick ~= nil then
+        self:HandleIllusoryCardClick(playerIndex, optionIndex)
+        return
+    end
     local options = self.PlayerOptions[playerIndex]
     if options == nil or options[optionIndex] == nil then
         return
@@ -1622,6 +1728,14 @@ function HextechRune:OnRoundBegin(round)
     -- 单人遭遇战：开局评估一次并播报（消息区小字），此后重随不限次数；多人局不播也不放开。
     self:InitSoloUnlimitedReroll()
     -- 正式海克斯事件：按配置次数截取的回合触发（全场统一稀有度）
+    -- 开发测试：开局前几回合的固定三选一必须先于正式事件判断（发版前整段删除）。
+    if g_EnableHextechRune == 1 and self.EnableOpeningRealTest
+        and round <= self.OpeningTestRounds
+        and not self.OpeningTestTriggered[round] then
+        self.OpeningTestTriggered[round] = true
+        self:ShowOpeningTestEvent()
+        return
+    end
     if g_EnableHextechRune == 1 and not self.FormalTriggered[round] and self:IsFormalRound(round) then
         self.FormalTriggered[round] = true
         self:ShowFormalEvent(round)

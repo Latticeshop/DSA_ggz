@@ -929,6 +929,8 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
             end
         end
     end
+    -- 虚幻武器：炮台按底座所属兵种并入各桶（实现见 17_death_triggers.lua 末尾）。
+    self:InjectIllusoryTurretsToTypeLookup(sideIndex, result)
     return result
 end
 
@@ -1310,6 +1312,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     easy_does_it = true,
     -- 精挑细选：只在「摆候选」那一刻起作用（多摆一张），不逐单位挂载。
     extra_rune_option = true,
+    -- 虚幻武器：选卡时记下一对「底座 + 炮台」，炮台由独立扫描生成，不逐单位挂载。
+    illusory_weapon = true,
     -- 烧福瑞 / 生异形 / 钓鱼佬 / 樱落：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
     burn_furry = true, spawn_alien = true, angler = true, sit_tight = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
@@ -1525,7 +1529,10 @@ function HextechRune:GetTranscendentEvilModifier(playerIndex, rune)
 end
 
 function HextechRune:OnRuneChosen(playerIndex, rune)
-    if rune.Effect == "grant_yaoguang" then
+    -- 虚幻武器：不逐单位挂载，改成连弹两次单位卡（实现见 17_death_triggers.lua 末尾）。
+    if rune.Effect == "illusory_weapon" then
+        self:StartIllusoryWeaponSelection(playerIndex, rune)
+    elseif rune.Effect == "grant_yaoguang" then
         self:GrantYaoguang(playerIndex)
     elseif rune.Effect == "grant_olympus_carrier" then
         self:GrantOlympusCarrier(playerIndex)
@@ -1695,6 +1702,8 @@ function HextechRune:ApplyBattleUnitEffectPass(sourceName, skipObjects, seenObje
     self:ApplyUltimateCreatures(assignments)
     self:ApplyAscensionUnits(assignments)
     self:ApplyFiveTigerGenerals()
+    -- 虚幻武器：给底座补隐形炮台并镜像符文（实现见 17_death_triggers.lua 末尾的虚幻武器段）。
+    self:ApplyIllusoryWeaponPass(sourceName)
     -- 只保留真正获得了 BUFF 的单位登记；其余单位仍可被后续扫描选中。
     self:FinalizeBattleUnitAssignments(assignments)
 end

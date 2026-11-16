@@ -322,6 +322,7 @@ function GetLimitCommandoUnitCreateFunc(commandoName, limitCount)
             g_UnitCount[createdObjInstanceId] = countTable
         end
         local newCount = (countTable[playerIndex] or 0) + 1
+        -- %limitCount / %commandoName 的 % 是 outer-scope 前缀，不能删
         if newCount >= %limitCount then
             -- 禁止造更多的
             local previous = SetWorldBuilderThisPlayer(1)

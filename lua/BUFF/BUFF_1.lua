@@ -264,27 +264,34 @@ FilterJapanInterceptorAircraft=CreateObjectFilter({
     }
 })
 
-FilterSovietTeslaBoat=CreateObjectFilter({
+--   磁爆部队：伤害 ×2    + 射程 ×1.25                    （FilterTeslaInfantry）
+--   磁爆坦克：伤害 ×1.25                                  （FilterTeslaTank）
+--   磁暴快艇：伤害 ×1.25 + 攻速 ×1.25，**不给射程**        （FilterTeslaBoat）
+FilterTeslaInfantry=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietHeavyAntiVehicleInfantry","SovietHeavyAntiVehicleInfantry_Enhanced"
+    }
+})
+
+FilterTeslaTank=CreateObjectFilter({
+    Rule="ANY",
+    IncludeThing = {
+        "SovietAntiVehicleVehicleTech2"
+    }
+})
+
+FilterTeslaBoat=CreateObjectFilter({
     Rule="ANY",
     IncludeThing = {
         "SovietAntiNavyShipTech1",
-        -- 衍生形态（g_PureDrawProductionAliases）
         "SovietAntiNavyShipTech1_AirAssault","SovietAntiNavyShipTech1_Enhanced"
     }
 })
 
--- 磁爆组（2026-11）：苏联三件套统一吃「伤害 ×2 + 射程 ×1.25」，**一律不给生命加成**。
-FilterTeslaBoost=CreateObjectFilter({
-    Rule="ANY",
-    IncludeThing = {
-        "SovietHeavyAntiVehicleInfantry","SovietHeavyAntiVehicleInfantry_Enhanced",
-        "SovietAntiVehicleVehicleTech2",
-        "SovietAntiNavyShipTech1","SovietAntiNavyShipTech1_AirAssault","SovietAntiNavyShipTech1_Enhanced"
-    }
-})
-
+-- 磁爆部队专用：伤害 ×2 + 射程 ×1.25
 function TESLABOOSTBUFF ()
-    local TAR , COUNTX = ObjectFindObjects(nil, nil, FilterTeslaBoost)
+    local TAR , COUNTX = ObjectFindObjects(nil, nil, FilterTeslaInfantry)
     for i = 1 , COUNTX ,1 do
         ObjectLoadAttributeModifier(TAR[i], "AttributeMod_AlliedTeslaBoost",9999)
         ObjectLoadAttributeModifier(TAR[i], "AttributeModifier_BoxRangeUp",9999)
@@ -306,8 +313,10 @@ end
 if not g_AlliedGunshipHealthX2Modifier then
     g_AlliedGunshipHealthX2Modifier = exAttributeModifierCreate({ HEALTH_MULT = 2.0 }, 1)
 end
+if not g_TeslaDamageX125Modifier then
+    g_TeslaDamageX125Modifier = exAttributeModifierCreate({ DAMAGE_MULT = 1.25 }, 1)
+end
 if not g_SovietTeslaBoatRateOfFireX125Modifier then
-    -- 磁爆快艇仅增加25%攻速，不混入现有组合式伤害/射程 Buff。
     g_SovietTeslaBoatRateOfFireX125Modifier = exAttributeModifierCreate({ RATE_OF_FIRE = 1.25 }, 1)
 end
 
@@ -362,14 +371,19 @@ function LARGEENHANCEBUFF ()
         ObjectLoadAttributeModifier(SakuraMine[i], g_JapanInterceptorHealthX3Modifier)
     end
 
-    -- 磁爆快艇：纯25%攻速强化，水面与禁海模式下的陆地形态使用同一单位模板。
-    local TeslaBoat , TeslaBoatCount = ObjectFindObjects(nil, nil, FilterSovietTeslaBoat)
+    -- 磁爆坦克：只吃伤害 ×1.25。
+    local TeslaTank , TeslaTankCount = ObjectFindObjects(nil, nil, FilterTeslaTank)
+    for i = 1 , TeslaTankCount ,1 do
+        ObjectLoadAttributeModifier(TeslaTank[i], g_TeslaDamageX125Modifier)
+    end
+
+    -- 磁暴快艇：伤害 ×1.25 + 攻速 ×1.25；水面与禁海模式下的陆地形态同一模板。
+    local TeslaBoat , TeslaBoatCount = ObjectFindObjects(nil, nil, FilterTeslaBoat)
     for i = 1 , TeslaBoatCount ,1 do
+        ObjectLoadAttributeModifier(TeslaBoat[i], g_TeslaDamageX125Modifier)
         ObjectLoadAttributeModifier(TeslaBoat[i], g_SovietTeslaBoatRateOfFireX125Modifier)
     end
 
-    -- 磁爆组（部队 / 坦克 / 快艇）：伤害 ×2 + 射程 ×1.25，无生命加成。
-    -- 放在本函数末尾调用，是为了跟着 BUFFACTONCE__AIR 这个「每回合出兵后 / 每次补充军队」
-    -- 的既有节点走，不必新开 WB 脚本节点（ScriptsData 里的脚本树不动）。
+    -- 磁爆部队：伤害 ×2 + 射程 ×1.25。
     TESLABOOSTBUFF ()
 end

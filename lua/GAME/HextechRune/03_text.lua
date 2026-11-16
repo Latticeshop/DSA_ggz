@@ -242,8 +242,24 @@ g_LocalizationExtraText = {
             en = "Your next rune selection lets you take one extra card." },
     ["hextech.rune.careful_selection.name"] = { zh = "精挑细选", en = "Handpicked" },
     ["hextech.rune.careful_selection.desc"] =
-        { zh = "你后续符文选择会多一个选项。",
-            en = "Your future rune selections get one extra option." },
+        { zh = "你后续选择会多一个选项。",
+            en = "Your future selections get one extra option." },
+    -- 虚幻武器（棱彩 · 可重复获取）：选中后连弹两次单位卡，先底座后炮台。
+    ["hextech.rune.illusory_weapon.name"] = { zh = "虚幻武器", en = "Illusory Weapon" },
+    ["hextech.rune.illusory_weapon.desc"] =
+        { zh = "选择两种单位进行组合，回合开始时赋予其虚幻武器。",
+            en = "Combine two units; at the start of each round the first gains an illusory weapon." },
+    ["hextech.illusory.card.chassis"] =
+        { zh = "选择它作为底座。", en = "Choose it as the chassis." },
+    ["hextech.illusory.card.turret"] =
+        { zh = "选择它作为炮台。", en = "Choose it as the turret." },
+    ["hextech.illusory.hint.chassis"] = { zh = "请选择底座", en = "Choose a chassis" },
+    ["hextech.illusory.hint.turret"] = { zh = "请选择炮台", en = "Choose a turret" },
+    ["hextech.illusory.suffix"] = { zh = "（底座：%s，炮台：%s）", en = " (Chassis: %s, Turret: %s)" },
+    ["hextech.illusory.picked"] = { zh = "虚幻武器：底座 %s，炮台 %s",
+        en = "Illusory Weapon: chassis %s, turret %s" },
+    ["hextech.illusory.error.no_units"] = { zh = "当前没有可选的单位，虚幻武器未生效。",
+        en = "No eligible unit is available, Illusory Weapon did not take effect." },
     ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",

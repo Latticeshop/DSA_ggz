@@ -71,14 +71,6 @@ HextechRune.RunePool = {
         Effect = "upgrade_imperial_warrior", RequiredFaction = 3,
         RequiresType = "infantry",
         Icon = "Button_JapanKamikazeBonzai" },
-    -- （前几回合就把樱花换成鬼樱过于超模；判定见 BuildFilteredPool 与 §4.0 全局规则）。
-    { Id = "silver_five_centimeters", Rarity = 3,
-        NameKey = "hextech.rune.five_centimeters.name",
-        DescKey = "hextech.rune.five_centimeters.desc",
-        Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
-        RequiresType = "aircraft",
-        ExcludeOnFirstFormalSelection = true,
-        Icon = "Portrait_JapanInterceptorAircraft_air" },
     { Id = "silver_wheeled_cannon", Rarity = 3,
         NameKey = "hextech.rune.wheeled_cannon.name",
         DescKey = "hextech.rune.wheeled_cannon.desc",
@@ -142,6 +134,13 @@ HextechRune.RunePool = {
         Icon = "Button_AlliedSalvageShip" },
 
     -- 黄金
+    { Id = "silver_five_centimeters", Rarity = 2,
+        NameKey = "hextech.rune.five_centimeters.name",
+        DescKey = "hextech.rune.five_centimeters.desc",
+        Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
+        RequiresType = "aircraft",
+        ExcludeOnFirstFormalSelection = true,
+        Icon = "Portrait_JapanInterceptorAircraft_air" },
     -- K 键符文两张互斥：湮灭炸弹与视距打击共用 K，选到其中一张后本局另一张不再入池
     -- （BuildFilteredPool 里按 ExclusiveRuneIds 判，点击时 02_event 再拦一次）。
     { Id = "gold_oblivion_bomb", Rarity = 2,
@@ -293,6 +292,11 @@ HextechRune.RunePool = {
         Effect = "grant_time_bomb", Icon = "Button_PlayerPower_TimeBomb3" },
 
     -- 棱彩
+    -- 虚幻武器：选中后连弹两次单位卡（先底座后炮台），回合开始给场上每个底座补一个隐形炮台。可重复获取。
+    { Id = "prismatic_illusory_weapon", Rarity = 1,
+        NameKey = "hextech.rune.illusory_weapon.name",
+        DescKey = "hextech.rune.illusory_weapon.desc", Effect = "illusory_weapon",
+        Icon = "SUA_Tank_LeechBeam" },
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
         DescKey = "hextech.rune.infinite_ammo.desc", Effect = "infinite_ammo", NeedsUnitType = true,
         UnitTypes = { "aircraft" },
@@ -1062,6 +1066,10 @@ function HextechRune:GetRuneDisplayName(rune)
     if rune == nil then
         return ""
     end
+    -- 虚幻武器的两次单位选卡：卡面没有 NameKey，直接显示单位名。
+    if rune.Effect == "illusory_card" then
+        return rune.UnitDisplayName or ""
+    end
     local name = Localization.get(rune.NameKey)
     if rune.UnitType ~= nil then
         if rune.UnitType2 ~= nil then
@@ -1080,6 +1088,13 @@ end
 function HextechRune:GetRuneDescriptionBase(rune, playerIndex)
     if rune == nil then
         return ""
+    end
+    -- 虚幻武器的单位卡：卡框颜色已经表示阶级，描述里不再重复写稀有度。
+    if rune.Effect == "illusory_card" then
+        if rune.Stage == 1 then
+            return Localization.get("hextech.illusory.card.chassis")
+        end
+        return Localization.get("hextech.illusory.card.turret")
     end
     if rune.UnitType ~= nil then
         local label = self:GetRuneUnitTypeLabel(rune)
@@ -1218,6 +1233,9 @@ function HextechRune:GetRuneBonusValuesText(rune, playerIndex)
         return self:GetAscensionBonusText(playerIndex, rune)
     elseif rune.Effect == "war_efficiency" then
         return self:GetWarEfficiencyBonusText(playerIndex, rune)
+    elseif rune.Effect == "illusory_weapon" then
+        -- 虚幻武器：末尾补「（底座：X，炮台：Y）」，实现见 17_death_triggers.lua 末尾。
+        return self:GetIllusoryBonusText(playerIndex, rune)
     end
     return nil
 end
@@ -1266,6 +1284,10 @@ function HextechRune:GetRuneCompactTitle(rune)
     if rune == nil then
         return ""
     end
+    -- 虚幻武器的单位卡：标题就是单位名（太长时由字号分支缩小）。
+    if rune.Effect == "illusory_card" then
+        return rune.UnitDisplayName or ""
+    end
     local name = Localization.get(rune.NameKey)
     if rune.UnitType ~= nil then
         if rune.UnitType2 ~= nil then
@@ -1289,6 +1311,7 @@ end
 -- 标题字号随卡片尺寸同比缩放；较长的三档瞄准镜额外缩小。
 function HextechRune:GetRuneTitleFontSize(rune, cardSize)
     local baseSize = 16
+    -- 虚幻武器的单位卡不做任何特殊化：字号与居中分档完全走符文卡那一套。
     if rune ~= nil and (rune.Effect == "range_silver" or rune.Effect == "range_gold"
         or rune.Effect == "range_prismatic") then
         baseSize = 10
@@ -1528,4 +1551,17 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
 end
 
 -- 符文条目与互斥判定留在这里，效果层不再往这个节点里加。
+
+-- 按 Id 取符文模板：开局测试脚本（02_event.lua 的 ShowOpeningTestEvent）按 Id 直接指定符文用。
+function HextechRune:FindRuneById(runeId)
+    if runeId == nil or self.RunePool == nil then
+        return nil
+    end
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
+end
 

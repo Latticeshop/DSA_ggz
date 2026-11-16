@@ -178,7 +178,12 @@ function g_PLSpawnHold()
             car = nil
         end
         if car ~= nil and ObjectIsAlive(car) and unit ~= nil and ObjectIsAlive(unit) then
-            if g_PLSpawnInsideGarrison(unit) then
+            if g_PLSpawnIsIllusoryChassis(unit) then
+                -- 底座：不再往车里拉；已经进去了就当场请下车（否则底座卡无敌）
+                if g_PLSpawnInsideGarrison(unit) then
+                    ExecuteAction("NAMED_EXIT_BUILDING", unit)
+                end
+            elseif g_PLSpawnInsideGarrison(unit) then
                 item.Retry = 0
                 tinsert(g_PLSpawnEntries, item)
             else
@@ -321,6 +326,35 @@ function g_PLSpawnClearBuiltInCrew(sideIndex, cars, count, carEntry)
     end
 end
 
+-- 虚幻武器的底座不许装车。
+-- 注意只排除底座：炮台照样可以当车装别的兵。
+-- 判定统一问海克斯侧（HextechRune.IsIllusoryChassisObject），没装海克斯系统时恒为 false。
+function g_PLSpawnIsIllusoryChassis(unit)
+    if unit == nil or HextechRune == nil then
+        return false
+    end
+    if HextechRune.IsIllusoryChassisObject == nil then
+        return false
+    end
+    return HextechRune:IsIllusoryChassisObject(ObjectGetId(unit))
+end
+
+function g_PLSpawnDropIllusoryChassis(objects, count)
+    if objects == nil or count == nil or count < 1 then
+        return objects, count
+    end
+    local kept = {}
+    local keptCount = 0
+    for index = 1, count, 1 do
+        local obj = objects[index]
+        if obj ~= nil and not g_PLSpawnIsIllusoryChassis(obj) then
+            keptCount = keptCount + 1
+            kept[keptCount] = obj
+        end
+    end
+    return kept, keptCount
+end
+
 function g_PLSpawnCandidates(sideIndex, carEntry)
     if carEntry.InfFilter == nil then
         carEntry.InfFilter = CreateObjectFilter({
@@ -330,7 +364,8 @@ function g_PLSpawnCandidates(sideIndex, carEntry)
         })
     end
     local units, count = g_SideFindObjects(sideIndex, nil, carEntry.InfFilter)
-    return g_PLSpawnKeepOwnSide(units, count, sideIndex)
+    units, count = g_PLSpawnKeepOwnSide(units, count, sideIndex)
+    return g_PLSpawnDropIllusoryChassis(units, count)
 end
 
 function g_PLSpawnSpecialCandidates(sideIndex, carEntry)
@@ -342,7 +377,8 @@ function g_PLSpawnSpecialCandidates(sideIndex, carEntry)
         })
     end
     local units, count = g_SideFindObjects(sideIndex, nil, carEntry.SpecialFilter)
-    return g_PLSpawnKeepOwnSide(units, count, sideIndex)
+    units, count = g_PLSpawnKeepOwnSide(units, count, sideIndex)
+    return g_PLSpawnDropIllusoryChassis(units, count)
 end
 
 function g_PLSpawnDisableEvac(car)
@@ -366,6 +402,7 @@ function g_PLSpawnFindCars(sideIndex, carEntry)
     end
     local cars, count = g_SideFindObjects(sideIndex, nil, carEntry.Filter)
     cars, count = g_PLSpawnKeepOwnSide(cars, count, sideIndex)
+    -- 这里故意**不**剔虚幻武器的炮台：清要塞自带标枪兵（g_PLSpawnClearBuiltInCrew）还要靠
     return g_PLSpawnDropGuardCars(cars, count)
 end
 

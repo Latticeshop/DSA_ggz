@@ -675,6 +675,10 @@ function unitgetcountanddelet (playindex)
         if HextechRune ~= nil and HextechRune.FilterAscensionUnits ~= nil then
             TAR, count = HextechRune:FilterAscensionUnits(playindex, unitindex, TAR, count)
         end
+        -- 海克斯“虚幻武器”的隐形炮台：它们是真单位，但绝不能入单位池、不能算箱子单位/
+        if HextechRune ~= nil and HextechRune.FilterIllusoryTurrets ~= nil then
+            TAR, count = HextechRune:FilterIllusoryTurrets(TAR, count)
+        end
         -- 过滤器可能把整批都转成层数并回 nil；这里再过一道，避免下面的比较和 for 崩掉。
         if type(count) ~= "number" or TAR == nil then
             count = 0
