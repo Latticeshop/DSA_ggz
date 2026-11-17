@@ -59,6 +59,11 @@ g_LocalizationExtraText = {
     ["hextech.rune.los_strike.name"] = { zh = "视距打击", en = "Standoff Strike" },
     ["hextech.rune.los_strike.desc"] = { zh = "获得伊尔信标部署次数，冷却为 3 回合。", en = "Gain an Il Beacon deployment charge. 3-round cooldown." },
     ["hextech.il_beacon.hotkey_hint"] = { zh = "按'K'键部署伊尔攻击机", en = "Press 'K' to deploy Il attack aircraft" },
+    -- 工厂维护（银·K 键技能）：金额随经济倍率变档，卡面与 K 键提示都用 %d 填当前档位。
+    ["hextech.rune.factory_maintenance.name"] = { zh = "工厂维护", en = "Factory Maintenance" },
+    ["hextech.rune.factory_maintenance.desc"] = { zh = "获得工厂维护技能：立即获得%d资金且无法进行任何生产操作90秒。", en = "Gain the Factory Maintenance skill: instantly gain %d credits and lose all production for 90 seconds." },
+    ["hextech.factory_maintenance.hotkey_hint"] = { zh = "按'K'键进行'工厂维护'并获得%d资金", en = "Press 'K' for Factory Maintenance and gain %d credits" },
+    ["hextech.factory_maintenance.used"] = { zh = "$p%dName启动了工厂维护：90秒内无法生产", en = "$p%dName started Factory Maintenance: no production for 90s" },
     ["hextech.rune.burn_furry.name"] = { zh = "烧福瑞", en = "Burning Furry" },
     ["hextech.rune.burn_furry.desc"] = { zh = "回合开始时，将敌方 %d%% 的步兵变成警犬或战熊。", en = "At the start of each round, %d%% of enemy infantry become police dogs or war bears." },
     ["hextech.rune.spawn_alien.name"] = { zh = "生异形", en = "Xenomorph" },
@@ -262,8 +267,13 @@ g_LocalizationExtraText = {
         en = "No eligible unit is available, Illusory Weapon did not take effect." },
     ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
     ["hextech.rune.tulip_mortar.desc"] =
-        { zh = "你的V4导弹发射车单位会升级为郁金香自行迫击炮。",
+        { zh = "你的V4导弹发射车会升级为郁金香自行迫击炮。",
             en = "Your V4 rocket launchers are upgraded to Tulip self-propelled mortars." },
+    -- 替换单位 = 磁爆坦克（SovietAntiVehicleVehicleTech2）。替换本体在 18_basics_exchange.lua 的表里。
+    ["hextech.rune.advanced_tank.name"] = { zh = "先进坦克", en = "Advanced Tank" },
+    ["hextech.rune.advanced_tank.desc"] =
+        { zh = "你的重锤突击炮会升级为磁爆坦克。",
+            en = "Your Sledgehammer assault guns are upgraded to Tesla tanks." },
     ["hextech.rune.back_to_basics.name"] = { zh = "回归基本功", en = "Back to Basics" },
     ["hextech.rune.back_to_basics.desc"] = {
         zh = "你的T1/T2 %s 单位血量、伤害提高90%%，攻速、射程提高50%%；你的T3/T4 %s 单位血量、伤害降低90%%，攻速、射程降低50%%。",

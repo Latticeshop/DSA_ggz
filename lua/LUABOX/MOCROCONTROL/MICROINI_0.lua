@@ -1133,40 +1133,7 @@ g_FilterBomberPrioritySelf = CreateObjectFilter({
     IncludeThing = g_BomberPriorityUnitTypes
 })
 
--- 轰炸机只认这两个 AI 阵营名下的东西：PlyrCivilian = 恶魔侧，PlyrCreeps = 天使侧。
--- CreateObjectFilter 只认模板名 / KindOf，拿不到归属，所以「别炸玩家的东西」只能在 lua 这层筛：
-g_BomberOwnerFilterEnabled = true
-
-function IsBomberAllowedTarget(target)
-    if target == nil then
-        return false
-    end
-    if not g_BomberOwnerFilterEnabled then
-        return true
-    end
-    local ownerName = ObjectPlayerScriptName(target)
-    return ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps"
-end
-
--- 候选表按归属过一遍，返回筛完的新表（Lua 4：手写下标，不用 tinsert）。
-function FilterBomberCandidatesByOwner(list, count)
-    local result = {}
-    local resultCount = 0
-    if list ~= nil then
-        if type(count) ~= "number" then
-            count = getn(list)
-        end
-        for i = 1, count, 1 do
-            if IsBomberAllowedTarget(list[i]) then
-                resultCount = resultCount + 1
-                result[resultCount] = list[i]
-            end
-        end
-    end
-    return result, resultCount
-end
-
--- 只写 CompareFilterList、不写 CustomFilter：能打谁完全交回引擎，
+-- 轰炸机只写 CompareFilterList、不写 CustomFilter：能打谁完全交回引擎，
 -- 轰炸机会自己飞过去，而不是先就近随便找个步兵开火。
 function ConfigureBomberPriorityTargetChooser(unit)
     ObjectSetCustomTargetChooserData(unit, {
@@ -1300,12 +1267,10 @@ function GetBomberSideFallbackCandidates(self, sideIndex)
     local list = {}
     local count = 0
     if g_FilterOptimizedGroundEnemy ~= nil then
-        local found, foundCount = ObjectFindObjects(self, nil, g_FilterOptimizedGroundEnemy)
-        list, count = FilterBomberCandidatesByOwner(found, foundCount)
+        list, count = ObjectFindObjects(self, nil, g_FilterOptimizedGroundEnemy)
     end
     if count == 0 and FilterALLENEMYUNIT ~= nil then
-        local found, foundCount = ObjectFindObjects(self, nil, FilterALLENEMYUNIT)
-        list, count = FilterBomberCandidatesByOwner(found, foundCount)
+        list, count = ObjectFindObjects(self, nil, FilterALLENEMYUNIT)
     end
     g_BomberFallbackCache.BySide[sideIndex] = { List = list, Count = count }
     return list, count
@@ -1330,14 +1295,7 @@ function UpdateBomberPrioritySiegeTarget(self, target, sideIndex)
     local current = ObjectGetTarget(self)
     local currentId = nil
     if current ~= nil and ObjectIsAlive(current) then
-        if IsBomberAllowedTarget(current) then
-            currentId = ObjectGetId(current)
-        else
-            -- 当前目标是玩家的东西（Player_N 名下）：立刻丢掉，下面重挑一个合法目标。
-            -- 实测轰炸机偶尔会挑上符文送的单位，丢掉之后不再交回引擎（引擎还会挑同一个）。
-            ObjectSetAssignedTarget(self, nil)
-            currentId = nil
-        end
+        currentId = ObjectGetId(current)
     end
     if target == nil then
         -- 没分到炮车（场上炮车已经清空）：退化为「最近目标」，和制空机一个口径。
@@ -1452,8 +1410,6 @@ function BomberPrioritySiegeMICROCONTROL()
             g_FilterBomberPrioritySelf)
         local sieges, siegeCount = g_SideFindObjects(playindex, nil,
             g_FilterBomberPrioritySiegeVehicle)
-        -- 炮车候选也只留两个 AI 阵营名下的：玩家席位名下的单位不是轰炸机的菜。
-        sieges, siegeCount = FilterBomberCandidatesByOwner(sieges, siegeCount)
         AssignBomberTargets(bombers, bomberCount, sieges, siegeCount, playindex)
     end
 end

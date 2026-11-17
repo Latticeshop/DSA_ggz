@@ -1,11 +1,17 @@
 # 海克斯符文：开局测试三选一（开发用，发版前删除）
 
 > **当前状态（2026-11，测试态——这段代码眼下就活在源码里）**：`testRuneIds` =
-> `{ "prismatic_ultimate_creature", "gold_ascension", "silver_easy_does_it" }`，
-> `OpeningTestRounds = 1`。本轮验的是「究极生物 / 登神不再全图播报，改成海克斯面板详情末尾的
-> 数值后缀」：选完这两张后按 J 开面板、悬浮卡片看简介末尾有没有
-> `(…%血量,…%伤害,…%攻速,…%射程)`（带弹药的飞机多一维 `…%弹药`），并且回合切换时**消息区不再刷
-> 那两条加成播报**。第三格留银·顺手的事，用来对照旧的「（已生效）」后缀仍照常显示。
+> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`，
+> `OpeningTestRounds = 1`。本轮验的是白银符文「MCV」（落点已从不动的出生点改成**自家半场那两座
+> 前哨站点位**附近随机，见《地图注释说明文档》附录 A.51：四座前哨站现在由 `PureDraw/06_init_mcv.lua`
+> 开局按 waypoint `outpost71/72/81/82` 生成、归玩家、挂无敌，落点直接读点位坐标）与「工厂维护」
+> （K 键：立刻拿钱 + 锁住全部建造栏 90 秒，到点解锁并重新弹出 K 键提示）。选 MCV 那张后应当拿到一台
+> **自己还没有的阵营**的基地车、落在自家半场前哨站附近并挂 15 秒文本框；按 K 应立刻加钱、全部生产
+> 按钮变灰、90 秒整点自动解锁。第一格留着上一轮的虚幻武器。
+>
+> **2026-11 另有一处实测修复**：箱子被扔进中央战场的惩罚落点曾报 `table index is nil` ——
+> Lua 4.0 里 `表[nil]` 会直接抛错，而这条路径是**不带参数**调用落点函数的（`sideName` 为 nil），
+> 把「阵营名 → 半场号」写成查表就当场炸；现已改成 `PureDrawOutpostSideIndex(sideName)` 函数式判定。
 > ⚠ 上一轮（2026-10-31 银·MCV 收工）记录的「已删净、发版态」不再代表当前工作区。
 
 发版前需要复测某几张符文时，按本文改 §1 的 `testRuneIds` 即可，改完跑 `python analysis/tools/sync_scriptsdata.py` 同步；
@@ -32,13 +38,12 @@ HextechRune.OpeningTestTriggered = {}
 
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
--- 本轮测「究极生物 / 登神」的面板数值后缀：三格分别给 彩·究极生物 / 金·登神 / 银·顺手的事，
--- 顺带覆盖三种稀有度。前两张选完就能在 J 面板里看到详情末尾的 (…%血量,…%伤害,…%攻速,…%射程)。
+-- 本轮测「银·MCV」（落点已改成自家半场的前哨站点位）+「银·工厂维护」（按 K 拿钱并锁建造栏 90 秒）：
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "prismatic_ultimate_creature",
-        "gold_ascension",
-        "silver_easy_does_it",
+        "silver_mcv",
+        "prismatic_illusory_weapon",
+        "silver_factory_maintenance",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
@@ -140,19 +145,36 @@ end
 - `testTargetOverrides`：固定「指定单位型」符文（登神 / 买二送一 / 究极生物）的目标单位，格式 `符文Id = "单位模板名"`。
 - 第 4 个参数 `true`：测试局跳过阵营判定，任何座席都能拿到该符文。
 
-> **当前名单（2026-11：测「究极生物 / 登神」的面板数值后缀）**：
-> `{ "prismatic_ultimate_creature", "gold_ascension", "silver_easy_does_it" }` ——
-> 彩·究极生物 / 金·登神 / 银·顺手的事，`testUnitTypeByIndex` 与 `testTargetOverrides` 都留空
-> （前两张都不带兵种，目标由 `PickUltimateCreatureTarget` / `PickBuyTwoGetOneTarget` 自己随机定）。
-> **要验的三件事**：
-> ①**选完立刻有后缀** —— 究极生物按选卡那一刻献祭到的 T1/T2 数量换算，面板详情末尾应出现
-> `(…%血量,…%伤害,…%攻速,…%射程)`；一张 T1/T2 都没献祭到就不显示（不显示一排 0%）。
-> ②**登神随回收增长** —— 每回合目标单位超出 1 个的部分继续转层，面板里的四维数值随之变大；
-> 层数为 0 时不显示后缀。
-> ③**消息区不再刷播报** —— 旧实现每次结算都会发一条「究极生物加成：…」/「（xxx）登神加成：…」，
-> 现在回合切换时消息区应当**看不到**这两条（`BroadcastUltimateCreature` / `BroadcastAscension`
-> 与 `AscensionBroadcastRound` 已删除）；顺手的事的「（已生效）」后缀仍照常显示，用来对照。
->
+> **当前名单（2026-11：测「银·MCV」的新落点 + 「银·工厂维护」的 K 键技能）**：
+> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }` ——
+> 银·MCV / 彩·虚幻武器 / 银·工厂维护（2026-11 按用户要求把 MCV 与虚幻武器换了位置），
+> `testUnitTypeByIndex` 与 `testTargetOverrides` 都留空（三张都没有「指定兵种」口径）。
+> **要验的七件事**：
+> ①**MCV 卡面标题居中** —— 卡面标题就是三个 ASCII 字母 `MCV`，这轮按「默认偏移往左推 1 个字母宽」
+> 定档（`GetRuneTitleVisualOffsetX` 的 `grant_foreign_mcv` 分支），应与卡框中心对齐。
+> ①**MCV 落点** —— 选 MCV 那张后拿到一台「自己还没有的阵营」的基地车，落在**自家半场那两座前哨站
+> 点位**附近（不是出生点），单位头顶挂 15 秒文本框、小地图亮一次；连续拿两张也不会丢到对面半场。
+> ②**箱子惩罚的落点**（本次修复的重点）—— 箱子被扔进中央战场时搬去任意一侧点位，控制台不再报
+> `PureDrawGetOutpostDropPosition ... table index is nil`。
+> ③**拿钱** —— 拿到工厂维护后 K 键提示「按'K'键进行'工厂维护'并获得 X 资金」出现在选卡提示下方
+> （index 930+座位号、Y=104，与湮灭炸弹 / 视距打击同一行）；金额随经济倍率取档
+> （0.5/1/1.5/2 倍 = 1000/1500/2000/3000）。
+> ④**按 K 即锁** —— 按 K 立刻加该金额，四类单位建造栏（步兵 / 载具 / 飞机 / 舰船）全部变灰；
+> **建筑不锁**（发电厂等照常可造，已实测确认）；K 键提示消失。
+> ⑤**窗口只结算一次 + 90 秒整点解锁** —— 90 秒内连按 K 不再加钱；到点四类单位的生产按钮按各自规则
+> 恢复（禁用模式禁掉的兵种、未到解锁回合的摩托 / 磁爆快艇、抽卡模式的生产余额，都不该被这次解锁
+> 放开），K 键提示重新弹出来。
+> ⑥**互斥** —— 手里已有湮灭炸弹 / 视距打击时，工厂维护不应再出现在三选一里（`ExclusiveRuneIds`
+> 三处两两登记）；测试名单是写死的、不过筛池，所以互斥只能在正式回合里验。
+> **历史记录（上一轮，已完成）· 银·先进坦克（替换型符文链路）**：
+> `{ "prismatic_illusory_weapon", "prismatic_ultimate_creature", "silver_advanced_tank" }` ——
+> 回收重锤 `SovietSledgehammerSPG` 直接进磁爆坦克 `SovietAntiVehicleVehicleTech2` 槽位；
+> 先拿登神 / 买二送一后拿先进坦克时 `RemapReplacedRuneTargets` 改指目标名；第二份不入池；
+> 该效果在 `SkipPerUnitAssignmentEffects` 里不逐单位挂载。
+> **历史记录（更早的轮次，均已完成并删除）**：
+> **究极生物 / 登神数值后缀**（2026-11 上一轮）：`{ "prismatic_ultimate_creature", "gold_ascension",
+> "silver_easy_does_it" }`，验面板详情末尾的 `(…%血量,…%伤害,…%攻速,…%射程)` 与「消息区不再刷播报」；
+> 第三格用银·顺手的事对照旧的「（已生效）」后缀。
 > **以战养战（同批改造，未进当前名单）**：它的「本回合加成」也不再每回合逐兵种播报
 > （`BroadcastWarEfficiency` 已删），改成面板详情末尾的 `(本回合加成：1%血量,1%伤害,…)`。
 > 要复测就把某一格换成 `"prismatic_war_efficiency"`（`Effect = "war_efficiency"`、`NeedsUnitType = true`），

@@ -1,4 +1,4 @@
-﻿-- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47、A.48
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.32、A.47、A.48
 
 HextechRune = HextechRune or {}
 
@@ -420,8 +420,6 @@ function HextechRune:ApplyBasicsOrExchangeToUnit(rune, unit, typeLookup, unitInd
 end
 
 -- ===== 替换型符文的回收替换表（2026-10-19 从 04_buff.lua 外移到这里） =====
--- 原因：04_buff.lua 的 payload 去注释后只剩 106 B 余量，而本节点还有 55KB。
--- 那两个函数与这张表都是**运行时**才被调用的，搬到本节点不影响加载顺序。
 HextechRune.UnitReplacementRunes = {
     { RuneId = "silver_export_domestic", SourceType = "JapanAntiNavyShipTech3",
         ReplacementType = "CelestialSeized_JapanAntiNavyShipTech3" },
@@ -435,11 +433,33 @@ HextechRune.UnitReplacementRunes = {
         ReplacementType = "JapanKamikazeInfantry" },
     { RuneId = "silver_tulip_mortar", SourceType = "SovietAntiStructureVehicle",
         ReplacementType = "SovietHeavyMortarVehicle" },
+    { RuneId = "silver_advanced_tank", SourceType = "SovietSledgehammerSPG",
+        ReplacementType = "SovietAntiVehicleVehicleTech2" },
     { RuneId = "silver_five_centimeters", SourceType = "JapanInterceptorAircraft",
         ReplacementType = "JapanSakuraAttackRocket" },
     { RuneId = "silver_wheeled_cannon", SourceType = "SovietHeavyAntiVehicleVehicleTech2",
         ReplacementType = "SovietHeavyAntiAirVehicleTech2" },
 }
+
+-- 替换型符文的效果名集合（Id 与 Effect 不是一回事：池里是 Id，效果分发看 Effect）。
+HextechRune.UnitReplacementEffects = {
+    upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
+    upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
+    upgrade_imperial_warrior = true, upgrade_v4_tulip = true,
+    upgrade_sakura_rocket = true, upgrade_rhino_tank = true,
+    upgrade_sledgehammer_tank = true,
+}
+
+function HextechRune:IsPerUnitAssignmentSkipped(effect)
+    if effect == nil then
+        return true
+    end
+    if self.UnitReplacementEffects[effect] then
+        return true
+    end
+    return self.SkipPerUnitAssignmentEffects ~= nil
+        and self.SkipPerUnitAssignmentEffects[effect] == true
+end
 
 -- 狂热武士：万岁冲锋持有者按上表的替换型条目 100% 换；
 HextechRune.KamikazeBaseUnitType = "JapanAntiInfantryInfantry"
@@ -1578,3 +1598,173 @@ function HextechRune:RefreshIlBeaconHint(playerIndex)
         AlignY = "top",
     })
 end
+
+-- ===== 工厂维护（银·K 键技能）=====
+-- 可反复用（窗口结束即冷却结束）；窗口内再按 K 不会再给钱（Active 标记挡着）。
+HextechRune.FactoryMaintenanceMoney = {
+    [0.5] = 1000,
+    [1] = 1500,
+    [1.5] = 2000,
+    [2] = 3000,
+}
+HextechRune.DefaultFactoryMaintenanceMoney = 1500
+-- 90 秒窗口。本引擎逻辑帧 15 fps（同 02_data 的 AirdropCheckFrames = 15 * 60、
+HextechRune.FactoryMaintenanceFrames = 90 * 15
+HextechRune.FactoryMaintenanceActive = HextechRune.FactoryMaintenanceActive or {}
+HextechRune.FactoryMaintenanceHintTextIndexBase = 930
+HextechRune.FactoryMaintenanceHintCenterX = 683
+HextechRune.FactoryMaintenanceHintY = 104
+HextechRune.FactoryMaintenanceHintFontSize = 16
+
+-- 金额按经济倍率取档，与启动资金同一套口径（exModeGetCheatMultiplier 的 0.5/1/1.5/2）。
+function HextechRune:GetFactoryMaintenanceMoney()
+    local matched = self.FactoryMaintenanceMoney[exModeGetCheatMultiplier()]
+    if matched ~= nil then
+        return matched
+    end
+    return self.DefaultFactoryMaintenanceMoney
+end
+
+function HextechRune:IsFactoryMaintenanceActive(playerIndex)
+    return self.FactoryMaintenanceActive[playerIndex] == true
+end
+
+-- 建造栏锁 / 解锁。只锁单位（步兵 / 载具 / 飞机 / 舰船），建筑（发电厂等）不锁：
+-- 锁的是 PureDrawSetPlayerBuildability 遍历的那张生产池，池里只有作战单位。
+function HextechRune:SetPlayerProductionEnabled(playerIndex, enabled)
+    local playerName = "Player_" .. playerIndex
+    if not enabled then
+        if PureDrawSetPlayerBuildability ~= nil then
+            PureDrawSetPlayerBuildability(playerIndex, false)
+        end
+        return
+    end
+    if g_DrawMode == 2 and PureDrawReapplyPlayerQuota ~= nil then
+        -- 抽卡模式：生产余额是硬上限，必须按余额重算，不能全开。
+        PureDrawReapplyPlayerQuota(playerIndex)
+    elseif PureDrawSetPlayerBuildability ~= nil then
+        PureDrawSetPlayerBuildability(playerIndex, true)
+    end
+    -- 摩托与磁爆快艇：地编一次性禁造、只在该解锁的那回合打开（见 UNITCOUNTERINI_0.lua）。
+    if g_SovietMortarCycleUnlocked ~= 1 then
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietMortarCycle", 0)
+    end
+    if g_NoNavyTeslaBoatUnlocked ~= 1 then
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietAntiNavyShipTech1", 0)
+    end
+end
+
+function HextechRune:HideFactoryMaintenanceHint(playerIndex)
+    exCustomTextUpdateVisibilityForPlayer("Player_" .. playerIndex,
+        self.FactoryMaintenanceHintTextIndexBase + playerIndex, 0)
+end
+
+-- 提示只在「拿着符文 + 不在维护窗口里」时显示；解锁那一刻由 EndFactoryMaintenance 调它，
+function HextechRune:RefreshFactoryMaintenanceHint(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local textIndex = self.FactoryMaintenanceHintTextIndexBase + playerIndex
+    exCustomTextUpdateVisibilityForPlayer(playerName, textIndex, 0)
+    if not self:HasOwnedRuneEffect(playerIndex, "grant_factory_maintenance") then
+        return
+    end
+    if self:IsFactoryMaintenanceActive(playerIndex) then
+        return
+    end
+    local hint = Localization.get("hextech.factory_maintenance.hotkey_hint",
+        self:GetFactoryMaintenanceMoney())
+    exCreateCustomTextForPlayer(playerName, {
+        Index = textIndex,
+        Content = hint,
+        X = self:GetCenteredTextLeftX(self.FactoryMaintenanceHintCenterX, hint,
+            self.FactoryMaintenanceHintFontSize),
+        Y = self.FactoryMaintenanceHintY,
+        Color = 16777215,
+        Size = self.FactoryMaintenanceHintFontSize,
+        AlignX = "left",
+        AlignY = "top",
+    })
+end
+
+function HextechRune:TryFactoryMaintenance(playerIndex)
+    if not self:HasOwnedRuneEffect(playerIndex, "grant_factory_maintenance") then
+        return false
+    end
+    if self:IsFactoryMaintenanceActive(playerIndex) then
+        return false
+    end
+    self:ChangePlayerMoney(playerIndex, self:GetFactoryMaintenanceMoney())
+    self.FactoryMaintenanceActive[playerIndex] = true
+    self:EnsureFactoryMaintenanceWatchdog()
+    -- 先摘提示再锁建造栏：提示与「现在能不能生产」必须同进同退。
+    self:HideFactoryMaintenanceHint(playerIndex)
+    self:SetPlayerProductionEnabled(playerIndex, false)
+    self:BroadcastFactoryMaintenance(playerIndex)
+    SchedulerModule.delay_call(function(index)
+        HextechRune:EndFactoryMaintenance(index)
+    end, self.FactoryMaintenanceFrames, {playerIndex})
+    return true
+end
+
+-- 队内播报：只有自己和队友看得到（与回收播报同一口径 —— 按本方阵营座位表逐个发，
+function HextechRune:BroadcastFactoryMaintenance(playerIndex)
+    local message = Localization.get("hextech.factory_maintenance.used", playerIndex)
+    local mateSeats = nil
+    if g_SideSeatsOf ~= nil and g_SeatToSide ~= nil then
+        mateSeats = g_SideSeatsOf(g_SeatToSide(playerIndex))
+    end
+    if mateSeats == nil then
+        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, message, 10)
+        return
+    end
+    for matePos = 1, 4, 1 do
+        if mateSeats[matePos] ~= nil then
+            exAddTextToPublicBoardForPlayer("Player_" .. mateSeats[matePos],
+                message, 10)
+        end
+    end
+end
+
+function HextechRune:EndFactoryMaintenance(playerIndex)
+    if self.FactoryMaintenanceActive[playerIndex] ~= true then
+        return
+    end
+    self.FactoryMaintenanceActive[playerIndex] = nil
+    self:SetPlayerProductionEnabled(playerIndex, true)
+    self:RefreshFactoryMaintenanceHint(playerIndex)
+end
+
+function HextechRune:HandleFactoryMaintenanceHotKey(playerName)
+    for playerIndex = 1, 8, 1 do
+        if playerName == "Player_" .. playerIndex then
+            return self:TryFactoryMaintenance(playerIndex)
+        end
+    end
+    return false
+end
+
+-- 窗口期内要把锁压住：抽卡模式每 3 回合刷新生产余额会顺手把建造栏全开
+HextechRune.FactoryMaintenanceWatchFrames = 75
+HextechRune.FactoryMaintenanceWatchdogStarted = false
+
+function HextechRune:ReapplyFactoryMaintenanceLocks()
+    for playerIndex = 1, 8, 1 do
+        if self.FactoryMaintenanceActive[playerIndex] == true then
+            self:SetPlayerProductionEnabled(playerIndex, false)
+        end
+    end
+end
+
+function HextechRune:EnsureFactoryMaintenanceWatchdog()
+    if self.FactoryMaintenanceWatchdogStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    self.FactoryMaintenanceWatchdogStarted = true
+    SchedulerModule.call_every_x_frame(function()
+        HextechRune:ReapplyFactoryMaintenanceLocks()
+    end, self.FactoryMaintenanceWatchFrames, nil)
+end
+
+HextechRune:EnsureFactoryMaintenanceWatchdog()

@@ -111,6 +111,13 @@ HextechRune.RunePool = {
         Effect = "upgrade_v4_tulip", RequiredFaction = 2,
         RequiresType = "vehicle",
         Icon = "Button_SovietHeavyMortarVehicle" },
+    -- 这里的 Effect 必须与那两处一致。磁爆坦克的本体是 SovietTeslaTank 变体，图标取回收界面同款。
+    { Id = "silver_advanced_tank", Rarity = 3,
+        NameKey = "hextech.rune.advanced_tank.name",
+        DescKey = "hextech.rune.advanced_tank.desc",
+        Effect = "upgrade_sledgehammer_tank", RequiredFaction = 2,
+        RequiresType = "vehicle",
+        Icon = "Button_SovietTeslaTank_small" },
     -- 「时空裂缝2级」、图标随档位换 ChronoRift2，Id 也跟着改（详见设计文档 §7 当日条目）。
     { Id = "silver_divine_might", Rarity = 3,
         NameKey = "hextech.rune.divine_might.name",
@@ -132,6 +139,14 @@ HextechRune.RunePool = {
     { Id = "silver_recycler", Rarity = 3, NameKey = "hextech.rune.recycler.name",
         DescKey = "hextech.rune.recycler.desc", Effect = "recycler",
         Icon = "Button_AlliedSalvageShip" },
+    -- 工厂维护（银·K 键技能）：拿钱换 90 秒禁造，可反复用。K 键三张两两互斥，
+    -- 另两张是湮灭炸弹 / 视距打击（下面黄金段），三处都要互相登记。
+    { Id = "silver_factory_maintenance", Rarity = 3,
+        NameKey = "hextech.rune.factory_maintenance.name",
+        DescKey = "hextech.rune.factory_maintenance.desc",
+        Effect = "grant_factory_maintenance",
+        ExclusiveRuneIds = { gold_oblivion_bomb = true, gold_los_strike = true },
+        Icon = "Portrait_CelestialForkLiftVehicle" },
 
     -- 黄金
     { Id = "silver_five_centimeters", Rarity = 2,
@@ -141,12 +156,13 @@ HextechRune.RunePool = {
         RequiresType = "aircraft",
         ExcludeOnFirstFormalSelection = true,
         Icon = "Portrait_JapanInterceptorAircraft_air" },
-    -- K 键符文两张互斥：湮灭炸弹与视距打击共用 K，选到其中一张后本局另一张不再入池
+    -- K 键符文三张两两互斥：湮灭炸弹 / 视距打击 / 工厂维护（银）共用 K，
+    -- 选到其中一张后本局另外两张不再入池
     -- （BuildFilteredPool 里按 ExclusiveRuneIds 判，点击时 02_event 再拦一次）。
     { Id = "gold_oblivion_bomb", Rarity = 2,
         NameKey = "hextech.rune.oblivion_bomb.name",
         DescKey = "hextech.rune.oblivion_bomb.desc", Effect = "grant_oblivion_bomb",
-        ExclusiveRuneIds = { gold_los_strike = true },
+        ExclusiveRuneIds = { gold_los_strike = true, silver_factory_maintenance = true },
         Icon = "Button_PlayerPower_Telekenetic" },
     -- 视距打击：每回合 +1 次「伊尔信标」部署次数，按 K 放出携带轰炸信标的伊尔攻击机。
     -- 苏联专属（RequiredFaction = 2）：伊尔是苏联机型，别的阵营拿了也放不出对应单位。
@@ -155,7 +171,8 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.los_strike.desc", Effect = "grant_il_beacon",
         RequiresType = "aircraft",
         RequiredFaction = 2,
-        ExclusiveRuneIds = { gold_oblivion_bomb = true },
+        ExclusiveRuneIds = { gold_oblivion_bomb = true,
+            silver_factory_maintenance = true },
         Icon = "Button_SovietAntiGroundAttacker" },
     -- 烧福瑞：只对敌方步兵生效（禁步兵时对面没有步兵，整张下架）。
     { Id = "gold_burn_furry", Rarity = 1,
@@ -465,6 +482,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_banzai_charge = true,
     -- 花来！：重复持有只是把同一个替换再做一遍，入池替换按持有与否判定，天然无叠加。
     silver_tulip_mortar = true,
+    -- 先进坦克：同属替换型，第二份不产生任何额外效果。
+    silver_advanced_tank = true,
     -- 秒速五厘米：同属替换型，第二份不产生任何额外效果。
     silver_five_centimeters = true,
     -- 轮式大炮：同属替换型，第二份不产生任何额外效果。
@@ -475,6 +494,8 @@ HextechRune.NonRepeatableRuneIds = {
     silver_careful_selection = true,
     -- 顺手的事：每人一份；两份会把「下一次多拿一张」叠在同一处，整局张数还会顶到 6。
     silver_easy_does_it = true,
+    -- 工厂维护：技能本身可反复用，第二份只是同一套 K 键技能，没有额外作用。
+    silver_factory_maintenance = true,
     -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
     gold_soul_interlock = true,
     -- 烧福瑞：队友各持一份按 25/50/75% 叠加，同一名玩家第二份不再加档。
@@ -1170,6 +1191,9 @@ function HextechRune:GetRuneDescriptionBase(rune, playerIndex)
         -- 份数可叠加：本方（含队友）持 N 份每回合就投毒 N 台，卡面按当前份数显示。
         return Localization.get(rune.DescKey,
             self:GetIrradiateDisplayCount(playerIndex))
+    elseif rune.Effect == "grant_factory_maintenance" then
+        -- 金额随经济倍率变档（0.5/1/1.5/2 倍 = 1000/1500/2000/3000），与 K 键提示同一口径。
+        return Localization.get(rune.DescKey, self:GetFactoryMaintenanceMoney())
     end
     return Localization.get(rune.DescKey)
 end

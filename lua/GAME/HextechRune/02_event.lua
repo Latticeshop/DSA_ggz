@@ -350,6 +350,16 @@ function HextechRune:GetRuneTitleVisualOffsetX(rune, isPanel)
         end
         return 22
     end
+    -- MCV 卡面标题就是三个 ASCII 字母（"MCV"），估算宽度只有 2 字档、按默认偏移居中后整体偏右。
+    if rune.Effect == "grant_foreign_mcv" then
+        local letterWidth = self.AsciiWidthWeight * self.TextWidthScale
+            * self:GetRuneTitleFontSize(rune,
+                isPanel and self.PanelRuneHeight or self.OptionCardWidth)
+        if isPanel then
+            return self.PanelRuneTitleOffsetX - letterWidth
+        end
+        return self.OptionTitleOffsetX - letterWidth
+    end
     -- 艾卡西亚的惊喜在卡面拆成「艾卡西亚 / 的惊喜」（见 01 的 GetRuneCompactTitle），
     -- 分档要按最宽那一行的 4 字算，不能用未换行的七字名称。
     if rune.Effect == "grant_time_bomb" then
@@ -1055,13 +1065,12 @@ function HextechRune:ShowFormalEvent(round)
 end
 
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
--- 本轮测「虚幻武器」（彩·虚幻武器 / 彩·究极生物 / 银·顺手的事）：选到虚幻武器后会连弹
--- 两次单位卡（先底座后炮台），选完在 J 面板详情末尾应出现「（底座：X，炮台：Y）」。
+-- 本轮测「银·MCV」（落点已改成自家半场的前哨站点位）+「银·工厂维护」（按 K 拿钱并锁建造栏 90 秒）：
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
+        "silver_mcv",
         "prismatic_illusory_weapon",
-        "prismatic_ultimate_creature",
-        "silver_easy_does_it",
+        "silver_factory_maintenance",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }

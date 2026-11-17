@@ -1,4 +1,4 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.16
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.16；神州前哨站的生成与落点见附录 A.51
 
 -- 科技、海三塔等外部脚本可能重新开放生产按钮；开放后立即重新套用余额状态。
 function PureDrawReapplyPlayerQuota(playerIndex)
@@ -78,61 +78,35 @@ SchedulerModule.delay_call(function()
     end
 end, 45, {})
 
--- 一座前哨站属于哪一侧：ObjectPlayerScriptName 直接给出 PlyrCivilian / PlyrCreeps 时最省事，
-function PureDrawGetOutpostSideName(outpost)
-    local ownerName = ObjectPlayerScriptName(outpost)
-    if ownerName == "PlyrCivilian" or ownerName == "PlyrCreeps" then
-        return ownerName
+-- ===== 神州前哨站：开局按 waypoint 生成（归玩家 + 无敌），落点也按 waypoint 算 =====
+-- 开局（任何模式）每点生成一座归玩家的无敌前哨站；落点直接读点位坐标，建筑没了也不影响。
+g_CelestialOutpostAnchors = {
+    [7] = { "outpost71", "outpost72" },
+    [8] = { "outpost81", "outpost82" },
+}
+-- 点位 → 半场（7 恶魔 / 8 天使），决定落点 Y 偏移往哪边加，别把单位顶出地图边。
+g_CelestialOutpostAnchorSide = {
+    outpost71 = 7, outpost72 = 7,
+    outpost81 = 8, outpost82 = 8,
+}
+-- 点位归属者座位号
+g_CelestialOutpostOwnerSeat = g_CelestialOutpostOwnerSeat or {}
+g_CelestialOutpostSpawned = false
+g_CelestialOutpostSpawnAttempts = 0
+
+function PureDrawOutpostSideIndex(sideName)
+    if sideName == "PlyrCivilian" then
+        return 7
     end
-    local teamName = ObjectTeamName(outpost)
-    if teamName ~= nil then
-        if strfind(teamName, "PlyrCivilian") ~= nil then
-            return "PlyrCivilian"
-        end
-        if strfind(teamName, "PlyrCreeps") ~= nil then
-            return "PlyrCreeps"
-        end
+    if sideName == "PlyrCreeps" then
+        return 8
     end
     return nil
 end
 
--- 中央战场外围落点：随机一座神州前哨站 + 随机偏移。
-function PureDrawGetOutpostDropPosition(sideName, playerIndex)
-    if not g_CelestialOutpostsFilter then
-        g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
-    end
-    local outposts, count = ObjectFindObjects(nil, nil, g_CelestialOutpostsFilter)
-    if count <= 0 then
-        return nil
-    end
-    local candidates = {}
-    for i = 1, count, 1 do
-        local ownerSide = PureDrawGetOutpostSideName(outposts[i])
-        -- 归属认不出的前哨站（玩家槽预设的那些）一律不当落点：它们的坐标不受半场裁剪约束。
-        if ownerSide ~= nil and (sideName == nil or ownerSide == sideName) then
-            tinsert(candidates, outposts[i])
-        end
-    end
-    if getn(candidates) == 0 then
-        if sideName == nil then
-            return nil
-        end
-        local start = exWaypointGetPos(format("Player_%d_Start", playerIndex))
-        local bestDistance = nil
-        for i = 1, count, 1 do
-            local ox, oy = ObjectGetPosition(outposts[i])
-            local dx = ox - start[1]
-            local dy = oy - start[2]
-            local distance = dx * dx + dy * dy
-            if bestDistance == nil or distance < bestDistance then
-                bestDistance = distance
-                candidates[1] = outposts[i]
-            end
-        end
-    end
-    local total = getn(candidates)
-    if total == 0 then
-        return nil
+function PureDrawRandomIndex(total)
+    if total <= 1 then
+        return 1
     end
     local index = ceil(GetRandomNumber() * total)
     if index < 1 then
@@ -141,11 +115,137 @@ function PureDrawGetOutpostDropPosition(sideName, playerIndex)
     if index > total then
         index = total
     end
-    local outpost = candidates[index]
-    local dropSide = sideName
-    if dropSide == nil then
-        dropSide = PureDrawGetOutpostSideName(outpost)
+    return index
+end
+
+-- 半场 → 该侧随机一名还活着的座位（P[] 是地图上的 P1..P8 锚点，空槽为 nil，见 UNITCOUNTERINI_0.lua）。
+function PureDrawPickAliveSideSeat(sideIndex)
+    local seats = nil
+    if g_SideSeatsOf ~= nil then
+        seats = g_SideSeatsOf(sideIndex)
     end
+    if seats == nil then
+        return nil
+    end
+    local alive = {}
+    for i = 1, getn(seats), 1 do
+        local seat = seats[i]
+        if seat ~= nil and P ~= nil and P[seat] ~= nil
+            and ObjectIsAlive(P[seat]) then
+            tinsert(alive, seat)
+        end
+    end
+    if getn(alive) == 0 then
+        return nil
+    end
+    return alive[PureDrawRandomIndex(getn(alive))]
+end
+
+-- 在点位生成一座归该座位的前哨站并挂无敌。名字带点位名，重复执行不会叠建筑。
+function PureDrawSpawnCelestialOutpost(anchorName, seat)
+    local name = "CelestialOutpost_" .. anchorName
+    local teamName = format("Player_%d/teamPlayer_%d", seat, seat)
+    ExecuteAction("NAMED_DELETE", name)
+    ExecuteAction("CREATE_NAMED_ON_TEAM_AT_WAYPOINT", name, "CelestialOutpost",
+        teamName, anchorName)
+    local outpost = GetObjectByScriptName(name)
+    if outpost == nil then
+        return nil
+    end
+    ExecuteAction("UNIT_AFFECT_OBJECT_PANEL_FLAGS", outpost, "Indestructible", true)
+    g_CelestialOutpostOwnerSeat[anchorName] = seat
+    return outpost
+end
+
+function PureDrawSpawnSideCelestialOutposts(sideIndex, seat)
+    local anchors = g_CelestialOutpostAnchors[sideIndex]
+    if anchors == nil or seat == nil then
+        return
+    end
+    for i = 1, getn(anchors), 1 do
+        PureDrawSpawnCelestialOutpost(anchors[i], seat)
+    end
+end
+
+-- 开局探一次：P[] / 阵营表没就绪就下一拍再来（最多 60 次 × 15 帧 = 60 秒）。
+function PureDrawCelestialOutpostBootstrap()
+    if g_CelestialOutpostSpawned then
+        return
+    end
+    g_CelestialOutpostSpawnAttempts = g_CelestialOutpostSpawnAttempts + 1
+    PureDrawUpdateMapCenterY()
+    local demonSeat = PureDrawPickAliveSideSeat(7)
+    local angelSeat = PureDrawPickAliveSideSeat(8)
+    if demonSeat ~= nil or angelSeat ~= nil then
+        g_CelestialOutpostSpawned = true
+        PureDrawSpawnSideCelestialOutposts(7, demonSeat)
+        PureDrawSpawnSideCelestialOutposts(8, angelSeat)
+        return
+    end
+    if g_CelestialOutpostSpawnAttempts < 60 then
+        SchedulerModule.delay_call(PureDrawCelestialOutpostBootstrap, 15, {})
+    end
+end
+
+SchedulerModule.delay_call(PureDrawCelestialOutpostBootstrap, 15, {})
+
+-- 全场席位的平均 Y ≈ 地图中心那条横线；落点用它决定 Y 偏移往哪边加（地图上下是窄边）。
+g_CelestialOutpostCenterY = g_CelestialOutpostCenterY or false
+
+function PureDrawUpdateMapCenterY()
+    if g_CelestialOutpostCenterY ~= false or P == nil then
+        return
+    end
+    local total, sum = 0, 0
+    for seat = 1, 8, 1 do
+        if P[seat] ~= nil and ObjectIsAlive(P[seat]) then
+            local px, py, pz = ObjectGetPosition(P[seat])
+            if py ~= nil then
+                sum = sum + py
+                total = total + 1
+            end
+        end
+    end
+    if total > 0 then
+        g_CelestialOutpostCenterY = sum / total
+    end
+end
+
+-- 中央战场外围落点（MCV 符文 + 箱子被扔进中央战场的惩罚共用）：
+function PureDrawGetOutpostDropPosition(sideName, playerIndex)
+    local sideIndex = PureDrawOutpostSideIndex(sideName)
+    local anchors = {}
+    for anchorSide = 7, 8, 1 do
+        if sideIndex == nil or anchorSide == sideIndex then
+            local list = g_CelestialOutpostAnchors[anchorSide]
+            if list ~= nil then
+                for i = 1, getn(list), 1 do
+                    tinsert(anchors, list[i])
+                end
+            end
+        end
+    end
+    if getn(anchors) == 0 then
+        return nil
+    end
+    -- 随机起点，点位名写错 / 该点位取不到坐标时顺次换下一个，全都不行才返回 nil。
+    local total = getn(anchors)
+    local index = PureDrawRandomIndex(total)
+    local position = nil
+    for i = 1, total, 1 do
+        if index > total then
+            index = 1
+        end
+        position = exWaypointGetPos(anchors[index])
+        if position ~= nil then
+            break
+        end
+        index = index + 1
+    end
+    if position == nil then
+        return nil
+    end
+    local anchorName = anchors[index]
     local RandomInRange = function(min, max)
         local sign = 1
         if GetRandomNumber() < 0.5 then
@@ -155,14 +255,25 @@ function PureDrawGetOutpostDropPosition(sideName, playerIndex)
     end
     local offsetX = RandomInRange(50, 200)
     local offsetY = RandomInRange(50, 150)
-    -- Y 增为上。前哨站太贴地图边角，往一个方向加偏移就会出界，所以按半场各留一个方向：
-    if dropSide == "PlyrCreeps" and offsetY < 0 then
-        offsetY = -offsetY
-    elseif dropSide == "PlyrCivilian" and offsetY > 0 then
-        offsetY = -offsetY
+    -- 偏移一律朝地图内侧加：点位贴边时往边界方向加会把单位顶出地图。
+    -- 中心 Y 由席位平均 Y 估（见 PureDrawUpdateMapCenterY），估不出来就按半场老规则。
+    local centerY = g_CelestialOutpostCenterY
+    if centerY ~= false then
+        if position[2] > centerY then
+            offsetY = offsetY < 0 and offsetY or -offsetY
+        else
+            offsetY = offsetY > 0 and offsetY or -offsetY
+        end
+    else
+        local anchorSideIndex = g_CelestialOutpostAnchorSide[anchorName]
+        if anchorSideIndex == 8 then
+            offsetY = offsetY < 0 and -offsetY or offsetY
+        elseif anchorSideIndex == 7 then
+            offsetY = offsetY > 0 and -offsetY or offsetY
+        end
     end
-    local x, y, z = ObjectGetPosition(outpost)
-    return { X = x + offsetX, Y = y + offsetY, Z = z }
+    return { X = position[1] + offsetX, Y = position[2] + offsetY,
+        Z = position[3] }
 end
 
 -- 检测箱子是否被扔到中央战场
@@ -261,10 +372,6 @@ function IsSkillDragonShip(unit)
 end
 
 function NoMCVInCenter()
-    if not g_CelestialOutpostsFilter then
-        g_CelestialOutpostsFilter = CreateObjectFilter({ IncludeThing = { "CelestialOutpost" } })
-    end
-    
     -- 检测 MCV（包括青龙核心舰）
     local mcvFilter = CreateObjectFilter({
         Rule = "ANY",

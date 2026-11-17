@@ -242,11 +242,7 @@ function RequestHydra(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.hydra", sideName))
     exMessageAppendToMessageArea(Localization.get("center_top.hydra.controlled_count", controlled))
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestHydra)
-    else
-        tinsert(g_angelButtonClickHistory, RequestHydra)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestHydra)
     return true
 end
 
@@ -301,10 +297,213 @@ function RequestSnowstorm(playerIndex)
 
     exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName))
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestSnowstorm)
-    else
-        tinsert(g_angelButtonClickHistory, RequestSnowstorm)
+    g_PushSkillClickHistory(playerIndex, RequestSnowstorm)
+    return true
+end
+
+-- ===== 复制技能组：悬浮窗末尾动态展示「(上个技能是：XXX)」 =====
+g_CopySkillButtons = g_CopySkillButtons or {}
+g_SkillClickDisplayNameKeys = nil
+
+-- 技能函数 → 标题文案键。整张表在第一次用到时才建：本文件可能先于 CenterTopBtnFunc.lua 加载，
+-- 加载期把还没定义的 Request 函数当表键会取到 nil，Lua 4 里 t[nil] = ... 直接报错，故逐个判空。
+function g_BuildSkillClickDisplayNameKeys()
+    local keys = {}
+    if RequestDestruction ~= nil then keys[RequestDestruction] = "button.destruction.title" end
+    if RequestDamoclesSword ~= nil then keys[RequestDamoclesSword] = "button.damocles.title" end
+    if RequestIronCurtain ~= nil then keys[RequestIronCurtain] = "button.iron_curtain.title" end
+    if RequestTimeStop ~= nil then keys[RequestTimeStop] = "button.time_stop.title" end
+    if RequestDragonShip ~= nil then keys[RequestDragonShip] = "button.dragonship.title" end
+    if RequestAirMarshal ~= nil then keys[RequestAirMarshal] = "button.air_marshal.title" end
+    if RequestNanoMaintainHive ~= nil then keys[RequestNanoMaintainHive] = "center_top.nano_repair.title" end
+    if RequestSpawnArmyImmediately ~= nil then keys[RequestSpawnArmyImmediately] = "center_top.reinforce_army.title" end
+    if RequestCashBonus ~= nil then keys[RequestCashBonus] = "center_top.kill_reward.title" end
+    if RequestHydra ~= nil then keys[RequestHydra] = "button.hydra.title" end
+    if RequestSnowstorm ~= nil then keys[RequestSnowstorm] = "button.snowstorm.title" end
+    g_SkillClickDisplayNameKeys = keys
+    return keys
+end
+
+-- 技能函数 → 本地化名字。没登记过的技能返回 nil，悬浮窗就不加后缀。
+function g_GetSkillDisplayName(skillFunc)
+    if skillFunc == nil then
+        return nil
     end
+    local keys = g_SkillClickDisplayNameKeys
+    if keys == nil then
+        keys = g_BuildSkillClickDisplayNameKeys()
+    end
+    local titleKey = keys[skillFunc]
+    if titleKey == nil then
+        return nil
+    end
+    return Localization.get(titleKey)
+end
+
+-- 复制技能实际读的那张历史表：copyKind = "self" 取本边、"enemy" 取对面。
+function g_GetSkillClickHistory(playerIndex, copyKind)
+    local isAngelSide = g_IsAngelSeat(playerIndex)
+    if copyKind == "enemy" then
+        isAngelSide = not isAngelSide
+    end
+    if isAngelSide then
+        return g_angelButtonClickHistory
+    end
+    return g_evilButtonClickHistory
+end
+
+-- 从历史末尾往前回溯到最近一次「非复制技能」的释放
+function g_FindCopyTargetSkill(history)
+    if history == nil then
+        return nil
+    end
+    for i = getn(history), 1, -1 do
+        local skillFunc = history[i]
+        if skillFunc ~= nil and skillFunc ~= RequestRepeatSelfSpecialPower
+            and skillFunc ~= RequestRepeatEnemySpecialPower then
+            return skillFunc
+        end
+    end
+    return nil
+end
+
+-- 复制按钮的完整描述 = 本地化正文 + 换行 + 「(上个技能是：XXX)」；没有可复制技能就只给正文。
+function g_GetCopySkillDescription(playerIndex, copyKind)
+    local descriptionKey = "center_top.copy_our_skill.description"
+    if copyKind == "enemy" then
+        descriptionKey = "center_top.copy_enemy_skill.description"
+    end
+    local base = Localization.get(descriptionKey)
+    local targetName = g_GetSkillDisplayName(
+        g_FindCopyTargetSkill(g_GetSkillClickHistory(playerIndex, copyKind)))
+    if targetName == nil then
+        return base
+    end
+    return format("%s\n%s", base, Localization.get("center_top.copy_skill.last_skill", targetName))
+end
+
+-- 复制按钮登记表：同一玩家同一按钮位只留最新那只（重选技能组会重建按钮）。
+function g_RegisterCopySkillButton(buttonData, copyKind)
+    buttonData.CopyKind = copyKind
+    local list = g_CopySkillButtons
+    for i = 1, getn(list), 1 do
+        local old = list[i]
+        if old.PlayerName == buttonData.PlayerName and old.ButtonIndex == buttonData.ButtonIndex then
+            list[i] = buttonData
+            return
+        end
+    end
+    tinsert(list, buttonData)
+end
+
+-- 历史一变就按登记表重刷文案。只刷还挂在面板上的那只：重选技能组后旧按钮会被别的按钮顶掉，
+function g_RefreshCopySkillButtonTexts()
+    local list = g_CopySkillButtons
+    for i = 1, getn(list), 1 do
+        local button = list[i]
+        if button.CopyKind ~= nil
+            and ButtonManager:GetButton(button.PlayerName, button.ButtonIndex) == button then
+            local description = g_GetCopySkillDescription(button.PlayerIndex, button.CopyKind)
+            if description ~= button.Description then
+                button.Description = description
+                button:FormatText()
+                ButtonManager:SetButton(button)
+            end
+        end
+    end
+end
+
+-- 所有技能释放的末尾都走这里：记一条历史 + 刷新同侧/对侧复制按钮的悬浮文案。
+function g_PushSkillClickHistory(playerIndex, skillFunc)
+    if g_IsDevilSeat(playerIndex) then
+        tinsert(g_evilButtonClickHistory, skillFunc)
+    else
+        tinsert(g_angelButtonClickHistory, skillFunc)
+    end
+    g_RefreshCopySkillButtonTexts()
+end
+
+Localization.on_language_changed(function()
+    g_RefreshCopySkillButtonTexts()
+    g_RefreshRoundCooldownButtonTexts()
+end, {})
+
+-- ===== 阵营技能按钮：描述里动态显示「剩余冷却时间：X回合」 =====
+g_RoundCooldownButtons = g_RoundCooldownButtons or {}
+g_RoundCooldownWatcherRegistered = false
+
+-- 描述第二行 = 「剩余冷却时间：X回合」，模板里的 %d 由剩余回合数填（0 = 已就绪）。
+function g_ApplyRoundCooldownButtonDescription(button)
+    if button.CooldownDescriptionKey == nil then
+        return
+    end
+    button.Description = Localization.get(button.CooldownDescriptionKey, button.CooldownRoundsLeft or 0)
+end
+
+-- 第三按钮（阵营技能）解锁后的统一入口：有动态描述的自己重算，其余沿用 UnlockedDescription。
+function g_ApplyUnlockedButtonDescription(button)
+    if button.RoundCooldownRounds ~= nil then
+        g_ApplyRoundCooldownButtonDescription(button)
+        return
+    end
+    button.Description = button.UnlockedDescription
+end
+
+function g_RefreshRoundCooldownButtonTexts()
+    local list = g_RoundCooldownButtons
+    for i = 1, getn(list), 1 do
+        local button = list[i]
+        -- 只刷还挂在面板上的那只（按钮被重建后旧表留在登记表里，不能把它复活回来）。
+        if not button.IsLocked
+            and ButtonManager:GetButton(button.PlayerName, button.ButtonIndex) == button then
+            g_ApplyRoundCooldownButtonDescription(button)
+            button:FormatText()
+            ButtonManager:SetButton(button)
+        end
+    end
+end
+
+-- 每次回合开始：剩余回合数 -1，然后重刷文案（未解锁的按钮保持「请建造…」那句）。
+function g_TickRoundCooldownButtons()
+    local list = g_RoundCooldownButtons
+    for i = 1, getn(list), 1 do
+        local button = list[i]
+        local roundsLeft = button.CooldownRoundsLeft or 0
+        if roundsLeft > 0 then
+            button.CooldownRoundsLeft = roundsLeft - 1
+        end
+    end
+    g_RefreshRoundCooldownButtonTexts()
+end
+
+function g_RegisterRoundCooldownButton(button, totalRounds, descriptionKey)
+    button.RoundCooldownRounds = totalRounds
+    button.CooldownRoundsLeft = 0
+    button.CooldownDescriptionKey = descriptionKey
+    if not g_RoundCooldownWatcherRegistered and RoundLuaManager ~= nil
+        and RoundLuaManager.CallOnEveryRoundBegin ~= nil then
+        g_RoundCooldownWatcherRegistered = true
+        RoundLuaManager.CallOnEveryRoundBegin(function()
+            g_TickRoundCooldownButtons()
+        end, {})
+    end
+    local list = g_RoundCooldownButtons
+    for i = 1, getn(list), 1 do
+        local old = list[i]
+        if old.PlayerName == button.PlayerName and old.ButtonIndex == button.ButtonIndex then
+            list[i] = button
+            return
+        end
+    end
+    tinsert(list, button)
+end
+
+-- 放成功才把剩余回合数置满，描述由 ButtonManager 紧接着的 FormatText 带进悬浮窗。
+function g_ChronoSphereOnClick(button)
+    if not RequestChronosphere(button.PlayerIndex) then
+        return false
+    end
+    button.CooldownRoundsLeft = button.RoundCooldownRounds or 0
+    g_ApplyRoundCooldownButtonDescription(button)
     return true
 end

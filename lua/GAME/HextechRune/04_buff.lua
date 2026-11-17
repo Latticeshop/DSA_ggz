@@ -1284,7 +1284,7 @@ function HextechRune:ApplyRuneToAssignment(rune, assignment, typeLookup)
 end
 
 -- 效果不挂在“本次新出兵”身上的符文：一次性赠送、全局/经济类、被动替换型。
--- 逐兵施加的循环按这张表跳过，新增符文只需在这里登记一行，不用再改判定条件。
+-- 新增普通符文只需在这里登记一行，不用再改判定条件。
 HextechRune.SkipPerUnitAssignmentEffects = {
     starting_funds = true, fortified = true, recycler = true,
     broadband_jamming = true, divine_intervention = true, grant_foreign_mcv = true,
@@ -1293,6 +1293,8 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     five_thunder = true, combustion_interest = true, tesla_air_assault = true,
     grant_olympus_carrier = true, grant_oblivion_bomb = true,
     grant_il_beacon = true,
+    -- 工厂维护：K 键技能（18_basics_exchange.lua），不逐单位挂载。
+    grant_factory_maintenance = true,
     grant_giga_fortress = true, grant_dongfeng_express = true, safety = true,
     grant_shield_tower = true, grant_sakura_well = true,
     tower_defense_expert = true, cash_reward = true, brilliant_lights = true,
@@ -1303,11 +1305,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     irradiate_enemy_vehicle = true,
     grant_magnetic_singularity = true, grant_time_bomb = true,
     ultimate_refresh = true, quality_transformation = true, gambling_addict = true,
-    upgrade_tachi_cruiser = true, upgrade_bullfrog = true,
-    upgrade_waverider_dragon_breathe = true, upgrade_vanguard_gunship = true,
-    upgrade_imperial_warrior = true, upgrade_v4_tulip = true,
-    upgrade_sakura_rocket = true,
-    upgrade_rhino_tank = true,
+    -- 替换型符文（花来！/ 先进坦克 ……）不再逐张列在这里：18_basics_exchange.lua 载入时会按
     prepare_backpack = true,
     easy_does_it = true,
     -- 精挑细选：只在「摆候选」那一刻起作用（多摆一张），不逐单位挂载。
@@ -1337,7 +1335,7 @@ function HextechRune:ApplyOwnedRunesToNewAssignments(assignments, sourceName,
             local isExcluded = playerIndex == excludedPlayerIndex
                 and self:GetRuneEffectInstanceId(rune) == excludedOwnershipId
             if not isExcluded
-                and not self.SkipPerUnitAssignmentEffects[rune.Effect] then
+                and not self:IsPerUnitAssignmentSkipped(rune.Effect) then
                 for i = 1, getn(assignments), 1 do
                     local assignment = assignments[i]
                     if assignment.PlayerIndex == playerIndex then
@@ -1540,6 +1538,8 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         self:AddOblivionBombCharge(playerIndex)
     elseif rune.Effect == "grant_il_beacon" then
         self:OnIlBeaconChosen(playerIndex)
+    elseif rune.Effect == "grant_factory_maintenance" then
+        self:RefreshFactoryMaintenanceHint(playerIndex)
     elseif rune.Effect == "grant_giga_fortress" then
         self:GrantGigaFortress(playerIndex)
     elseif rune.Effect == "grant_dongfeng_express" then
@@ -1640,15 +1640,10 @@ function HextechRune:OnRuneChosen(playerIndex, rune)
         -- 多拿一张只在下一次符文选择界面上体现，见 02_event.lua 的 ShowRuneOptionsForPlayer。
         self.PendingExtraRunePick[playerIndex] =
             (self.PendingExtraRunePick[playerIndex] or 0) + 1
-    elseif rune.Effect == "upgrade_tachi_cruiser"
-        or rune.Effect == "upgrade_bullfrog"
-        or rune.Effect == "upgrade_waverider_dragon_breathe"
-        or rune.Effect == "upgrade_vanguard_gunship"
-        or rune.Effect == "upgrade_imperial_warrior"
-        or rune.Effect == "upgrade_v4_tulip"
-        or rune.Effect == "upgrade_sakura_rocket"
-        or rune.Effect == "upgrade_rhino_tank" then
-        -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态。
+    -- 替换型符文（花来！/ 先进坦克 …）：名单在 18_basics_exchange.lua 的 UnitReplacementEffects，
+    elseif rune.Effect ~= nil and HextechRune.UnitReplacementEffects ~= nil
+        and HextechRune.UnitReplacementEffects[rune.Effect] then
+        -- 被动回收替换由 unitgetcountanddelet 在每次单位入池时查询持有状态；
         -- 已指向原形态的登神/买二送一同时改指升级形态。
         self:RemapReplacedRuneTargets(playerIndex)
     else

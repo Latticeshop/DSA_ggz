@@ -242,6 +242,8 @@ Localization._text_sources = {
     ["center_top.copy_our_skill.description"] = { zh = "复制己方最近一次使用的技能（如果最近一次是复制技能，则一直回溯到最近一次非复制的技能），如果没有找到合适的技能，则不释放(冷却30s)", en = "Copy your last used friendly skill (cooldown 30s)" },
     ["center_top.copy_enemy_skill.title"] = { zh = "复制敌方技能", en = "Copy Enemy Skill" },
     ["center_top.copy_enemy_skill.description"] = { zh = "复制敌方最近一次使用的技能（如果最近一次是复制技能，则一直回溯到最近一次非复制的技能），如果没有找到合适的技能，则不释放(冷却30s)", en = "Copy the last enemy-used skill (cooldown 30s)" },
+    -- 没有任何可复制技能时这个后缀整段不出现（见 CenterTopBtnFuncExtra 的 g_GetCopySkillDescription）。
+    ["center_top.copy_skill.last_skill"] = { zh = "(上个技能是：%s)", en = "(Last skill: %s)" },
     ["center_top.nano_repair.title"] = { zh = "纳米维修", en = "Nano Repair" },
     ["center_top.nano_repair.description"] = { zh = "在陆地前线生成1个纳米维修立场和大型维修天灯，治愈己方部队和前线海陆防御塔", en = "Deploy repair fields and repair drones to support land fronts, heal both land and sea towers" },
     ["center_top.reinforce_army.title"] = { zh = "补充军队", en = "Reinforce Army" },
@@ -263,7 +265,7 @@ Localization._text_sources = {
     ["center_top.used.temporal_raid"] = { zh = "%s方使用了超时空突袭！", en = "%s used ChronoSphere Raid!" },
     ["center_top.kill_reward.title"] = { zh = "杀敌奖励", en = "Kill Reward" },
     ["center_top.kill_reward.description"] = { zh = "为所有敌方陆地单位（不包括空军）套上钱套子(持续30秒)，击杀后使用技能者获得金钱(冷却40秒)", en = "Apply cash bounty to all enemy land units (30s); killing grants money (40s cooldown)" },
-    ["center_top.temporal_raid.unlocked_description"] = { zh = "打开时空裂缝让主战坦克突袭敌方后排并获得短暂的铁幕\n冷却时间三回合", en = "Open a temporal rift to raid enemy backline with tanks; 3-round cooldown" },
+    ["center_top.temporal_raid.unlocked_description"] = { zh = "打开时空裂缝让主战坦克突袭敌方后排并获得短暂的铁幕\n剩余冷却时间：%d回合", en = "Open a temporal rift to raid the enemy backline with tanks and grant them a brief Iron Curtain\nRounds until ready: %d" },
     ["center_top.japan_shield.title"] = { zh = "全体护盾", en = "All Point Defense Drones" },
     ["center_top.japan_shield.description"] = { zh = "请激活帝国最高机密协议「机械化组装」以解锁此按钮", en = "Requiers Robotic Assembly protocol to unlock" },
     ["center_top.japan_shield.unlocked_description"] = { zh = "为所有己方载具与舰船套上纳米护盾\n冷却时间200秒", en = "Apply Point Defense Drones to all friendly vehicles and ships; 200s cooldown" },

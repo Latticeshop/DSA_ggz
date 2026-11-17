@@ -465,9 +465,10 @@ function CenterTopBtnFunc_UpdatePlayer3rdButton(playerIndex)
     local playerName = "Player_" .. playerIndex
     local button = CenterTopBtnFunc_CreateFactionSkillButton(playerIndex)
     if button then
-        button.Description = button.UnlockedDescription
         button.IsLocked = false
         button.IsEnabled = true
+        -- 描述统一在这里定：超时空突袭按剩余冷却回合数重算，其余按钮沿用 UnlockedDescription
+        g_ApplyUnlockedButtonDescription(button)
         button:FormatText()
         ButtonManager:SetButton(button)
     end
@@ -621,6 +622,7 @@ function CreateAirMarshalButton(playerIndex)
     return CreateButton(buttonData)
 end
 
+-- 复制己方技能：悬浮描述末尾动态拼「(上个技能是：XXX)」（无历史就不拼，见 CenterTopBtnFuncExtra）
 function CreateRepeatSelfSpecialPowerButton(playerIndex)
     local buttonData = {
         PlayerName = "Player_" .. playerIndex,
@@ -628,7 +630,7 @@ function CreateRepeatSelfSpecialPowerButton(playerIndex)
         ButtonIndex = 2,
         IconId = 'CelestialPowerPlantDetection',
         Title = Localization.get("center_top.copy_our_skill.title"),
-        Description = Localization.get("center_top.copy_our_skill.description"),
+        Description = g_GetCopySkillDescription(playerIndex, "self"),
         IsEnabled = true,
         MaxUseCount = 2,
         CooldownSeconds = 30,
@@ -639,6 +641,7 @@ function CreateRepeatSelfSpecialPowerButton(playerIndex)
             return RequestRepeatSelfSpecialPower(self.PlayerIndex, self)
         end,
     }
+    g_RegisterCopySkillButton(buttonData, "self")
     return CreateButton(buttonData)
 end
 
@@ -649,7 +652,7 @@ function CreateRepeatEnemySpecialPowerButton(playerIndex)
         ButtonIndex = 1,
         IconId = 'CelestialSonarOn',
         Title = Localization.get("center_top.copy_enemy_skill.title"),
-        Description = Localization.get("center_top.copy_enemy_skill.description"),
+        Description = g_GetCopySkillDescription(playerIndex, "enemy"),
         IsEnabled = true,
         MaxUseCount = 1,
         CooldownSeconds = 30,
@@ -660,6 +663,7 @@ function CreateRepeatEnemySpecialPowerButton(playerIndex)
             return RequestRepeatEnemySpecialPower(self.PlayerIndex, self)
         end,
     }
+    g_RegisterCopySkillButton(buttonData, "enemy")
     return CreateButton(buttonData)
 end
 
@@ -734,16 +738,18 @@ function CreateChronosphereButton(playerIndex)
         IconId = 'AUA_Aegis_Shield',
         Title = Localization.get("center_top.temporal_raid.title"),
         Description = Localization.get("center_top.temporal_raid.description"),
-        UnlockedDescription = Localization.get("center_top.temporal_raid.unlocked_description"),
+        -- 按当时的剩余回合数重算（见 CenterTopBtnFuncExtra），这里先放 0 回合的版本。
+        UnlockedDescription = Localization.get("center_top.temporal_raid.unlocked_description", 0),
         IsLocked = true,
         MaxUseCount = nil, -- 没有限制
         CooldownRounds = 3,
         SharedCooldownId = "alliedsuperweapon",
         SharedCooldownSeconds = 2,
         OnClick = function(self)
-            return RequestChronosphere(self.PlayerIndex)
+            return g_ChronoSphereOnClick(self)
         end
     }
+    g_RegisterRoundCooldownButton(buttonData, 3, "center_top.temporal_raid.unlocked_description")
     return CreateButton(buttonData)
 end
 
@@ -801,11 +807,7 @@ function RequestDestruction(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.local_destruction", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "A01_CoastalGun_ImpactExplosion")
     exEnableWBScript(sideScript)
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestDestruction)
-    else
-        tinsert(g_angelButtonClickHistory, RequestDestruction)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestDestruction)
     return true
 end
 
@@ -819,11 +821,7 @@ function RequestDamoclesSword(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.damocles_struck", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "CelestialEnergyGatling_Select")
     exEnableWBScript(sideScript)
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestDamoclesSword)
-    else
-        tinsert(g_angelButtonClickHistory, RequestDamoclesSword)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestDamoclesSword)
     return true
 end
 
@@ -984,11 +982,7 @@ function RequestIronCurtain(playerIndex)
     for i = 1, count, 1 do
         g_ApplyIronCurtain(units[i], 196)
     end
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestIronCurtain)
-    else
-        tinsert(g_angelButtonClickHistory, RequestIronCurtain)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestIronCurtain)
     return true
 end
 
@@ -1002,11 +996,7 @@ function RequestTimeStop(playerIndex)
     exMessageAppendToMessageArea(Localization.get("center_top.used.time_stop", sideName))
     ExecuteAction("PLAY_SOUND_EFFECT", "ALL_Chronosphere_Off")
     exEnableWBScript(sideScript)
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestTimeStop)
-    else
-        tinsert(g_angelButtonClickHistory, RequestTimeStop)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestTimeStop)
     return true
 end
 
@@ -1079,11 +1069,7 @@ function RequestDragonShip(playerIndex, count)
         exMessageAppendToMessageArea(Localization.get("center_top.dragonship.hp_change", id, previousHp, currentHp))
     end
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestDragonShip)
-    else
-        tinsert(g_angelButtonClickHistory, RequestDragonShip)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestDragonShip)
     return true
 end
 
@@ -1099,11 +1085,7 @@ function RequestAirMarshal(playerIndex)
     ExecuteAction("PLAY_SOUND_EFFECT", "CEL_NukeIncoming")
     exEnableWBScript(sideScript)
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestAirMarshal)
-    else
-        tinsert(g_angelButtonClickHistory, RequestAirMarshal)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestAirMarshal)
     return true
 end
 
@@ -1241,11 +1223,7 @@ function RequestNanoMaintainHive(playerIndex)
         end, 450, {ObjectGetId(object)})
     end
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestNanoMaintainHive)
-    else
-        tinsert(g_angelButtonClickHistory, RequestNanoMaintainHive)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestNanoMaintainHive)
     return true
 end
 
@@ -1254,39 +1232,27 @@ function RequestRepeatSelfSpecialPower(playerIndex, self)
     if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
-    local destPowerFunc = nil;
-    local history = g_evilButtonClickHistory;
-    if g_IsAngelSeat(playerIndex) then
-        history = g_angelButtonClickHistory;
-    end
-    if getn(history) == 0 then
-        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_skill_to_copy"), 8)
-        return false;
-    end
-    for i = getn(history), 1, -1 do
-        if history[i] ~= RequestRepeatSelfSpecialPower then
-            destPowerFunc = history[i];
-            break;
-        end
-    end
-
-    if destPowerFunc ~= nil then
-        exMessageAppendToMessageArea(Localization.get("center_top.used.copy_our_skill", sideName))
-        if destPowerFunc == RequestDragonShip then
-            if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
-                self.DragonshipNumber = 2
-                return true
-            end
-            return nil
+    -- 回溯口径与悬浮窗文案共用 g_FindCopyTargetSkill（跳过两个复制技能自己）
+    local history = g_GetSkillClickHistory(playerIndex, "self")
+    local destPowerFunc = g_FindCopyTargetSkill(history)
+    if destPowerFunc == nil then
+        if getn(history) == 0 then
+            exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_skill_to_copy"), 8)
         else
-            return destPowerFunc(playerIndex)
+            exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
         end
-
-    else
-                        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
-        return false;
+        return false
     end
 
+    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_our_skill", sideName))
+    if destPowerFunc == RequestDragonShip then
+        if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
+            self.DragonshipNumber = 2
+            return true
+        end
+        return nil
+    end
+    return destPowerFunc(playerIndex)
 end
 
 function RequestRepeatEnemySpecialPower(playerIndex, self)
@@ -1294,39 +1260,26 @@ function RequestRepeatEnemySpecialPower(playerIndex, self)
     if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
-    local destPowerFunc = nil;
-    local history = g_angelButtonClickHistory;
-    if g_IsAngelSeat(playerIndex) then
-        history = g_evilButtonClickHistory;
-    end
-    if getn(history) == 0 then
-        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.enemy_no_skill_to_copy"), 8)
-        return false;
-    end
-    for i = getn(history), 1, -1 do
-        if history[i] ~= RequestRepeatSelfSpecialPower then
-            destPowerFunc = history[i];
-            break;
-        end
-    end
-
-    if destPowerFunc ~= nil then
-        exMessageAppendToMessageArea(Localization.get("center_top.used.copy_enemy_skill", sideName))
-        if destPowerFunc == RequestDragonShip then
-            if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
-                self.DragonshipNumber = 2
-                return true
-            end
-            return nil
+    local history = g_GetSkillClickHistory(playerIndex, "enemy")
+    local destPowerFunc = g_FindCopyTargetSkill(history)
+    if destPowerFunc == nil then
+        if getn(history) == 0 then
+            exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.enemy_no_skill_to_copy"), 8)
         else
-            return destPowerFunc(playerIndex)
+            exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
         end
-
-    else
-        exAddTextToPublicBoardForPlayer("Player_" .. playerIndex, Localization.get("center_top.error.no_suitable_skill"), 8)
-        return false;
+        return false
     end
 
+    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_enemy_skill", sideName))
+    if destPowerFunc == RequestDragonShip then
+        if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
+            self.DragonshipNumber = 2
+            return true
+        end
+        return nil
+    end
+    return destPowerFunc(playerIndex)
 end
 
 function RequestSpawnArmyImmediately(playerIndex)
@@ -1397,11 +1350,7 @@ function RequestSpawnArmyImmediately(playerIndex)
         end, 5)
     end
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestSpawnArmyImmediately)
-    else
-        tinsert(g_angelButtonClickHistory, RequestSpawnArmyImmediately)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestSpawnArmyImmediately)
     return true
 end
 
@@ -1474,11 +1423,7 @@ function RequestCashBonus(playerIndex)
         }, current)
     end
 
-    if g_IsDevilSeat(playerIndex) then
-        tinsert(g_evilButtonClickHistory, RequestCashBonus)
-    else
-        tinsert(g_angelButtonClickHistory, RequestCashBonus)
-    end
+    g_PushSkillClickHistory(playerIndex, RequestCashBonus)
     return true
 end
 
