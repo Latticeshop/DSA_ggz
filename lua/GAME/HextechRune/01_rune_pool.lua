@@ -1522,6 +1522,8 @@ function HextechRune:AddOwnedRune(playerIndex, rune, slotIndex)
     self.PlayerOwnedRuneCounts[playerIndex][ownershipId] = ownedCount
     self.PlayerOwnedRuneIds[playerIndex][ownershipId] = true
     rune.OwnedInstanceId = ownershipId .. "#" .. tostring(ownedCount)
+    -- 席位归属：同名多份按「席内相加、跨席取最大」统计（见附录 A.59）。
+    rune.OwnedSlotIndex = slotIndex
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     tinsert(self.PlayerSlotOwnedRunes[slotIndex], rune)
     self.PlayerSlotOwnedRuneIds[slotIndex][ownershipId] = true

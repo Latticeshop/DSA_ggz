@@ -1,6 +1,6 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.46
+-- 讲解见 analysis/地图注释说明文档.md 附录 A.46 / A.60
 
-UNITSPAIRST (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)
+UNITSPAIRST (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH,"late")
 
 if HextechRune ~= nil and HextechRune.ApplyAllConversionPulses ~= nil then
     if SchedulerModule ~= nil and SchedulerModule.delay_call ~= nil then

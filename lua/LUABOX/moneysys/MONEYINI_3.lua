@@ -842,14 +842,6 @@ function TransferPlayerRuneState(fromIndex, toIndex)
         end
         HextechRune.FiveThunderState[fromIndex] = nil
     end
-    -- 战场上已经登记的旧单位改认新主人，下一轮才会把继承来的符文也挂上去。
-    if HextechRune.BattleUnitAssignments ~= nil then
-        for objectId, assignment in HextechRune.BattleUnitAssignments do
-            if assignment.PlayerIndex == fromIndex then
-                assignment.PlayerIndex = toIndex
-            end
-        end
-    end
     -- 继承来的替换型符文也要作用到继承者的登神 / 买二送一目标上。
     if HextechRune.RemapReplacedRuneTargets ~= nil then
         HextechRune:RemapReplacedRuneTargets(toIndex)
@@ -912,9 +904,8 @@ function TransferPlayerAssets(vacatedIndex, beneficiaryIndex)
         return
     end
     g_PowerSlotVacated[vacatedIndex] = 1
-    -- 先保证小电份额一定跟着走；单位/符文随后接管。
+    -- 先保证小电份额一定跟着走；符文随后接管。
     AssignPowerSlotController(vacatedIndex, beneficiaryIndex)
-    TransferPlayerUnitPools(vacatedIndex, beneficiaryIndex)
     TransferPlayerRuneState(vacatedIndex, beneficiaryIndex)
 end
 

@@ -1219,6 +1219,57 @@ end
 RegisterUnitCreateCallback("SovietSurveyor", SovietSurveyorBorn)
 RegisterUnitCreateCallback("SovietSurveyor_Naval", SovietSurveyorBorn)
 
+-- 玄冥级战列巡洋舰：F（狩猎导弹 CANSTier3HuntingMissile）已解禁（见附录 A.55），
+-- 技能一开它的输出偏高，所以给这 5 个模板统一挂基础 debuff：伤害 -25% + 攻速 -50%，出生即挂、长期生效（见附录 A.57）。
+g_CelestialHuntingShipTypes = {
+    "CelestialAntiNavyShipTech3",
+    "CelestialAntiNavyShipTech3_EMC",
+    "CelestialAntiNavyShipTech3_Enhanced",
+    "CelestialAntiNavyShipTech3_Firework",
+    "CelestialAntiNavyShipTech3_Old",
+}
+
+-- 口径同 BUFF_1.lua 的 g_CryoLegionnaireRateOfFireX075Modifier = { RATE_OF_FIRE = 0.75 }（0.75 即变慢）。
+if not g_CelestialHuntingShipDebuffModifier then
+    g_CelestialHuntingShipDebuffModifier = exAttributeModifierCreate(
+        { DAMAGE_MULT = 0.75, RATE_OF_FIRE = 0.5 }, 1)
+end
+
+function CelestialHuntingShipDebuffBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), g_CelestialHuntingShipDebuffModifier)
+        end
+    end, 1, {createdObjId})
+end
+
+for i = 1, getn(g_CelestialHuntingShipTypes), 1 do
+    RegisterUnitCreateCallback(g_CelestialHuntingShipTypes[i], CelestialHuntingShipDebuffBorn)
+end
+
+-- 太刀重巡洋舰 与神州一式磁轨炮重巡 基础射程与视野各 +15%。
+g_JapanTaidaoTech3Types = {
+    "JapanAntiNavyShipTech3",
+    "JapanAntiNavyShipTech3_Enhanced",
+    "CelestialSeized_JapanAntiNavyShipTech3",
+}
+
+if not g_JapanTaidaoRangeX115Modifier then
+    g_JapanTaidaoRangeX115Modifier = exAttributeModifierCreate({ RANGE = 1.15, VISION = 1.15 }, 1)
+end
+
+function JapanTaidaoRangeBorn(createdObjId, createdObjInstanceId, ownerPlayerName)
+    SchedulerModule.delay_call(function(id)
+        if ObjectIsAlive(id) then
+            ObjectLoadAttributeModifier(GetObjectById(id), g_JapanTaidaoRangeX115Modifier)
+        end
+    end, 1, {createdObjId})
+end
+
+for i = 1, getn(g_JapanTaidaoTech3Types), 1 do
+    RegisterUnitCreateCallback(g_JapanTaidaoTech3Types[i], JapanTaidaoRangeBorn)
+end
+
 g_BattleUnitLifetimeDefaultRounds = 4
 
 -- 覆盖默认寿命的模板（键为模板哈希）。奥林匹斯 2 回合（2026-10-11 由 1 回合延长，原版特判为 1），

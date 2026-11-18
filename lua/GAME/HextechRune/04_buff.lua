@@ -159,8 +159,8 @@ HextechRune.TranscendentEvilModifiers = HextechRune.TranscendentEvilModifiers or
 HextechRune.FiveTigerGeneralsPower = "SpecialPower_CelestialCenturionUpgrade"
 HextechRune.FiveTigerGeneralsCommand = "Command_Celestial_CenturionUpgrade"
 HextechRune.BattleUnitEffectDelay = 45
--- 空军批次补扫：AIRSPACT 节点在出兵 10 秒后才生成 step3+1~step35 的飞机，
--- 首扫（45 帧）赶不上，这里在飞机出现后再留 3 秒余量。
+-- 空军补扫：护航机在出兵 5 秒后单独一批，轰炸机/特攻机/摇光仍由 AIRSPACT 在出兵 10 秒后生成，
+-- 首扫（45 帧）赶不上晚批，这里给晚批留出余量（见附录 A.60）。
 HextechRune.AirBatchEffectDelay = 200
 HextechRune.FiveTigerPowerGranted = HextechRune.FiveTigerPowerGranted or {}
 -- 百虎上将：objectId → 已下过百夫长命令的回合号，挡住同回合内的重复发放。
@@ -1490,15 +1490,16 @@ end
 
 function HextechRune:GetTranscendentEvilCopyCount(playerIndex, unitType)
     self:EnsurePlayerRuneState(playerIndex)
-    local count = 0
+    -- 与同族加算同一口径：席内相加、跨席取最大（见附录 A.59）。
     local owned = self.PlayerOwnedRunes[playerIndex]
+    local matched = {}
     for i = 1, getn(owned), 1 do
         local current = owned[i]
         if current.Effect == "transcendent_evil" and current.UnitType == unitType then
-            count = count + 1
+            tinsert(matched, current)
         end
     end
-    return count
+    return self:GetMaxSlotCopyCount(matched, playerIndex)
 end
 
 function HextechRune:IsPrimaryTranscendentEvilRune(playerIndex, rune)
@@ -1719,13 +1720,11 @@ function HextechRune:ApplyRoundEffects(round)
             "第" .. tostring(effectRound) .. "回合固定出兵", nil, seenObjects)
         -- AT立场：这时载具/舰船已经在场，先套一批。
         HextechRune:ApplyAtFieldShields()
-        -- 陆军战机以外的飞机由 AIRSPACT 节点在出兵 10 秒后才生成，
+        -- 晚批飞机（轰炸机/特攻机/摇光）由 AIRSPACT 在出兵 10 秒后才生成，
         -- 赶不上上面这次扫描，这里用排除表只对本轮之后新增的对象补一遍。
         SchedulerModule.delay_call(function(airRound, seen)
             HextechRune:ApplyBattleUnitEffectPass(
                 "第" .. tostring(airRound) .. "回合空军批次", seen, nil)
-            -- 再套一遍：补上走飞机出生点的新对象（天狗、心神这类变形载具也能吃盾），
-            -- 已套过的对象由 AtFieldShielded 去重，不会叠第二层。
             HextechRune:ApplyAtFieldShields()
         end, HextechRune.AirBatchEffectDelay, { effectRound, seenObjects })
     end, self.BattleUnitEffectDelay, { round })

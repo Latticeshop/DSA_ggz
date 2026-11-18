@@ -24,22 +24,37 @@ HextechRune.PerTypeStatModifierSpecs = {
     ragnarok = { DAMAGE_MULT = 1.9 },
 }
 
--- 这只单位吃到同一族符文的几份：同名多张、载具/空军两个变体、元神互锁外溢过来的都算一份。
--- 互锁之所以会算进「两份」，是因为 IsRuneMatchingUnit 的互锁分支让伙伴兵种那张也命中同一只单位。
+-- 席位号来自 01_rune_pool.lua 写入的 rune.OwnedSlotIndex，退出继承时保留原席位号。
+function HextechRune:GetMaxSlotCopyCount(runes, playerIndex)
+    local bySlot = {}
+    local count = 0
+    for i = 1, getn(runes), 1 do
+        local slot = runes[i].OwnedSlotIndex or playerIndex
+        bySlot[slot] = (bySlot[slot] or 0) + 1
+    end
+    for slot, slotCount in bySlot do
+        if slotCount > count then
+            count = slotCount
+        end
+    end
+    return count
+end
+
 function HextechRune:CountMatchingRuneCopies(playerIndex, effect, unit, typeLookup)
     if playerIndex == nil or unit == nil then
         return 1
     end
     self:EnsurePlayerRuneState(playerIndex)
     local owned = self.PlayerOwnedRunes[playerIndex]
-    local count = 0
+    local matched = {}
     for runeIndex = 1, getn(owned), 1 do
         local ownedRune = owned[runeIndex]
         if ownedRune.Effect == effect
             and self:IsRuneMatchingUnit(ownedRune, unit, typeLookup, playerIndex) then
-            count = count + 1
+            tinsert(matched, ownedRune)
         end
     end
+    local count = self:GetMaxSlotCopyCount(matched, playerIndex)
     if count < 1 then
         return 1
     end
@@ -1147,9 +1162,11 @@ HextechRune.IlBeaconSpawnSerial = 0
 -- 召唤点固定用轻型载具出生点第 3 个：LIGHTVEH13（恶魔侧）/ LIGHTVEH23（天使侧）。
 -- 组名 + 侧号 + 序号，与 AIRRE1x / AIRRE2x 同一套写法（侧 7 = 恶魔 = "1"，侧 8 = 天使 = "2"）。
 HextechRune.IlBeaconSpawnPointIndex = 3
--- 信标机的基础 buff：3 倍血量 + 2 倍移速。它是符文白送的临时单位、不占玩家配额，
-HextechRune.IlBeaconHealthMultiplier = 3
+-- 信标机的基础 buff：固定无限血（打不死）+ 2 倍移速。它是符文白送的临时单位、不占玩家配额。
+HextechRune.IlBeaconHealthMultiplier = 500
 HextechRune.IlBeaconSpeedMultiplier = 2
+-- 变形切换会重建对象状态、引擎也可能重挂面板旗标，所以无敌看门狗每 30 帧（2 秒）补挂一次。
+HextechRune.IlBeaconInvulnerableAssertFrames = 30
 -- 这架不是正常出兵流程的编制，所以单独记账，由看门狗盯着：一飞回本方机场的换弹区就删掉。
 HextechRune.IlBeaconMarkByObjectId = HextechRune.IlBeaconMarkByObjectId or {}
 HextechRune.IlBeaconWatchIntervalFrames = 5     -- 每 5 帧查一次
@@ -1340,6 +1357,8 @@ function HextechRune:UpdateIlBeaconAircraft()
             marks[objectId] = nil
         else
             mark.AgeFrames = (mark.AgeFrames or 0) + step
+            -- 无敌旗标跟着补挂：变形切换 / 引擎重挂面板旗标都可能把它清掉。
+            self:ReassertIlBeaconInvulnerability(unit, mark)
             if mark.AgeFrames >= self.IlBeaconMaxLifetimeFrames then
                 -- 兜底寿命：既不返航也不挨打的飞机到点直接删，别让它一直挂在场。
                 ExecuteAction("NAMED_DELETE", unit)
@@ -1438,11 +1457,38 @@ function HextechRune:GetIlBeaconSpeedModifier()
     return g_HextechIlBeaconSpeedModifier
 end
 
--- 信标机的基础 buff：3 倍血量 + 2 倍移速。
+-- 无敌：挂面板旗标 Indestructible（引擎级「打不死」，与无敌前哨站 / 余额墙块同一套）。
+-- 幂等，重复调用无副作用，所以看门狗可以周期性补挂。
+function HextechRune:ApplyIlBeaconInvulnerability(unit)
+    if unit == nil then
+        return
+    end
+    if ExecuteAction == nil then
+        return
+    end
+    ExecuteAction("UNIT_AFFECT_OBJECT_PANEL_FLAGS", unit, "Indestructible", true)
+end
+
+-- 无敌补挂节流：按登记表里的 AgeFrames（每帧 +5）算，够 30 帧才动一次。
+function HextechRune:ReassertIlBeaconInvulnerability(unit, mark)
+    if unit == nil or mark == nil then
+        return
+    end
+    local age = mark.AgeFrames or 0
+    if mark.NextInvulnerableFrame ~= nil and age < mark.NextInvulnerableFrame then
+        return
+    end
+    mark.NextInvulnerableFrame = age + (self.IlBeaconInvulnerableAssertFrames or 30)
+    self:ApplyIlBeaconInvulnerability(unit)
+end
+
+-- 信标机的基础 buff：固定无敌 + 500 倍血量兜底 + 2 倍移速。
 function HextechRune:ApplyIlBeaconBaseBuffs(unit)
     if unit == nil or not ObjectIsAlive(unit) then
         return
     end
+    -- 无敌最先挂：后面几个接口缺一个就提前 return，别让无敌跟着一起被跳过。
+    self:ApplyIlBeaconInvulnerability(unit)
     local speedMod = self:GetIlBeaconSpeedModifier()
     if speedMod ~= nil then
         ObjectLoadAttributeModifier(unit, speedMod,
@@ -1456,10 +1502,13 @@ function HextechRune:ApplyIlBeaconBaseBuffs(unit)
     if maxHealth == nil or maxHealth <= 0 then
         return
     end
+    -- 固定「无限血」：面板旗标 Indestructible 负责打不死；500 倍血量只是兜底
+    -- （旗标万一被引擎在变形 / 重建时清掉，也能扛到看门狗 2 秒内补挂）。
+    local healthMultiplier = self.IlBeaconHealthMultiplier
     local reference = "hextech_il_beacon_" .. objectId
     ExecuteAction("SET_UNIT_REFERENCE", reference, unit)
     ExecuteAction("NAMED_SET_MAX_HEALTH", reference,
-        floor(maxHealth * self.IlBeaconHealthMultiplier), "TRUE")
+        floor(maxHealth * healthMultiplier), "TRUE")
 end
 
 -- 独立 AI 队列：照 UnitCreate.lua: AntiAirHunterBorn 的做法，把飞机从公共 AIRATTACK
@@ -1629,6 +1678,38 @@ function HextechRune:IsFactoryMaintenanceActive(playerIndex)
     return self.FactoryMaintenanceActive[playerIndex] == true
 end
 
+-- ===== 工厂维护解锁时不能碰的「自带额度」单位 =====
+function HextechRune:RestoreIndependentBuildGates(playerIndex)
+    -- 抽卡模式里这两类本来就不许手动生产（LockPlayerProduction 的语义就是「抽卡模式下
+    -- 玩家永远无法自行产出这些单位」），保持关闭，别在解锁时反而把它们打开。
+    if g_DrawMode == 2 then
+        return
+    end
+    local playerName = "Player_" .. playerIndex
+    -- 摇光：按剩余限造额度复算（与 LIMITYAOGUANG 的逐玩家分支同一口径，顺手把 FLAGENYAOGUANG
+    -- 同步成真实状态，后续 LIMITYAOGUANG 的边沿判定才不会错位）。
+    if GetPlayerYaoguangRemainingProductionQuota ~= nil then
+        local allowYaoguang = 0
+        if GetPlayerYaoguangRemainingProductionQuota(playerIndex) > 0 then
+            allowYaoguang = 1
+        end
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName,
+            "CelestialAdvanceAircraftTech4", allowYaoguang)
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName,
+            "CelestialAdvanceAircraftTech4_Enhanced", allowYaoguang)
+        if FLAGENYAOGUANG ~= nil then
+            FLAGENYAOGUANG[playerIndex] = allowYaoguang
+        end
+    end
+    -- 超级要塞核心：只有被大船解锁事件开过（g_PureDrawT4ShipUnlocked）的玩家才恢复；
+    -- 地编里这颗按钮默认是禁造状态，别替没解锁的人打开。
+    if g_PureDrawT4ShipUnlocked ~= nil
+        and g_PureDrawT4ShipUnlocked[playerIndex] == true then
+        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName,
+            "JapanGigaFortressShipEgg", 1)
+    end
+end
+
 -- 建造栏锁 / 解锁。只锁单位（步兵 / 载具 / 飞机 / 舰船），建筑（发电厂等）不锁：
 -- 锁的是 PureDrawSetPlayerBuildability 遍历的那张生产池，池里只有作战单位。
 function HextechRune:SetPlayerProductionEnabled(playerIndex, enabled)
@@ -1645,6 +1726,9 @@ function HextechRune:SetPlayerProductionEnabled(playerIndex, enabled)
     elseif PureDrawSetPlayerBuildability ~= nil then
         PureDrawSetPlayerBuildability(playerIndex, true)
     end
+    -- 池子统一 enable 会按 LockPlayerProduction 把摇光 / 超级要塞核心判成不可造，
+    -- 这两类必须按各自额度逻辑单独复算，否则窗口结束后永不恢复。
+    self:RestoreIndependentBuildGates(playerIndex)
     -- 摩托与磁爆快艇：地编一次性禁造、只在该解锁的那回合打开（见 UNITCOUNTERINI_0.lua）。
     if g_SovietMortarCycleUnlocked ~= 1 then
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietMortarCycle", 0)

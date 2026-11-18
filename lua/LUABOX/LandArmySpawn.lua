@@ -147,6 +147,36 @@ function SpawnLightVehicleBatch(spawnBatch, mode)
     SchedulerModule.delay_call(SpawnMortarCycleLand, g_MortarCycleDelayFrames, {mode})
 end
 
+-- 空军护航批次（见附录 A.60）：非轰炸机、非摇光的飞机比空军主批提前 5 秒出场。
+g_AirEscortDelayFrames = 75
+g_AirEscortRunePassDelayFrames = 45
+
+function g_AirEscortRunePass()
+    -- 与 ShrinkMode_Trigger.lua 同一个开关口径：海克斯没开就整段跳过。
+    if g_EnableHextechRune ~= 1 or HextechRune == nil
+        or HextechRune.ApplyBattleUnitEffectPass == nil then
+        return
+    end
+    HextechRune:ApplyBattleUnitEffectPass("本回合空军护航批次", nil, nil)
+    if HextechRune.ApplyAtFieldShields ~= nil then
+        HextechRune:ApplyAtFieldShields()
+    end
+end
+
+-- 出兵 5 秒后单独出护航机；攻击指令和空军 buff 必须在这里就开，
+-- 否则要等到 AIRSPACT 那趟（出兵后 10 秒）才生效，飞机先站桩 5 秒。
+function SpawnAirEscortBatch()
+    UNITSPAIRST (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH,"escort")
+    exEnableWBScript('PlyrCivilian/attackAIR__7')
+    exEnableWBScript('PlyrCreeps/attackAIR__8')
+    exEnableWBScript('BUFFACTONCE__AIR')
+    -- 符文/AT立场：等变形载具（天狗、心神）变完形再补一趟，口径同首扫的 45 帧。
+    if SchedulerModule ~= nil and SchedulerModule.delay_call ~= nil then
+        SchedulerModule.delay_call(g_AirEscortRunePass,
+            g_AirEscortRunePassDelayFrames, {})
+    end
+end
+
 function LandArmySpawn()
     -- 遭遇战电脑的编制同步（LUABOX/AI/AIINI_1.lua: AICOMP）：放在所有兵种批次之前，
     -- 补齐的 UNITCOUNT 当回合就能刷出来；内部按回合号去重，地编那四个 AIUNITBUILDACT 入口也调它。
@@ -170,6 +200,11 @@ function LandArmySpawn()
     UNITSPAIRST (step4+1,step5,INFANTSP,AIRTEAM,AIRATTACK,INFANTSPCH)
 
     SpawnGigaFortressAir()
+
+    -- 护航飞机在出兵 5 秒后单独一批；轰炸机/摇光仍走 AIRSPACT 的 10 秒批次。
+    if SchedulerModule ~= nil and SchedulerModule.delay_call ~= nil then
+        SchedulerModule.delay_call(SpawnAirEscortBatch, g_AirEscortDelayFrames, {})
+    end
 
     exEnableWBScript('SHIPNOCOACT')
     exEnableWBScript('PlyrCivilian/attackHEAVYVEHVEH__7')

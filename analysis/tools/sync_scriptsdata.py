@@ -167,7 +167,9 @@ TARGETS = [  # fmt: skip
         'if BIGSHIPCONTROL then']),
     # AIRSPACT 此前没登记（JSON 里那份是 87 B 的单行调用），要给飞机批次补打击者VX，
     # 必须先登记，否则改了不会写回 ScriptsData.json。
-    ('lua/LUABOX/AIRSPACT_0.lua', ['UNITSPAIRST (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH)']),
+    # A.60 起这行多了批次参数，LandArmySpawn 的护航批次用的是同一个调用前缀，
+    # 所以 needle 必须带上 AIRSPACT 独有的 `,"late")` 尾巴才唯一。
+    ('lua/LUABOX/AIRSPACT_0.lua', ['UNITSPAIRST (step3+1,step35,LIGHTVEHSP,AIRTEAM,AIRATTACK,LIGHTVEHSPCH,"late")']),
     ('lua/LUABOX/LandArmySpawn.lua', ['function SpawnNoNavyAmphibiousLand_left',
         'function LandArmySpawn()']),
     ('lua/LUABOX/SPUNITINI_0.lua', ['function UNITSPST (unitmin,unitmax',

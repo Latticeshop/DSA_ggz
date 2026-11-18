@@ -55,11 +55,18 @@ function HextechRune:EnsureWarEfficiencyPlayerState(playerIndex)
     end
 end
 
--- 该玩家自己持有某兵种以战养战的份数。
+-- 该玩家自己持有某兵种以战养战的份数：席内相加、跨席取最大（见附录 A.59）。
 function HextechRune:GetPlayerWarEfficiencyCopies(playerIndex, unitType)
     self:EnsurePlayerRuneState(playerIndex)
-    return self.PlayerOwnedRuneCounts[playerIndex][
-        self.WarEfficiencyRuneId .. ":" .. unitType] or 0
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    local matched = {}
+    for i = 1, getn(owned), 1 do
+        local current = owned[i]
+        if current.Effect == "war_efficiency" and current.UnitType == unitType then
+            tinsert(matched, current)
+        end
+    end
+    return self:GetMaxSlotCopyCount(matched, playerIndex)
 end
 
 function HextechRune:HasAnyWarEfficiency(playerIndex)

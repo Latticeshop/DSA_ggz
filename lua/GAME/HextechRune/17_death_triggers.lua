@@ -1381,12 +1381,18 @@ function HextechRune:FuseIllusoryTurret(entry, chassisUnit, pair)
     entry.PairKey = pair.Key
     -- 记录底座当前的兵种槽号，镜像符文时按它的口径取阶级/护甲。
     entry.BaseUnitIndex = self:GetIllusoryUnitIndex(pair.ChassisType)
-    local byBase = self.IllusoryTurretsByBase[entry.BaseObjectId]
-    if byBase == nil then
-        byBase = {}
-        self.IllusoryTurretsByBase[entry.BaseObjectId] = byBase
+    -- BaseObjectId 万一取不到（引擎没给 ID），就别拿 nil 去索引表：Lua 4.0 会直接抛
+    -- "table index is nil"。这种情况下只是少一份「按底座归档」，共命/清除逻辑仍按 ObjectId 走。
+    if entry.BaseObjectId ~= nil then
+        local byBase = self.IllusoryTurretsByBase[entry.BaseObjectId]
+        if byBase == nil then
+            byBase = {}
+            self.IllusoryTurretsByBase[entry.BaseObjectId] = byBase
+        end
+        if entry.ObjectId ~= nil then
+            byBase[entry.ObjectId] = entry
+        end
     end
-    byBase[entry.ObjectId] = entry
     -- 立刻补一次符文增益，不用等到下回合的出兵扫描。
     self:MirrorRunesToAllIllusoryTurrets()
     -- 隐形/无敌放在最后：状态位在换队之后加（换队会重建对象状态），而且万一某个状态位
@@ -1586,18 +1592,24 @@ function HextechRune:RemoveIllusoryEntry(entry)
     if entry == nil then
         return
     end
-    if entry.ObjectId ~= nil then
-        self.IllusoryTurretByObjectId[entry.ObjectId] = nil
+    local objectId = entry.ObjectId
+    local baseObjectId = entry.BaseObjectId
+    if objectId ~= nil then
+        self.IllusoryTurretByObjectId[objectId] = nil
     end
-    local byBase = self.IllusoryTurretsByBase[entry.BaseObjectId]
-    if byBase ~= nil and entry.ObjectId ~= nil then
-        byBase[entry.ObjectId] = nil
-        if next(byBase) == nil then
-            self.IllusoryTurretsByBase[entry.BaseObjectId] = nil
+    -- 停泊中（还没融合）的炮台没有底座 ID：BaseObjectId 只在 FuseIllusoryTurret 里才赋值。
+    -- Lua 4.0 里拿 nil 去索引表会直接抛 "table index is nil"，所以这里必须先判空
+    if baseObjectId ~= nil then
+        local byBase = self.IllusoryTurretsByBase[baseObjectId]
+        if byBase ~= nil and objectId ~= nil then
+            byBase[objectId] = nil
+            if next(byBase) == nil then
+                self.IllusoryTurretsByBase[baseObjectId] = nil
+            end
         end
     end
-    if g_SkillSummonedUnits ~= nil and entry.ObjectId ~= nil then
-        g_SkillSummonedUnits[entry.ObjectId] = nil
+    if g_SkillSummonedUnits ~= nil and objectId ~= nil then
+        g_SkillSummonedUnits[objectId] = nil
     end
 end
 
