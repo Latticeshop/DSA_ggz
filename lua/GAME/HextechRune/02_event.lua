@@ -1065,15 +1065,16 @@ function HextechRune:ShowFormalEvent(round)
 end
 
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
--- 本轮测「银·MCV」（落点已改成自家半场的前哨站点位）+「银·工厂维护」（按 K 拿钱并锁建造栏 90 秒）：
+-- 本轮测「虚幻武器 + 登神 + 究极生物」：后两张点名的单位会被摘进 idle 队、改走脚本压目标
+-- 那条线（附录 A.63），用来验证登神/究极生物不再蹭塔；虚幻武器顺带验隐形炮台的符文镜像。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_mcv",
         "prismatic_illusory_weapon",
-        "silver_factory_maintenance",
+        "gold_ascension",
+        "prismatic_ultimate_creature",
     }
-    -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
-    local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
+    -- PickUltimateCreatureTarget 自己抽），所以兵种指派表留空。
+    local testUnitTypeByIndex = {}
     -- 测试局固定目标：命中这里的符文不走随机目标，直接把 Target 换成指定的那只单位。
     local testTargetOverrides = {}
     -- 4v4 共 8 个座席，逐座位发同一组三张卡；没有建筑的座席自动跳过。

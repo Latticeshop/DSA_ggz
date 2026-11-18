@@ -571,9 +571,12 @@ function PrioritySiegeAttackMoveMICROCONTROL ()
                 g_SetSideTeam(siegeUnit, idleTeamName)
             end
             local siegeUnitId = ObjectGetId(siegeUnit)
+            -- 被登神/究极生物圈中的炮车归脚本压目标那条线管（附录 A.63）：
+            local ownedByRune = g_NoStructureBuffUnitIds ~= nil
+                and g_NoStructureBuffUnitIds[siegeUnitId] ~= nil
             local desiredMode = GetPrioritySiegeUnitMode(siegeUnit, enemyTankExists)
             local stateChanged = g_PrioritySiegeUnitMode[siegeUnitId] ~= desiredMode
-            if stateChanged or wasReassigned then
+            if (stateChanged or wasReassigned) and not ownedByRune then
                 -- 同一条攻击前进指令可能沿用旧模式的内部攻击上下文；先停下并清空配置再重建。
                 ExecuteAction("NAMED_STOP", siegeUnit)
                 ObjectSetCustomTargetChooserData(siegeUnit, nil)
@@ -878,11 +881,13 @@ g_NoStructureBuffExcludeThingNames = {
     "CelestialMCV_Enhanced_Naval", "CelestialMCV_Enhanced_Air",
     -- 超级要塞全家
     "JapanGigaFortressShipEgg", "JapanGigaFortressShip", "JapanGigaFortress_Land",
+    -- 地编摆放在双方基地的 AI 锚点基地车（BasicVar1: g_TargetGroupNames.AIAnchorMCV）
+    "AlliedMCV", "AlliedMCV_Enhanced", "AlliedMCV_Naval", "AlliedMCV_Enhanced_Naval",
 }
 
 -- 登神/究极生物的目标单位：只打单位，不碰任何建筑。
 -- 滤网与百合子的 g_FilterYurikoEnemy 分开定义，两边的索敌调参互不影响。
-g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
+g_FilterNoStructureBuffEnemy=CreateObjectFilter({
     Rule="ANY",
     Relationship="ENEMIES",
     Include="INFANTRY VEHICLE HUGE_VEHICLE AIRCRAFT SHIP",
@@ -890,16 +895,11 @@ g_FilterNoStructureBuffedEnemy=CreateObjectFilter({
     ExcludeThing=g_NoStructureBuffExcludeThingNames
 })
 
--- 登神/究极生物里**舰船专用**的打击名单：只有海上和空中的敌人。
-g_FilterNoStructureBuffNavalEnemy=CreateObjectFilter({
-    Rule="ANY",
-    Relationship="ENEMIES",
-    Include="SHIP AIRCRAFT",
-    Exclude="STRUCTURE IGNORE_IN_AI_HUNT_TACTIC DEBRIS UNATTACKABLE NOT_AUTOACQUIRABLE",
-    ExcludeThing=g_NoStructureBuffExcludeThingNames
-})
+-- 按对象 ID 登记，不写模板名：这两张符文的目标单位每局随机，列不出固定名单。
+g_NoStructureBuffUnitIds = g_NoStructureBuffUnitIds or {}
+g_FilterNoStructureBuffedEnemy = g_FilterNoStructureBuffEnemy
 
--- 全图找「最近的敌舰」用：只认水面目标，免得被飞机牵着满地图绕。
+-- 登神/究极生物的舰船优先打敌舰用的名单：只认水面目标，同样不含建筑（见 A.63.8）。
 g_FilterNoStructureBuffNavalShipEnemy=CreateObjectFilter({
     Rule="ANY",
     Relationship="ENEMIES",
@@ -908,30 +908,17 @@ g_FilterNoStructureBuffNavalShipEnemy=CreateObjectFilter({
     ExcludeThing=g_NoStructureBuffExcludeThingNames
 })
 
--- 按对象 ID 登记，不写模板名：这两张符文的目标单位每局随机，列不出固定名单。
-g_NoStructureBuffUnitIds = g_NoStructureBuffUnitIds or {}
--- 海军行军的终点路点，与 WB 脚本 ATTACKSHIP__7/__8 同源。
--- 舰船被登神/究极生物圈中时不能按陆军那套推进到 TD7/TD8（陆上 waypoint），否则会半路拐向岸边。
-g_NavalPriorityAttackWaypoint = g_NavalPriorityAttackWaypoint or {
-    [7] = "PLANEREBORN8",
-    [8] = "PLANEREBORN7"
-}
--- 舰船的推进令必须周期性补发：摘进 idle 队后就没人替它下整队推进令了（讲解见附录 E.14）。
-g_NoStructureBuffNavalAdvanceIntervalFrames = 15
-g_NoStructureBuffNavalNextAdvanceFrame = g_NoStructureBuffNavalNextAdvanceFrame or 0
--- 每只舰船各自每 1 秒全图扫一次敌舰（照拄制空机：有目标就停下打，没目标才走）。
-g_NoStructureBuffNavalScanIntervalFrames = 15
--- 同一只单位的索敌只能有一个主人，她若被圈中就整只交回她自己的微操。
-g_NoStructureBuffSkipInstanceIds = { [FastHash("JapanCommandoTech1")] = true }
-
--- 舰船判定：编队名里带 SHIP 就是海军（SHIPTEAM / SHIPATTACK / PlyrCreeps/SHIPATTACK）。
--- 不依赖模板哈希表，实测靠得住（见附录 E.16）。
+-- 编队名里带 SHIP 就是海军（SHIPTEAM / SHIPATTACK / PlyrCreeps/SHIPATTACK）。
+-- 登记那一刻单位还站在主力队里，按队名判定最稳（见附录 E.16）。
 function IsNavalTeamName(teamName)
     if teamName == nil then
         return false
     end
     return strfind(teamName, "SHIP") ~= nil
 end
+
+-- 同一只单位的索敌只能有一个主人，她若被圈中就整只交回她自己的微操。
+g_NoStructureBuffSkipInstanceIds = { [FastHash("JapanCommandoTech1")] = true }
 
 function RegisterNoStructureBuffUnit(unit, sideIndex)
     if unit == nil or sideIndex == nil then
@@ -940,30 +927,282 @@ function RegisterNoStructureBuffUnit(unit, sideIndex)
     local instanceId = ObjectGetInstanceId(unit)
     if instanceId ~= nil and ObjectIsAlive(unit)
         and g_NoStructureBuffSkipInstanceIds[instanceId] == nil then
-        -- 登记这一刻还站在主力编队里，按队名就能认出是不是船。
         g_NoStructureBuffUnitIds[ObjectGetId(unit)] = {
             SideIndex = sideIndex,
+            -- 圈中的是四类炮车 ⇒ 保留它自己的「载具＞步兵」，只是不打建筑（见 A.63）。
+            IsSiege = IsPrioritySiegeUnit(unit, sideIndex),
+            -- 舰船 ⇒ 压目标时先找敌舰，其次就近（见 A.63.8）。
             IsNaval = IsNavalTeamName(ObjectTeamName(unit))
         }
     end
 end
 
-function NoStructureBuffedUnitMICROCONTROL ()
-    if g_PrioritySiegeIdleTeam == nil or g_PrioritySiegeAttackWaypoint == nil then
+
+-- 运行期取对象模板名：UNITCOUNTERINI_0 里 g_UnitNameToUnitIndex 同时按名字和 FastHash
+function GetNoStructureBuffUnitTypeName(unit)
+    if unit == nil or UNITLIST == nil or g_UnitNameToUnitIndex == nil then
+        return nil
+    end
+    local instanceId = ObjectGetInstanceId(unit)
+    if instanceId == nil then
+        return nil
+    end
+    local unitIndex = g_UnitNameToUnitIndex[instanceId]
+    if unitIndex == nil then
+        return nil
+    end
+    return UNITLIST[unitIndex]
+end
+
+g_NoStructureBuffSkipUnitTypes = {
+    ["AlliedMCV"] = true,
+    ["AlliedMCV_Enhanced"] = true,
+    ["AlliedMCV_Naval"] = true,
+    ["AlliedMCV_Enhanced_Naval"] = true,
+}
+
+-- 六个预设守护神（overlord7/8、t533/t534、Sea3ProtectShip7/8，按脚本名/对象 id 判）、
+-- 技能召唤单位（按对象 id 判）、地编锚点基地车（按模板名判）。
+function IsNoStructureBuffForbiddenTarget(unit)
+    if unit == nil then
+        return true
+    end
+    local objectId = ObjectGetId(unit)
+    if g_IsPresetGuardianUnitId ~= nil and g_IsPresetGuardianUnitId(objectId) then
+        return true
+    end
+    if IsSkillSummonedUnitId ~= nil and IsSkillSummonedUnitId(objectId) then
+        return true
+    end
+    local unitType = GetNoStructureBuffUnitTypeName(unit)
+    if unitType ~= nil and g_NoStructureBuffSkipUnitTypes[unitType] == true then
+        return true
+    end
+    return false
+end
+
+-- ===== 登神 / 究极生物的脚本压目标（机制与实测见附录 A.63）=====
+g_NoStructureBuffAssign = g_NoStructureBuffAssign or {}
+-- 候选按「帧 + 阵营」缓存：同一拍里所有登记单位共用，避免每只单位各扫一遍全图。
+g_NoStructureBuffCandidateCache = g_NoStructureBuffCandidateCache or {
+    Frame = nil, BySide = {}
+}
+-- 压目标后给引擎两拍（≈0.4 秒）接手时间，超时才判定「打不了」。
+g_NoStructureBuffPressGraceFrames = 6
+-- 撤掉一个不该打的目标后，让引擎静默多久再自动索敌（30 帧 = 1 秒）。
+g_NoStructureBuffVetoAcquireDelayFrames = 30
+
+function GetNoStructureBuffKindFilter(kind)
+    if kind == "tank" then
+        return g_FilterPrioritySiegeEnemyTank
+    elseif kind == "infantry" then
+        return g_FilterPrioritySiegeEnemyInfantry
+    elseif kind == "ship" then
+        -- 舰船的第一档：只认水面目标。
+        return g_FilterNoStructureBuffNavalShipEnemy
+    elseif kind == "any" then
+        -- 就近目标用的候选集合：单位全收、建筑全剔（登神/究极生物拆塔太快，
+        -- 而轰炸机的保底目标是允许炸建筑的，两边的滤网刻意不同）。
+        return g_FilterNoStructureBuffEnemy
+    end
+    return g_FilterYurikoEnemyAircraft
+end
+
+-- 「any」这一档挑出来的目标要归到具体兵种，才好在引擎拒收时只拉黑那一类。
+-- 按帧 + 阵营缓存一张「对象 ID → 兵种」表，避免每个候选都去扫一遍列表。
+function GetNoStructureBuffKindById(sideIndex)
+    local cache = g_NoStructureBuffCandidateCache
+    local frame = GetFrame()
+    if cache.Frame ~= frame then
+        cache.Frame = frame
+        cache.BySide = {}
+    end
+    local side = cache.BySide[sideIndex]
+    if side == nil then
+        side = {}
+        cache.BySide[sideIndex] = side
+    end
+    if side.KindById == nil then
+        local kindById = {}
+        local kinds = { "tank", "infantry", "air", "ship" }
+        for i = 1, getn(kinds), 1 do
+            local targets, count = GetNoStructureBuffCandidates(sideIndex, kinds[i])
+            if targets ~= nil and count ~= nil then
+                for j = 1, count, 1 do
+                    kindById[ObjectGetId(targets[j])] = kinds[i]
+                end
+            end
+        end
+        side.KindById = kindById
+    end
+    return side.KindById
+end
+
+function GetNoStructureBuffCandidates(sideIndex, kind)
+    local cache = g_NoStructureBuffCandidateCache
+    local frame = GetFrame()
+    if cache.Frame ~= frame then
+        cache.Frame = frame
+        cache.BySide = {}
+    end
+    local side = cache.BySide[sideIndex]
+    if side == nil then
+        side = {}
+        cache.BySide[sideIndex] = side
+    end
+    local entry = side[kind]
+    if entry == nil then
+        local filter = GetNoStructureBuffKindFilter(kind)
+        if filter == nil then
+            entry = { Units = {}, Count = 0 }
+        else
+            local units, count = g_SideFindObjects(sideIndex, nil, filter)
+            entry = { Units = units, Count = count }
+        end
+        side[kind] = entry
+    end
+    return entry.Units, entry.Count
+end
+
+-- 登记时判一次「是不是四类炮车」：炮车有自己的索敌优先级（载具＞步兵）。
+function IsPrioritySiegeUnit(unit, sideIndex)
+    if FilterPrioritySiegeVehicle == nil or unit == nil or sideIndex == nil then
+        return false
+    end
+    local units, count = g_SideFindObjects(sideIndex, nil, FilterPrioritySiegeVehicle)
+    local unitId = ObjectGetId(unit)
+    for i = 1, count, 1 do
+        if ObjectGetId(units[i]) == unitId then
+            return true
+        end
+    end
+    return false
+end
+
+-- 按档位找最近的一只：整档空才看下一档（「载具＞步兵」就是这个语义）。
+function FindNoStructureBuffTarget(unit, sideIndex, order, rejected)
+    for i = 1, getn(order), 1 do
+        local rung = order[i]
+        if rejected == nil or rejected[rung] ~= true then
+            local targets, count = GetNoStructureBuffCandidates(sideIndex, rung)
+            local kindById = nil
+            if rung == "any" then
+                kindById = GetNoStructureBuffKindById(sideIndex)
+            end
+            local best = nil
+            local bestKind = rung
+            local bestDistance = nil
+            if targets ~= nil and count ~= nil then
+                for j = 1, count, 1 do
+                    local candidate = targets[j]
+                    local candidateId = ObjectGetId(candidate)
+                    local candidateKind = rung
+                    local allowed = ObjectIsAlive(candidate)
+                    if allowed and IsNoStructureBuffForbiddenTarget(candidate) then
+                        allowed = false
+                    end
+                    if allowed and kindById ~= nil then
+                        -- 就近目标这一档：打不了的兵种（上一拍被拉黑）直接跳过，
+                        -- 免得把最近的名额浪费在它身上、还要再等两拍才发现。
+                        candidateKind = kindById[candidateId]
+                        if candidateKind == nil then
+                            candidateKind = "other"
+                        end
+                        if rejected ~= nil and rejected[candidateKind] == true then
+                            allowed = false
+                        end
+                    end
+                    if allowed then
+                        local distance = ObjectsDistance2D(unit, candidate)
+                        if bestDistance == nil or distance < bestDistance then
+                            best = candidate
+                            bestKind = candidateKind
+                            bestDistance = distance
+                        end
+                    end
+                end
+            end
+            if best ~= nil then
+                return best, bestKind
+            end
+        end
+    end
+    return nil, nil
+end
+
+function UpdateNoStructureBuffTarget(unit, objectId, sideIndex, isSiege,
+    isNaval)
+    local record = g_NoStructureBuffAssign[objectId]
+    if record == nil then
+        record = { Rejected = {} }
+        g_NoStructureBuffAssign[objectId] = record
+    end
+    -- 引擎自己已有目标：保持不抢（原生索敌同样按本单位武器挑合法目标）。
+    local current = ObjectGetTarget(unit)
+    if current ~= nil and ObjectIsAlive(current) then
+        record.PressedId = nil
+        record.PressedKind = nil
+        record.PressFrame = nil
         return
     end
-    -- 舰船推进令的补发闸门：整轮循环共用一个「到点」判定，避免每帧对每条船刷指令。
-    local frame = GetFrame()
-    local navalAdvanceDue = frame >= g_NoStructureBuffNavalNextAdvanceFrame
-    if navalAdvanceDue then
-        g_NoStructureBuffNavalNextAdvanceFrame =
-            frame + g_NoStructureBuffNavalAdvanceIntervalFrames
+    -- 复核上一拍压过的目标：还活着 ⇒ 引擎不肯打这一类，拉黑换档；已死 ⇒ 打掉了，正常重选。
+    if record.PressedId ~= nil then
+        local pressedKind = record.PressedKind
+        local pressFrame = record.PressFrame
+        local pressed = GetObjectById(record.PressedId)
+        if pressed == nil or not ObjectIsAlive(pressed) then
+            -- 目标已经没了：打掉了，正常重选，不算拉黑。
+            record.PressedId = nil
+            record.PressedKind = nil
+            record.PressFrame = nil
+        elseif pressFrame ~= nil
+            and GetFrame() - pressFrame < g_NoStructureBuffPressGraceFrames then
+            -- 刚压下去不到两拍，引擎可能还没接手：这一拍先等（保留 PressedId，
+            -- 下一拍重新判定，超过宽限期才拉黑）。
+            return
+        else
+            -- 引擎两拍都不接手 ⇒ 这只单位打不了这一类，拉黑换下一档。
+            if pressedKind ~= nil then
+                record.Rejected[pressedKind] = true
+            end
+            record.PressedId = nil
+            record.PressedKind = nil
+            record.PressFrame = nil
+        end
     end
+    -- 档位：只有炮车和舰船有特殊优先级，其余单位一律「就近目标」——
+    -- 候选集合已经剔掉建筑，所以就近只是「最近的一个能打的单位」。
+    local order = { "any" }
+    if isSiege then
+        -- 炮车原优先级：载具 ＞ 步兵。
+        order = { "tank", "infantry", "any" }
+    elseif isNaval then
+        -- 舰船：敌舰 ＞ 就近。不加这一档，最近的若是岸上载具/步兵，船就跑去打陆军了。
+        order = { "ship", "any" }
+    end
+    local target, kind = FindNoStructureBuffTarget(unit, sideIndex, order,
+        record.Rejected)
+    if target == nil then
+        return
+    end
+    record.PressedId = ObjectGetId(target)
+    record.PressedKind = kind
+    record.PressFrame = GetFrame()
+    ObjectSetAssignedTarget(unit, target)
+    ExecuteAction("NAMED_ATTACK_NAMED", unit, target)
+end
+
+function NoStructureBuffedUnitMICROCONTROL ()
+    if g_PrioritySiegeIdleTeam == nil or g_NoStructureBuffUnitIds == nil then
+        return
+    end
+    -- 陆军与舰船共用同一套：摘进 idle 队 → 刷索敌器（排除建筑）→ 每 3 帧由脚本压目标。
     for objectId, entry in g_NoStructureBuffUnitIds do
         local unit = GetObjectById(objectId)
         if unit == nil or not ObjectIsAlive(unit) then
             -- 引擎会复用对象 ID，登记不清理就会让新单位白拿免拆塔。
             g_NoStructureBuffUnitIds[objectId] = nil
+            g_NoStructureBuffAssign[objectId] = nil
         else
             local sideIndex = entry.SideIndex
             local idleTeamName = g_PrioritySiegeIdleTeam[sideIndex]
@@ -972,129 +1211,64 @@ function NoStructureBuffedUnitMICROCONTROL ()
                 idleTeamShortName = "teamPlyrCreeps"
             end
             local teamName = ObjectTeamName(unit)
+            -- 摘进 idle 队以后队名就认不出船了，所以以登记时记下的为准。
             local isNavalUnit = entry.IsNaval == true
                 or IsNavalTeamName(teamName)
-            local wasReassigned = teamName ~= idleTeamName
-                and teamName ~= idleTeamShortName
-            -- 舰船也必须摘进 idle 队：留在 SHIPATTACK 里就会被地编那记整队令带着去拆塔。
-            local needAdvance = false
-            if wasReassigned then
+            if teamName ~= idleTeamName and teamName ~= idleTeamShortName then
                 g_SetSideTeam(unit, idleTeamName)
-                needAdvance = true
-                if isNavalUnit then
-                    -- 与地编给主力海军下 TEAM_SET_STANCE 1 同理：idle 队的姿态不是进攻姿态。
-                    ExecuteAction("UNIT_SET_STANCE", unit, 1)
-                end
+                -- idle 队的姿态不是进攻姿态（附录 E.14）；推进全靠脚本压目标，必须补进攻姿态。
+                ExecuteAction("UNIT_SET_STANCE", unit, 1)
             end
-            -- 先全图扫最近的敌舰，有就停下开火；
-            -- 没有才继续往海军路点走，下一拍再扫一遍，
-            local navalEngaged = false
-            if isNavalUnit then
-                if entry.NextScanFrame == nil or frame >= entry.NextScanFrame then
-                    entry.NextScanFrame = frame
-                        + g_NoStructureBuffNavalScanIntervalFrames
-                    local target = ObjectGetTarget(unit)
-                    -- 已经在打就别抢（船也会自己打飞机），只有真没目标时才去找船。（船也会自己抦飞机），只有真没目标时才去找船。
-                    navalEngaged = target ~= nil and ObjectIsAlive(target)
-                        and ObjectTestTargetObjectWithFilter(unit, target,
-                            g_FilterNoStructureBuffNavalEnemy)
-                    if not navalEngaged then
-                        local nearest = FindNearestEnemyAnywhere(unit,
-                            g_FilterNoStructureBuffNavalShipEnemy)
-                        if nearest ~= nil then
-                            navalEngaged = true
-                            ObjectSetAssignedTarget(unit, nearest)
-                            ExecuteAction("NAMED_ATTACK_NAMED", unit, nearest)
-                            entry.LastX = nil
-                            entry.LastY = nil
-                        end
-                    end
-                else
-                    navalEngaged = ObjectGetTarget(unit) ~= nil
-                end
-            end
-            if isNavalUnit then
-                if navalEngaged then
-                    -- 有目标就不推进：再下一条走位令会把正在打的目标顶掉。
-                    needAdvance = false
-                elseif navalAdvanceDue then
-                    -- 没目标也只在「这一秒几乎没位移」时才补令：正在赶路就不打扰。
-                    local nx, ny = ObjectGetPosition(unit)
-                    local movedFar = false
-                    if entry.LastX ~= nil
-                        and (nx - entry.LastX) * (nx - entry.LastX)
-                            + (ny - entry.LastY) * (ny - entry.LastY) >= 40000 then
-                        movedFar = true
-                    end
-                    entry.LastX = nx
-                    entry.LastY = ny
-                    if not movedFar and ObjectGetTarget(unit) == nil then
-                        needAdvance = true
-                    end
-                end
-            end
-            -- 舰船必须指海军路点（PLANEREBORN8/7），指到陆上的 TD7/TD8 就会拐向岸边停住。
-            local waypointName = g_PrioritySiegeAttackWaypoint[sideIndex]
-            if isNavalUnit then
-                waypointName = g_NavalPriorityAttackWaypoint[sideIndex]
-                    or "PLANEREBORN8"
-            end
-            if needAdvance then
-                ExecuteAction("ATTACK_MOVE_NAMED_UNIT_TO", unit, waypointName)
-            end
-            -- 索敌器：陆军每拍刷（现成可用）；舰船只在下令那一拍刷，
-            -- 免得每 3 帧重设一次索敌/自动获取，把刚下发的推进令顶掉。
-            if needAdvance or not isNavalUnit
-                or entry.ChooserSet ~= true then
-                local targetChooserData = {
-                    CustomFilter = g_FilterNoStructureBuffEnemy,
-                    ReverseRangeCompare = false,
-                    PreferTargetInsideRange = true
+            -- 索敌器：每拍刷一次，建筑一律不进候选；炮车加回「载具＞步兵」的原优先级。
+            local targetChooserData = {
+                CustomFilter = g_FilterNoStructureBuffEnemy,
+                ReverseRangeCompare = false,
+                PreferTargetInsideRange = true
+            }
+            if entry.IsSiege == true and g_FilterPrioritySiegeEnemyTank ~= nil
+                and g_FilterPrioritySiegeEnemyInfantry ~= nil then
+                targetChooserData.CompareFilterList = {
+                    g_FilterPrioritySiegeEnemyTank,
+                    g_FilterPrioritySiegeEnemyInfantry
                 }
-                if isNavalUnit then
-                    -- 舰船只盯海上/空中的敌人：一旦把 INFANTRY / VEHICLE 这类陆上目标也放进来，
-                    -- 自动索敌会追着岸上的敌人开，船就被拽向岸边（实测的「强行调转方向」就是这个）。
-                    targetChooserData.CustomFilter = g_FilterNoStructureBuffNavalEnemy
-                    if g_FilterNavalPriorityEnemyShip ~= nil then
-                        targetChooserData.CompareFilterList = {
-                            g_FilterNavalPriorityEnemyShip
-                        }
-                    end
-                end
-                ObjectSetCustomTargetChooserData(unit, targetChooserData)
-                ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
-                entry.ChooserSet = true
+            elseif entry.IsNaval == true
+                and g_FilterNoStructureBuffNavalShipEnemy ~= nil then
+                -- 引擎自己索敌时也先看敌舰，和脚本压目标的档位保持一致。
+                targetChooserData.CompareFilterList = {
+                    g_FilterNoStructureBuffNavalShipEnemy
+                }
             end
-            -- 这里逐拍复核目标：建筑 / 塔守护神 / 技能召唤单位一律摘掉。
-            local vetoFilter = g_FilterNoStructureBuffEnemy
-            if isNavalUnit then
-                vetoFilter = g_FilterNoStructureBuffNavalEnemy
-            end
+            ObjectSetCustomTargetChooserData(unit, targetChooserData)
+            -- 逐拍复核目标：建筑 / 预设守护神 / 技能召唤单位 / 地编锚点基地车一律摘掉。
+            local vetoed = false
             local currentTarget = ObjectGetTarget(unit)
             if currentTarget ~= nil and ObjectIsAlive(currentTarget) then
-                local currentTargetId = ObjectGetId(currentTarget)
-                local targetAllowed = vetoFilter == nil
-                    or ObjectTestTargetObjectWithFilter(unit, currentTarget, vetoFilter)
-                if targetAllowed and g_IsPresetGuardianUnitId ~= nil
-                    and g_IsPresetGuardianUnitId(currentTargetId) then
-                    targetAllowed = false
-                end
-                if targetAllowed and IsSkillSummonedUnitId ~= nil
-                    and IsSkillSummonedUnitId(currentTargetId) then
+                local targetAllowed = ObjectTestTargetObjectWithFilter(unit,
+                    currentTarget, g_FilterNoStructureBuffEnemy)
+                if targetAllowed
+                    and IsNoStructureBuffForbiddenTarget(currentTarget) then
                     targetAllowed = false
                 end
                 if not targetAllowed then
                     ObjectSetAssignedTarget(unit, nil)
+                    ObjectSetTargetChooserNextAutoAcquireDelay(objectId,
+                        g_NoStructureBuffVetoAcquireDelayFrames)
+                    vetoed = true
                 end
             end
+            if not vetoed and ObjectGetTarget(unit) == nil then
+                -- 已经压着目标就别强制重新获取，否则会把自己压的目标顶掉。
+                ObjectSetTargetChooserNextAutoAcquireDelay(objectId, 0)
+            end
+            -- 每 3 帧一拍：没目标就按档位压一个（兼作赶路令），有目标就不打扰。
+            UpdateNoStructureBuffTarget(unit, objectId, sideIndex,
+                entry.IsSiege == true, isNavalUnit)
         end
     end
 end
 
 -- 轰炸机全图索敌优先攻敌方陆地炮车。
 -- 名单收四种轰炸机：维护者（含超时空信标形态）、伊尔攻击机、金乌轰炸机、樱花回天雷（含陆基/船坞形态）。
--- 世纪轰炸机刻意不收：它投弹必须贴脸，追着炮车飞过去等于送死，这是设定。
--- 鬼樱特攻机（JapanSakuraAttackRocket，秒速五厘米的升级形态）也不收：它更适合炸前排。
 g_BomberPriorityUnitTypes = {
     "AlliedAntiGroundAircraft",             -- 维护者轰炸机
     "AlliedChronoBeacon_Vindicator",        -- 维护者轰炸机（超时空信标形态）
@@ -1156,10 +1330,8 @@ function BomberPrioritySiegeTargetChooserBorn(createdObjId, createdObjInstanceId
 end
 
 -- 引擎索敌扫描半径未必够到全图，所以再用一次“整侧只查一遍全图”的搜索把轰炸机拽过去。
--- 扫描周期 15 帧（0.5 秒）：改成「脚本统一分配目标」之后，分配结果在目标被清光 / 新炮车进场
--- 之前一直是稳定的，每 3 帧重扫一遍纯属白烧全图搜索（13 个模板 × 两侧 × 每秒 20 次）。
--- 旧实现的高频重扫是为了「目标丢了赶紧补令」，现在补令由分配结果驱动，慢一拍没有副作用。
-g_BomberPrioritySiegeScanIntervalFrames = 15
+-- 扫描周期 3 帧：与 TGMICRO 的节拍，
+g_BomberPrioritySiegeScanIntervalFrames = 3
 g_BomberPrioritySiegeNextScanFrame = g_BomberPrioritySiegeNextScanFrame or 0
 g_BomberPrioritySiegeTargetByUnitId = g_BomberPrioritySiegeTargetByUnitId or {}
 g_BomberAmmoSlotByUnitId = g_BomberAmmoSlotByUnitId or {}
@@ -1395,7 +1567,7 @@ function BomberPrioritySiegeWatchdog()
     end
 end
 
--- 每 15 帧（0.5 秒）整侧扫一遍轰炸机与炮车，然后统一分配目标。
+-- 每 3 帧（TGMICRO 周期，与空军其它微操同节拍）整侧扫一遍轰炸机与炮车，然后统一分配目标。
 function BomberPrioritySiegeMICROCONTROL()
     if g_FilterBomberPrioritySiegeVehicle == nil or g_FilterBomberPrioritySelf == nil then
         return
