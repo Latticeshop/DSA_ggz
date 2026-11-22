@@ -338,7 +338,7 @@ function HextechRune:GetRankTechRows(playerIndex)
     return self.RankTechRows[playerIndex]
 end
 
--- 读协议点：引擎没有 getter，只能穷举比较（与日冕例图 getProtocolPointPlayer 同一写法）。
+-- 读协议点：引擎没有 getter，只能穷举比较。
 -- 读到 20 点还比不出来就返回 -1，调用方跳过本次加点，宁可不给也不乱给。
 function HextechRune:GetPlayerPowerPoints(playerName)
     local previous = SetWorldBuilderThisPlayer(1)

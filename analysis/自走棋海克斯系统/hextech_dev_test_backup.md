@@ -1,6 +1,15 @@
 # 海克斯符文：开局测试三选一（开发用，发版前删除）
 
-> **当前状态（2026-11，测试态——这段代码眼下就活在源码里）**：`testRuneIds` =
+> **当前状态（2026-11-18，发版态——这段代码已从源码里删净，本文保留以便下次复测）**：
+> 最后一轮测试内容是「虚幻武器 / 登神 / 究极生物」，已按 §3 清理（payload：
+> `01_rune_pool.lua` 60352 B、`02_event.lua` 56991 B）。
+>
+> 被清掉那一轮（A.63）的 `testRuneIds` 是
+> `{ "prismatic_illusory_weapon", "gold_ascension", "prismatic_ultimate_creature" }`，
+> `testUnitTypeByIndex` 留空 —— 登神/究极生物的目标单位由 `PickBuyTwoGetOneTarget` /
+> `PickUltimateCreatureTarget` 自己抽，不需要指派。
+>
+> 以下为历史记录（上一轮的 `testRuneIds`）：`testRuneIds` =
 > `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`，
 > `OpeningTestRounds = 1`。本轮验的是白银符文「MCV」（落点已从不动的出生点改成**自家半场那两座
 > 前哨站点位**附近随机，见《地图注释说明文档》附录 A.51：四座前哨站现在由 `PureDraw/06_init_mcv.lua`
@@ -145,7 +154,7 @@ end
 - `testTargetOverrides`：固定「指定单位型」符文（登神 / 买二送一 / 究极生物）的目标单位，格式 `符文Id = "单位模板名"`。
 - 第 4 个参数 `true`：测试局跳过阵营判定，任何座席都能拿到该符文。
 
-> **当前名单（2026-11：测「银·MCV」的新落点 + 「银·工厂维护」的 K 键技能）**：
+> **历史名单（2026-11 上一轮，已作废）**：
 > `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }` ——
 > 银·MCV / 彩·虚幻武器 / 银·工厂维护（2026-11 按用户要求把 MCV 与虚幻武器换了位置），
 > `testUnitTypeByIndex` 与 `testTargetOverrides` 都留空（三张都没有「指定兵种」口径）。
@@ -191,7 +200,8 @@ end
 
 1. 删掉上面四处代码（开关 `EnableOpeningRealTest` / `OpeningTestRounds` / `OpeningTestTriggered`、
    `ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）。✔ 已删净
-   （删净的判据：`01_rune_pool.lua` 去注释 51144 B、`02_event.lua` 去注释 54761 B，与上一版发版态一致）
+   （2026-11-18 这轮删净的判据：`01_rune_pool.lua` 去注释 **60352 B**、`02_event.lua` 去注释 **56991 B**；
+   数字与上一版发版态不同，是因为 A.63 往这两个文件里加过登神/究极生物相关代码，不是清理漏删）
 2. 删掉两类调试日志：鸡汤来咯的 `HextechRune.IrradiateDebug` / `IrradiateLog`（含 8 处调用）、
    电脑补兵的 `AICOMP.Debug` / `AICOMP.Log`（含 3 处调用与只为日志服务的 `AICOMP.BandNames` /
    `WasPoolFallback` / `PoolFallback`）。✔ 已删

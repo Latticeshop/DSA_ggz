@@ -550,7 +550,7 @@ function AICOMP.BuildFactionPool(faction, tier, band)
     return AICOMP.CollectFactionPool(faction, tier, band, true)
 end
 
--- 内测单位：日冕单位信息汇总里查不到中文名的模板，属于还没发布的内容，不该进电脑的卡池。
+-- 内测单位：查不到中文名的模板，属于还没发布的内容，不该进电脑的卡池。
 -- （见附录 D.13）。
 g_AICOMPBetaOnlyUnitTypes = {
     AlliedAirForceDispatchVehicle = true,

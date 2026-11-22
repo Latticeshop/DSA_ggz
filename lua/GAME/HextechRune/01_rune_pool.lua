@@ -1577,17 +1577,3 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
 end
 
 -- 符文条目与互斥判定留在这里，效果层不再往这个节点里加。
-
--- 按 Id 取符文模板：开局测试脚本（02_event.lua 的 ShowOpeningTestEvent）按 Id 直接指定符文用。
-function HextechRune:FindRuneById(runeId)
-    if runeId == nil or self.RunePool == nil then
-        return nil
-    end
-    for i = 1, getn(self.RunePool), 1 do
-        if self.RunePool[i].Id == runeId then
-            return self.RunePool[i]
-        end
-    end
-    return nil
-end
-
