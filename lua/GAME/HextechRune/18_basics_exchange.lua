@@ -471,7 +471,7 @@ HextechRune.UnitReplacementRunes = {
     { RuneId = "silver_dual_purpose", SourceType = "SovietAntiAirShip",
         ReplacementType = "VUAntiAirVehicleTech1" },
     { RuneId = "silver_dragon_breathe", SourceType = "CelestialAntiInfantryVehicle_B",
-        ReplacementType = "CelestialWaveriderIFV_DragonBreathe" },
+        ReplacementType = "CelestialWaveriderIFV_Mortar" },
     { RuneId = "silver_advanced_artillery", SourceType = "AlliedGunshipAircraft",
         ReplacementType = "AlliedAC130GunshipAircraft" },
     { RuneId = "silver_banzai_charge", SourceType = "JapanAntiInfantryInfantry",
@@ -546,7 +546,7 @@ end
 --     return self.PlayerOwnedRuneIds[playerIndex]["silver_banzai_charge"] == true
 -- end
 
--- ===== 金·烧福瑞 / 生异形 / 钓鱼佬 / 樱落：回合开始按本方份数比例替换敌方对应兵种 =====
+-- ===== 烧福瑞 / 生异形 / 钓鱼佬 / 火箭飞行兵：回合开始按本方份数比例替换敌方对应兵种 =====
 HextechRune.BurnFurryRuneId = "gold_burn_furry"
 HextechRune.SpawnAlienRuneId = "gold_spawn_alien"
 HextechRune.AnglerRuneId = "gold_angler"
@@ -559,7 +559,8 @@ HextechRune.BurnFurryAnimalTypes = { "AlliedScoutInfantry", "SovietScoutInfantry
 -- 生异形：敌方载具 → 恐怖机器人；钓鱼佬：敌方海军 → 海翼。
 HextechRune.SpawnAlienUnitTypes = { "SovietScoutVehicle" }
 HextechRune.AnglerUnitTypes = { "JapanAntiAirShip" }
-HextechRune.SitTightUnitTypes = { "JapanInterceptorAircraft" }
+-- 火箭飞行兵：敌方空军 → 火箭天使 JapanAntiVehicleInfantryTech3
+HextechRune.SitTightUnitTypes = { "JapanAntiVehicleInfantryTech3" }
 -- 双形态单位按出生点归兵种：天狗/VX/心神/火箭天使算空军，不算载具/步兵。
 -- 名单统一取自 BasicVar 的目标群体登记表；本节点早于它加载，所以过滤器懒建。
 HextechRune.ConversionDualAirFilter = nil
@@ -947,7 +948,7 @@ function HextechRune:ApplyBurnFurryPulse(round)
     end
 end
 
--- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同份数口径，只换敌方兵种与替换单位。
+-- 生异形 / 钓鱼佬 / 火箭飞行兵：与烧福瑞同份数口径，只换敌方兵种与替换单位。
 -- 兵种被禁时该兵种不会出兵，对应的转化也不结算。
 function HextechRune:ApplyConversionRuneBasePulse(runeId, unitType, spawnTypes,
     spawnPrefix, appliedRound, round, filter, extraFilter)

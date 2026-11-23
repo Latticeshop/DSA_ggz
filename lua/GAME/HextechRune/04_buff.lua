@@ -1315,7 +1315,7 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     extra_rune_option = true,
     -- 虚幻武器：选卡时记下一对「底座 + 炮台」，炮台由独立扫描生成，不逐单位挂载。
     illusory_weapon = true,
-    -- 烧福瑞 / 生异形 / 钓鱼佬 / 樱落：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
+    -- 烧福瑞 / 生异形 / 钓鱼佬 / 火箭飞行兵：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
     burn_furry = true, spawn_alien = true, angler = true, sit_tight = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。
     soul_interlock = true,

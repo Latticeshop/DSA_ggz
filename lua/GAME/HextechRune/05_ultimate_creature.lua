@@ -552,3 +552,158 @@ function HextechRune:ApplyUltimateCreatures(assignments)
         end
     end
 end
+
+-- ===== 战斗要塞（银）：卡池里每 4 辆守护者坦克合成 1 座特洛伊突击要塞 =====
+HextechRune.BattleFortressRune = {
+    SourceType = "AlliedAntiVehicleVehicleTech1",
+    ResultType = "AlliedBattleFortress",
+    PerGroup = 4,
+}
+
+function HextechRune:HasBattleFortressRune(playerIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    for i = 1, getn(owned), 1 do
+        if owned[i].Effect == "battle_fortress_merge" then
+            return true
+        end
+    end
+    return false
+end
+
+-- 卡池里这种单位现在有几辆。优先用回收侧的官方取数（超级要塞这类走独立计数槽），
+-- 取不到再退回 UNITCOUNT 直读。
+function HextechRune:CountBattleFortressSource(playerIndex, unitType, unitIndex)
+    local unitInfo = self:FindAscensionUnitInfo(playerIndex, unitType)
+    if unitInfo ~= nil and GetRecycleUnitCount ~= nil then
+        return tonumber(GetRecycleUnitCount(playerIndex, unitInfo)) or 0, unitInfo
+    end
+    if UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil or unitIndex == nil then
+        return 0, nil
+    end
+    return tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0, nil
+end
+
+-- 从卡池扣掉 amount 辆，返回真正扣掉的辆数（口径与吸星大法一致：能走
+-- RemoveRecycleUnitCount 就走它，箱子标记跟着一起扣）。
+function HextechRune:RemoveBattleFortressSource(playerIndex, unitType, unitIndex, amount)
+    local _, unitInfo = self:CountBattleFortressSource(playerIndex, unitType, unitIndex)
+    local removed = 0
+    for i = 1, amount, 1 do
+        if unitInfo ~= nil and RemoveRecycleUnitCount ~= nil then
+            local done = RemoveRecycleUnitCount(playerIndex, unitInfo, 1)
+            if (tonumber(done) or 0) <= 0 then
+                break
+            end
+        else
+            local count = 0
+            if UNITCOUNT ~= nil and UNITCOUNT[playerIndex] ~= nil
+                and unitIndex ~= nil then
+                count = tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0
+            end
+            if count <= 0 then
+                break
+            end
+            UNITCOUNT[playerIndex][unitIndex] = count - 1
+            if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[playerIndex] ~= nil then
+                ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] - 1
+            end
+        end
+        if CRATEUNITCOUNT ~= nil and CRATEUNITCOUNT[playerIndex] ~= nil
+            and unitIndex ~= nil then
+            local crateCount = tonumber(CRATEUNITCOUNT[playerIndex][unitIndex]) or 0
+            if crateCount > 0 then
+                CRATEUNITCOUNT[playerIndex][unitIndex] = crateCount - 1
+            end
+        end
+        removed = removed + 1
+    end
+    return removed
+end
+
+-- 往卡池加要塞。合成本身让总数变少（-4+1），所以不复查单位上限。
+function HextechRune:AddBattleFortressResult(playerIndex, unitIndex, amount)
+    if UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil or unitIndex == nil then
+        return false
+    end
+    UNITCOUNT[playerIndex][unitIndex] =
+        (tonumber(UNITCOUNT[playerIndex][unitIndex]) or 0) + amount
+    if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[playerIndex] ~= nil then
+        ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + amount
+    end
+    if CheckPlayerYaoguangPoolCap ~= nil then
+        CheckPlayerYaoguangPoolCap(playerIndex)
+    end
+    return true
+end
+
+-- 把该玩家卡池里攒够的 4 辆守护者坦克逐组合成，返回本次合成的座数。
+function HextechRune:TryMergeBattleFortress(playerIndex)
+    if playerIndex == nil or not self:HasBattleFortressRune(playerIndex) then
+        return 0
+    end
+    local config = self.BattleFortressRune
+    local sourceIndex = self:LookupUnitPoolIndex(config.SourceType)
+    local resultIndex = self:LookupUnitPoolIndex(config.ResultType)
+    if resultIndex == nil then
+        return 0
+    end
+    local perGroup = config.PerGroup
+    local merged = 0
+    -- 上限 64 次防死循环：池子里最多 4×64 = 256 辆，远超任何一局的真实量。
+    while merged < 64 do
+        local count = self:CountBattleFortressSource(playerIndex, config.SourceType,
+            sourceIndex)
+        if count < perGroup then
+            break
+        end
+        if self:RemoveBattleFortressSource(playerIndex, config.SourceType,
+            sourceIndex, perGroup) < perGroup then
+            break
+        end
+        if not self:AddBattleFortressResult(playerIndex, resultIndex, 1) then
+            break
+        end
+        merged = merged + 1
+    end
+    return merged
+end
+
+function HextechRune:TryMergeBattleFortressAll()
+    for playerIndex = 1, 8, 1 do
+        self:TryMergeBattleFortress(playerIndex)
+    end
+end
+
+-- 拿到符文：先把卡池里已有的 4 的倍数合成掉（余数留在池里继续累计）。
+function HextechRune:OnBattleFortressChosen(playerIndex)
+    self:EnsureBattleFortressScheduler()
+    self:TryMergeBattleFortress(playerIndex)
+end
+
+-- 入池回调（UNITCOUNTERINI_0.lua 的 unitgetcountanddelet 每收进一辆车调一次）：
+-- 只关心守护者坦克那一格，其余立刻返回。
+function HextechRune:OnPoolUnitCollected(playerIndex, unitIndex)
+    local sourceIndex = self:LookupUnitPoolIndex(self.BattleFortressRune.SourceType)
+    if sourceIndex == nil or unitIndex ~= sourceIndex then
+        return
+    end
+    self:TryMergeBattleFortress(playerIndex)
+end
+
+-- 兜底扫描：每 10 秒一次（没持有这张符文时每个人都是一次空转）。
+function HextechRune:EnsureBattleFortressScheduler()
+    if self.BattleFortressScanStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    self.BattleFortressScanStarted = true
+    SchedulerModule.call_every_x_frame(function()
+        HextechRune:TryMergeBattleFortressAll()
+    end, 15 * 10, nil)
+end
+
+-- 载入就挂上兜底扫描（没人持有这张符文时只是一次空转；继承来的符文也靠它兜住）。
+HextechRune:EnsureBattleFortressScheduler()

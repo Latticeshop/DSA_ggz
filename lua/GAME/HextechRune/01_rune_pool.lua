@@ -58,7 +58,14 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.dragon_breathe.desc",
         Effect = "upgrade_waverider_dragon_breathe", RequiredFaction = 4,
         RequiresType = "vehicle",
-        Icon = "CelestialHeavyLingboIFV" },
+        Icon = "Button_CelestialWaveriderIFV_Mortar" },
+    -- 战斗要塞（银）：卡池里每攒够 4 辆守护者坦克，自动合成 1 座特洛伊突击要塞。
+    { Id = "silver_battle_fortress", Rarity = 3,
+        NameKey = "hextech.rune.battle_fortress.name",
+        DescKey = "hextech.rune.battle_fortress.desc",
+        Effect = "battle_fortress_merge", RequiredFaction = 1,
+        RequiresType = "vehicle",
+        Icon = "Button_AlliedBattleFortress" },
     { Id = "silver_advanced_artillery", Rarity = 3,
         NameKey = "hextech.rune.advanced_artillery.name",
         DescKey = "hextech.rune.advanced_artillery.desc",
@@ -185,12 +192,11 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.angler.desc",
         Effect = "angler", RequiresType = "navy",
         Icon = "Button_JapanAntiShipAircraft_air" },
-    -- 樱落：同款回合转化，目标换成敌方空军（禁空军时整张下架）。
     { Id = "prismatic_sit_tight", Rarity = 1,
         NameKey = "hextech.rune.sit_tight.name",
         DescKey = "hextech.rune.sit_tight.desc",
         Effect = "sit_tight", RequiresType = "aircraft",
-        Icon = "Button_JapanInterceptorAircraft_sea" },
+        Icon = "Button_JapanAntiVehicleInfantryTech3" },
     { Id = "gold_cloudbreaker", Rarity = 2, NameKey = "hextech.rune.cloudbreaker.name",
         DescKey = "hextech.rune.cloudbreaker.desc", Effect = "grant_yaoguang",
         -- 摇光是 UNITLIST 槽 103（飞机段），按纯空军算：禁空军时这张符文不入池。
@@ -497,11 +503,13 @@ HextechRune.NonRepeatableRuneIds = {
     silver_easy_does_it = true,
     -- 工厂维护：技能本身可反复用，第二份只是同一套 K 键技能，没有额外作用。
     silver_factory_maintenance = true,
+    -- 战斗要塞：合兵规则只有一套，第二份不再提供任何额外合成，故唯一。
+    silver_battle_fortress = true,
     -- 元神互锁：同步组只有一组，第二份没有额外作用，故唯一。
     gold_soul_interlock = true,
     -- 烧福瑞：队友各持一份按 25/50/75% 叠加，同一名玩家第二份不再加档。
     gold_burn_furry = true,
-    -- 生异形 / 钓鱼佬 / 樱落：与烧福瑞同口径，队友各持一份按 25/50/75% 叠加，第二份不再加档。
+    -- 生异形 / 钓鱼佬 / 火箭飞行兵（原樱落）：与烧福瑞同口径，队友各持一份按 25/50/75% 叠加，第二份不再加档。
     gold_spawn_alien = true,
     gold_angler = true,
     prismatic_sit_tight = true,
@@ -1549,6 +1557,11 @@ function HextechRune:AddOwnedRune(playerIndex, rune, slotIndex)
     tinsert(self.PlayerOwnedRunes[playerIndex], rune)
     tinsert(self.PlayerSlotOwnedRunes[slotIndex], rune)
     self.PlayerSlotOwnedRuneIds[slotIndex][ownershipId] = true
+    -- 战斗要塞：拿到这张就先把卡池里已有的 4 的倍数合成掉（余数保留），
+    -- 之后由入池回调继续累计（实现见 05_ultimate_creature.lua 末尾）。
+    if rune.Effect == "battle_fortress_merge" and self.OnBattleFortressChosen ~= nil then
+        self:OnBattleFortressChosen(playerIndex)
+    end
     return true
 end
 
@@ -1599,3 +1612,14 @@ function HextechRune:MarkRoundSlot(playerIndex, slotName, unit)
 end
 
 -- 符文条目与互斥判定留在这里，效果层不再往这个节点里加。
+
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池（发版前与 02_event.lua 的
+-- ShowOpeningTestEvent 一并删除，见 analysis/自走棋海克斯系统/hextech_dev_test_backup.md）。
+function HextechRune:FindRuneById(runeId)
+    for i = 1, getn(self.RunePool), 1 do
+        if self.RunePool[i].Id == runeId then
+            return self.RunePool[i]
+        end
+    end
+    return nil
+end

@@ -1,27 +1,38 @@
 # 海克斯符文：开局测试三选一（开发用，发版前删除）
 
-> **当前状态（2026-11-18，发版态——这段代码已从源码里删净，本文保留以便下次复测）**：
-> 最后一轮测试内容是「虚幻武器 / 登神 / 究极生物」，已按 §3 清理（payload：
-> `01_rune_pool.lua` 60352 B、`02_event.lua` 56991 B）。
+> **当前状态（2026-11-20，测试态——这段代码已经贴回源码，正在用）**：
+> 本轮测试内容是「银·榴弹凌波 / 银·战斗要塞 / 彩·火箭飞行兵」：
+> `testRuneIds = { "silver_dragon_breathe", "silver_battle_fortress", "prismatic_sit_tight" }`、
+> `testUnitTypeByIndex` 留空（三张卡都不需要兵种）、`OpeningTestRounds = 1`。
 >
-> 被清掉那一轮（A.63）的 `testRuneIds` 是
+> - **榴弹凌波**（原「龙息凌波」改名）：选后卡池里全部凌波护卫战车
+>   `CelestialAntiInfantryVehicle_B` 换成凌波火力支援战车 `CelestialWaveriderIFV_Mortar`，下回合出兵应
+>   直接出火力支援战车（图标为 `Button_CelestialWaveriderIFV_Mortar`）。
+> - **战斗要塞**：新白银符文，卡池里每 4 辆守护者坦克 `AlliedAntiVehicleVehicleTech1` 合成 1 座
+>   特洛伊突击要塞 `AlliedBattleFortress`，余数保留；测试时先攒几辆坦克再选牌，应当**当场**把已有的
+>   4 的倍数换成要塞（**静默合成，不播报**，看卡池数量变化即可）。
+> - **火箭飞行兵**（原「樱落」改名）：棱彩卡，回合开始把敌方 25/50/75/100％ 的空军换成火箭天使
+>   JapanAntiVehicleInfantryTech3（图标改为火箭天使的按钮图，见 A.72）。三格都是「选完当回合就能
+>   看出变化」的卡，不再留 MCV 对照。
+>
+> 实现位置与判定口径见《地图注释说明文档》附录 **A.71**（榴弹凌波 / 战斗要塞）与 **A.72**（火箭飞行兵）；
+> §3 的四段代码这次都在源码里
+> （`FindRuneById` 在 `01_rune_pool.lua`，其余三段在 `02_event.lua`）。
+>
+> 以下为历史记录（上一轮的 `testRuneIds`）：`testRuneIds` =
+> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`，
+> `OpeningTestRounds = 1`。那一轮验的是白银符文「MCV」（落点已从不动的出生点改成**自家半场那两座
+> 前哨站点位**附近随机，见《地图注释说明文档》附录 A.51：四座前哨站现在由 `PureDraw/06_init_mcv.lua`
+> 开局按 waypoint `outpost71/72/81/82` 生成、归玩家、挂无敌，落点直接读点位坐标）与「工厂维护」
+> （K 键：立刻拿钱 + 锁住全部建造栏 90 秒，到点解锁并重新弹出 K 键提示）。第一格留着上一轮的虚幻武器。
+> 更早一轮（A.63）的 `testRuneIds` 是
 > `{ "prismatic_illusory_weapon", "gold_ascension", "prismatic_ultimate_creature" }`，
 > `testUnitTypeByIndex` 留空 —— 登神/究极生物的目标单位由 `PickBuyTwoGetOneTarget` /
 > `PickUltimateCreatureTarget` 自己抽，不需要指派。
 >
-> 以下为历史记录（上一轮的 `testRuneIds`）：`testRuneIds` =
-> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`，
-> `OpeningTestRounds = 1`。本轮验的是白银符文「MCV」（落点已从不动的出生点改成**自家半场那两座
-> 前哨站点位**附近随机，见《地图注释说明文档》附录 A.51：四座前哨站现在由 `PureDraw/06_init_mcv.lua`
-> 开局按 waypoint `outpost71/72/81/82` 生成、归玩家、挂无敌，落点直接读点位坐标）与「工厂维护」
-> （K 键：立刻拿钱 + 锁住全部建造栏 90 秒，到点解锁并重新弹出 K 键提示）。选 MCV 那张后应当拿到一台
-> **自己还没有的阵营**的基地车、落在自家半场前哨站附近并挂 15 秒文本框；按 K 应立刻加钱、全部生产
-> 按钮变灰、90 秒整点自动解锁。第一格留着上一轮的虚幻武器。
->
 > **2026-11 另有一处实测修复**：箱子被扔进中央战场的惩罚落点曾报 `table index is nil` ——
 > Lua 4.0 里 `表[nil]` 会直接抛错，而这条路径是**不带参数**调用落点函数的（`sideName` 为 nil），
 > 把「阵营名 → 半场号」写成查表就当场炸；现已改成 `PureDrawOutpostSideIndex(sideName)` 函数式判定。
-> ⚠ 上一轮（2026-10-31 银·MCV 收工）记录的「已删净、发版态」不再代表当前工作区。
 
 发版前需要复测某几张符文时，按本文改 §1 的 `testRuneIds` 即可，改完跑 `python analysis/tools/sync_scriptsdata.py` 同步；
 彻底清理则按 §3 把四段代码删掉。
@@ -47,12 +58,13 @@ HextechRune.OpeningTestTriggered = {}
 
 ```lua
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
--- 本轮测「银·MCV」（落点已改成自家半场的前哨站点位）+「银·工厂维护」（按 K 拿钱并锁建造栏 90 秒）：
+-- 本轮测「银·榴弹凌波」（凌波护卫战车→凌波火力支援战车）+「银·战斗要塞」（卡池里 4 辆守护者坦克
+-- 合成 1 座特洛伊突击要塞）+「彩·火箭飞行兵」（敌方空军→火箭天使）：
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_mcv",
-        "prismatic_illusory_weapon",
-        "silver_factory_maintenance",
+        "silver_dragon_breathe",
+        "silver_battle_fortress",
+        "prismatic_sit_tight",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
@@ -135,8 +147,8 @@ end
 - `FindRuneById`（放在 `lua/GAME/HextechRune/01_rune_pool.lua` 末尾，`ShowOpeningTestEvent` 依赖它按 Id 直取模板）：
 
 ```lua
--- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池（发版前与测试事件一并删除）。
--- 只服务于第 1 回合的开局自定义三选一（见 02_event.lua 的 ShowOpeningTestEvent）。
+-- 开发测试用：按 Id 直接取符文池里的原始模板，绕过筛池（发版前与 02_event.lua 的
+-- ShowOpeningTestEvent 一并删除，见 analysis/自走棋海克斯系统/hextech_dev_test_backup.md）。
 function HextechRune:FindRuneById(runeId)
     for i = 1, getn(self.RunePool), 1 do
         if self.RunePool[i].Id == runeId then
@@ -148,6 +160,11 @@ end
 ```
 
 ## 2. 换测试内容只改这里
+
+> **当前名单（2026-11-20 本轮）**：`silver_dragon_breathe`（榴弹凌波）/ `silver_battle_fortress`（战斗要塞）/
+> `prismatic_sit_tight`（火箭飞行兵）。要验的：榴弹凌波把卡池里的凌波护卫战车换成凌波火力支援战车；战斗要塞在
+> **选牌当帧**把卡池里 4 的倍数辆守护者坦克换成特洛伊突击要塞（余数保留）、之后每凑满 4 辆再合 1 座，
+> 合成是**静默**的（2026-11-20 实测后按用户要求删掉了公共板播报），且第二份符文不会再给额外效果（`NonRepeatableRuneIds`）。
 
 - `testRuneIds`：要测的三张符文 Id。测试事件按 Id 直取符文、**不过筛池**，所以互斥/禁模式限制在这里不生效；点选时 `HandleOptionClick` 仍有兜底拦截。
 - `testUnitTypeByIndex`：兵种卡的兵种按格子顺序指定；不指定的兵种卡在可用兵种里随机。
@@ -199,9 +216,9 @@ end
 ## 3. 发版前清理（2026-10-31 已执行两次，最后一次为 MCV 收工）
 
 1. 删掉上面四处代码（开关 `EnableOpeningRealTest` / `OpeningTestRounds` / `OpeningTestTriggered`、
-   `ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）。✔ 已删净
-   （2026-11-18 这轮删净的判据：`01_rune_pool.lua` 去注释 **60352 B**、`02_event.lua` 去注释 **56991 B**；
-   数字与上一版发版态不同，是因为 A.63 往这两个文件里加过登神/究极生物相关代码，不是清理漏删）
+   `ShowOpeningTestEvent`、`OnRoundBegin` 分支、`FindRuneById`）。**2026-11-20 这轮又贴回来了（测试态），
+   发版前要再删一次**；上一次删净的判据是 `01_rune_pool.lua` 去注释 **60352 B**、`02_event.lua` 去注释
+   **56991 B**（当前值见 `sync_scriptsdata.py` 输出，贴回后自然会更大）
 2. 删掉两类调试日志：鸡汤来咯的 `HextechRune.IrradiateDebug` / `IrradiateLog`（含 8 处调用）、
    电脑补兵的 `AICOMP.Debug` / `AICOMP.Log`（含 3 处调用与只为日志服务的 `AICOMP.BandNames` /
    `WasPoolFallback` / `PoolFallback`）。✔ 已删

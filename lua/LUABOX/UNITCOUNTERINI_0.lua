@@ -749,6 +749,11 @@ function unitgetcountanddelet (playindex)
                     if HextechRune ~= nil and HextechRune.OnPlayerUnitCollected ~= nil then
                         HextechRune:OnPlayerUnitCollected(playindex, actualUnitIndex)
                     end
+                    -- 海克斯“战斗要塞”：这辆车刚进池，攒够 4 辆守护者坦克就当场合成
+                    -- 1 座特洛伊突击要塞（实现在 05_ultimate_creature.lua 末尾，未持有时立刻返回）。
+                    if HextechRune ~= nil and HextechRune.OnPoolUnitCollected ~= nil then
+                        HextechRune:OnPoolUnitCollected(playindex, actualUnitIndex)
+                    end
 
                 end
                 if tar ~= nil then
