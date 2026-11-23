@@ -938,8 +938,7 @@ function HextechRune:BuildSideUnitTypeLookup(sideIndex)
     return result
 end
 
--- 替换型符文的回收替换表（UnitReplacementRunes）与 ResolveCollectedUnitIndex 已于 2026-10-19 外移到
--- 18_basics_exchange.lua（本 payload 只余 106 B）；IsKamikazeGiftWarrior 随「买二送一板载」停用已注释留档。
+-- 替换型符文的回收替换表（UnitReplacementRunes）与 ResolveCollectedUnitIndex 已外移到 18_basics_exchange.lua。
 
 function HextechRune:IsUnitInRuneType(unit, rune, typeLookup)
     if rune.UnitType == nil or typeLookup[rune.UnitType] == nil then

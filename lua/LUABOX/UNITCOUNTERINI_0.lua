@@ -647,7 +647,11 @@ function unitgetcountanddelet (playindex)
         return
     end
     local drawnUnitCounts = {}
-    -- 摇光池复查只跟「本次扫描往池子里收了摇光」绑定：先收兵、再检查，
+    -- 单位上限模式：记下这一批收进池子的槽位（同一种单位会有重复项），
+    -- 收完兵若超上限就交给 TrimPlayerUnitPoolToCap 在这一批里随机回收。
+    local unitCapBatch = {}
+    local unitCapBatchCount = 0
+    -- 摇光池复查只跟「本次扫描往池子里放了摇光」绑定：先收兵、再检查，
     local yaoguangPoolBefore = nil
     if GetPlayerPoolYaoguangCount ~= nil then
         yaoguangPoolBefore = GetPlayerPoolYaoguangCount(playindex)
@@ -729,6 +733,8 @@ function unitgetcountanddelet (playindex)
                     if not skipCount then
                         ANYUNITCOUNT[playindex] = ANYUNITCOUNT[playindex] + 1
                         UNITCOUNT[playindex][actualUnitIndex] = UNITCOUNT[playindex][actualUnitIndex] + 1
+                        unitCapBatchCount = unitCapBatchCount + 1
+                        unitCapBatch[unitCapBatchCount] = actualUnitIndex
                     end
                     -- 摇光限造 3 个只统计玩家实际生产的单位。
                     -- 海克斯/箱子赠送没有生产者，不增加此独立计数。
@@ -769,6 +775,10 @@ function unitgetcountanddelet (playindex)
         if yaoguangPoolAfter > yaoguangPoolBefore or overCap then
             CheckPlayerYaoguangPoolCap(playindex)
         end
+    end
+    -- 单位上限：收完兵再压一次。摇光那种带独立限造的已先回收，这里只兜总量。
+    if TrimPlayerUnitPoolToCap ~= nil and unitCapBatchCount > 0 then
+        TrimPlayerUnitPoolToCap(playindex, unitCapBatch, unitCapBatchCount)
     end
     if g_LuckyCrateMode == 1 then
         for unitindex = 1, unitcountmax, 1 do

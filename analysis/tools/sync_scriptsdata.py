@@ -62,6 +62,9 @@ TARGETS = [  # fmt: skip
     # ('lua/GAME/UtilsLuckyCrate.lua', ['-- 启用箱子模式', 'function NoCreatesInCenter']),  # 已拆分，改由 sync_utils_lucky_crate.py 拼接同步
     ('lua/LUABOX/BUTTON/BtnChoiceDialogEventFunc.lua', ['devil_max = 200', 'function BtnChoiceDialogEventFunc_ShowGameModeDialog']),
     ('lua/LUABOX/UNITCOUNTERINI_0.lua', ['FilterLIST = {}', 'function unitgetcountanddelet']),
+    ('lua/LUABOX/boardini_0.lua', ['PLYNAME[8]', 'exScoreBoardSetText', 'boardact']),
+    # 回合开始清地雷所在的回合脚本节点，同理没登记；needle 取地雷过滤器和回合回调两个锚点。
+    ('lua/huihe/spawn_0.lua', ['rhinoMineFilter', 'CallOnEveryRoundBegin']),
     ('lua/LUABOX/moneysys/MONEYINI_3.lua', ['LIMITPOWERC = 4', 'function GetPlayerYaoguangCount', 'function LIMITYAOGUANG']),
     # MONEYINI_1（自由贸易结算）原先同样漏登记：节点一直在 JSON 里、内容与源逐字一致，
     # 但改它不会被同步。2026-10-24 把「只认盟军电厂」改成「按持币人自己的全部电厂」时发现。
@@ -174,7 +177,9 @@ TARGETS = [  # fmt: skip
     # 必须先登记，否则改了不会写回 ScriptsData.json。
     ('lua/LUABOX/SpawnGigaFortress.lua', ['EnsureGigaFortressAirForm',
         'g_GigaFortressBigHeadSpawnChance']),
-    ('lua/text/Update_0.lua', ['g_RuleText = Localization.get', 'g_UpdateBoxText']),
+    # 2026-11-20：规则页不再走 Localization.get("game.rules")（改成本地化表 + 英文字面量），
+    # 原来的 needle 'g_RuleText = Localization.get' 在源码里没了，换成这两个两边都有的锚点。
+    ('lua/text/Update_0.lua', ['g_PickRuleText', 'g_UpdateBoxText']),
     # 这四份 payload 一直只在 JSON 里，改 lua 不会写回，
     ('lua/GAME/spellbook.lua', ['g_PlayerSpellBookId = {', 'g_PlayerSpellBookId[playerIndex] = i']),
     ('lua/LUABOX/AI/AID_0.lua', ['AI = {', 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY']),

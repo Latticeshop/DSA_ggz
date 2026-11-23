@@ -224,4 +224,8 @@ function HextechRune:ApplyRecombobulator(playerIndex, isUpgrade)
     if CheckPlayerYaoguangPoolCap ~= nil then
         CheckPlayerYaoguangPoolCap(playerIndex)
     end
+    -- 重组器是整池改写，同样要把总数压回单位上限。
+    if TrimPlayerUnitPoolToCap ~= nil then
+        TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
+    end
 end

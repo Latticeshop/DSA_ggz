@@ -265,6 +265,245 @@ end
 
 g_EnsureYaoguangExcessScan()
 
+-- ===== 单位上限模式（房主在「更多选项 → 单位上限」里选，0 = 无数量限制）=====
+g_UnitCapMode = g_UnitCapMode or 0
+g_UnitCapExcessDefaultPrice = 500
+g_UnitCapPriceCache = nil
+g_UnitCapScanStarted = false
+
+function GetUnitCapLimit()
+    local mode = tonumber(g_UnitCapMode) or 0
+    if mode <= 0 then
+        return 0
+    end
+    return mode
+end
+
+-- 池内单位类型的回收单价：一次性把三张回收表（4 阵营 × 4 兵种 + 箱子表）拍平成 type → Money，
+-- 之后 O(1) 查表；查不到的按 500 兜底。
+function EnsureUnitCapPriceCache()
+    if g_UnitCapPriceCache ~= nil then
+        return g_UnitCapPriceCache
+    end
+    if g_RecycleBtnsMapByFaction == nil then
+        return {}
+    end
+    local cache = {}
+    for faction = 1, 4, 1 do
+        local byCategory = g_RecycleBtnsMapByFaction[faction]
+        if byCategory ~= nil then
+            for category = 1, 4, 1 do
+                local list = byCategory[category]
+                if list ~= nil then
+                    for i = 1, getn(list), 1 do
+                        if list[i] ~= nil and list[i].Type ~= nil and cache[list[i].Type] == nil then
+                            cache[list[i].Type] = tonumber(list[i].Money) or g_UnitCapExcessDefaultPrice
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if g_CrateUnits ~= nil then
+        for category = 1, 4, 1 do
+            local list = g_CrateUnits[category]
+            if list ~= nil then
+                for i = 1, getn(list), 1 do
+                    if list[i] ~= nil and list[i].Type ~= nil and cache[list[i].Type] == nil then
+                        cache[list[i].Type] = tonumber(list[i].Money) or g_UnitCapExcessDefaultPrice
+                    end
+                end
+            end
+        end
+    end
+    g_UnitCapPriceCache = cache
+    return cache
+end
+
+function GetUnitPoolUnitPrice(unitType)
+    if unitType == nil then
+        return g_UnitCapExcessDefaultPrice
+    end
+    local cache = EnsureUnitCapPriceCache()
+    return tonumber(cache[unitType]) or g_UnitCapExcessDefaultPrice
+end
+
+
+g_LocalizedCountersApplied = 0
+
+function EnsureLocalizedMapTexts()
+    if g_LocalizedCountersApplied ~= 0 then
+        return
+    end
+    if TextDoActionLocalized == nil then
+        return
+    end
+    g_LocalizedCountersApplied = 1
+    TextDoActionLocalized("DISPLAY_COUNTER", "POWERLIMNIT", "SCRIPT: POWERLIMIT")
+    TextDoActionLocalized("DISPLAY_COUNTER", "POWERLIMNITCELESTIAL", "SCRIPT:POWERLIMNITCELESTIAL")
+    TextDoActionLocalized("DISPLAY_COUNTER", "lvc", "SCRIPT:Round")
+    TextDoActionLocalized("NAMED_SHOW_INFOBOX", "HOME", "SCRIPT:learn", "0", "")
+end
+
+-- 刷新计分板标题里的「单位上限」显示（房主改设置后立刻生效）
+function UpdateUnitCapHud(playerIndex, force)
+    EnsureLocalizedMapTexts()
+    if boardact ~= nil then
+        boardact()
+    end
+end
+
+function UpdateUnitCapHudAll(force)
+    EnsureLocalizedMapTexts()
+    if boardact ~= nil then
+        boardact()
+    end
+end
+
+-- 把玩家单位池压回上限（每人固定值，见 g_UnitCapMode）。返回 回收数, 返还金额。
+-- 这一批不够补平（池子本来就超了 / 批里的槽位已被摇光回收卖掉）再从**整池随机**补齐。
+function TrimPlayerUnitPoolToCap(playerIndex, batchIndexes, batchCount)
+    local cap = GetUnitCapLimit()
+    if cap <= 0 then
+        return 0, 0
+    end
+    if playerIndex == nil or UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil then
+        return 0, 0
+    end
+    local total = 0
+    if ANYUNITCOUNT ~= nil then
+        total = tonumber(ANYUNITCOUNT[playerIndex]) or 0
+    end
+    local excess = total - cap
+    if excess <= 0 then
+        return 0, 0
+    end
+    local removed = 0
+    local money = 0
+    local rate = 1
+    if GetRecycleRate ~= nil then
+        rate = tonumber(GetRecycleRate(playerIndex)) or 1
+    end
+
+    -- 候选表：先只装这一批的槽位（同兵种会有重复项），卖空一个就剔掉一个。
+    local pending = {}
+    local pendingCount = 0
+    local batchSize = tonumber(batchCount) or 0
+    if batchIndexes ~= nil then
+        for k = 1, batchSize, 1 do
+            local slotIndex = batchIndexes[k]
+            local slotCount = nil
+            if slotIndex ~= nil then
+                slotCount = UNITCOUNT[playerIndex][slotIndex]
+            end
+            if slotCount ~= nil and slotCount > 0 then
+                pendingCount = pendingCount + 1
+                pending[pendingCount] = slotIndex
+            end
+        end
+    end
+    -- 这批卖光了还不够，就换成整池的候选。
+    local pooled = false
+    local maxSlot = 0
+    if unitcountmax ~= nil then
+        maxSlot = unitcountmax
+    end
+    while removed < excess do
+        if pendingCount <= 0 then
+            if pooled then
+                break
+            end
+            pooled = true
+            for slotIndex = 1, maxSlot, 1 do
+                local slotCount = UNITCOUNT[playerIndex][slotIndex]
+                if slotCount ~= nil and slotCount > 0 then
+                    pendingCount = pendingCount + 1
+                    pending[pendingCount] = slotIndex
+                end
+            end
+            if pendingCount <= 0 then
+                break
+            end
+        end
+        local pick = floor(GetRandomNumber() * pendingCount) + 1
+        if pick < 1 then
+            pick = 1
+        elseif pick > pendingCount then
+            pick = pendingCount
+        end
+        local slotIndex = pending[pick]
+        local slotCount = UNITCOUNT[playerIndex][slotIndex]
+        if slotCount ~= nil and slotCount > 0 then
+            UNITCOUNT[playerIndex][slotIndex] = slotCount - 1
+            removed = removed + 1
+            local unitType = nil
+            if UNITLIST ~= nil then
+                unitType = UNITLIST[slotIndex]
+            end
+            money = money + GetUnitPoolUnitPrice(unitType) * rate
+        end
+        if UNITCOUNT[playerIndex][slotIndex] == nil or UNITCOUNT[playerIndex][slotIndex] <= 0 then
+            tremove(pending, pick)
+            pendingCount = pendingCount - 1
+        end
+    end
+
+    if removed <= 0 then
+        return 0, 0
+    end
+    if ANYUNITCOUNT ~= nil then
+        local leftTotal = total - removed
+        if leftTotal < 0 then
+            leftTotal = 0
+        end
+        ANYUNITCOUNT[playerIndex] = leftTotal
+    end
+    money = floor(money + 0.5)
+    local previous = nil
+    if SetWorldBuilderThisPlayer ~= nil then
+        previous = SetWorldBuilderThisPlayer(1)
+    end
+    ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. playerIndex, money)
+    if previous ~= nil then
+        SetWorldBuilderThisPlayer(previous)
+    end
+    exAddTextToPublicBoardForPlayer("Player_" .. playerIndex,
+        Localization.get("unit_cap.excess.recycled", cap, removed, money), 8)
+    -- 摇光生产计数跟池子实有数量对账（被单位上限收掉的那几辆不该再占限造额度）。
+    if ReconcilePlayerProducedYaoguang ~= nil then
+        ReconcilePlayerProducedYaoguang(playerIndex)
+    end
+    UpdateUnitCapHud(playerIndex, true)
+    return removed, money
+end
+
+function TrimAllPlayersUnitPoolToCap()
+    if GetUnitCapLimit() <= 0 then
+        return
+    end
+    for playerIndex = 1, 8, 1 do
+        TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
+    end
+end
+
+-- 单位上限不生效时也要刷，否则「最大电厂数量」会一直停在开局那个 0。
+function g_UnitCapPeriodicTick()
+    TrimAllPlayersUnitPoolToCap()
+    UpdateUnitCapHudAll()
+end
+
+-- 每 150 帧（≈10 秒）扫一遍 8 个玩家，任何没挂到触发点的入池路径最迟这里收掉。
+function g_EnsureUnitCapScan()
+    if g_UnitCapScanStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    g_UnitCapScanStarted = true
+    SchedulerModule.call_every_x_frame(g_UnitCapPeriodicTick, 15 * 10, nil)
+end
+
 function LIMITYAOGUANG()
     g_EnsureYaoguangExcessScan()
     -- 先清掉箱子 / 十连 / 重组器塞进池子的超额摇光，再按池子现算额度开关按钮。
@@ -1097,6 +1336,7 @@ function LIMITPOWER()
         end
     end
     LIMITYAOGUANG()
-    -- 保留守护者坦克限造 3 个的完整实现，当前版本取消数量限制；需要恢复时取消下一行注释。
-    -- LIMITGUARDIANTANK()
+    -- 单位上限 / 当前数量跟着 g_UnitCapMode 与 ANYUNITCOUNT 走（值没变就不重发文本）。
+    UpdateUnitCapHudAll()
+    g_EnsureUnitCapScan()
 end

@@ -1345,11 +1345,11 @@ function HextechRune:GetRuneCompactTitle(rune)
         return name .. "\n" .. self:GetRuneUnitTypeLabel(rune)
     end
     if rune.Effect == "broadband_jamming" then
-        return "全频段阻塞\n干扰"
+        return Localization.get("hextech.rune.broadband_jamming.title")
     end
     -- 艾卡西亚的惊喜：七字太长，按「四字标题」排版拆成 艾卡西亚 / 的惊喜 两行。
     if rune.Effect == "grant_time_bomb" then
-        return "艾卡西亚\n的惊喜"
+        return Localization.get("hextech.rune.icathia_surprise.title")
     end
     return name
 end

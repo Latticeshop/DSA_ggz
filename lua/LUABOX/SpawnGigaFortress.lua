@@ -65,6 +65,10 @@ function CountGigaFortressCore(playerIndex)
     if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[playerIndex] ~= nil then
         ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
     end
+    -- 单位上限：超级要塞核心也算一个单位，入池后压回每人上限。
+    if TrimPlayerUnitPoolToCap ~= nil then
+        TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
+    end
     return true
 end
 

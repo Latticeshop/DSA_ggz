@@ -872,6 +872,7 @@ function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
         self.Choices = {
             Localization.get("more_options.shrink") .. (g_EnableShrinkMode == 1 and Localization.get("game_mode.selected_suffix") or ""),
             Localization.get("more_options.ban_mode") .. BanModeGetSummarySuffix(),
+            Localization.get("more_options.unit_cap") .. UnitCapModeGetSummarySuffix(),
             Localization.get("more_options.back"),
         }
     end
@@ -891,6 +892,9 @@ function BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(playerName)
             BtnChoiceDialogEventFunc_ShowBanModeDialog(self.PlayerName)
             return
         elseif buttonIndex == 3 then
+            BtnChoiceDialogEventFunc_ShowUnitCapModeDialog(self.PlayerName)
+            return
+        elseif buttonIndex == 4 then
             BtnChoiceDialogEventFunc_ShowGameModeDialog(self.PlayerName)
             return
         end
@@ -1435,16 +1439,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
             for _k = 1, 4 do local i = g_Seat8[_k]
-                -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
-                local nonCelestialLimit = 5
-                local celestialLimit = 4
-                if GetPlayerPowerPlantReferenceLimit ~= nil then
-                    nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
-                    celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
-                end
                 exCustomTextUpdateTextForPlayer("Player_" .. i, 1, Localization.get("purchase_tech.level", g_angelTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. i, 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. i, 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
 
@@ -1495,16 +1490,7 @@ function BtnChoiceDialogEventFunc_ShowPurchaseTechDialog(playerName)
             ExecuteAction("PLAY_SOUND_EFFECT", "MAP_Rescue");
 
             for _k = 1, 4 do local i = g_Seat7[_k]  -- 恶魔侧
-                -- 第 2 行恒为非神州值、第 3 行恒为神州值；份数跟实际控制的席位走。
-                local nonCelestialLimit = 5
-                local celestialLimit = 4
-                if GetPlayerPowerPlantReferenceLimit ~= nil then
-                    nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
-                    celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
-                end
                 exCustomTextUpdateTextForPlayer("Player_" .. i, 1, Localization.get("purchase_tech.level", g_evilTechLevel))
-                exCustomTextUpdateTextForPlayer("Player_" .. i, 2, Localization.get("purchase_tech.power_plants", nonCelestialLimit))
-                exCustomTextUpdateTextForPlayer("Player_" .. i, 3, Localization.get("purchase_tech.celestial_plants", celestialLimit))
             end
 
         end

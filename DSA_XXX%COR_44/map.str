@@ -2,28 +2,52 @@ HOTSPOT:down
 "下一页"
 END
 
+HOTSPOT:down?english
+"Next Page"
+END
+
 HOTSPOT:music2(no)
 "Change Music"
+END
+
+HOTSPOT:music2(no)?chinese
+"更换音乐"
 END
 
 HOTSPOT:re
 "开始游戏"
 END
 
+HOTSPOT:re?english
+"Start Game"
+END
+
 HOTSPOT:up
 "上一页"
+END
+
+HOTSPOT:up?english
+"Previous Page"
 END
 
 SCRIPT: POWERLIMIT
 "最大电厂数量："
 END
 
+SCRIPT: POWERLIMIT?english
+"Max Power Plant Limit："
+END
+
 SCRIPT: POWERLIMIT_EN
-"Max Power Plant Limit: "
+"Max Power Plant Limit："
 END
 
 SCRIPT:Angel
 "-------天界守护者-------"
+END
+
+SCRIPT:Angel?english
+">>Heaven Guardian<<"
 END
 
 SCRIPT:Angel_EN
@@ -50,8 +74,16 @@ SCRIPT:Bomb
 "谨慎使用：杀死己方AI范围内所有敌军。仅可使用一次！"
 END
 
+SCRIPT:Bomb?english
+"Use with care, kills all enemy units within the friendly AI's range. One use only!"
+END
+
 SCRIPT:CelestialBatteryHelp
 "蓄元鼎会在一段时间后自动掉血死亡，并返还大量资金"
+END
+
+SCRIPT:CelestialBatteryHelp?english
+"Celestial Battery will automatically lose health over time and die, returning a large amount of funds"
 END
 
 SCRIPT:CelestialBatteryHelp_EN
@@ -62,12 +94,20 @@ SCRIPT:CelestialLaserTowerHelp
 "每使用一次天火塔，后续所有回合加入1个破甲铁卫"
 END
 
+SCRIPT:CelestialLaserTowerHelp?english
+"Each time the Celestial Laser Tower is used, 1 Iron Guard will be added in all subsequent rounds"
+END
+
 SCRIPT:CelestialLaserTowerHelp_EN
 "Each time the Celestial Laser Tower is used, 1 Iron Guard will be added in all subsequent rounds"
 END
 
 SCRIPT:CelestialReinforcementHelp
 "每使用一次三子归边，后续所有回合加入对应的部队"
+END
+
+SCRIPT:CelestialReinforcementHelp?english
+"Each time the Celestial Reinforcement is used, the corresponding units will be added in all subsequent rounds"
 END
 
 SCRIPT:CelestialReinforcementHelp_EN
@@ -78,6 +118,10 @@ SCRIPT:CrateEnabled
 "抽卡模式已启用"
 END
 
+SCRIPT:CrateEnabled?english
+"Lucky Crate Enabled"
+END
+
 SCRIPT:CrateEnabled_EN
 "Lucky Crate Enabled"
 END
@@ -86,28 +130,44 @@ SCRIPT:JapanAmbushHelp
 "每使用一次帽子协议，后续所有回合加入5个坦克杀手"
 END
 
+SCRIPT:JapanAmbushHelp?english
+"Each time the Hat Protocol is used, 5 Tank Hunters will be added in all subsequent rounds"
+END
+
 SCRIPT:JapanAmbushHelp_EN
 "Each time the Hat Protocol is used, 5 Tank Hunters will be added in all subsequent rounds"
 END
 
 SCRIPT:Next Round
-"下一回合开始 : "
+"下一回合开始："
+END
+
+SCRIPT:Next Round?english
+"Next Round："
 END
 
 SCRIPT:Next Round_EN
-"Next Round: "
+"Next Round："
 END
 
 SCRIPT:POWERLIMNITCELESTIAL
 "神州最大电厂数量："
 END
 
+SCRIPT:POWERLIMNITCELESTIAL?english
+"Celestial Max Power Plant Limit："
+END
+
 SCRIPT:POWERLIMNITCELESTIAL_EN
-"Celestial Max Power Plant Limit: "
+"Celestial Max Power Plant Limit："
 END
 
 SCRIPT:PureDrawQuota
 "剩余生产余额（每段围墙代表1点，每3回合补满）"
+END
+
+SCRIPT:PureDrawQuota?english
+"Pure Draw production quota (each wall is 1 point; refilled every 3 rounds)"
 END
 
 SCRIPT:PureDrawQuota_EN
@@ -115,15 +175,23 @@ SCRIPT:PureDrawQuota_EN
 END
 
 SCRIPT:Round
-"回合数 : "
+"回合数："
+END
+
+SCRIPT:Round?english
+"Round："
 END
 
 SCRIPT:Round_EN
-"Round: "
+"Round："
 END
 
 SCRIPT:Sea1Tower2break
 "天使海二塔陷落，恶魔军队获得船坞治疗"
+END
+
+SCRIPT:Sea1Tower2break?english
+"Angel Sea Tower 2 has fallen, Devil fleet gains Dry Dock healing"
 END
 
 SCRIPT:Sea1Tower2break_EN
@@ -134,12 +202,20 @@ SCRIPT:Sea2Tower2break
 "恶魔海二塔陷落，天使军队获得船坞治疗"
 END
 
+SCRIPT:Sea2Tower2break?english
+"Devil Sea Tower 2 has fallen, Angel fleet gains Dry Dock healing"
+END
+
 SCRIPT:Sea2Tower2break_EN
 "Devil Sea Tower 2 has fallen, Angel fleet gains Dry Dock healing"
 END
 
 SCRIPT:T17 break
 "恶魔一塔陷落，天使军队获得步兵治疗，授权天使T2"
+END
+
+SCRIPT:T17 break?english
+"Devil Tower 1 has fallen, Angel army gains infantry healing, Angel side granted Tier 2 tech"
 END
 
 SCRIPT:T17 break_EN
@@ -150,12 +226,20 @@ SCRIPT:T18break
 "天使一塔陷落，恶魔军队获得步兵治疗，授权恶魔T2"
 END
 
+SCRIPT:T18break?english
+"Angel Tower 1 has fallen, Devil army gains infantry healing, Devil side granted Tier 2 tech"
+END
+
 SCRIPT:T18break_EN
 "Angel Tower 1 has fallen, Devil army gains infantry healing, Devil side granted Tier 2 tech"
 END
 
 SCRIPT:T27break
 "恶魔二塔陷落，黑暗之魂已被释放，天使军队获得飞行器治疗，授权天使T3"
+END
+
+SCRIPT:T27break?english
+"Devil Tower 2 has fallen, Dark Soul has been released, Angel army gains aircraft healing, Angel side granted Tier 3 tech"
 END
 
 SCRIPT:T27break_EN
@@ -166,12 +250,20 @@ SCRIPT:T28 break
 "天使二塔陷落，光明之魂已被释放，恶魔军队获得飞行器治疗，授权恶魔T3"
 END
 
+SCRIPT:T28 break?english
+"Angel Tower 2 has fallen, Light Soul has been released, Devil army gains aircraft healing, Devil side granted Tier 3 tech"
+END
+
 SCRIPT:T28 break_EN
 "Angel Tower 2 has fallen, Light Soul has been released, Devil army gains aircraft healing, Devil side granted Tier 3 tech"
 END
 
 SCRIPT:T37break
 "恶魔三塔陷落，地狱守护者已降生，天使军队获得载具治疗，授权天使T4"
+END
+
+SCRIPT:T37break?english
+"Devil Tower 3 has fallen, Hell Guardian has been born, Angel army gains vehicle healing, Angel side granted Tier 4 tech"
 END
 
 SCRIPT:T37break_EN
@@ -182,12 +274,20 @@ SCRIPT:T38break
 "天使三塔陷落，天界守护者已降生，恶魔军队获得载具治疗，授权恶魔T4"
 END
 
+SCRIPT:T38break?english
+"Angel Tower 3 has fallen, Heaven Guardian has been born, Devil army gains vehicle healing, Devil side granted Tier 4 tech"
+END
+
 SCRIPT:T38break_EN
 "Angel Tower 3 has fallen, Heaven Guardian has been born, Devil army gains vehicle healing, Devil side granted Tier 4 tech"
 END
 
 SCRIPT:UltimateCreature
 "-------究极生物-------"
+END
+
+SCRIPT:UltimateCreature?english
+">>Ultimate Creature<<"
 END
 
 SCRIPT:UltimateCreature_EN
@@ -198,12 +298,20 @@ SCRIPT:ally
 "<<<<你的基地>>>>"
 END
 
+SCRIPT:ally?english
+"<<<<Your Base>>>>"
+END
+
 SCRIPT:ally_EN
 "<<<<Your Base>>>>"
 END
 
 SCRIPT:darksoul
 "-------黑暗之魂-------"
+END
+
+SCRIPT:darksoul?english
+">>Dark Soul<<"
 END
 
 SCRIPT:darksoul_EN
@@ -214,6 +322,10 @@ SCRIPT:devil
 "-------地狱守护者-------"
 END
 
+SCRIPT:devil?english
+">>Hell Guardian<<"
+END
+
 SCRIPT:devil_EN
 ">>Hell Guardian<<"
 END
@@ -222,8 +334,16 @@ SCRIPT:down
 "下一页"
 END
 
+SCRIPT:down?english
+"Next Page"
+END
+
 SCRIPT:enemy
 "<<<<敌军的基地>>>>"
+END
+
+SCRIPT:enemy?english
+"<<<<Enemy Base>>>>"
 END
 
 SCRIPT:enemy_EN
@@ -234,16 +354,28 @@ SCRIPT:iron
 "谨慎使用：己方AI单位套上铁幕40秒。仅可使用一次！"
 END
 
+SCRIPT:iron?english
+"Use with care, puts an Iron Curtain on friendly AI units for 40 seconds. One use only!"
+END
+
 SCRIPT:learn
 "建造单位，单位每回合会自动在地图中央战斗。\n电厂提供收入，请记得多造电厂，防止资金不足。\n若帝国建造队列卡住：右键双击锁住的电厂可取消制造。"
 END
 
+SCRIPT:learn?english
+"Build units. They fight automatically in the center each round.\nPower plants provide income, so remember to build plenty to avoid running out of money.\nIf the Empire build queue gets stuck, right-click twice on the locked power plant to cancel production."
+END
+
 SCRIPT:learn_EN
-"Build units. They fight automatically in the center each round.\nPower plants provide income."
+"Build units. They fight automatically in the center each round.\nPower plants provide income, so remember to build plenty to avoid running out of money.\nIf the Empire build queue gets stuck, right-click twice on the locked power plant to cancel production."
 END
 
 SCRIPT:lightsoul
 "-------光明之魂-------"
+END
+
+SCRIPT:lightsoul?english
+">>Light Soul<<"
 END
 
 SCRIPT:lightsoul_EN
@@ -254,6 +386,10 @@ SCRIPT:re
 "请耐心等待所有人阅读完毕后方可开始游戏!"
 END
 
+SCRIPT:re?english
+"Please wait for all players to finish reading before starting the game!"
+END
+
 SCRIPT:re_EN
 "Please wait for all players to finish reading before starting the game!"
 END
@@ -262,12 +398,24 @@ SCRIPT:ship
 "谨慎使用：立即召唤当前回合数-3艘龙船，最多6艘。仅可使用一次！"
 END
 
+SCRIPT:ship?english
+"Use with care, immediately summon (current round - 3) dragon ships, up to 6. One use only!"
+END
+
 SCRIPT:text0
 "更新：\n1、海军全部出生在上方，海上的塔被摧毁对应陆地塔也会被摧毁，海军进入对方海军出生点会回收为金钱每200/船/人。所有陆军、基洛夫出生点更加靠前，空军出生有10S延时。轰炸机重生在地图外降低轰炸频率。\n2、加上科技锁定，一开始玩家只能建造T1单位，每层科技将在4；10；15回合解锁。并且摧毁对方防御塔的一方可以提前解锁科技。\n3、防爆盾被锁定，蜘蛛默认开启F\n4、取消赏金\n5、T4战舰只能建造两艘，抬高了水面。\n6、神州电厂进行了平衡性调整，前期资金会变少，但后期会更强。"
 END
 
+SCRIPT:text0?english
+"Update\n1, All navy now spawns at the top; destroying a sea tower also destroys the matching land tower, and a ship entering the enemy naval spawn point is recycled into money at 200 per ship per player. All land units and Kirovs spawn further forward, air units spawn with a 10 s delay, and bombers respawn off the map to lower the bombing rate.\n2, Tech locks are added, players start able to build tier 1 units only, and each tier unlocks on rounds 4, 10 and 15; destroying an enemy defense tower unlocks tech early.\n3, The blast shield is locked and the Terror Drone starts with F enabled\n4, Bounties are removed\n5, Only two tier 4 warships may be built, and the water surface is raised.\n6, Celestial power plants were rebalanced, less money early and stronger later."
+END
+
 SCRIPT:text1
-"电厂 = 油井 。每一阶段上限 ： 5  ，  7   ， 9 ，11 。\n玩家建筑出的兵会统计进入计数器 ，每回合会刷出来 （之后有空做出和酒馆一样的抽卡）。AI暂时是全升级。（还没做同步升级）。\n每一阶段率先摧毁对面塔的一方会获得奖励\n 玩家同时拥有t4高科AI会获得一个军校"
+"电厂 = 油井 。每一阶段上限：5  ，  7   ， 9 ，11 。\n玩家建筑出的兵会统计进入计数器 ，每回合会刷出来 （之后有空做出和酒馆一样的抽卡）。AI暂时是全升级。（还没做同步升级）。\n每一阶段率先摧毁对面塔的一方会获得奖励\n 玩家同时拥有t4高科AI会获得一个军校"
+END
+
+SCRIPT:text1?english
+"Power plants = oil wells. Cap per stage 5, 7, 9 and 11.\nUnits you build are counted and respawned every round (a crate-style draw system will come later). The AI is fully upgraded for now (shared upgrades are not done yet).\nThe side that destroys the enemy tower first in each stage gets a reward.\nA player who owns tier 4 high-tech gives the AI a military academy."
 END
 
 SCRIPT:text2
@@ -286,12 +434,20 @@ SCRIPT:unlock2
 "所有人已经解锁T2"
 END
 
+SCRIPT:unlock2?english
+"All players have unlocked Tier 2 Technology"
+END
+
 SCRIPT:unlock2_EN
 "All players have unlocked Tier 2 Technology"
 END
 
 SCRIPT:unlock3
 "所有人已经解锁T3"
+END
+
+SCRIPT:unlock3?english
+"All players have unlocked Tier 3 Technology"
 END
 
 SCRIPT:unlock3_EN
@@ -302,6 +458,10 @@ SCRIPT:unlock4
 "所有人已经解锁T4"
 END
 
+SCRIPT:unlock4?english
+"All players have unlocked Tier 4 Technology"
+END
+
 SCRIPT:unlock4_EN
 "All players have unlocked Tier 4 Technology"
 END
@@ -310,11 +470,22 @@ SCRIPT:up
 "上一页"
 END
 
+SCRIPT:up?english
+"Previous Page"
+END
+
 angel_surrender
 "天使投降投票中"
+END
+
+angel_surrender?english
+"Angel surrender vote in progress"
 END
 
 devil_surrender
 "恶魔投降投票中"
 END
 
+devil_surrender?english
+"Devil surrender vote in progress"
+END

@@ -711,6 +711,10 @@ function AICOMP.CollectUnit(seat, unitIndex)
     if ANYUNITCOUNT ~= nil and ANYUNITCOUNT[seat] ~= nil then
         ANYUNITCOUNT[seat] = (tonumber(ANYUNITCOUNT[seat]) or 0) + 1
     end
+    -- 单位上限：电脑席位同样按每人固定上限压池（符文钩子那一支在 06_ascension 里已挂）。
+    if TrimPlayerUnitPoolToCap ~= nil then
+        TrimPlayerUnitPoolToCap(seat, nil, 0)
+    end
     return 1
 end
 

@@ -86,7 +86,7 @@ Localization._text_sources = {
     ["game_mode.dialog.title"] = { zh = "请选择游戏模式", en = "Please choose a game mode" },
     ["game_mode.confirm"] = { zh = ">>确认<<", en = ">>Confirm<<" },
     ["game_mode.selected_suffix"] = { zh = "(已选择)", en = "(Selected)" },
-    ["game_mode.error.invalid_button"] = { zh = "错误：玩家 %s 点击了非法按钮 %d", en = "Error: player %s clicked invalid button %d" },
+    ["game_mode.error.invalid_button"] = { zh = "错误：玩家 %s 点击了非法按钮 %d", en = "Error：player %s clicked invalid button %d" },
     ["game_mode.host.selected"] = { zh = "房主已选择%s", en = "Host selected %s" },
     ["game_mode.host.canceled"] = { zh = "房主已取消选择%s", en = "Host canceled selection of %s" },
     ["game_mode.standard"] = { zh = "标准模式", en = "Standard Mode" },
@@ -104,7 +104,7 @@ Localization._text_sources = {
     ["game_mode.feature_separator"] = { zh = "，", en = ", " },
     ["game_mode.feature_bracket"] = { zh = "（%s）", en = " (%s)" },
     ["draw_mode.dialog.title"] = { zh = "请选择抽卡模式", en = "Choose a draw mode" },
-    ["draw_mode.open"] = { zh = "抽卡模式选择：%s", en = "Draw Mode: %s" },
+    ["draw_mode.open"] = { zh = "抽卡模式选择：%s", en = "Draw Mode：%s" },
     ["draw_mode.disabled"] = { zh = "不启用抽卡", en = "Draw Disabled" },
     ["draw_mode.original"] = { zh = "抽卡功能", en = "Lucky Crate" },
     ["draw_mode.pure"] = { zh = "抽卡模式", en = "Pure Draw" },
@@ -115,6 +115,14 @@ Localization._text_sources = {
     ["more_options.no_navy"] = { zh = "禁止海军", en = "No Navy" },
     ["more_options.back"] = { zh = "返回上一页", en = "Back" },
     ["more_options.ban_mode"] = { zh = "禁用模式", en = "Ban Modes" },
+    ["more_options.unit_cap"] = { zh = "单位上限", en = "Unit Cap" },
+    ["unit_cap.dialog.title"] = { zh = "选择单位数量上限", en = "Choose a unit cap" },
+    ["unit_cap.option.none"] = { zh = "无数量限制", en = "No limit" },
+    ["unit_cap.option.value"] = { zh = "每人%d单位", en = "%d units per player" },
+    ["unit_cap.suffix"] = { zh = "（每人%d单位）", en = " (%d per player)" },
+    ["unit_cap.back"] = { zh = "返回上一页", en = "Back" },
+    ["power_limit.hud"] = { zh = "最大电厂数量：%d", en = "Max power plants：%d" },
+    ["unit_cap.excess.recycled"] = { zh = "已达单位上限 %d，多出的 %d 个单位已自动回收，返还 ＄%d。", en = "Unit cap %d reached. %d excess unit(s) were auto-recycled for ＄%d." },
     ["ban_mode.dialog.title"] = { zh = "选择要禁用的兵种（最多 3 项）", en = "Ban unit types (up to 3)" },
     ["ban_mode.option.infantry"] = { zh = "禁用步兵", en = "Ban Infantry" },
     ["ban_mode.option.vehicle"] = { zh = "禁用载具", en = "Ban Vehicles" },
@@ -131,17 +139,17 @@ Localization._text_sources = {
     ["ban_mode.short.navy"] = { zh = "海军", en = "Navy" },
     ["ban_mode.auto_clear"] = { zh = "已禁满 3 项，自动取消「%s」", en = "3 bans reached; auto-cleared \"%s\"" },
     ["ban_mode.back"] = { zh = "返回上一页", en = "Back" },
-    ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled: %d" },
-    ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining: %d" },
+    ["pure_draw.quota.refreshed"] = { zh = "生产余额已补满：%d", en = "Production quota refilled：%d" },
+    ["pure_draw.quota.remaining"] = { zh = "剩余生产余额：%d", en = "Production quota remaining：%d" },
     ["pure_draw.quota.exceeded"] = { zh = "生产余额不足，超额单位已取消", en = "No production quota remained; the extra unit was cancelled" },
     ["draw.unit_received"] = { zh = "获得了%d个%s喵~", en = "Obtained %d %s, meow~" },
     ["pure_draw.airdrop"] = { zh = "中央战场出现了一次十连空投！", en = "A ten-crate airdrop has landed in the center!" },
 
     -- === 技能系统 ===
-    ["skill.name.1"] = { zh = "炸弹+达摩克利斯之剑", en = "Bomb＆DamoclesSword" },
-    ["skill.name.2"] = { zh = "铁幕+时停", en = "IronCurtain＆TimeStop" },
-    ["skill.name.3"] = { zh = "龙船+空军元帅", en = "DragonShip＆AirMarshal" },
-    ["skill.name.4"] = { zh = "补充军队+纳米维修", en = "ReinforceArmy＆Repair" },
+    ["skill.name.1"] = { zh = "炸弹+达摩克利斯之剑", en = "Bomb ＆ Damocles Sword" },
+    ["skill.name.2"] = { zh = "铁幕+时停", en = "Iron Curtain ＆ Time Stop" },
+    ["skill.name.3"] = { zh = "龙船+空军元帅", en = "Dragon Ship ＆ Air Marshal" },
+    ["skill.name.4"] = { zh = "补充军队+纳米维修", en = "Reinforce Army ＆ Repair" },
     -- 序号即对话框行号（kind 同值）；复制组固定在最后一行，新技能组插在它上面。
     ["skill.name.5"] = { zh = "九头蛇万岁+冰天雪地", en = "Hail Hydra＆Frozen Wasteland" },
     ["skill.name.6"] = { zh = "复制己方技能+复制敌方技能", en = "Copy Other Players Skills" },
@@ -153,17 +161,17 @@ Localization._text_sources = {
     ["skill_mode.selected_suffix"] = { zh = "(已选)", en = "(Selected)" },
     ["skill_mode.cancel"] = { zh = "取消选择", en = "Cancel selection" },
     ["skill_mode.continue"] = { zh = "请继续选择（还剩%d个）", en = "Please continue choosing (%d remaining)" },
-    ["skill_mode.invalid_button"] = { zh = "错误：玩家 %s 点击了非法技能组按钮 %d", en = "Error: player %s clicked an invalid skill-group button %d" },
+    ["skill_mode.invalid_button"] = { zh = "错误：玩家 %s 点击了非法技能组按钮 %d", en = "Error：player %s clicked an invalid skill-group button %d" },
     ["skill_mode.all.title"] = { zh = "请选择各个玩家的技能组", en = "Please choose the skill set for each player" },
     ["skill_mode.player_choose.title"] = { zh = "请选择您的技能组", en = "Please choose your skill set" },
     ["skill_mode.player_choose.exit"] = { zh = "退出(待会再选)", en = "Exit (choose later)" },
-    ["skill_mode.player_choose.invalid_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog 的参数 playerName 无效", en = "Error: invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog" },
-    ["skill_mode.player_choose.invalid_tech_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPurchaseTechDialog 的参数 playerName 无效", en = "Error: invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPurchaseTechDialog" },
-    ["skill_mode.error.preselected_count"] = { zh = "错误：预选技能组数量不正确，应该是 0 或 8，但实际是 %d", en = "Error: invalid preselected skill group count; expected 0 or 8, got %d" },
-    ["skill_mode.purchase.tech.title"] = { zh = "购买下一级科技权限($%d)", en = "Buy next tech permission ($%d)" },
-    ["skill_mode.purchase.tech.failed"] = { zh = "购买失败，资金不足", en = "Purchase failed: insufficient funds" },
-    ["skill_mode.purchase.tech.success"] = { zh = "购买成功，解锁下一级科技等级和更多电厂", en = "Purchase successful: next tech tier and more power plants unlocked" },
-    ["skill_mode.purchase.tech.description"] = { zh = "购买下一级科技(当前等级：%d)\n解锁下一级科技等级和更多电厂权限", en = "Buy next tech level (current: %d)\nUnlock next tech tier and more power plant rights" },
+    ["skill_mode.player_choose.invalid_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog 的参数 playerName 无效", en = "Error：invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPlayerChooseSkillDialog" },
+    ["skill_mode.player_choose.invalid_tech_player_name"] = { zh = "错误：BtnChoiceDialogEventFunc_ShowPurchaseTechDialog 的参数 playerName 无效", en = "Error：invalid playerName parameter in BtnChoiceDialogEventFunc_ShowPurchaseTechDialog" },
+    ["skill_mode.error.preselected_count"] = { zh = "错误：预选技能组数量不正确，应该是 0 或 8，但实际是 %d", en = "Error：invalid preselected skill group count; expected 0 or 8, got %d" },
+    ["skill_mode.purchase.tech.title"] = { zh = "购买下一级科技权限(＄%d)", en = "Buy next tech permission (＄%d)" },
+    ["skill_mode.purchase.tech.failed"] = { zh = "购买失败，资金不足", en = "Purchase failed：insufficient funds" },
+    ["skill_mode.purchase.tech.success"] = { zh = "购买成功，解锁下一级科技等级和更多电厂", en = "Purchase successful：next tech tier and more power plants unlocked" },
+    ["skill_mode.purchase.tech.description"] = { zh = "购买下一级科技(当前等级：%d)\n解锁下一级科技等级和更多电厂权限", en = "Buy next tech level (current：%d)\nUnlock next tech tier and more power plant rights" },
     ["skill_mode.purchase.tech.choice.buy"] = { zh = "购买", en = "Buy" },
     ["skill_mode.purchase.tech.choice.no_buy"] = { zh = "不购买", en = "Do not buy" },
     ["recycle.dialog.title"] = { zh = "回收%s", en = "Recycle %s" },
@@ -176,27 +184,27 @@ Localization._text_sources = {
     ["market.role.5"] = { zh = "天使2号", en = "Angel 2" },
     ["market.role.6"] = { zh = "天使3号", en = "Angel 3" },
     ["market.title"] = { zh = "欢迎进入交易市场", en = "Welcome to the Market" },
-    ["market.title_with_investment"] = { zh = "欢迎进入交易市场\n投资金额(上限%d):%d", en = "Welcome to the Market\nInvestment amount (cap %d): %d" },
+    ["market.title_with_investment"] = { zh = "欢迎进入交易市场\n投资金额(上限%d)：%d", en = "Welcome to the Market\nInvestment amount (cap %d)：%d" },
     ["market.next_investment.devil"] = { zh = "购买100恶魔投资", en = "Buy 100 Devil Investment" },
     ["market.next_investment.angel"] = { zh = "购买100天使投资", en = "Buy 100 Angel Investment" },
     -- 末尾的全角空白行用于撑高双行投资按钮，选择对话框接口本身没有单项高度参数。
-    ["market.next_investment.benefit"] = { zh = "\n若回合胜利可获收益\n　", en = "" }, -- 英文写不下就不写了
+    ["market.next_investment.benefit"] = { zh = "\n若回合胜利可获收益\n　", en = "\nEarn returns on round win\n " },
     -- 原来是颜色文本，大红色与桃红色会撞成同一个「红色」，玩家分不出来（见 analysis/地图注释说明文档.md §9）。
-    ["market.transfer.choice"] = { zh = "向%s%s转移1000资金", en = "1000＄ to %s%s" },
+    ["market.transfer.choice"] = { zh = "向%s%s转移1000资金", en = "Transfer 1000 to %s%s" },
     ["market.back_to_battle"] = { zh = "回到战场", en = "Back to Battle" },
-    ["market.buy_shield_tower"] = { zh = "购买护盾投射塔(%d)", en = "Buy Shield Projector Tower %d＄" },
-    ["market.buy_poplar_tower"] = { zh = "购买胡杨防空系统(%d)", en = "Buy Poplar AA System %d＄" },
-    ["market.buy_sakura_well"] = { zh = "购买樱花井(%d)", en = "Buy Sakura Well %d＄" },
-    ["market.buy_aegis_shield_generator"] = { zh = "购买埃奎斯护盾发生器(%d)", en = "Buy Aegis Shield Generator %d＄" },
-    ["market.buy_tianmen_bow"] = { zh = "购买天门神弓(%d)", en = "Buy Tianmen Bow %d＄" },
+    ["market.buy_shield_tower"] = { zh = "购买护盾投射塔(%d)", en = "Buy Shield Projector Tower (%d＄)" },
+    ["market.buy_poplar_tower"] = { zh = "购买胡杨防空系统(%d)", en = "Buy Poplar AA System (%d＄)" },
+    ["market.buy_sakura_well"] = { zh = "购买樱花井(%d)", en = "Buy Sakura Well (%d＄)" },
+    ["market.buy_aegis_shield_generator"] = { zh = "购买埃奎斯护盾发生器(%d)", en = "Buy Aegis Shield Generator (%d＄)" },
+    ["market.buy_tianmen_bow"] = { zh = "购买天门神弓(%d)", en = "Buy Tianmen Bow (%d＄)" },
     ["market.more_defense_buildings"] = { zh = "更多防御建筑", en = "More Defense Buildings" },
     ["market.back_to_main_page"] = { zh = "返回上一页", en = "Back to Previous Page" },
-    ["market.transfer.success"] = { zh = "成功转账1000给$p%dName", en = "Successfully transferred 1000＄ to $p%dName" },
+    ["market.transfer.success"] = { zh = "成功转账1000给$p%dName", en = "Successfully transferred 1000 to $p%dName" },
     ["market.transfer.insufficient"] = { zh = "您的余额不足", en = "Your balance is insufficient" },
-    ["market.invest.failed.max"] = { zh = "投资失败：投资已达到上限", en = "Investment failed: the investment cap has been reached" },
-    ["market.invest.failed.start_only"] = { zh = "投资失败：只能在每个回合刚开始时投资", en = "Investment failed: you can only invest at the start of each round" },
-    ["market.invest.failed.insufficient"] = { zh = "投资失败：余额不足", en = "Investment failed: insufficient balance" },
-    ["market.invest.success"] = { zh = "投资成功，当前投资金额：%d", en = "Investment successful. Current investment amount: %d" },
+    ["market.invest.failed.max"] = { zh = "投资失败：投资已达到上限", en = "Investment failed：the investment cap has been reached" },
+    ["market.invest.failed.start_only"] = { zh = "投资失败：只能在每个回合刚开始时投资", en = "Investment failed：you can only invest at the start of each round" },
+    ["market.invest.failed.insufficient"] = { zh = "投资失败：余额不足", en = "Investment failed：insufficient balance" },
+    ["market.invest.success"] = { zh = "投资成功，当前投资金额：%d", en = "Investment successful. Current investment amount：%d" },
     ["market.loan.message"] = { zh = "$p%dName向银行贷款", en = "$p%dName took a bank loan" },
     ["market.loan.success"] = { zh = "贷款成功", en = "Loan successful" },
     ["market.tower.already_exists"] = { zh = "塔还在，不能重复购买", en = "The tower is still alive, you cannot buy another one" },
@@ -210,12 +218,12 @@ Localization._text_sources = {
     ["market.tower_name.tianmen_bow"] = { zh = "天门神弓", en = "Tianmen Bow" },
 
     -- === 游戏开局 ===
-    ["game.start.begin"] = { zh = "游戏开始！已选择游戏模式：%s", en = "Game starting! Selected game mode: %s" },
-    ["game.start.economic_multiplier"] = { zh = "经济倍率: %.2f，回收倍率: %d%%", en = "Economic multiplier: %.2f, recycle rate: %d%%" },
-    ["game.start.skill_prefix"] = { zh = "技能组：", en = "Skill set: " },
-    ["game.start.skill_free_choice"] = { zh = "技能组：由玩家自由选择", en = "Skill set: chosen freely by players" },
-    ["game.start.skill_random_symmetric"] = { zh = "技能组：随机（可重复，对称）", en = "Skill set: random (repeatable, symmetric)" },
-    ["game.start.skill_random_asymmetric"] = { zh = "技能组：随机（可重复，不对称）", en = "Skill set: random (repeatable, asymmetric)" },
+    ["game.start.begin"] = { zh = "游戏开始！已选择游戏模式：%s", en = "Game starting! Selected game mode：%s" },
+    ["game.start.economic_multiplier"] = { zh = "经济倍率：%.2f，回收倍率：%d％", en = "Economic multiplier：%.2f, recycle rate：%d％" },
+    ["game.start.skill_prefix"] = { zh = "技能组：", en = "Skill set：" },
+    ["game.start.skill_free_choice"] = { zh = "技能组：由玩家自由选择", en = "Skill set：chosen freely by players" },
+    ["game.start.skill_random_symmetric"] = { zh = "技能组：随机（可重复，对称）", en = "Skill set：random (repeatable, symmetric)" },
+    ["game.start.skill_random_asymmetric"] = { zh = "技能组：随机（可重复，不对称）", en = "Skill set：random (repeatable, asymmetric)" },
 
     -- === 按钮文案 ===
     ["button.choose_skill.title"] = { zh = "请选择你的技能组", en = "Choose your skill set" },
@@ -234,14 +242,14 @@ Localization._text_sources = {
     ["button.time_stop.description"] = { zh = "借助未来科技的力量时停对方单位13秒", en = "Use FutureTech power to time-stop enemy units for 13 seconds" },
     ["button.dragonship.title"] = { zh = "龙行天下", en = "Dragon Ship Ascends" },
     ["button.dragonship.description"] = { zh = "召唤龙船(第5回合起可以使用)", en = "Summon a Dragon Ship (available starting from round 5)" },
-    ["button.dragonship.unlocked_description"] = { zh = "召唤龙船于主巨炮位置\n第一次召唤1艘，第二次召唤2艘\n龙船出现得越迟，血量越高，第18回合后血量抵达上限\n冷却时间1回合", en = "Summon Dragon Ships at the main cannon position\nFirst summon: 1 ship, second summon: 2 ships\nThe later the ship appears, the higher its health. Health caps after round 18\nCooldown: 1 round" },
+    ["button.dragonship.unlocked_description"] = { zh = "召唤龙船于主巨炮位置\n第一次召唤1艘，第二次召唤2艘\n龙船出现得越迟，血量越高，第18回合后血量抵达上限\n冷却时间1回合", en = "Summon Dragon Ships at the main cannon position\nFirst summon：1 ship, second summon：2 ships\nThe later the ship appears, the higher its health. Health caps after round 18\nCooldown：1 round" },
     ["button.air_marshal.title"] = { zh = "空军元帅", en = "Air Marshal" },
     ["button.air_marshal.description"] = { zh = "请求超级苏霍伊群抵达战场对敌方的空军造成毁灭性的伤害\n【仅对空、不可攻击敌方空军元帅】", en = "Request a super Sukhoi squad to reach the battlefield and deal devastating damage to enemy air units\n[Air only; cannot attack the enemy Air Marshal]" },
     ["button.hydra.title"] = { zh = "九头蛇万岁", en = "Hail Hydra" },
     -- 第 3 回合首次发放时 60%，每回合 -2%，第 33 回合归零后仍可施放（心控 0 个、流程照走）。
-    ["button.hydra.description"] = { zh = "派出间谍渗透敌后，战场上 %d%% 的敌方单位心控为己方单位", en = "Send spies behind enemy lines; %d%% of the enemy field units are mind-controlled into your side" },
+    ["button.hydra.description"] = { zh = "派出间谍渗透敌后，战场上 %d％ 的敌方单位心控为己方单位", en = "Send spies behind enemy lines; %d％ of the enemy field units are mind-controlled into your side" },
     ["button.snowstorm.title"] = { zh = "冰天雪地", en = "Frozen Wasteland" },
-    ["button.snowstorm.description"] = { zh = "召唤极地寒流覆盖战场，敌方场上全部单位立刻冻结！\n【不含防御塔与建筑】", en = "An arctic front covers the battlefield: every enemy field unit is frozen at once!\n[Towers and buildings excluded]" },
+    ["button.snowstorm.description"] = { zh = "召唤极地寒流覆盖战场，敌方场上全部单位立刻冻结！\n【不含防御塔与建筑】", en = "An arctic front covers the battlefield：every enemy field unit is frozen at once!\n[Towers and buildings excluded]" },
     ["button.skill_selected"] = { zh = "$p%dName选择了%s", en = "$p%dName selected %s" },
 
     -- CenterTop specific
@@ -250,7 +258,7 @@ Localization._text_sources = {
     ["center_top.copy_enemy_skill.title"] = { zh = "复制敌方技能", en = "Copy Enemy Skill" },
     ["center_top.copy_enemy_skill.description"] = { zh = "复制敌方最近一次使用的技能（如果最近一次是复制技能，则一直回溯到最近一次非复制的技能），如果没有找到合适的技能，则不释放(冷却30s)", en = "Copy the last enemy-used skill (cooldown 30s)" },
     -- 没有任何可复制技能时这个后缀整段不出现（见 CenterTopBtnFuncExtra 的 g_GetCopySkillDescription）。
-    ["center_top.copy_skill.last_skill"] = { zh = "(上个技能是：%s)", en = "(Last skill: %s)" },
+    ["center_top.copy_skill.last_skill"] = { zh = "(上个技能是：%s)", en = "(Last skill：%s)" },
     ["center_top.nano_repair.title"] = { zh = "纳米维修", en = "Nano Repair" },
     ["center_top.nano_repair.description"] = { zh = "在陆地前线生成1个纳米维修立场和大型维修天灯，治愈己方部队和前线海陆防御塔", en = "Deploy repair fields and repair drones to support land fronts, heal both land and sea towers" },
     ["center_top.reinforce_army.title"] = { zh = "补充军队", en = "Reinforce Army" },
@@ -259,8 +267,8 @@ Localization._text_sources = {
     ["center_top.temporal_raid.description"] = { zh = "请建造盟军小超武「超时空传送仪」以解锁此按钮", en = "Build the Allied Chronosphere to unlock this button" },
     ["center_top.morale_boost.title"] = { zh = "士气提升", en = "Morale Boost" },
     ["center_top.morale_boost.description"] = { zh = "请获得止戈立场以解锁此按钮", en = "Obtain Array of Sundial (Armistice Field) to unlock this button" },
-    ["center_top.error.dragonship_invalid_number"] = { zh = "错误：龙船召唤失败，数量必须为1或2", en = "Error: Dragonship summon failed, count must be 1 or 2" },
-    ["center_top.error.dragonship_round_insufficient"] = { zh = "龙船召唤失败，回合数不足！", en = "Dragonship summon failed: insufficient rounds" },
+    ["center_top.error.dragonship_invalid_number"] = { zh = "错误：龙船召唤失败，数量必须为1或2", en = "Error：Dragonship summon failed, count must be 1 or 2" },
+    ["center_top.error.dragonship_round_insufficient"] = { zh = "龙船召唤失败，回合数不足！", en = "Dragonship summon failed：insufficient rounds" },
     ["center_top.dragonship.hp_change"] = { zh = "龙船#%d 血量%d->%d", en = "Dragonship#%d HP %d->%d" },
     ["center_top.error.no_skill_to_copy"] = { zh = "未释放过技能，无法复制技能", en = "No skill released, cannot copy" },
     ["center_top.error.no_suitable_skill"] = { zh = "未找到合适的技能，无法复制技能", en = "No suitable skill found, cannot copy" },
@@ -272,7 +280,7 @@ Localization._text_sources = {
     ["center_top.used.temporal_raid"] = { zh = "%s方$p%dName使用了超时空突袭！", en = "%s $p%dName used ChronoSphere Raid!" },
     ["center_top.kill_reward.title"] = { zh = "杀敌奖励", en = "Kill Reward" },
     ["center_top.kill_reward.description"] = { zh = "为所有敌方陆地单位（不包括空军）套上钱套子(持续30秒)，击杀后使用技能者获得金钱(冷却40秒)", en = "Apply cash bounty to all enemy land units (30s); killing grants money (40s cooldown)" },
-    ["center_top.temporal_raid.unlocked_description"] = { zh = "打开时空裂缝让主战坦克突袭敌方后排并获得短暂的铁幕\n剩余冷却时间：%d回合", en = "Open a temporal rift to raid the enemy backline with tanks and grant them a brief Iron Curtain\nRounds until ready: %d" },
+    ["center_top.temporal_raid.unlocked_description"] = { zh = "打开时空裂缝让主战坦克突袭敌方后排并获得短暂的铁幕\n剩余冷却时间：%d回合", en = "Open a temporal rift to raid the enemy backline with tanks and grant them a brief Iron Curtain\nRounds until ready：%d" },
     ["center_top.japan_shield.title"] = { zh = "全体护盾", en = "All Point Defense Drones" },
     ["center_top.japan_shield.description"] = { zh = "请激活帝国最高机密协议「机械化组装」以解锁此按钮", en = "Requiers Robotic Assembly protocol to unlock" },
     ["center_top.japan_shield.unlocked_description"] = { zh = "为所有己方载具与舰船套上纳米护盾\n冷却时间200秒", en = "Apply Point Defense Drones to all friendly vehicles and ships; 200s cooldown" },
@@ -283,26 +291,26 @@ Localization._text_sources = {
     ["center_top.used.dragon_core_called"] = { zh = "%s方$p%dName召唤了青龙核心战斗舰！", en = "%s $p%dName summoned DragonShip!" },
     ["center_top.used.air_marshal"] = { zh = "%s方$p%dName请求了空军元帅！", en = "%s $p%dName requested Air Marshal!" },
     ["center_top.used.hydra"] = { zh = "%s方$p%dName发动了九头蛇万岁！", en = "%s $p%dName hailed Hydra!" },
-    ["center_top.hydra.controlled_count"] = { zh = "九头蛇万岁：心控敌方单位%d个", en = "Hail Hydra: %d enemy units mind-controlled" },
+    ["center_top.hydra.controlled_count"] = { zh = "九头蛇万岁：心控敌方单位%d个", en = "Hail Hydra：%d enemy units mind-controlled" },
     ["center_top.used.snowstorm"] = { zh = "%s方$p%dName借助极地的严寒冻结敌方单位！", en = "%s $p%dName froze the enemy units with arctic cold!" },
     ["center_top.error.no_unit_to_freeze"] = { zh = "敌方场上没有可冻结的单位，冰天雪地未生效", en = "No enemy field units to freeze, Frozen Wasteland had no effect" },
     ["center_top.error.enemy_no_skill_to_copy"] = { zh = "敌方未释放过技能，无法复制技能", en = "Enemy hasn't released skills, cannot copy" },
-    ["center_top.error.player_not_built_chronosphere"] = { zh = "错误：玩家 %d 尚未建造超时空。", en = "Error: player %d hasn't built Chronosphere." },
-    ["center_top.error.player_not_emp_mech_protocol"] = { zh = "错误：玩家 %d 尚未获得帝国机械化组装协议。", en = "Error: player %d hasn't obtained Empire mech protocol." },
-    ["center_top.error.player_not_obtained_morale"] = { zh = "错误：玩家 %d 尚未获得止戈立场。", en = "Error: player %d hasn't obtained Array of Sundial." },
-    ["center_top.error.no_tank_found"] = { zh = "错误：没有找到任何载具或舰船单位，无法施加纳米护盾。", en = "Error: no vehicles or ships found, cannot apply nano shield." },
-    ["center_top.error.temporal_raid_no_tank"] = { zh = "超时空突袭：没有可传送的主战坦克，技能未生效。", en = "ChronoSphere Raid: no main battle tanks to teleport, skill had no effect." },
-    ["center_top.error.temporal_raid_no_target"] = { zh = "超时空突袭：中央战场没有可用的落点，技能未生效。", en = "ChronoSphere Raid: no usable landing spot inside the central battlefield, skill had no effect." },
-    ["center_top.error.no_land_unit_found"] = { zh = "错误：没有找到任何陆地单位，无法释放杀敌奖励", en = "Error: no land units found, cannot cash bounty" },
-    ["center_top.error.no_unit_found"] = { zh = "错误：没有找到任何单位，无法施加士气提升。", en = "Error: no units found, cannot apply morale boost" },
+    ["center_top.error.player_not_built_chronosphere"] = { zh = "错误：玩家 %d 尚未建造超时空。", en = "Error：player %d hasn't built Chronosphere." },
+    ["center_top.error.player_not_emp_mech_protocol"] = { zh = "错误：玩家 %d 尚未获得帝国机械化组装协议。", en = "Error：player %d hasn't obtained Empire mech protocol." },
+    ["center_top.error.player_not_obtained_morale"] = { zh = "错误：玩家 %d 尚未获得止戈立场。", en = "Error：player %d hasn't obtained Array of Sundial." },
+    ["center_top.error.no_tank_found"] = { zh = "错误：没有找到任何载具或舰船单位，无法施加纳米护盾。", en = "Error：no vehicles or ships found, cannot apply nano shield." },
+    ["center_top.error.temporal_raid_no_tank"] = { zh = "超时空突袭：没有可传送的主战坦克，技能未生效。", en = "ChronoSphere Raid：no main battle tanks to teleport, skill had no effect." },
+    ["center_top.error.temporal_raid_no_target"] = { zh = "超时空突袭：中央战场没有可用的落点，技能未生效。", en = "ChronoSphere Raid：no usable landing spot inside the central battlefield, skill had no effect." },
+    ["center_top.error.no_land_unit_found"] = { zh = "错误：没有找到任何陆地单位，无法释放杀敌奖励", en = "Error：no land units found, cannot cash bounty" },
+    ["center_top.error.no_unit_found"] = { zh = "错误：没有找到任何单位，无法施加士气提升。", en = "Error：no units found, cannot apply morale boost" },
     ["center_top.used.local_destruction"] = { zh = "%s方$p%dName使用了局部杀伤性武器！", en = "%s $p%dName used Local Destruction Weapon!" },
     ["center_top.used.emp_nano_shield"] = { zh = "%s方$p%dName使用了由帝国机械化组装协议提供的纳米护盾！", en = "%s $p%dName used Empire Nano Shield from Robotic Assembly!" },
     ["center_top.used.kill_reward"] = { zh = "%s方$p%dName使用了杀敌奖励！", en = "%s $p%dName used Kill Reward!" },
     ["center_top.used.global_morale"] = { zh = "%s方$p%dName使用了由止戈立场提供的全图士气提升技能！", en = "%s $p%dName used Global Morale Boost from Array of Sundial!" },
 
     -- Button manager messages
-    ["button_manager.error.incomplete_data"] = { zh = "错误：按钮数据不完整，无法设置按钮", en = "Error: button data incomplete, cannot set button" },
-    ["button_manager.error.no_playerindex"] = { zh = "错误：按钮 %s 没有定义 PlayerIndex", en = "Error: button %s has no PlayerIndex" },
+    ["button_manager.error.incomplete_data"] = { zh = "错误：按钮数据不完整，无法设置按钮", en = "Error：button data incomplete, cannot set button" },
+    ["button_manager.error.no_playerindex"] = { zh = "错误：按钮 %s 没有定义 PlayerIndex", en = "Error：button %s has no PlayerIndex" },
     ["button_manager.error.no_click_event"] = { zh = "%s 点击了按钮 %d，但该按钮没有定义点击事件", en = "%s clicked button %d, but no click handler defined" },
     ["button_manager.error.no_sharedcooldown_id"] = { zh = "玩家 %s 的按钮 %s 没有定义共享冷却 ID 却试图触发共享冷却事件", en = "Player %s's button %s has no shared cooldown ID but attempted to trigger shared cooldown" },
     ["button_manager.error.no_sharedcooldown_handler"] = { zh = "玩家 %s 的按钮 %s 没有定义共享冷却事件", en = "Player %s's button %s has no shared cooldown handler" },
@@ -346,12 +354,12 @@ Localization._text_sources = {
     ["round.no_winner"] = { zh = "本回合暂无胜者", en = "No winner this round" },
     ["mirrortower.unlock_t4_ship.devil"] = { zh = "恶魔方摧毁敌方海3塔，立即释放一次达摩克利斯之剑(不消耗释放次数)!", en = "Devils destroyed the enemy sea tower 3 and immediately triggered free Damocles Sword!" },
     ["mirrortower.unlock_t4_ship.angel"] = { zh = "天使方摧毁敌方海3塔，立即释放一次达摩克利斯之剑(不消耗释放次数)!", en = "Angels destroyed the enemy sea tower 3 and immediately triggered free Damocles Sword!" },
-    ["unit_die.money_gained"] = { zh = "获得$%s", en = "Gained $%s" },
+    ["unit_die.money_gained"] = { zh = "获得＄%s", en = "Gained ＄%s" },
 
     -- === 投降系统 ===
     ["side.devil"] = { zh = "恶魔", en = "Devil" },
     ["side.angel"] = { zh = "天使", en = "Angel" },
-    ["surrender.vote_text"] = { zh = "                                                          正在投票\n规则:投降大于战斗则为成功投降,票数相等会继续游戏\n全局每个人只能发动一次投降", en = "                                                          Voting in progress\nRule: surrender beats fight for a successful surrender; tied votes continue the game\nEach player can initiate surrender only once globally" },
+    ["surrender.vote_text"] = { zh = "                                                          正在投票\n规则：投降大于战斗则为成功投降,票数相等会继续游戏\n全局每个人只能发动一次投降", en = "                                                          Voting in progress\nRule：surrender beats fight for a successful surrender; tied votes continue the game\nEach player can initiate surrender only once globally" },
     ["surrender.choice.surrender"] = { zh = "投降", en = "Surrender" },
     ["surrender.choice.pass"] = { zh = "弃权", en = "Pass" },
     ["surrender.choice.fight"] = { zh = "战斗", en = "Fight" },
@@ -374,8 +382,8 @@ Localization._text_sources = {
 
     -- === 轮次提示 ===
     ["round.begin"] = { zh = "第%d回合，开始！", en = "Round %d, begin!" },
-    ["round.angel_formation"] = { zh = "战场右侧：天使$p4Name $p5Name $p7Name $p6Name", en = "Right side of battlefield: Angels $p4Name $p5Name $p7Name $p6Name" },
-    ["round.devil_formation"] = { zh = "战场左侧：恶魔$p1Name $p2Name $p8Name $p3Name", en = "Left side of battlefield: Devils $p1Name $p2Name $p8Name $p3Name" },
+    ["round.angel_formation"] = { zh = "战场右侧：天使$p4Name $p5Name $p7Name $p6Name", en = "Right side of battlefield：Angels $p4Name $p5Name $p7Name $p6Name" },
+    ["round.devil_formation"] = { zh = "战场左侧：恶魔$p1Name $p2Name $p8Name $p3Name", en = "Left side of battlefield：Devils $p1Name $p2Name $p8Name $p3Name" },
 
     -- === 回收系统 ===
     ["recycle.choice.1"] = { zh = "回收1个", en = "Recycle 1" },
@@ -388,9 +396,9 @@ Localization._text_sources = {
     ["recycle.unit_prefix.navy"] = { zh = "海军", en = "Naval " },
     ["recycle.unit_prefix.ground"] = { zh = "陆军", en = "Ground " },
     ["player_dragonship.converted"] = { zh = "获得神州MCV，已在基地处生成伏龙殿。", en = "Celestial MCV acquired. A Celestial Construction Yard has been spawned at your base." },
-    ["player_dragonship.recycled"] = { zh = "你已经拥有伏龙殿，多余的神州MCV已自动回收，返还$%d。", en = "You already own a Celestial Construction Yard. The extra Celestial MCV was recycled for $%d." },
-    ["player_dragonship.recycled_no_base"] = { zh = "无法定位你的基地，神州MCV已自动回收，返还$%d。", en = "Your base could not be located. The Celestial MCV was recycled for $%d." },
-    ["yaoguang.excess.recycled"] = { zh = "单位池中的摇光超出上限，多出的%d辆已自动回收，返还$%d。", en = "Your Yaoguang count exceeded the cap. %d excess unit(s) were recycled for $%d." },
+    ["player_dragonship.recycled"] = { zh = "你已经拥有伏龙殿，多余的神州MCV已自动回收，返还＄%d。", en = "You already own a Celestial Construction Yard. The extra Celestial MCV was recycled for ＄%d." },
+    ["player_dragonship.recycled_no_base"] = { zh = "无法定位你的基地，神州MCV已自动回收，返还＄%d。", en = "Your base could not be located. The Celestial MCV was recycled for ＄%d." },
+    ["yaoguang.excess.recycled"] = { zh = "单位池中的摇光超出上限，多出的%d辆已自动回收，返还＄%d。", en = "Your Yaoguang count exceeded the cap. %d excess unit(s) were recycled for ＄%d." },
 
     -- 回收按钮描述文字
     ["recycle.desc.infantry"] = { zh = "回收步兵单位", en = "Recycle infantry units" },
@@ -408,14 +416,18 @@ Localization._text_sources = {
     ["surrender.angel.pass"] = { zh = "天使$p%dName选择弃权", en = "Angel $p%dName chose to pass" },
 
     -- === 升本模式 ===
-    ["purchase_tech.button"] = { zh = "购买下一级科技(当前等级：1)\n解锁下一级科技等级和更多电厂权限", en = "Buy next tech level (current: 1)\nUnlock next tech tier and more power plant rights" },
-    ["purchase_tech.level"] = { zh = "己方科技等级: %d", en = "Our tech level: %d" },
-    ["purchase_tech.power_plants"] = { zh = "己方电厂最大数量: %d", en = "Max power plants: %d" },
-    ["purchase_tech.celestial_plants"] = { zh = "己方神州电厂最大数量: %d", en = "Max Celestial power plants: %d" },
+    ["purchase_tech.button"] = { zh = "购买下一级科技(当前等级：1)\n解锁下一级科技等级和更多电厂权限", en = "Buy next tech level (current：1)\nUnlock next tech tier and more power plant rights" },
+    ["purchase_tech.level"] = { zh = "己方科技等级：%d", en = "Our tech level：%d" },
+    ["purchase_tech.power_plants"] = { zh = "己方电厂最大数量：%d", en = "Max power plants：%d" },
+    ["purchase_tech.celestial_plants"] = { zh = "己方神州电厂最大数量：%d", en = "Max Celestial power plants：%d" },
+
+    ["alert.mine_cleared"] = { zh = "回合开始，清除场上地雷", en = "Round start：clearing mines on the field" },
 
     -- === 记分牌 ===
     ["board.title.troop_count"] = { zh = "部队数量", en = "Unit Count" },
-    ["board.title.current_round"] = { zh = "当前回合:", en = "Round:" },
+    ["board.title.current_round"] = { zh = "当前回合：", en = "Round：" },
+    ["board.title.unit_cap"] = { zh = "单位上限：", en = "Unit cap：" },
+    ["board.unit_cap.unlimited"] = { zh = "无限量", en = "No limit" },
     ["board.role.devil1"] = { zh = "恶魔1号", en = "Devil 1" },
     ["board.role.devil2"] = { zh = "恶魔2号", en = "Devil 2" },
     ["board.role.devil3"] = { zh = "恶魔3号", en = "Devil 3" },
@@ -427,17 +439,17 @@ Localization._text_sources = {
     ["board.role.devil4"] = { zh = "恶魔4号", en = "Devil 4" },
     ["board.role.angel4"] = { zh = "天使4号", en = "Angel 4" },
     -- === 按钮对话框管理器 ===
-    ["button_dialog.player_not_found"] = { zh = "玩家 %s 点击了按钮 %d，但没有找到对应的对话框 ID: %d", en = "Player %s clicked button %d, but no matching dialog ID was found: %d" },
-    ["button_dialog.player_mismatch"] = { zh = "对话框 %d 的按钮 %d 被点击，但玩家名称不匹配: %s != %s", en = "Dialog %d button %d was clicked, but the player name does not match: %s != %s" },
+    ["button_dialog.player_not_found"] = { zh = "玩家 %s 点击了按钮 %d，但没有找到对应的对话框 ID：%d", en = "Player %s clicked button %d, but no matching dialog ID was found：%d" },
+    ["button_dialog.player_mismatch"] = { zh = "对话框 %d 的按钮 %d 被点击，但玩家名称不匹配：%s != %s", en = "Dialog %d button %d was clicked, but the player name does not match：%s != %s" },
     ["button_dialog.no_choice_handler"] = { zh = "玩家 %s 点击了按钮 %d，但该对话框没有定义按钮事件处理函数", en = "Player %s clicked button %d, but this dialog has no button event handler" },
-    ["button_dialog.invalid_dialog"] = { zh = "错误：尝试添加一个无效的按钮选择对话框", en = "Error: attempted to add an invalid button choice dialog" },
-    ["button_dialog.invalid_dialog_id"] = { zh = "错误：尝试创建一个无效的按钮选择对话框，DialogId 必须是数字", en = "Error: attempted to create an invalid button choice dialog; DialogId must be a number" },
-    ["button_dialog.invalid_player_name"] = { zh = "错误：尝试创建一个无效的按钮选择对话框，PlayerName 必须是字符串", en = "Error: attempted to create an invalid button choice dialog; PlayerName must be a string" },
-    ["button_dialog.not_enough_choices"] = { zh = "错误：尝试显示对话框 %d 时，选项数量不足。至少需要一个选项！", en = "Error: when displaying dialog %d, there are not enough choices. At least one choice is required!" },
-    ["button_dialog.too_many_choices"] = { zh = "错误：尝试显示对话框 %d 时，选项数量超过了预设的最大值。在加入更多选项之前应该先实现分页功能！", en = "Error: when displaying dialog %d, the number of choices exceeds the preset maximum. Implement pagination before adding more choices!" },
+    ["button_dialog.invalid_dialog"] = { zh = "错误：尝试添加一个无效的按钮选择对话框", en = "Error：attempted to add an invalid button choice dialog" },
+    ["button_dialog.invalid_dialog_id"] = { zh = "错误：尝试创建一个无效的按钮选择对话框，DialogId 必须是数字", en = "Error：attempted to create an invalid button choice dialog; DialogId must be a number" },
+    ["button_dialog.invalid_player_name"] = { zh = "错误：尝试创建一个无效的按钮选择对话框，PlayerName 必须是字符串", en = "Error：attempted to create an invalid button choice dialog; PlayerName must be a string" },
+    ["button_dialog.not_enough_choices"] = { zh = "错误：尝试显示对话框 %d 时，选项数量不足。至少需要一个选项！", en = "Error：when displaying dialog %d, there are not enough choices. At least one choice is required!" },
+    ["button_dialog.too_many_choices"] = { zh = "错误：尝试显示对话框 %d 时，选项数量超过了预设的最大值。在加入更多选项之前应该先实现分页功能！", en = "Error：when displaying dialog %d, the number of choices exceeds the preset maximum. Implement pagination before adding more choices!" },
 
     -- === 错误信息 ===
-    ["error.invalid_kind"] = { zh = "错误：CenterTopBtnFunc_CreatePlayerSkillButtons 的 kind 参数无效", en = "Error: invalid kind parameter in CenterTopBtnFunc_CreatePlayerSkillButtons" },
+    ["error.invalid_kind"] = { zh = "错误：CenterTopBtnFunc_CreatePlayerSkillButtons 的 kind 参数无效", en = "Error：invalid kind parameter in CenterTopBtnFunc_CreatePlayerSkillButtons" },
     ["error.crate_in_battlefield"] = { zh = "禁止把抽卡箱子放在中央战场，作为惩罚，箱子会被随机分配！", en = "Placing a crate in the central battlefield is prohibited. As a penalty, the crate will be randomly distributed!" },
 
     -- === 游戏规则与更新日志 ===
@@ -463,24 +475,11 @@ Localization._text_sources = {
 海克斯符文：发放回合为第 3/10/18/27 回合，每次全场统一发放稀有度为 棱彩/黄金/白银 的海克斯符文，为战场带来随机可能性！按 J 键可收起/重新展开选择界面，上方技能栏有海克斯面板可查看全场玩家符文。
 护甲计算公式：减伤百分比＝护甲值／（护甲值＋100）
 可点击下方"更新日志"按钮查看更新内容]],
-        en = [[DSA Game Rules:
-This map is developed with assistance from Latticeshop. It contains many experimental features and may be unstable. Features that pass testing will be updated and merged into the official DSA_XXX map.
-1. Units you build are recorded. At the start of each round, all units you've built are respawned on the battlefield under AI control.
-2. Upper-side players (Angel) units appear on the right side of the battlefield. Lower-side players (Devil) units appear on the left side.
-3. Power plants provide income. Build power plants ASAP to avoid running out of money. Soviet Super Reactors and Celestial Diversion Spire do not provide income (tech unlock only). Building T4 high-tech grants a free Veteran Academy.
-Standard Mode: Limited income in early stages. Destroy enemy defense towers to unlock more power plants and technology.
-Death Mode: Both sides start with only their final tower remaining, with no tech-access restrictions.
-Level-Up Mode: Players spend money to unlock more power plants and higher tech tiers. Tech unlock costs decrease over time, and players of the same faction share their unlocks.
-Shrink Mode: Units on the battlefield receive the Shrink buff!
-Lucky Crate Feature: Use the Lucky Crate skill to gain extra units. Do not use it in the central battlefield!
-Pure Draw Mode: Lucky Crates are available from the start. Only 5 units may be produced during each 3-round cycle. Half of all draws are replaced with weighted buildable units from all factions, and random airdrops appear in the center of the battlefield!
-Hextech Runes: Granted on rounds 3/10/18/27, each time with one rarity for the whole field (Prismatic/Gold/Silver), bringing random twists to battle! Press J to hide or restore the selection screen. Use the Hextech Panel in the top button bar to view every player's runes.
-Armor formula: damage reduction ratio = armor / (armor + 100)
-Click the "Update Log" button below to view update details.]]
+        en = "DSA Game Rules：\nThis map is developed with assistance from Latticeshop. It contains many experimental features and may be unstable. Features that pass testing will be updated and merged into the official DSA map.\n1. Units you build are recorded. At the start of each round, all units you have built are respawned on the battlefield under AI control.\n2. Upper-side players (Angel) units appear on the right side of the battlefield. Lower-side players (Devil) units appear on the left side.\n3. Power plants provide income. Build power plants ASAP to avoid running out of money. Soviet Super Reactors and Celestial Diversion Spire do not provide income (tech unlock only). Building T4 high-tech grants a free Veteran Academy.\nStandard Mode：Limited income in early stages. Destroy enemy defense towers to unlock more power plants and technology.\nDeath Mode：Both sides start with only their final tower remaining, with no tech-access restrictions.\nLevel-Up Mode：Players spend money to unlock more power plants and higher tech tiers. Tech unlock costs decrease over time, and players of the same faction share their unlocks.\nShrink Mode：Units on the battlefield receive the Shrink buff!\nLucky Crate Feature：Use the Lucky Crate skill to gain extra units. Do not use it in the central battlefield!\nPure Draw Mode：Lucky Crates are available from the start. Only 5 units may be produced during each 3-round cycle. Half of all draws are replaced with weighted buildable units from all factions, and random airdrops appear in the center of the battlefield!\nHextech Runes：Granted on rounds 3/10/18/27, each time with one rarity for the whole field (Prismatic/Gold/Silver), bringing random twists to battle! Press J to hide or restore the selection screen. Use the Hextech Panel in the top button bar to view the runes of every player.\nArmor formula：damage reduction ratio is armor divided by armor plus 100.\nClick the Update Log button below to view update details."
     },
     ["game.qq_group"] = { 
-        zh = "自走棋交流/反馈QQ群: 219951578\n", 
-        en = "DSA Discussion/Feedback QQ Group: 219951578\n" 
+        zh = "自走棋交流/反馈QQ群：219951578\n", 
+        en = "DSA Discussion/Feedback QQ Group：219951578\n" 
     },
 }
 
@@ -516,10 +515,15 @@ Localization.get = function(...)
     -- （海克斯符文文案按模块集中放在 lua/GAME/HextechRune/03_text.lua）。
     local source = Localization._text_sources[key] or (g_LocalizationExtraText and g_LocalizationExtraText[key])
     if not source then
-        _ALERT("Localization: missing key " .. key)
+        _ALERT("Localization：missing key " .. key)
         return key
     end
     local template = source[Localization.lang] or source.zh or source.en or key
+    -- 兜底：模板不是字符串时不要把 nil 丢给引擎（会显示成 undefined）
+    if type(template) ~= "string" then
+        _ALERT("Localization：bad template type " .. key)
+        return key
+    end
     if getn(arg) > 0 then
         arg[1] = template
         return call(format, arg)
@@ -587,7 +591,7 @@ Localization.recycle = function(key, ...)
             if unit_key == "JapanAntiAirVehicleTech3" or unit_key == "SovietPineElectronicRadarTruck" then
                 return unit_key
             end
-            _ALERT("Localization: failed to translate unit key " .. unit_key)
+            _ALERT("Localization：failed to translate unit key " .. unit_key)
         end
         return translated
     end
@@ -610,12 +614,12 @@ end
 
 Localization.on_language_changed = function(f, data)
     if type(f) ~= "function" then
-        _ALERT("Localization.on_language_changed: argument is not a function")
+        _ALERT("Localization.on_language_changed：argument is not a function")
         return
     end
     Localization._language_changed_callbacks = Localization._language_changed_callbacks or {}
     if getn(Localization._language_changed_callbacks) > 200 then
-        _ALERT("Localization.on_language_changed: too many callbacks registered, possible memory leak, aborting")
+        _ALERT("Localization.on_language_changed：too many callbacks registered, possible memory leak, aborting")
         return
     end
     tinsert(Localization._language_changed_callbacks, { f = f, data = data })
@@ -631,7 +635,7 @@ function TextDoActionLocalizedOnce(id, ...)
     -- example: TextDoActionLocalized("NAMED_SHOW_INFOBOX", "HOME", "SCRIPT:learn", "0", "")
 
     if not id then
-        _ALERT("TextDoActionLocalized: missing action id")
+        _ALERT("TextDoActionLocalized：missing action id")
         return
     end
     -- handle each action type
@@ -639,14 +643,18 @@ function TextDoActionLocalizedOnce(id, ...)
     data.get_text_key = function(self)
         local text_key = self.text_key
         if not text_key then
-            _ALERT("TextDoActionLocalized: missing text_key")
+            _ALERT("TextDoActionLocalized：missing text_key")
             return "GUI:ERROR"
         end
-        local text_key_en = text_key .. "_en"
         if Localization.lang == "en" then
-            -- check if en key exists
+            -- 大写 _EN 是本图 map.str 里那批老底稿（两边都试，谁有用谁上）。
+            local text_key_en = text_key .. "_en"
             if Localization.InternalTranslate(text_key_en) then
                 return text_key_en
+            end
+            local text_key_EN = text_key .. "_EN"
+            if Localization.InternalTranslate(text_key_EN) then
+                return text_key_EN
             end
         end
         return text_key
@@ -693,7 +701,7 @@ function TextDoActionLocalizedOnce(id, ...)
             ExecuteAction("DISPLAY_COUNTDOWN_TIMER", self.counter_name, text_key)
         end
     else
-        _ALERT("TextDoActionLocalized: unknown action id " .. id)
+        _ALERT("TextDoActionLocalized：unknown action id " .. id)
         return
     end
 
@@ -712,4 +720,23 @@ function TextDoActionLocalized(id, ...)
     end
     -- register callback for language change
     Localization.on_language_changed(data.f, data)
+end
+
+-- 统一的调试 / 提示输出：要中英双语就统一走这里，键名放本地化表。
+-- 例：g_Alert("alert.mine_cleared") —— 中文客户端打中文，英文客户端打英文；
+function g_Alert(textKey, value1, value2)
+    if _ALERT == nil then
+        return
+    end
+    local text = textKey
+    if type(textKey) == "string" and Localization ~= nil
+        and Localization._text_sources ~= nil
+        and Localization._text_sources[textKey] ~= nil then
+        if value1 ~= nil then
+            text = Localization.get(textKey, value1, value2)
+        else
+            text = Localization.get(textKey)
+        end
+    end
+    _ALERT(text)
 end

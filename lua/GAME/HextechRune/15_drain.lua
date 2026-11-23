@@ -126,6 +126,10 @@ function HextechRune:AddDrainedUnitToPool(playerIndex, unitIndex, isCrate)
     if CheckPlayerYaoguangPoolCap ~= nil then
         CheckPlayerYaoguangPoolCap(playerIndex)
     end
+    -- 单位上限：入池后同样压回每人上限。
+    if TrimPlayerUnitPoolToCap ~= nil then
+        TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
+    end
     return true
 end
 

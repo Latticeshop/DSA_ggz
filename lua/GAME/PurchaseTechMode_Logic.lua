@@ -75,42 +75,6 @@ function PurchaseTechMode_Setting()
         AlignY = "top",
     })
 
-    exCreateCustomText({
-        Index = 2,
-        Content = Localization.get("purchase_tech.power_plants", 5),
-        X = 0,
-        Y = 30,
-        Color = 16711680,
-        Size = 15,
-        AlignX = "left",
-        AlignY = "top",
-    })
-
-    exCreateCustomText({
-        Index = 3,
-        Content = Localization.get("purchase_tech.celestial_plants", 4),
-        X = 0,
-        Y = 50,
-        Color = 16711680,
-        Size = 15,
-        AlignX = "left",
-        AlignY = "top",
-    })
-
-    -- 两行恒为参照值：第 2 行按非神州、第 3 行按神州；份数跟实际控制的席位走，不再写死 5/4。
-    for i = 1, 8, 1 do
-        local nonCelestialLimit = 5
-        local celestialLimit = 4
-        if GetPlayerPowerPlantReferenceLimit ~= nil then
-            nonCelestialLimit = GetPlayerPowerPlantReferenceLimit(i, 0)
-            celestialLimit = GetPlayerPowerPlantReferenceLimit(i, 1)
-        end
-        exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 2,
-            Localization.get("purchase_tech.power_plants", nonCelestialLimit))
-        exCustomTextUpdateTextForPlayer("Player_" .. tostring(i), 3,
-            Localization.get("purchase_tech.celestial_plants", celestialLimit))
-    end
-
 end
 
 ButtonManager:RegisterCustomButtonHandler(function(playerName, index)

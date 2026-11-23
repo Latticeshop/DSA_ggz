@@ -15,3 +15,7 @@ if g_DrawMode == 2 then
 end
 
 RecycleUnit_Setting()
+
+if UnitCapMode_Setting ~= nil then
+    UnitCapMode_Setting()
+end

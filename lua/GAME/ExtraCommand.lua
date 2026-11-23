@@ -179,3 +179,75 @@ function BtnChoiceDialogEventFunc_ShowBanModeDialog(playerName)
     dialogData:RefreshData()
     ButtonChoiceDialogManager:ShowDialog(dialogData)
 end
+
+-- === 单位上限模式（无数量限制 / 每人 100 / 200 / 300）===
+UNIT_CAP_MODE_DIALOG_ID = 206
+g_UnitCapModeOptions = { 0, 100, 200, 300 }
+g_UnitCapMode = g_UnitCapMode or 0
+
+function UnitCapModeNameOf(value)
+    if (tonumber(value) or 0) <= 0 then
+        return Localization.get("unit_cap.option.none")
+    end
+    return Localization.get("unit_cap.option.value", value)
+end
+
+function UnitCapModeGetSummarySuffix()
+    local mode = tonumber(g_UnitCapMode) or 0
+    if mode <= 0 then
+        return ''
+    end
+    return Localization.get("unit_cap.suffix", mode)
+end
+
+-- 单位上限子页：四个选项（默认无数量限制）+ 返回上一页。
+function BtnChoiceDialogEventFunc_ShowUnitCapModeDialog(playerName)
+    local dialogData = {
+        DialogId = UNIT_CAP_MODE_DIALOG_ID,
+        PlayerName = playerName,
+        Title = Localization.get("unit_cap.dialog.title"),
+        Choices = {},
+    }
+    dialogData.RefreshData = function(self)
+        self.Choices = {}
+        for i = 1, getn(g_UnitCapModeOptions), 1 do
+            local optionName = UnitCapModeNameOf(g_UnitCapModeOptions[i])
+            if (tonumber(g_UnitCapMode) or 0) == g_UnitCapModeOptions[i] then
+                optionName = optionName .. Localization.get("game_mode.selected_suffix")
+            end
+            tinsert(self.Choices, optionName)
+        end
+        tinsert(self.Choices, Localization.get("unit_cap.back"))
+    end
+    dialogData.OnChoice = function(self, buttonIndex)
+        if buttonIndex >= 1 and buttonIndex <= getn(g_UnitCapModeOptions) then
+            g_UnitCapMode = g_UnitCapModeOptions[buttonIndex]
+            exMessageAppendToMessageArea(Localization.get("game_mode.host.selected",
+                UnitCapModeNameOf(g_UnitCapMode)))
+            -- 中途改小上限时立刻把已有超额收掉（开局前是空池，等于空跑）。
+            if TrimAllPlayersUnitPoolToCap ~= nil then
+                TrimAllPlayersUnitPoolToCap()
+            end
+            if UpdateUnitCapHudAll ~= nil then
+                UpdateUnitCapHudAll()
+            end
+            self:RefreshData()
+            ButtonChoiceDialogManager:ShowDialog(self)
+            return
+        end
+        if buttonIndex == getn(g_UnitCapModeOptions) + 1 then
+            BtnChoiceDialogEventFunc_ShowMoreOptionsDialog(self.PlayerName)
+            return
+        end
+        exMessageAppendToMessageArea(Localization.get("game_mode.error.invalid_button", self.PlayerName, buttonIndex))
+    end
+    dialogData:RefreshData()
+    ButtonChoiceDialogManager:ShowDialog(dialogData)
+end
+
+function UnitCapMode_Setting()
+    g_UnitCapMode = tonumber(g_UnitCapMode) or 0
+    if UpdateUnitCapHudAll ~= nil then
+        UpdateUnitCapHudAll(true)
+    end
+end

@@ -356,6 +356,9 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     if CheckPlayerYaoguangPoolCap ~= nil then
         CheckPlayerYaoguangPoolCap(playerIndex)
     end
+    if TrimPlayerUnitPoolToCap ~= nil then
+        TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
+    end
 end
 
 -- 六个预设守护神的判定统一在 BasicVar（g_IsPresetGuardianUnitId）。
