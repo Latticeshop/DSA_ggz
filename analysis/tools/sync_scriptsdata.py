@@ -29,8 +29,6 @@ JSON_PATH = find_scriptsdata_path(REPO_ROOT)
 TARGETS = [  # fmt: skip
     ('lua/GAME/MIRRORTOWER/unlockT4Ship.lua', ['local enableT4Ship = {', 'Sea3ProtectShip8']),
     ('lua/GAME/MIRRORTOWER/unlockT4Ship22.lua', ['local enableT4Ship = {', 'Sea3ProtectShip7']),
-    # lua/GAME/ShrinkMode_Trigger.lua 不在这张表里：它的 payload 末尾还合并了
-    # PassengerLoadSpawn.lua（载具装填），必须两份源一起写，否则会互相覆盖。
     # 同步请用 analysis/merge_passenger_spawn_payload.py。
     ('lua/GAME/T71Unlock.lua', ['if g_GameMode ~= 4 then', 'Player_4/UNLOCK1__4', 'PlyrCreeps']),
     ('lua/GAME/T72Unlock.lua', ['if g_GameMode ~= 4 then', 'Player_4/UNLOCK2__4', 'PlyrCreeps']),
@@ -71,7 +69,6 @@ TARGETS = [  # fmt: skip
      ['function addmoneyAllied', 'NAMED_NOT_DESTROYED', 'UNIT_HAS_MODELCONDITION']),
     ('lua/cams/OpenMode.lua', ['if g_GameMode == 2 or g_EnableDeathModeEffect == 1 then', 'RecycleUnit_Setting()']),
     # 这两个模式脚本原先没登记：节点一直在 JSON 里、内容与 lua 源逐字一致，但改它们不会被同步
-    # （2026-10-14 补「删守护神展示体前解除登记」时发现，顺手登记进来）。BasicVar1 同样漏登记。
     ('lua/GAME/BasicVar1.lua', ['g_TowerGuardianUnitIds = g_TowerGuardianUnitIds or {}',
         'SpawnTowerGuardian']),
     # mainloopfunc 节点（GAME/mainloopfunc）此前没登记：玩家建筑无碰撞的每帧入口挂在
@@ -81,17 +78,16 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/mainloop.lua', ['function mainloop()', 'SchedulerModule.__runner_function()']),
     ('lua/GAME/PurchaseTechMode_Logic.lua', ['PurchaseTechMode_Setting', 'g_maxTechLevelDecreaseRate']),
     ('lua/cams/DeathMode.lua', ['GetObjectByScriptName("t533")', 'alliedAdditionalTech']),
-    # 防冻结（2026-10-23）：没新开节点，直接复用地图里早就存在、一直停用的 `NO_freeze`
-    # （条件 TRUE / EvaluationInterval = 1 / DeactivateUponSuccess = false），payload 换成
-    # 模板扫描版的定期解冻。原因：只靠 TowerFreeOfFreeze.lua 挂的 IN_SHIELD_SPHERE 挡不住
     # 冷冻武器灌冷冻条（实测海塔仍被冻），真正管用的是这条负二次伤害的解冻循环。
     # 该节点是「停用」状态，启用后才会跑（节点开关在地图的脚本树里，导入 payload 不会改它）。
     ('lua/GAME/TowerUnfreeze.lua', ['g_TowerUnfreezeTypes', 'exObjectDealSecondaryDamage(ObjectGetId(tower)']),
     # 防冻结那个节点的 payload 同时承担七类塔强化（伤害 ×1.5 / 陆地一塔攻速 ×1.5），
     ('lua/GAME/TowerFreeOfFreeze.lua', ['ExecuteAction("UNIT_CHANGE_OBJECT_STATUS", object,"IN_SHIELD_SPHERE", 1)', 'GetObjectByScriptName("T83F")']),
-    # 2026-10-27 清理旧解冻循环时补登记：TOWER 节点（lua/obj/TOWER_0.lua）此前不在表里，
-    # 删掉 UNFROZEN() 只改源码不会回写 JSON，audit_lua_json 会报 DRIFT。
-    # needles 取删改后仍存在的两行全局赋值（BUTTON_0.lua 用的是单引号，不会误命中）。
+    # 海二/海三塔的射程 + 视野叠层（StrongerSeaTower3）此前没登记：节点一直在 JSON 里，
+    # （`local T83F = ...` 只有本 payload 有；T72F 的 RANGE_Up 那行也只此一份）。
+    ('lua/GAME/StrongerSeaTower3.lua',
+     ['local T83F = GetObjectByScriptName("T83F");',
+      'ObjectLoadAttributeModifier(T72F, "AttributeModifier_MAP_RANGE_Up", 999999);']),
     ('lua/obj/TOWER_0.lua', ['T74= GetObjectByScriptName("T74")', 'T84= GetObjectByScriptName("T84")']),
     ('lua/text/Localization.lua', ['Localization = Localization or {}', 'Localization._text_sources']),
     ('lua/GAME/HextechRune/00_assets.lua', ['local HextechFrameGold = {', 'g_HextechFrameGoldId']),
@@ -100,8 +96,6 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/02_event.lua', ['function HextechRune:ShowFormalEvent', 'function HextechRune:OnRoundBegin']),
     ('lua/GAME/HextechRune/04_buff.lua', ['HextechRune.BattleUnitEffectDelay', 'ApplyFiveTigerGenerals']),
     # 注意：回归基本功 / 等价交换的实现段曾经并入 01_rune_pool.lua 尾部（走 HextechRunePool 节点），
-    # 因为当时地图脚本树（map.xml）不收录新节点。**现在 HextechRuneBasicsExchange 节点已经存在于
-    # ScriptsData.json 里**（用户在地图里加好了），所以改回独立条目跟着同步；若哪天该节点又被移除，
     # 就把这段实现再并回 01_rune_pool.lua 尾部，并删掉下面这条。
     ('lua/GAME/HextechRune/18_basics_exchange.lua',
      ['HextechRune.TierWideRuneEffects', 'ApplyBasicsOrExchangeToUnit']),
@@ -114,7 +108,6 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/10_recombobulator.lua', ['RecombobulatorRareChance', 'RollRecombobulatorTargetIndex']),
     # 注意：needles 必须同时出现在「JSON 中的现有 payload」与「新 lua 内容」里，
     # 否则定位不到待替换的 payload 会报 expected ... found 0。改名/重写时优先选
-    # 两边都保留的函数名。
     ('lua/GAME/HextechRune/11_poach.lua',
      ['CollectPoachSourceUnitIndexes', 'ApplyPoachToPlayer']),
     ('lua/GAME/HextechRune/12_investment.lua', ['ApplyInvestment', 'InvestmentPayoutMultiplier']),
@@ -165,7 +158,6 @@ TARGETS = [  # fmt: skip
     # MICROINI 里定义函数时写成 `function X ()`（带空格），不会误命中那 3 个调用式 needle。
     ('lua/LUABOX/MOCROCONTROL/TGMICRO_0.lua', ['JapanAntiNavyShipTech3MICROCONTROL()',
         'if BIGSHIPCONTROL then']),
-    # AIRSPACT 此前没登记（JSON 里那份是 87 B 的单行调用），要给飞机批次补打击者VX，
     # 必须先登记，否则改了不会写回 ScriptsData.json。
     # A.60 起这行多了批次参数，LandArmySpawn 的护航批次用的是同一个调用前缀，
     # 所以 needle 必须带上 AIRSPACT 独有的 `,"late")` 尾巴才唯一。
@@ -187,7 +179,6 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/spellbook.lua', ['g_PlayerSpellBookId = {', 'g_PlayerSpellBookId[playerIndex] = i']),
     ('lua/LUABOX/AI/AID_0.lua', ['AI = {', 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY']),
     # AIINI 节点（脚本树 AI/AIINI）里有两段 payload：Then[0] 是 AIINI_0.lua（旧的假金钱随机买兵，
-    # 死代码留档），Then[1] 才是 AIINI_1.lua。2026-10-30 重写 AIINI_1 成 AICOMP 编制同步时补登记：
     # 不登记的话改了源文件也不会写回 JSON。needle 用两个只存在于 Then[1] 的旧函数名（写成
     # `function spinfantlv1 (`，与 Then[0] 里的 `AIUNITBUILDRADOM` 区分开）。
     ('lua/LUABOX/AI/AIINI_1.lua', ['function spinfantlv1', 'function spaircraftlv1']),

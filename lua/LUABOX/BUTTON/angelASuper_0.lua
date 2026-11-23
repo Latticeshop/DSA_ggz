@@ -1,12 +1,20 @@
--- 讲解见 analysis/地图注释说明文档.md 附录 A.6
+-- 讲解见 analysis/地图注释说明文档.md 第 10 节 + 附录 A.6
 
+-- 超时空突袭（天使侧 / PlyrCreeps）：把本方全部主战坦克按 8 个一组，分组空投到中央战场内。
 local groupSize = 8 -- 每组8个。
 local sourceTower = T84
 local targetTower = T74
 local sideTeam = "PlyrCreeps/teamPlyrCreeps"
+local sideIndex = 8
+local enemySideIndex = 7
+local landingAreaName = "BATTLEFIELD"
 
 local units, count = ObjectFindObjects(sourceTower, nil, T2tank)
 if count <= 0 then
+    -- 本方四塔还在就等于「本方」，但一只主战坦克都扫不到（塔被拆或全被禁兵种）时，
+    -- 原来会静默结束、玩家只看到「使用了技能」，所以补一条整侧提示。
+    g_BroadcastToSide(sideIndex,
+        Localization.get("center_top.error.temporal_raid_no_tank"), 10)
     return
 end
 
@@ -19,14 +27,49 @@ local landingTargetFilter = CreateObjectFilter({
         "DragonShip", "DefenseTower" }),
     Exclude = "AIRCRAFT SHIP STRUCTURE DEBRIS IGNORE_IN_AI_HUNT_TACTIC IMMOBILE",
 })
-local landingTargets, landingTargetCount = ObjectFindObjects(targetTower, nil, landingTargetFilter)
-local availableLandingTargets = {}
-for i = 1, landingTargetCount, 1 do
-    if ObjectIsAlive(landingTargets[i]) then
-        tinsert(availableLandingTargets, landingTargets[i])
+
+-- 一档 = 敌方在中央战场内的地面单位，取它们的原位。
+local landingPoints = {}
+local landingPointCount = 0
+local candidates, candidateCount = ObjectFindObjects(targetTower, nil, landingTargetFilter)
+for i = 1, candidateCount, 1 do
+    if ObjectIsAlive(candidates[i]) and g_IsObjectInArea(candidates[i], landingAreaName) then
+        do
+            local x, y, z = ObjectGetPosition(candidates[i])
+            landingPointCount = landingPointCount + 1
+            landingPoints[landingPointCount] = { X = x, Y = y, Z = z }
+        end
     end
 end
-local availableLandingTargetCount = getn(availableLandingTargets)
+
+-- 二档 = 对面的陆地出生点（PlyrCivilian 的 LIGHTVEH11..16）。
+if landingPointCount <= 0 and LIGHTVEHSP ~= nil and LIGHTVEHSP[enemySideIndex] ~= nil then
+    local spawnPoints = LIGHTVEHSP[enemySideIndex]
+    for i = 1, getn(spawnPoints), 1 do
+        if spawnPoints[i] ~= nil and ObjectIsAlive(spawnPoints[i])
+            and g_IsObjectInArea(spawnPoints[i], landingAreaName) then
+            do
+                local x, y, z = ObjectGetPosition(spawnPoints[i])
+                landingPointCount = landingPointCount + 1
+                landingPoints[landingPointCount] = { X = x, Y = y, Z = z }
+            end
+        end
+    end
+end
+
+if landingPointCount <= 0 then
+    g_BroadcastToSide(sideIndex,
+        Localization.get("center_top.error.temporal_raid_no_target"), 10)
+    return
+end
+
+-- 本轮还没用过的落点（抽完一轮再重填，避免同一次施放里反复砸同一处而聚团）。
+local availablePoints = {}
+local availablePointCount = 0
+for i = 1, landingPointCount, 1 do
+    availablePointCount = availablePointCount + 1
+    availablePoints[availablePointCount] = landingPoints[i]
+end
 
 local randomIndex = function(maxIndex)
     local index = ceil(GetRandomNumber() * maxIndex)
@@ -35,34 +78,25 @@ local randomIndex = function(maxIndex)
     return index
 end
 
-local randomOffset = function(radius)
-    return (GetRandomNumber() * radius * 2) - radius
-end
-
 g_AngelChronosphereTransportIndex = (g_AngelChronosphereTransportIndex or 0)
 local groupCount = ceil(count / groupSize)
 for groupIndex = 1, groupCount, 1 do
-    local position = nil
-    if availableLandingTargetCount <= 0 and landingTargetCount > 0 then
-        -- RA3LuaBridge 不允许局部函数捕获外层局部变量，因此直接在当前作用域补充目标池。
-        availableLandingTargets = {}
-        for i = 1, landingTargetCount, 1 do
-            local target = landingTargets[i]
-            if ObjectIsAlive(target) then
-                tinsert(availableLandingTargets, target)
-            end
+    if availablePointCount <= 0 then
+        -- RA3LuaBridge 不允许局部函数捕获外层局部变量，因此直接在当前作用域重填落点池。
+        availablePoints = {}
+        availablePointCount = 0
+        for i = 1, landingPointCount, 1 do
+            availablePointCount = availablePointCount + 1
+            availablePoints[availablePointCount] = landingPoints[i]
         end
-        availableLandingTargetCount = getn(availableLandingTargets)
     end
-    if availableLandingTargetCount > 0 then
-        local targetIndex = randomIndex(availableLandingTargetCount)
-        local target = availableLandingTargets[targetIndex]
-        tremove(availableLandingTargets, targetIndex)
-        availableLandingTargetCount = availableLandingTargetCount - 1
-        if ObjectIsAlive(target) then
-            local x, y, z = ObjectGetPosition(target)
-            position = { X = x + randomOffset(90), Y = y + randomOffset(90), Z = z }
-        end
+
+    local position = nil
+    if availablePointCount > 0 then
+        local pointIndex = randomIndex(availablePointCount)
+        position = availablePoints[pointIndex]
+        tremove(availablePoints, pointIndex)
+        availablePointCount = availablePointCount - 1
     end
     if position == nil then
         return

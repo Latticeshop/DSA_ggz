@@ -152,7 +152,7 @@ HextechRune.ArmorRunePoints = {
     armor_heavy = 50,      -- 玄铁甲（黄金）
     armor_prismatic = 100, -- 金麟甲（棱彩）
     armor_shock = 25,      -- 装甲冲击（黄金）：25 点护甲，另外把护甲 1:1 折成伤害
-    titan_resolve = 25,    -- 泰坦的坚决（棱彩）：25 点护甲，全兵种（不带 UnitType）
+    titan_resolve = 25,    -- 泰坦的坚决（棱彩）：全兵种（不带 UnitType）。
 }
 
 -- 护甲按「玩家 × 兵种」独立记账。兵种键与 UnitTypeOrder 一致。
@@ -187,6 +187,33 @@ function HextechRune:GetPlayerUnitTypeArmor(playerIndex, unitType)
     return total
 end
 
+-- 泰坦的坚决：全兵种护甲把固定的 100 点按「还开着的兵种数」平摊。
+HextechRune.TitanResolveTotalArmor = 100
+
+-- 当前还开着的护甲兵种数（四个护甲兵种里没被禁用模式关掉的那些）。
+function HextechRune:GetEnabledArmorUnitTypeCount()
+    local count = 0
+    for i = 1, getn(self.ArmorUnitTypes), 1 do
+        local unitType = self.ArmorUnitTypes[i]
+        if BanModeIsTypeEnabled == nil or BanModeIsTypeEnabled(unitType) == 1 then
+            count = count + 1
+        end
+    end
+    if count < 1 then
+        count = 1
+    end
+    return count
+end
+
+-- 单份泰坦的坚决给每个兵种多少护甲：100 / 可用兵种数，向下取整（3 兵种 → 33）。
+function HextechRune:GetTitanResolvePoints()
+    local points = floor(self.TitanResolveTotalArmor / self:GetEnabledArmorUnitTypeCount())
+    if points < 1 then
+        points = 1
+    end
+    return points
+end
+
 -- 全兵种护甲类符文（不带 UnitType 的，如泰坦的坚决）的点数之和：每个兵种都吃这同一份。
 function HextechRune:GetPlayerAllTypeArmorPoints(playerIndex)
     local total = 0
@@ -195,6 +222,9 @@ function HextechRune:GetPlayerAllTypeArmorPoints(playerIndex)
         local rune = owned[i]
         local points = self.ArmorRunePoints[rune.Effect]
         if points ~= nil and rune.UnitType == nil then
+            if rune.Effect == "titan_resolve" then
+                points = self:GetTitanResolvePoints()
+            end
             total = total + points
         end
     end
@@ -1733,8 +1763,22 @@ function HextechRune:SetPlayerProductionEnabled(playerIndex, enabled)
     if g_SovietMortarCycleUnlocked ~= 1 then
         ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietMortarCycle", 0)
     end
-    if g_NoNavyTeslaBoatUnlocked ~= 1 then
-        ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName, "SovietAntiNavyShipTech1", 0)
+    local teslaBoatAllowed = 1
+    if g_DisableSeaArmy == 1 and g_NoNavyTeslaBoatUnlocked ~= 1 then
+        teslaBoatAllowed = 0
+    end
+    ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName,
+        "SovietAntiNavyShipTech1", teslaBoatAllowed)
+    -- 两个衍生形态与本体同一口径（PureDraw 的生产别名表里也是这三个一起开关）。
+    local teslaBoatAliases = nil
+    if g_PureDrawProductionAliases ~= nil then
+        teslaBoatAliases = g_PureDrawProductionAliases["SovietAntiNavyShipTech1"]
+    end
+    if teslaBoatAliases ~= nil then
+        for aliasIndex = 1, getn(teslaBoatAliases), 1 do
+            ExecuteAction("ALLOW_DISALLOW_ONE_BUILDING", playerName,
+                teslaBoatAliases[aliasIndex], teslaBoatAllowed)
+        end
     end
 end
 

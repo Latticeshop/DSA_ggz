@@ -119,14 +119,30 @@ function GetPlayerControlledSeatCount(playerIndex)
     return slotCount
 end
 
--- 摇光池上限：每控制一个席位 3 辆（继承一个席位 +3），再加上海克斯赠送的额外额度。
+-- 海克斯「穿云定海」（Effect = grant_yaoguang）赠送的池位：按「当前持有几张该符文」算，
+-- 保证符文被消耗时不会把已经送到的摇光当成超额卖掉。
+function GetPlayerYaoguangRuneBonusSlots(playindex)
+    local runeCount = 0
+    if HextechRune ~= nil and HextechRune.GetOwnedRuneCountByEffect ~= nil then
+        runeCount = tonumber(
+            HextechRune:GetOwnedRuneCountByEffect(playindex, "grant_yaoguang")) or 0
+    end
+    local grantedCount = GetPlayerGrantedYaoguangCount(playindex)
+    if grantedCount > runeCount then
+        return grantedCount
+    end
+    return runeCount
+end
+
+-- 摇光池上限：每控制一个席位 3 辆（继承一个席位 +3），再加上海克斯「穿云定海」的池位。
 function GetPlayerYaoguangPoolCap(playindex)
     local cap = YAOGUANG_LIMIT * GetPlayerControlledSeatCount(playindex)
-        + GetPlayerGrantedYaoguangCount(playindex)
-    -- 兜底：席位表还没就绪时按实有产量放宽，避免把正常生产的摇光当超额卖掉。
-    local produced = GetPlayerYaoguangCount(playindex)
-    if produced > cap then
-        cap = produced
+        + GetPlayerYaoguangRuneBonusSlots(playindex)
+    if g_PowerSlotInitialized ~= 1 then
+        local produced = GetPlayerYaoguangCount(playindex)
+        if produced > cap then
+            cap = produced
+        end
     end
     return cap
 end
@@ -140,6 +156,10 @@ function RecycleExcessPlayerYaoguang(playerIndex)
     local unitIndex = g_UnitNameToUnitIndex["CelestialAdvanceAircraftTech4"]
     if unitIndex == nil then
         return 0
+    end
+    -- 先把生产计数夹回池内实有数量，下面的「非生产部分」才算得准。
+    if ReconcilePlayerProducedYaoguang ~= nil then
+        ReconcilePlayerProducedYaoguang(playerIndex)
     end
     local poolCount = GetPlayerPoolYaoguangCount(playerIndex)
     local excess = poolCount - GetPlayerYaoguangPoolCap(playerIndex)
@@ -199,13 +219,54 @@ function RecycleAllExcessPlayerYaoguang()
     return totalSold
 end
 
--- 兜底周期扫描：箱子 / 十连 / 重组器绕过回收流程塞进来的超额摇光也能清掉。
--- 只在真的超额时才动钱、才播报，正常对局不会触发。
-if SchedulerModule ~= nil and SchedulerModule.call_every_x_frame ~= nil then
+-- 单位池（UNITCOUNT）每次更新后的复查入口：先把生产计数夹回池内实有数量，再卖掉超上限的部分。
+function CheckPlayerYaoguangPoolCap(playerIndex)
+    if playerIndex == nil or g_YaoguangRecyclingGuard == 1 then
+        return 0
+    end
+    if ReconcilePlayerProducedYaoguang == nil
+        or RecycleExcessPlayerYaoguang == nil then
+        return 0
+    end
+    if g_EnsureYaoguangExcessScan ~= nil then
+        g_EnsureYaoguangExcessScan()
+    end
+    g_YaoguangRecyclingGuard = 1
+    ReconcilePlayerProducedYaoguang(playerIndex)
+    local sold = RecycleExcessPlayerYaoguang(playerIndex)
+    g_YaoguangRecyclingGuard = 0
+    return sold
+end
+
+function CheckAllPlayersYaoguangPoolCap()
+    if g_YaoguangRecyclingGuard == 1 then
+        return 0
+    end
+    local totalSold = 0
+    for playindex = 1, 8, 1 do
+        totalSold = totalSold + CheckPlayerYaoguangPoolCap(playindex)
+    end
+    return totalSold
+end
+
+-- 兜底周期扫描：只在真的超额时才动钱、才播报，正常对局不会触发。
+g_YaoguangExcessScanStarted = false
+
+function g_EnsureYaoguangExcessScan()
+    if g_YaoguangExcessScanStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    g_YaoguangExcessScanStarted = true
     SchedulerModule.call_every_x_frame(RecycleAllExcessPlayerYaoguang, 15 * 10, nil)
 end
 
+g_EnsureYaoguangExcessScan()
+
 function LIMITYAOGUANG()
+    g_EnsureYaoguangExcessScan()
     -- 先清掉箱子 / 十连 / 重组器塞进池子的超额摇光，再按池子现算额度开关按钮。
     if RecycleAllExcessPlayerYaoguang ~= nil then
         RecycleAllExcessPlayerYaoguang()

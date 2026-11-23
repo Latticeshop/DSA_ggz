@@ -221,4 +221,7 @@ function HextechRune:ApplyRecombobulator(playerIndex, isUpgrade)
                 (CRATEUNITCOUNT[playerIndex][targetIndex] or 0) + targetCount
         end
     end
+    if CheckPlayerYaoguangPoolCap ~= nil then
+        CheckPlayerYaoguangPoolCap(playerIndex)
+    end
 end

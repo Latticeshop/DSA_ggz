@@ -372,5 +372,8 @@ function HextechRune:CollectPoolUnits(playerIndex, unitIndex, amount)
         end
     end
     self:TrimAscensionPoolSurplus(playerIndex)
+    if CheckPlayerYaoguangPoolCap ~= nil then
+        CheckPlayerYaoguangPoolCap(playerIndex)
+    end
     return added
 end

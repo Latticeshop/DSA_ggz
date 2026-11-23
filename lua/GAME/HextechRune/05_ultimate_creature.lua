@@ -353,6 +353,9 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     local current = tonumber(UNITCOUNT[playerIndex][rune.TargetUnitIndex]) or 0
     UNITCOUNT[playerIndex][rune.TargetUnitIndex] = current + 1
     ANYUNITCOUNT[playerIndex] = (tonumber(ANYUNITCOUNT[playerIndex]) or 0) + 1
+    if CheckPlayerYaoguangPoolCap ~= nil then
+        CheckPlayerYaoguangPoolCap(playerIndex)
+    end
 end
 
 -- 六个预设守护神的判定统一在 BasicVar（g_IsPresetGuardianUnitId）。

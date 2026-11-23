@@ -891,6 +891,10 @@ function HextechRune:OnPlayerUnitCollected(playerIndex, unitIndex)
                 if not absorbed then
                     ANYUNITCOUNT[playerIndex] = ANYUNITCOUNT[playerIndex] + 1
                     UNITCOUNT[playerIndex][unitIndex] = UNITCOUNT[playerIndex][unitIndex] + 1
+                    -- 赠送可能刚好把摇光顶过上限：单位池一动就复查一次。
+                    if CheckPlayerYaoguangPoolCap ~= nil then
+                        CheckPlayerYaoguangPoolCap(playerIndex)
+                    end
                 end
             end
         end

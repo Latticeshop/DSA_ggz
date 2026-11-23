@@ -176,6 +176,17 @@ function BtnChoiceDialogEventFunc_GetTowerPrice(playerIndex, basePrice)
     return basePrice
 end
 
+-- 交易市场买塔成功后的队内播报，
+function BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(playerIndex, towerNameKey)
+    local sideName = Localization.get("side.devil")
+    if g_IsAngelSeat(playerIndex) then
+        sideName = Localization.get("side.angel")
+    end
+    local message = Localization.get("market.tower.bought", sideName, playerIndex,
+        Localization.get(towerNameKey))
+    g_BroadcastToSideSeats(playerIndex, message, 10)
+end
+
 -- 返回本方当前最前排的存活陆地防御塔；前排损失后自动依次后退到下一座塔。
 function BtnChoiceDialogEventFunc_GetFrontDefenseTower(playerIndex)
     local towerNames = { "T71", "T72", "T73", "T74" }
@@ -507,6 +518,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         BtnChoiceDialogEventFunc_FinishMarketTower(id)
 
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+        BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(self.PlayerIndex,
+            "market.tower_name.shield")
 
     end
     dialogData.BuySovietHeavyAntiAirMissileTurret = function(self)
@@ -552,6 +565,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         BtnChoiceDialogEventFunc_FinishMarketTower(id)
 
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+        BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(self.PlayerIndex,
+            "market.tower_name.poplar")
 
     end
     dialogData.BuyJapanKamikazeCommandTower = function(self)
@@ -604,6 +619,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             g_BuyTowerId["JapanKamikazeCommandTower"][sideName] = id;
         end
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+        BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(self.PlayerIndex,
+            "market.tower_name.sakura")
     end
     -- 天门神弓（神州防御塔）：限购 1 座，塔防专家半价且无视数量限制。
     dialogData.BuyCelestialEnergyRailgunBase = function(self)
@@ -628,6 +645,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             g_BuyTowerId["CelestialEnergyRailgunBase"][sideName] = id;
         end
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+        BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(self.PlayerIndex,
+            "market.tower_name.tianmen_bow")
     end
     dialogData.BuyAlliedAegisLargeDefenseBase = function(self)
         local sideName = "evil";
@@ -686,6 +705,8 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         slots[slotIndex] = id;
         BtnChoiceDialogEventFunc_FinishMarketTower(id)
         ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, -price);
+        BtnChoiceDialogEventFunc_BroadcastMarketTowerBought(self.PlayerIndex,
+            "market.tower_name.aegis")
     end
 
     dialogData:RefreshData()

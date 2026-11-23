@@ -804,7 +804,7 @@ function RequestDestruction(playerIndex)
         sideName = Localization.get("side.angel")
         sideScript = "KB"
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.local_destruction", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.local_destruction", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "A01_CoastalGun_ImpactExplosion")
     exEnableWBScript(sideScript)
     g_PushSkillClickHistory(playerIndex, RequestDestruction)
@@ -818,7 +818,7 @@ function RequestDamoclesSword(playerIndex)
         sideName = Localization.get("side.angel")
         sideScript = "angel_nemesisplay"
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.damocles_struck", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.damocles_struck", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "CelestialEnergyGatling_Select")
     exEnableWBScript(sideScript)
     g_PushSkillClickHistory(playerIndex, RequestDamoclesSword)
@@ -976,7 +976,7 @@ function RequestIronCurtain(playerIndex)
         sideName = Localization.get("side.angel")
         referenceObject = T84
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.iron_curtain_speech", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.iron_curtain_speech", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "SOV_IronCurtain_Cast")
     local units, count = ObjectFindObjects(referenceObject, nil, FilterALLUNIT)
     for i = 1, count, 1 do
@@ -993,7 +993,7 @@ function RequestTimeStop(playerIndex)
         sideName = Localization.get("side.angel")
         sideScript = "angelstop"
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.time_stop", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.time_stop", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "ALL_Chronosphere_Off")
     exEnableWBScript(sideScript)
     g_PushSkillClickHistory(playerIndex, RequestTimeStop)
@@ -1028,7 +1028,7 @@ function RequestDragonShip(playerIndex, count)
     end
     local aiTeamName = sideAIPlayer .. '/ATTACK'
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.dragon_core_called", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.dragon_core_called", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "CEL_DragonShip_VoicePack")
     local pos = exWaypointGetPos(waypoint)
     local x1 = pos[1];
@@ -1080,7 +1080,7 @@ function RequestAirMarshal(playerIndex)
         sideName = Localization.get("side.angel")
         sideScript = "angel_air"
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.air_marshal", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.air_marshal", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "SOV_SukhoiInterceptor_VoiceAttack")
     ExecuteAction("PLAY_SOUND_EFFECT", "CEL_NukeIncoming")
     exEnableWBScript(sideScript)
@@ -1203,7 +1203,7 @@ function RequestNanoMaintainHive(playerIndex)
         end
     end
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.nano_repair", sideName, playerIndex))
     -- 给海塔回血 30%
     for i = 1, getn(seaTowers), 1 do
         g_NanoRepairHealTower(GetObjectByScriptName(seaTowers[i]))
@@ -1244,7 +1244,7 @@ function RequestRepeatSelfSpecialPower(playerIndex, self)
         return false
     end
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_our_skill", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_our_skill", sideName, playerIndex))
     if destPowerFunc == RequestDragonShip then
         if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
             self.DragonshipNumber = 2
@@ -1271,7 +1271,7 @@ function RequestRepeatEnemySpecialPower(playerIndex, self)
         return false
     end
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_enemy_skill", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.copy_enemy_skill", sideName, playerIndex))
     if destPowerFunc == RequestDragonShip then
         if RequestDragonShip(self.PlayerIndex, self.DragonshipNumber) then
             self.DragonshipNumber = 2
@@ -1287,7 +1287,7 @@ function RequestSpawnArmyImmediately(playerIndex)
     if g_IsAngelSeat(playerIndex) then
         sideName = Localization.get("side.angel")
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.reinforce_army", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.reinforce_army", sideName, playerIndex))
     if g_IsDevilSeat(playerIndex) then
         SchedulerModule.delay_call(function()
             UNITSPST_left (1,step1,INFANTSP,INFANTTEAM,INFANTATTACK,INFANTSPCH)
@@ -1365,7 +1365,7 @@ function RequestChronosphere(playerIndex)
         sideName = Localization.get("side.angel")
         sideScript = "PlyrCreeps/angelASuper"
     end
-    exMessageAppendToMessageArea(Localization.get("center_top.used.temporal_raid", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.temporal_raid", sideName, playerIndex))
     ExecuteAction("PLAY_SOUND_EFFECT", "ALL_Chronosphere_Die")
     exEnableWBScript(sideScript)
     return true
@@ -1408,7 +1408,7 @@ function RequestCashBonus(playerIndex)
         filterObj = T74
     end
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.kill_reward", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.kill_reward", sideName, playerIndex))
     local matchedObjects, count = ObjectFindObjects(filterObj, nil, g_MoneyBonusTargetFilter)
     if count == 0 then
         exMessageAppendToMessageArea(Localization.get("center_top.error.no_land_unit_found"))

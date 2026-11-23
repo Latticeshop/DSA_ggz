@@ -122,6 +122,10 @@ function HextechRune:AddDrainedUnitToPool(playerIndex, unitIndex, isCrate)
         CRATEUNITCOUNT[playerIndex][unitIndex] =
             (tonumber(CRATEUNITCOUNT[playerIndex][unitIndex]) or 0) + 1
     end
+    -- 吸过来的可能是摇光，池子一到上限之上就按超额回收（见 MONEYINI_3 的池上限口径）。
+    if CheckPlayerYaoguangPoolCap ~= nil then
+        CheckPlayerYaoguangPoolCap(playerIndex)
+    end
     return true
 end
 

@@ -75,6 +75,54 @@ function g_GetSeatAnchor(seatIndex)
     return GetObjectByScriptName("P" .. seatIndex)
 end
 
+-- 队内播报：只发给同一阵营（天使 / 恶魔）的座位，含发起人自己。
+function g_BroadcastToSideSeats(seatIndex, message, duration)
+    if message == nil then
+        return
+    end
+    duration = duration or 10
+    local seats = g_SideSeats[g_SeatSideTable[seatIndex]]
+    if seats == nil then
+        exAddTextToPublicBoardForPlayer("Player_" .. seatIndex, message, duration)
+        return
+    end
+    for i = 1, getn(seats), 1 do
+        local seat = seats[i]
+        if seat ~= nil then
+            exAddTextToPublicBoardForPlayer("Player_" .. seat, message, duration)
+        end
+    end
+end
+
+-- 地图脚本节点（超时空突袭之类）是「整侧生效」的，拿不到点按钮的那个座位，所以只能按阵营提示。
+function g_BroadcastToSide(sideIndex, message, duration)
+    if message == nil or g_SideSeats == nil then
+        return
+    end
+    local seats = g_SideSeats[sideIndex]
+    if seats == nil or getn(seats) < 1 then
+        return
+    end
+    g_BroadcastToSideSeats(seats[1], message, duration)
+end
+
+-- 中央陆地战场的地编区域名。
+g_BattlefieldAreaName = "BATTLEFIELD"
+
+-- object 可以是 ObjectFindObjects 拿到的句柄，也可以是脚本名；areaName 省略时按中央战场判。
+function g_IsObjectInArea(object, areaName)
+    if object == nil then
+        return false
+    end
+    if areaName == nil then
+        areaName = g_BattlefieldAreaName
+    end
+    if EvaluateCondition("NAMED_INSIDE_AREA", object, areaName) then
+        return true
+    end
+    return false
+end
+
 -- 数据源是房间里玩家自选的队色：exPlayerGetColor("Player_N") → {0~255 的 R, G, B}。
 -- 解析成几何量；取不到返回 nil。
 function g_PlayerColorInfo(seatIndex)

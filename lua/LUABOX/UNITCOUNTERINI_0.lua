@@ -647,6 +647,11 @@ function unitgetcountanddelet (playindex)
         return
     end
     local drawnUnitCounts = {}
+    -- 摇光池复查只跟「本次扫描往池子里收了摇光」绑定：先收兵、再检查，
+    local yaoguangPoolBefore = nil
+    if GetPlayerPoolYaoguangCount ~= nil then
+        yaoguangPoolBefore = GetPlayerPoolYaoguangCount(playindex)
+    end
     -- P[i] 只在载入时取一次：空座位是 nil，MCV 被摧毁/替换后句柄也会失效，
     local playerRef = P[playindex]
     local alive = nil
@@ -753,6 +758,18 @@ function unitgetcountanddelet (playindex)
     if HextechRune ~= nil and HextechRune.TrimAscensionPoolSurplus ~= nil then
         HextechRune:TrimAscensionPoolSurplus(playindex)
     end
+    -- 摇光上限：只有「本次扫描确实往池子里收了摇光」，或者池子本来就超了，才复查一次。
+    if CheckPlayerYaoguangPoolCap ~= nil and yaoguangPoolBefore ~= nil
+        and GetPlayerPoolYaoguangCount ~= nil then
+        local yaoguangPoolAfter = GetPlayerPoolYaoguangCount(playindex)
+        local overCap = false
+        if GetPlayerYaoguangPoolCap ~= nil then
+            overCap = yaoguangPoolAfter > GetPlayerYaoguangPoolCap(playindex)
+        end
+        if yaoguangPoolAfter > yaoguangPoolBefore or overCap then
+            CheckPlayerYaoguangPoolCap(playindex)
+        end
+    end
     if g_LuckyCrateMode == 1 then
         for unitindex = 1, unitcountmax, 1 do
             local drawnCount = drawnUnitCounts[unitindex] or 0
@@ -766,7 +783,6 @@ function unitgetcountanddelet (playindex)
     --exMessageAppendToMessageArea("unitgetcountanddeletdone")
 end
 --exMessageAppendToMessageArea("定义函数1完毕")
--------------------------------------------------------------------------------
 g_SovietMortarCycleUnlocked = 0
 
 -- 第一回合起解除地图对火炮机车的禁造；单位自身的原生前置仍由游戏处理。

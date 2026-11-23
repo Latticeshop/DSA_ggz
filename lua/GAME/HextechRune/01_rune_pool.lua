@@ -149,13 +149,6 @@ HextechRune.RunePool = {
         Icon = "Portrait_CelestialForkLiftVehicle" },
 
     -- 黄金
-    { Id = "silver_five_centimeters", Rarity = 2,
-        NameKey = "hextech.rune.five_centimeters.name",
-        DescKey = "hextech.rune.five_centimeters.desc",
-        Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
-        RequiresType = "aircraft",
-        ExcludeOnFirstFormalSelection = true,
-        Icon = "Portrait_JapanInterceptorAircraft_air" },
     -- K 键符文三张两两互斥：湮灭炸弹 / 视距打击 / 工厂维护（银）共用 K，
     -- 选到其中一张后本局另外两张不再入池
     -- （BuildFilteredPool 里按 ExclusiveRuneIds 判，点击时 02_event 再拦一次）。
@@ -470,6 +463,14 @@ HextechRune.RunePool = {
         DescKey = "hextech.rune.titan_resolve.desc",
         Effect = "titan_resolve",
         Icon = "AUA_Destroyer_BlackHoleArmor" },
+    -- 秒速五厘米（棱彩）：帝国专属，樱花回天雷整体替换为鬼樱特攻机。
+    { Id = "silver_five_centimeters", Rarity = 1,
+        NameKey = "hextech.rune.five_centimeters.name",
+        DescKey = "hextech.rune.five_centimeters.desc",
+        Effect = "upgrade_sakura_rocket", RequiredFaction = 3,
+        RequiresType = "aircraft",
+        ExcludeOnFirstFormalSelection = true,
+        Icon = "Portrait_JapanInterceptorAircraft_air" },
 }
 
 -- 只有列在这里的基础符文，才会在玩家持有后永久从该玩家后续候选池排除。
@@ -688,6 +689,27 @@ function HextechRune:GetOwnedBuyTwoGetOneTargetTypes(playerIndex)
         end
     end
     return result
+end
+
+-- 按效果统计玩家当前持有的符文张数。摇光池上限用「持有几张穿云定海（grant_yaoguang）」加席位，
+function HextechRune:GetOwnedRuneCountByEffect(playerIndex, effect)
+    if playerIndex == nil or effect == nil then
+        return 0
+    end
+    if self.EnsurePlayerRuneState ~= nil then
+        self:EnsurePlayerRuneState(playerIndex)
+    end
+    local owned = self.PlayerOwnedRunes[playerIndex]
+    if owned == nil then
+        return 0
+    end
+    local count = 0
+    for i = 1, getn(owned), 1 do
+        if owned[i] ~= nil and owned[i].Effect == effect then
+            count = count + 1
+        end
+    end
+    return count
 end
 
 function HextechRune:GetReplacementTargetFilter(playerIndex)

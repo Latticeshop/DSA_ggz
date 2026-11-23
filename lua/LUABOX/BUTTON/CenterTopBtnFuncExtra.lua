@@ -239,7 +239,7 @@ function RequestHydra(playerIndex)
         end
     end
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.hydra", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.hydra", sideName, playerIndex))
     exMessageAppendToMessageArea(Localization.get("center_top.hydra.controlled_count", controlled))
 
     g_PushSkillClickHistory(playerIndex, RequestHydra)
@@ -295,7 +295,7 @@ function RequestSnowstorm(playerIndex)
         g_SnowstormFieldFreezeDelayFrames, { playerIndex })
 
 
-    exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName))
+    exMessageAppendToMessageArea(Localization.get("center_top.used.snowstorm", sideName, playerIndex))
 
     g_PushSkillClickHistory(playerIndex, RequestSnowstorm)
     return true
