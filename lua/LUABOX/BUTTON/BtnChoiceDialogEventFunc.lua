@@ -374,9 +374,18 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
                 tinsert(choices, Localization.get("market.transfer.choice", roleText(target),
                     BtnChoiceDialogEventFunc_TransferColorLabel(target)))
             end
+            -- 转账项之后依次是：自动转账开关 → 购买投资 → 更多防御建筑 → 回到战场。
+            -- 「回到战场」按要求放到最底部（最后一个选项）。开关状态与流程见
+            -- lua/GAME/BasicVar1.lua 末尾的 g_AutoTransfer* 段。
+            local autoTransferText = Localization.get("market.auto_transfer.on")
+            local autoState = g_AutoTransferState and g_AutoTransferState[playerIndex]
+            if autoState ~= nil and autoState.Enabled == 1 then
+                autoTransferText = Localization.get("market.auto_transfer.off")
+            end
+            tinsert(choices, autoTransferText)
             tinsert(choices, nextInvestmentText)
-            tinsert(choices, Localization.get("market.back_to_battle"))
             tinsert(choices, Localization.get("market.more_defense_buildings"))
+            tinsert(choices, Localization.get("market.back_to_battle"))
             self.Choices = choices
         end
         --if g_PlayerDebtCount[self.PlayerName] == 0 then
@@ -387,6 +396,10 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
         --end
     end
     dialogData.OnChoice = function(self, buttonIndex)
+        -- 记一下「玩家刚点过这个面板」：自动转账因资金不足自己关掉时，靠这个时间窗
+        if g_AutoTransferTouch ~= nil then
+            g_AutoTransferTouch[self.PlayerIndex] = GetFrame()
+        end
         if self.Page == 2 then
             if buttonIndex == 1 then
                 self:BuyJapanPointShieldControlTower()
@@ -410,17 +423,20 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
             ButtonChoiceDialogManager:ShowDialog(self)
             return
         end
-        -- 转账项数量随「本侧有人」的队友数变化（1~3 项），后三项序号按 targetCount 顺延。
+        -- 转账项数量随「本侧有人」的队友数变化（1~3 项），后四项序号按 targetCount 顺延。
         local targetCount = getn(self.TransferTargets or {})
         if buttonIndex >= 1 and buttonIndex <= targetCount then
             self:TransferMoney(self.TransferTargets[buttonIndex])
         elseif buttonIndex == targetCount + 1 then
-            self:InvestMoney()
+            -- 自动转账开关（文案在 RefreshData 里按当前状态切）
+            g_AutoTransferToggle(self.PlayerIndex, self.PlayerName)
         elseif buttonIndex == targetCount + 2 then
-            -- 回到战场（因此不再显示交易市场对话框）
-            return
+            self:InvestMoney()
         elseif buttonIndex == targetCount + 3 then
             self.Page = 2
+        elseif buttonIndex == targetCount + 4 then
+            -- 回到战场（因此不再显示交易市场对话框）
+            return
         end
         -- 重新刷新数据并显示对话框
         self:RefreshData()
@@ -428,15 +444,9 @@ function BtnChoiceDialogEventFunc_ShowMarketDialog(playerIndex)
     end
     dialogData.TransferMoney = function(self, transferTargetIndex)
         if transferTargetIndex == nil then return end
-        local transferTargetName = "Player_" .. transferTargetIndex
-        local money = exPlayerGetCurrentMoney(self.PlayerName)
-        if money >= 1000 then
-            ExecuteAction('PLAYER_GIVE_MONEY', transferTargetName, '1000')
-            ExecuteAction('PLAYER_GIVE_MONEY', self.PlayerName, '-1000')
-            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.transfer.success", transferTargetIndex), 5)
-        else
-            exAddTextToPublicBoardForPlayer(self.PlayerName, Localization.get("market.transfer.insufficient"), 5)
-        end
+        -- 手动与自动转账共用同一条流程（LUABOX/BUTTON/CenterTopBtnFuncExtra.lua 的 g_AutoTransferPay）：
+        -- 成功时它还会顺手把自动转账的目标切成这一个，并把安全锁计数清零。
+        g_AutoTransferPay(self.PlayerIndex, transferTargetIndex, self.PlayerName)
     end
     -- 处理购买投资
     dialogData.InvestMoney = function(self)

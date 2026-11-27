@@ -507,3 +507,341 @@ function g_ChronoSphereOnClick(button)
     g_ApplyRoundCooldownButtonDescription(button)
     return true
 end
+
+-- === 交易市场·自动转账（面板开关在 BtnChoiceDialogEventFunc_ShowMarketDialog）===
+-- 口径：面板里开启后，玩家**手动转账成功**一次就把那一次的对象记成自动目标；此后每 1 秒
+-- （15 帧 = 1 秒）重复一次完全相同的转账（扣款 + 到账 + 个人播报，和手动转账同一套流程）。
+-- 中途手动转给别人，目标立刻换成那一个；余额不足就这一拍静默跳过。
+--
+-- **每个座席完全独立**：状态按座位号分开存（g_AutoTransferState[playerIndex]），表里记着这一位
+-- 的完整玩家名（state.PlayerName）；转账的那几个动作全部只带「出钱的自己」和「收钱的目标」两个
+-- 显式玩家名，不读也不写任何「当前玩家」上下文，所以 A 开着自动转账绝不会动到 B 的钱。
+--
+-- **资金不足安全锁**：连续 g_AutoTransferGiveUpTicks 拍（20 拍 = 20 秒）都没能正常转账，就自动
+-- 关掉并播报，选项文案同时变回「开启自动转账」。
+g_AutoTransferState = g_AutoTransferState or {}
+g_AutoTransferAmount = 1000
+g_AutoTransferIntervalFrames = 15
+g_AutoTransferGiveUpTicks = 20
+g_AutoTransferRegistered = g_AutoTransferRegistered or 0
+
+-- 取这一位玩家的完整名字：优先用开关时记下的，兜底才拼 "Player_N"。
+function g_AutoTransferPlayerName(playerIndex)
+    local state = g_AutoTransferState[playerIndex]
+    if state ~= nil and state.PlayerName ~= nil then
+        return state.PlayerName
+    end
+    return "Player_" .. playerIndex
+end
+
+-- 转账本体：手动（面板点选项）与自动（周期扫描）共用。成功 true，余额不足 false。
+-- 目标越界或等于自己一律放弃，杜绝串号；成功的自动转账顺便清零安全锁计数。
+function g_AutoTransferPay(playerIndex, targetIndex, playerName)
+    if playerIndex == nil or targetIndex == nil then
+        return false
+    end
+    if targetIndex == playerIndex or targetIndex < 1 or targetIndex > 8 then
+        return false
+    end
+    playerName = playerName or g_AutoTransferPlayerName(playerIndex)
+    if exPlayerGetCurrentMoney(playerName) < g_AutoTransferAmount then
+        exAddTextToPublicBoardForPlayer(playerName,
+            Localization.get("market.transfer.insufficient"), 5)
+        return false
+    end
+    local amountText = "" .. g_AutoTransferAmount
+    ExecuteAction("PLAYER_GIVE_MONEY", "Player_" .. targetIndex, amountText)
+    ExecuteAction("PLAYER_GIVE_MONEY", playerName, "-" .. amountText)
+    exAddTextToPublicBoardForPlayer(playerName,
+        Localization.get("market.transfer.success", targetIndex), 5)
+    local state = g_AutoTransferState[playerIndex]
+    if state ~= nil then
+        state.FailTicks = 0
+        if state.Enabled == 1 then
+            state.Target = targetIndex
+        end
+    end
+    return true
+end
+
+-- 面板文案跟着状态变：把这一位正开着的市场对话框按新状态重建一遍。
+-- 只在「刚点过面板」的窗口内重建（g_AutoTransferTouchWindowFrames），因为对话框管理器没有
+-- 「已关闭」的通知（_activeDialogs 里留着上一次的实例），无脑重建会把玩家已经关掉的面板又弹出来。
+g_AutoTransferTouch = g_AutoTransferTouch or {}
+g_AutoTransferTouchWindowFrames = 75
+
+function g_AutoTransferRefreshDialog(playerIndex)
+    if g_AutoTransferTouch == nil or g_AutoTransferTouch[playerIndex] == nil then
+        return
+    end
+    if GetFrame() - g_AutoTransferTouch[playerIndex] > g_AutoTransferTouchWindowFrames then
+        return
+    end
+    if ButtonChoiceDialogManager == nil or ButtonChoiceDialogManager._activeDialogs == nil
+        or MARKET_DIALOG_ID_OFFSET == nil then
+        return
+    end
+    local dialog = ButtonChoiceDialogManager._activeDialogs[MARKET_DIALOG_ID_OFFSET + playerIndex]
+    if dialog == nil or dialog.PlayerName == nil then
+        return
+    end
+    if type(dialog.RefreshData) == "function" then
+        dialog:RefreshData()
+        ButtonChoiceDialogManager:ShowDialog(dialog)
+    end
+end
+
+-- 关掉某一位的自动转账（手动关 / 资金不足自动关共用）。reason 决定播报哪一条。
+function g_AutoTransferOff(playerIndex, reason)
+    local state = g_AutoTransferState[playerIndex]
+    if state == nil then
+        return
+    end
+    state.Enabled = 0
+    state.Target = nil
+    state.FailTicks = 0
+    local playerName = g_AutoTransferPlayerName(playerIndex)
+    if reason == "insufficient" then
+        exAddTextToPublicBoardForPlayer(playerName,
+            Localization.get("market.auto_transfer.auto_off", g_AutoTransferGiveUpTicks), 8)
+    else
+        exAddTextToPublicBoardForPlayer(playerName,
+            Localization.get("market.auto_transfer.disabled"), 5)
+    end
+    -- 手动关不用重建：OnChoice 走完开关后本来就会 RefreshData + ShowDialog（避免同帧弹两次）。
+    if reason ~= "manual" then
+        g_AutoTransferRefreshDialog(playerIndex)
+    end
+end
+
+-- 每 1 秒扫一遍：只处理「自己开着 + 自己有目标」的那一位；这一拍没转出去就记一次失败
+-- （钱不够是主因，目标非法也会被算进来；钱够时由 Pay 自己清零）。
+function g_AutoTransferSweep()
+    for playerIndex = 1, 8, 1 do
+        local state = g_AutoTransferState[playerIndex]
+        if state ~= nil and state.Enabled == 1 and state.Target ~= nil then
+            local playerName = g_AutoTransferPlayerName(playerIndex)
+            local ok = false
+            -- 钱不够就不调 Pay（Pay 会播「余额不足」，自动那一侧要保持静默）。
+            if exPlayerGetCurrentMoney(playerName) >= g_AutoTransferAmount then
+                ok = g_AutoTransferPay(playerIndex, state.Target, playerName)
+            end
+            if not ok then
+                state.FailTicks = (state.FailTicks or 0) + 1
+                if state.FailTicks >= g_AutoTransferGiveUpTicks then
+                    g_AutoTransferOff(playerIndex, "insufficient")
+                end
+            end
+        end
+    end
+end
+
+-- 周期扫描只注册一次。SchedulerModule 在 baselib，本节点加载期可能还没就绪，
+-- 所以不放在加载期，而是等玩家第一次点「开启自动转账」时再注册。
+function g_AutoTransferEnsureLoop()
+    if g_AutoTransferRegistered == 1 then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    g_AutoTransferRegistered = 1
+    SchedulerModule.call_every_x_frame(g_AutoTransferSweep, g_AutoTransferIntervalFrames, nil)
+end
+
+-- 面板开关：开 → 记下这一位的名字、播报「已开启…」并等一次手动转账上膛；
+-- 关 → 走 g_AutoTransferOff（清目标 + 播报 + 刷新文案）。
+function g_AutoTransferToggle(playerIndex, playerName)
+    local state = g_AutoTransferState[playerIndex]
+    if state == nil then
+        state = { Enabled = 0, Target = nil, FailTicks = 0 }
+        g_AutoTransferState[playerIndex] = state
+    end
+    if playerName ~= nil then
+        state.PlayerName = playerName
+    end
+    if state.Enabled == 1 then
+        g_AutoTransferOff(playerIndex, "manual")
+        return
+    end
+    state.Enabled = 1
+    state.FailTicks = 0
+    exAddTextToPublicBoardForPlayer(g_AutoTransferPlayerName(playerIndex),
+        Localization.get("market.auto_transfer.enabled"), 5)
+    g_AutoTransferEnsureLoop()
+end
+
+-- === 海克斯符文赠送的顶部技能组（从 lua/GAME/HextechRune/04_buff.lua 迁出）===
+-- 为什么在这：04_buff 是全树最紧的 payload（去注释后 65,483 B，只剩 53 B），而这一组
+-- 「拿符文 → 授予原生技能按钮」的实现和本节点原有的九头蛇万岁 / 冰天雪地属于同一类，
+-- 放这里既能给 04 腾出 ~6.9KB，也不用新开节点（新节点还要地编再建一次同名 Script 节点）。
+-- 搬迁是透明的：这些函数只被 HextechRune:OnRuneChosen 的运行时分支调用，
+-- 函数名是全局方法（HextechRune:XXX），后加载的节点定义完照样能调到。
+
+function HextechRune:SetFiveThunderAvailability(playerIndex, availability)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    -- 首发与 0cd 属于同一套原生技能流程，开放和冷却必须同步控制。
+    -- 触发检测会检查两段，但命中后也同步禁用两段，避免 0cd 持续运行。
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderFirstPower, availability)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderRepeatPower, availability)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:SetFiveThunderFirstAvailability(playerIndex, availability)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.FiveThunderFirstPower, availability)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:GrantFiveThunderPowers(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.FiveThunderFirstPower, playerName)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.FiveThunderRepeatPower, playerName)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:SetFiveThunderCountdown(playerIndex, seconds)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.FiveThunderFirstPower, seconds)
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.FiveThunderRepeatPower, seconds)
+    SetWorldBuilderThisPlayer(previous)
+end
+
+
+function HextechRune:GrantFiveThunder(playerIndex)
+    if self.FiveThunderState[playerIndex] == nil then
+        self.FiveThunderState[playerIndex] = {}
+    end
+    local state = self.FiveThunderState[playerIndex]
+    state.Owned = true
+    state.Ready = true
+    state.ReadyRound = nil
+    state.WaitingForTriggerClear = false
+
+    -- 两段都显式授予并同步开放：首发负责玩家选点，0cd 完成原生连发。
+    self:GrantFiveThunderPowers(playerIndex)
+    self:SetFiveThunderCountdown(playerIndex, 0)
+    self:SetFiveThunderAvailability(playerIndex, "Available")
+    self:EnsureFiveThunderMonitor()
+end
+
+function HextechRune:CheckFiveThunderTriggered()
+    for playerIndex = 1, 8, 1 do
+        local state = self.FiveThunderState[playerIndex]
+        if state ~= nil and state.Owned then
+            local playerName = "Player_" .. playerIndex
+            local firstTriggered = EvaluateCondition("PLAYER_TRIGGERED_SPECIAL_POWER",
+                playerName, self.FiveThunderFirstPower)
+            local repeatTriggered = EvaluateCondition("PLAYER_TRIGGERED_SPECIAL_POWER",
+                playerName, self.FiveThunderRepeatPower)
+            if state.WaitingForTriggerClear then
+                if not firstTriggered and not repeatTriggered then
+                    self:SetFiveThunderCountdown(playerIndex, 0)
+                    self:SetFiveThunderAvailability(playerIndex, "Available")
+                    state.WaitingForTriggerClear = false
+                    state.Ready = true
+                    state.ReadyRound = nil
+                end
+            elseif state.Ready and (firstTriggered or repeatTriggered) then
+                state.Ready = false
+                state.ReadyRound = exCounterGetByName("lvc")
+                    + self.FiveThunderCooldownRounds
+                -- 首发只负责开启本次原生五连发；检测到输出段后只关闭
+                -- 首发入口，保留 0cd 连发段，让引擎完整走完后续四次落雷。
+                self:SetFiveThunderFirstAvailability(playerIndex, "Disabled")
+            end
+        end
+    end
+end
+
+
+function HextechRune:EnsureFiveThunderMonitor()
+    if self.FiveThunderMonitorSchedulerId ~= nil then
+        return
+    end
+    self.FiveThunderMonitorSchedulerId = SchedulerModule.call_every_x_frame(function()
+        HextechRune:CheckFiveThunderTriggered()
+    end, 1, nil, {})
+end
+
+function HextechRune:OnFiveThunderRoundBegin(round)
+    for playerIndex = 1, 8, 1 do
+        local state = self.FiveThunderState[playerIndex]
+        if state ~= nil and state.Owned and not state.Ready
+            and not state.WaitingForTriggerClear and state.ReadyRound ~= nil
+            and round >= state.ReadyRound then
+            state.WaitingForTriggerClear = true
+        end
+    end
+end
+
+function HextechRune:GrantCashRewardProtocol(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_LOCK_PLAYER_TECH", playerName,
+        self.CashRewardPlayerTech, 0)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.CashRewardSpecialPower, playerName)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.CashRewardSpecialPower, "Available")
+    ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", playerName,
+        self.CashRewardSpecialPower, 0)
+    SetWorldBuilderThisPlayer(previous)
+    -- 技能实例由 PLAYER_GRANT_SPECIAL_POWER 延迟创建；同帧的 Available 可能只
+    -- 改到全局禁用记录而没有改到新按钮，因此下一帧再对持有者单独解禁一次。
+    SchedulerModule.delay_call(function(index)
+        local delayedPlayerName = "Player_" .. index
+        local delayedPrevious = SetWorldBuilderThisPlayer(1)
+        ExecuteAction("PLAYER_LOCK_PLAYER_TECH", delayedPlayerName,
+            HextechRune.CashRewardPlayerTech, 0)
+        ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", delayedPlayerName,
+            HextechRune.CashRewardSpecialPower, "Available")
+        ExecuteAction("PLAYER_SET_SPECIAL_POWER_COUNTDOWN", delayedPlayerName,
+            HextechRune.CashRewardSpecialPower, 0)
+        SetWorldBuilderThisPlayer(delayedPrevious)
+    end, 1, {playerIndex})
+end
+
+-- 磁暴突袭符文：暂不启用（实测直接赋予该协议会有0cd问题），代码保留待后续开发。
+-- 取得符文只做两件事：授予协议、解禁按钮；冷却与释放节奏全部交给原版。
+function HextechRune:GrantTeslaAirAssault(playerIndex)
+    local playerName = "Player_" .. playerIndex
+    local previous = SetWorldBuilderThisPlayer(1)
+    ExecuteAction("PLAYER_GRANT_SPECIAL_POWER", self.TeslaAirAssaultPower, playerName)
+    ExecuteAction("PLAYER_SPECIAL_POWER_AVAILABILITY", playerName,
+        self.TeslaAirAssaultPower, "Available")
+    SetWorldBuilderThisPlayer(previous)
+end
+
+function HextechRune:GrantYaoguang(playerIndex)
+    -- 赠送的摇光不占生产限造，但要同步多开一个单位池位（见 MONEYINI_3 的池上限口径）。
+    if RecordPlayerGrantedYaoguang ~= nil then
+        RecordPlayerGrantedYaoguang(playerIndex, 1)
+    end
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "CelestialAdvanceAircraftTech4",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
+end
+
+function HextechRune:GrantOlympusCarrier(playerIndex)
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "AlliedGaintAirCraftCarrier_B",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, -80), 0)
+    self:MarkNextSpawnAsKnownPureDrawUnit()
+    ExecuteAction("UNIT_SPAWN_NAMED_LOCATION_ORIENTATION", "",
+        "JapanYumiAircraftCarrier",
+        format("Player_%d/teamPlayer_%d", playerIndex, playerIndex),
+        self:GetPlayerHomeSpawnPosition(playerIndex, 120, 80), 0)
+end

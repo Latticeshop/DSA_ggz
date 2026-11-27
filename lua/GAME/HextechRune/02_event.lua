@@ -1068,9 +1068,9 @@ end
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_emperors_rage",
-        "silver_balloon_bomb",
-        "gold_frost_zone",
+        "prismatic_five_thunder",
+        "prismatic_sea_overlord",
+        "gold_cloudbreaker",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
@@ -1735,7 +1735,11 @@ end
 -- 回合开始回调（由 RoundLuaManager 驱动，仅回合变化时调用）
 function HextechRune:OnRoundBegin(round)
     self.CurrentRound = round
-    self:OnFiveThunderRoundBegin(round)
+    -- 五雷轰顶的实现已搬到 LUABOX/BUTTON/CenterTopBtnFuncExtra.lua（04_buff 是全树最紧的 payload），
+    -- 那个节点排在本节点之后加载；这里空判一下，避免「回合已经开始才加载脚本」的补跑路径调到 nil。
+    if self.OnFiveThunderRoundBegin ~= nil then
+        self:OnFiveThunderRoundBegin(round)
+    end
     -- 视距打击：还持有这张符文就每回合补 1 次伊尔信标部署次数（实现在 01_rune_pool.lua 尾部）。
     self:OnIlBeaconRoundBegin(round)
     -- 单人遭遇战：开局评估一次并播报（消息区小字），此后重随不限次数；多人局不播也不放开。

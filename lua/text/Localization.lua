@@ -201,6 +201,13 @@ Localization._text_sources = {
     ["market.back_to_main_page"] = { zh = "返回上一页", en = "Back to Previous Page" },
     ["market.transfer.success"] = { zh = "成功转账1000给$p%dName", en = "Successfully transferred 1000 to $p%dName" },
     ["market.transfer.insufficient"] = { zh = "您的余额不足", en = "Your balance is insufficient" },
+    -- 自动转账开关。括号用半角与其它市场文案保持一致（附录 A.67 只禁 % $ : &）。
+    ["market.auto_transfer.on"] = { zh = "开启自动转账", en = "Enable Auto Transfer" },
+    ["market.auto_transfer.off"] = { zh = "关闭自动转账(运行中)", en = "Disable Auto Transfer (Running)" },
+    ["market.auto_transfer.enabled"] = { zh = "已开启自动转账，向一名玩家转账后持续转账~", en = "Auto transfer enabled. Transfer to a player once and it will keep sending~" },
+    ["market.auto_transfer.disabled"] = { zh = "已关闭自动转账", en = "Auto transfer disabled" },
+    -- 资金不足安全锁：连续 N 秒都没能正常转账就自动关掉（N 由 g_AutoTransferGiveUpTicks 传入）。
+    ["market.auto_transfer.auto_off"] = { zh = "连续 %d 秒资金不足，自动转账已关闭", en = "Auto transfer disabled：%d seconds without enough funds" },
     ["market.invest.failed.max"] = { zh = "投资失败：投资已达到上限", en = "Investment failed：the investment cap has been reached" },
     ["market.invest.failed.start_only"] = { zh = "投资失败：只能在每个回合刚开始时投资", en = "Investment failed：you can only invest at the start of each round" },
     ["market.invest.failed.insufficient"] = { zh = "投资失败：余额不足", en = "Investment failed：insufficient balance" },

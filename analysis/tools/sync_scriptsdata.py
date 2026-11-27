@@ -96,6 +96,11 @@ TARGETS = [  # fmt: skip
     ('lua/GAME/HextechRune/00_assets.lua', ['local HextechFrameGold = {', 'g_HextechFrameGoldId']),
     ('lua/GAME/HextechRune/03_text.lua', ['g_LocalizationExtraText = {', 'hextech.rune.shrink_ray.desc']),
     ('lua/GAME/HextechRune/01_rune_pool.lua', ['HextechRune.RunePool = {', 'PickBuyTwoGetOneTarget']),
+    # 海克斯溢出节点（附录 A.84）：01 尾部的抽卡/持有层整体搬到这里，以后新符文的实现也写这里。
+    # 节点在树里就排在 HextechRunePool 之后，加载顺序不影响（两边都自己 `HextechRune = ... or {}`）。
+    # needle 取文件头那句注释：搬家那一次「旧 01 payload 里还有这些函数」，用函数名会同时命中两份。
+    ('lua/GAME/HextechRune/19_extra.lua',
+     ['海克斯溢出节点（HextechRuneExtra）', 'function HextechRune:BuildFilteredPool']),
     ('lua/GAME/HextechRune/02_event.lua', ['function HextechRune:ShowFormalEvent', 'function HextechRune:OnRoundBegin']),
     ('lua/GAME/HextechRune/04_buff.lua', ['HextechRune.BattleUnitEffectDelay', 'ApplyFiveTigerGenerals']),
     # 注意：回归基本功 / 等价交换的实现段曾经并入 01_rune_pool.lua 尾部（走 HextechRunePool 节点），

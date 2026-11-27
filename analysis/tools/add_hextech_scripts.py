@@ -95,6 +95,10 @@ def main():
         ("HextechRuneText", "GAME/HextechRune/03_text.lua"),
         ("HextechRuneAssets", "GAME/HextechRune/00_assets.lua"),
         ("HextechRunePool", "GAME/HextechRune/01_rune_pool.lua"),
+        # 海克斯溢出节点（附录 A.84）：01 尾部的抽卡/持有层搬到了这里，以后新符文的
+        # 实现代码也写这里。位置必须紧跟 Pool ——树里排在 01 之后，才不会被 01/02 的
+        # 加载期代码调到（虽然两边都自己 `HextechRune = ... or {}`，早一点更稳）。
+        ("HextechRuneExtra", "GAME/HextechRune/19_extra.lua"),
         ("HextechRuneEffects", "GAME/HextechRune/04_buff.lua"),
         # 回归基本功 / 等价交换：不单独成节点。地图脚本树（map.xml）不会收录新节点，
         # 新节点的 payload 在游戏里永远不执行；04_buff.lua 又已贴 64KB 上限，

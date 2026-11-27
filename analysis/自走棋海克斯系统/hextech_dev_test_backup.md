@@ -231,3 +231,31 @@ end
    `python analysis/check_payload_lua4.py` 同口径的 Lua 4.0 体检通过。
 
 > 恢复前先 grep：常见情况是只干跑过清理、代码其实还在。
+
+
+## 当前测试集：验证 payload 搬迁后的执行（2026-11）
+
+开局测试事件（HextechRune:ShowOpeningTestEvent）的三张卡临时换成**会真正跑搬迁后代码**的三张：
+
+| testRuneIds | 效果键 | 会执行的搬迁函数 | 现在住哪 |
+|---|---|---|---|
+| prismatic_five_thunder | ive_thunder | GrantFiveThunder → GrantFiveThunderPowers / SetFiveThunderCountdown / SetFiveThunderAvailability → EnsureFiveThunderMonitor（每帧）→ CheckFiveThunderTriggered | CenterTopBtnFuncExtra（原 04_buff） |
+| prismatic_sea_overlord | grant_olympus_carrier | GrantOlympusCarrier（+ 留在 04 的 GetPlayerHomeSpawnPosition / MarkNextSpawnAsKnownPureDrawUnit） | CenterTopBtnFuncExtra（原 04_buff） |
+| gold_cloudbreaker | grant_yaoguang | GrantYaoguang（+ RecordPlayerGrantedYaoguang） | CenterTopBtnFuncExtra（原 04_buff） |
+
+发卡这一步本身就走新节点：FindRuneById / GetRuneCandidateUnitTypes / RandomIndex
+（点选后 AddOwnedRune / MarkRoundSlot）全部在 lua/GAME/HextechRune/19_extra.lua。
+
+**验收清单**
+
+1. 第 1 回合能弹出三张卡（说明 FindRuneById / CreateRuneCandidateForPlayer 这条链没断）。
+2. 三张都点得动、选完**不报错**（AddOwnedRune / OnRuneChosen 走得通）。
+3. 五雷轰顶：神州座席应出现技能按钮（首次可用）；非神州座席只要不报错即可（那个协议是神州专属）。
+4. 拿到五雷轰顶后的**下一个回合开始**不报错 —— 这条最关键：OnRoundBegin 里的
+   OnFiveThunderRoundBegin 已经跨节点，靠空判兜底（A.84.3）。
+5. 摇光 / 奥林帕斯航母：家里能刷出赠送单位，且不占生产限造。
+6. 想顺带覆盖 BuildFilteredPool / PickThreeRunes 这条正式随机抽卡路径，就让这局继续打到
+   正式海克斯回合（开局测试事件只覆盖前几回合的固定三选一）。
+
+注意：gold_cash_reward（cash_reward → GrantCashRewardProtocol）在符文池里是**注释掉的**，
+所以这次没法通过测试事件验证；	esla_air_assault 也不在池里。要验这两条只能临时放开池条目。
