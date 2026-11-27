@@ -145,7 +145,12 @@ function HextechRune:GetAscensionBonusText(playerIndex, rune)
     local percent = self:GetAscensionTierPercent(rune.TargetUnitType)
     local health = self:GetAscensionBonusCount(playerIndex, "Health") * percent
     local damage = self:GetAscensionBonusCount(playerIndex, "Damage") * percent
-    local rateOfFire = self:GetAscensionBonusCount(playerIndex, "RateOfFire") * percent
+    local rateOfFireCount = self:GetAscensionBonusCount(playerIndex, "RateOfFire")
+        - self:GetSeedAttackSpeedPenalty(playerIndex, "ascension")
+    if rateOfFireCount < 0 then
+        rateOfFireCount = 0
+    end
+    local rateOfFire = rateOfFireCount * percent
     local range = self:GetAscensionBonusCount(playerIndex, "Range") * percent
     if self:IsAmmoAircraftUnitType(rune.TargetUnitType) then
         return Localization.get("hextech.rune.bonus_values_ammo",
@@ -189,6 +194,9 @@ function HextechRune:GrantAscension(playerIndex, rune)
     if rune == nil or rune.TargetUnitType == nil then
         return
     end
+    -- 选卡时的批量献祭不算「被扣」：扣减记账先清零，基准数在下面的献祭之后对齐。
+    self:ResetSeedAttackSpeedPenalty(playerIndex, "ascension")
+    self:EnsureSeedAttackSpeedPenaltyScheduler()
     local unitInfo = self:FindAscensionUnitInfo(playerIndex, rune.TargetUnitType)
     if unitInfo == nil then
         return
@@ -199,6 +207,8 @@ function HextechRune:GrantAscension(playerIndex, rune)
     end
     local removedCount = RemoveRecycleUnitCount(playerIndex, unitInfo, availableCount - 1)
     self:AddAscensionStacks(playerIndex, removedCount)
+    -- 献祭完再对一次基准：留下的那只种子是攻速扣减的起点。
+    self:ResetSeedAttackSpeedPenalty(playerIndex, "ascension")
 end
 
 function HextechRune:GetAscensionPooledCount(playerIndex, rune)
@@ -242,6 +252,10 @@ function HextechRune:TrimAscensionPoolSurplus(playerIndex)
     end
     local removedCount = RemoveRecycleUnitCount(playerIndex, unitInfo, pooledCount - 1)
     self:AddAscensionStacks(playerIndex, removedCount)
+    -- 这是系统把「多出来的种子」转成层数，不是玩家回收，所以只对基准、不记攻速扣减。
+    if self.RefreshSeedPoolBaseline ~= nil then
+        self:RefreshSeedPoolBaseline(playerIndex, "ascension")
+    end
 end
 
 -- 系统回收（unitgetcountanddelet）计数前调用：单位池内已有种子时，本批目标单位
@@ -298,6 +312,12 @@ function HextechRune:CreateAscensionModifier(playerIndex)
     local damageCount = self:GetAscensionBonusCount(playerIndex, "Damage")
     local rateOfFireCount = self:GetAscensionBonusCount(playerIndex, "RateOfFire")
     local rangeCount = self:GetAscensionBonusCount(playerIndex, "Range")
+    -- 攻速额外扣减：池里那只目标单位每被扣掉 1 个，就少算 1 份攻速（30/40/50/60%），
+    rateOfFireCount = rateOfFireCount
+        - self:GetSeedAttackSpeedPenalty(playerIndex, "ascension")
+    if rateOfFireCount < 0 then
+        rateOfFireCount = 0
+    end
     -- 各维只算自己掷到的次数；射程必须与索敌视野同倍率成对写入，
     -- 否则单位停在射程边缘却看不见目标。
     local rangeMult = 1 + rangeCount * percent / 100
@@ -316,6 +336,7 @@ function HextechRune:ApplyAscensionUnits(assignments)
     if assignments == nil then
         return
     end
+    self:EnsureSeedAttackSpeedPenaltyScheduler()
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
         local playerIndex = assignment.PlayerIndex

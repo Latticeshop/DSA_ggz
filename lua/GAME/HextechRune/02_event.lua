@@ -1066,13 +1066,11 @@ function HextechRune:ShowFormalEvent(round)
 end
 
 -- 开发测试：第 1 回合固定三选一，展示 testRuneIds 指定的符文。
--- 本轮测「银·榴弹凌波」（凌波护卫战车 → 凌波火力支援战车）、「银·战斗要塞」（卡池里 4 辆守护者坦克
--- 合成 1 座特洛伊突击要塞）和「彩·火箭飞行兵」（回合开始把敌方 X％ 空军换成火箭天使）。
 function HextechRune:ShowOpeningTestEvent()
     local testRuneIds = {
-        "silver_dragon_breathe",
-        "silver_battle_fortress",
-        "prismatic_sit_tight",
+        "silver_emperors_rage",
+        "silver_balloon_bomb",
+        "gold_frost_zone",
     }
     -- 兵种卡一次摆两张时按顺序指派兵种，其余兵种卡仍走随机。
     local testUnitTypeByIndex = { "infantry", "vehicle", "navy" }
@@ -1784,3 +1782,87 @@ HextechRune:RegisterCustomBtnHandler()
 
 -- 注册回合开始回调（RoundLuaManager 就绪后自动注册，无需轮询）
 HextechRune:RegisterRoundBegin()
+
+--  「潘多拉魔盒」：把本槽位的全部符文换成随机棱彩 
+HextechRune.PandoraBoxMaxRolls = 64
+
+-- 作废某个槽位的全部符文：聚合表（按玩家）、判重表、槽位表一起清。
+function HextechRune:RemoveSlotOwnedRunes(playerIndex, slotIndex)
+    self:EnsurePlayerRuneState(playerIndex)
+    self:EnsureRuneSlotState(slotIndex)
+    local slotRunes = self.PlayerSlotOwnedRunes[slotIndex]
+    for i = 1, getn(slotRunes), 1 do
+        local rune = slotRunes[i]
+        local ownershipId = self:GetRuneOwnershipId(rune)
+        -- 聚合层（每人一份计数）：同名多份减 1，减到 0 就连判重标记一起删。
+        local ownedCount = (self.PlayerOwnedRuneCounts[playerIndex][ownershipId] or 0) - 1
+        if ownedCount > 0 then
+            self.PlayerOwnedRuneCounts[playerIndex][ownershipId] = ownedCount
+        else
+            self.PlayerOwnedRuneCounts[playerIndex][ownershipId] = nil
+            self.PlayerOwnedRuneIds[playerIndex][ownershipId] = nil
+        end
+        -- 聚合层（实例条目）：同一个 rune 表对象可能出现多份，按对象身份摘掉一条。
+        local owned = self.PlayerOwnedRunes[playerIndex]
+        local removeIndex = 1
+        while removeIndex <= getn(owned) do
+            if owned[removeIndex] == rune then
+                tremove(owned, removeIndex)
+                break
+            end
+            removeIndex = removeIndex + 1
+        end
+    end
+    self.PlayerSlotOwnedRunes[slotIndex] = {}
+    self.PlayerSlotOwnedRuneIds[slotIndex] = {}
+end
+
+-- 从棱彩池里随机抽一张给魔盒用：排除魔盒自己，其余照正式筛池口径。
+function HextechRune:PickPandoraBoxRune(playerIndex)
+    local pool = self:BuildFilteredPool(playerIndex, 1)
+    local candidates = {}
+    local count = 0
+    for i = 1, getn(pool), 1 do
+        if pool[i].Effect ~= "pandora_box" then
+            count = count + 1
+            candidates[count] = pool[i]
+        end
+    end
+    if count < 1 then
+        return nil
+    end
+    return candidates[self:RandomIndex(count)]
+end
+
+function HextechRune:ApplyPandoraBox(playerIndex, rune, slotIndex)
+    if self.RemoveSlotOwnedRunes == nil then
+        return
+    end
+    if slotIndex == nil then
+        slotIndex = self.CurrentGrantSlot[playerIndex] or playerIndex
+    end
+    self:EnsureRuneSlotState(slotIndex)
+    local convertCount = getn(self.PlayerSlotOwnedRunes[slotIndex])
+    if convertCount < 1 then
+        return
+    end
+    -- 先整体作废本槽位的符文，再按张数换出随机棱彩。
+    self:RemoveSlotOwnedRunes(playerIndex, slotIndex)
+    local granted = 0
+    local rolls = 0
+    while granted < convertCount and rolls < self.PandoraBoxMaxRolls do
+        rolls = rolls + 1
+        local candidate = self:PickPandoraBoxRune(playerIndex)
+        if candidate == nil then
+            break
+        end
+        -- 换出来的符文要走完整入池 + 生效链路：赠送单位/建筑、协议、一次性技能都照常触发。
+        if self:AddOwnedRune(playerIndex, candidate, slotIndex) then
+            granted = granted + 1
+            self:OnRuneChosen(playerIndex, candidate)
+        end
+    end
+    -- 全图播报一句，双方都看得见「谁开出了什么」。
+    exAddTextToPublicBoard(Localization.get("hextech.rune.pandora_box.broadcast",
+        playerIndex, granted), 10)
+end

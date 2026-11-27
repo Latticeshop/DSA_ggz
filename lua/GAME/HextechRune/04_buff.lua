@@ -114,8 +114,8 @@ if not g_HextechGoliathModifier then
         DAMAGE_MULT = 1.25,
     }, 1)
 end
-if not g_HextechEnemyRangeX075Modifier then
-    g_HextechEnemyRangeX075Modifier = exAttributeModifierCreate({ RANGE = 0.75 }, 1)
+if not g_HextechEnemyRangeX065Modifier then
+    g_HextechEnemyRangeX065Modifier = exAttributeModifierCreate({ RANGE = 0.65 }, 1)
 end
 
 -- 全频段阻塞干扰只处理战斗单位；神圣干预则同时包含单位和建筑。
@@ -311,15 +311,19 @@ function HextechRune:ApplyBroadbandJamming(playerIndex, rune, sourceName)
         self.BroadbandJammingApplied[effectInstanceId] = {}
     end
     local applied = self.BroadbandJammingApplied[effectInstanceId]
+    local filter = self.AllSideUnitsFilter
+    if rune.UnitType ~= nil then
+        filter = self.UnitTypeFilters[rune.UnitType]
+    end
     -- 阵营扫描走 g_SideFindObjects 的并集；P[7]/P[8] 只是 7/8 号座位自己的 MCV。
-    local units, count = g_SideFindObjects(enemySideIndex, nil, self.AllSideUnitsFilter)
+    local units, count = g_SideFindObjects(enemySideIndex, nil, filter)
     for i = 1, count, 1 do
         local unit = units[i]
         local objectId = ObjectGetId(unit)
         local previous = applied[objectId]
         if not self:IsPresetMapUnit(unit)
             and (previous == nil or previous ~= unit) then
-            ObjectLoadAttributeModifier(unit, g_HextechEnemyRangeX075Modifier,
+            ObjectLoadAttributeModifier(unit, g_HextechEnemyRangeX065Modifier,
                 self.PersistentBuffDuration)
             applied[objectId] = unit
         end
@@ -1291,6 +1295,8 @@ end
 HextechRune.SkipPerUnitAssignmentEffects = {
     starting_funds = true, fortified = true, recycler = true,
     broadband_jamming = true, divine_intervention = true, grant_foreign_mcv = true,
+    -- 潘多拉魔盒是「换符文」的一次性动作（02_event.lua 末尾），不逐单位挂载。
+    pandora_box = true,
     grant_yaoguang = true, oil_king = true, oil_tycoon = true,
     buy_two_get_one = true,
     five_thunder = true, combustion_interest = true, tesla_air_assault = true,
@@ -1315,6 +1321,10 @@ HextechRune.SkipPerUnitAssignmentEffects = {
     extra_rune_option = true,
     -- 虚幻武器：选卡时记下一对「底座 + 炮台」，炮台由独立扫描生成，不逐单位挂载。
     illusory_weapon = true,
+    -- 以一当二：同一套底座+炮台链路（底座=炮台），也不逐单位挂载。
+    one_equals_two = true,
+    -- 最后的轻语：只在 ApplyArmorToAssignment 里并进敌方的护甲值换算，不逐单位挂载。
+    last_whisper = true,
     -- 烧福瑞 / 生异形 / 钓鱼佬 / 火箭飞行兵：只在回合开始整批改造对面 AI 的对应兵种，不逐单位挂载。
     burn_furry = true, spawn_alien = true, angler = true, sit_tight = true,
     -- 元神互锁：不逐单位派发，两个兵种的加成互通在 IsRuneMatchingUnit 里实时判定。

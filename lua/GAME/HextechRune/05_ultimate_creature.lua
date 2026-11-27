@@ -327,7 +327,13 @@ function HextechRune:GetUltimateCreatureBonusText(playerIndex)
     end
     local health = tierCounts[1] * self.UltimateCreatureT1HealthPercent
     local damage = tierCounts[1] * self.UltimateCreatureT1DamagePercent
-    local rateOfFire = tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent
+    -- 攻速按实际生效值展示：种子被回收后每少 1 个扣 1 份（见本文件末尾 SeedAttackSpeedPenalty 段）。
+    local rateOfFireCount = tierCounts[2]
+        - self:GetSeedAttackSpeedPenalty(playerIndex, "ultimate_creature")
+    if rateOfFireCount < 0 then
+        rateOfFireCount = 0
+    end
+    local rateOfFire = rateOfFireCount * self.UltimateCreatureT2RateOfFirePercent
     local range = tierCounts[2] * self.UltimateCreatureT2RangePercent
     if state.HasAmmo then
         return Localization.get("hextech.rune.bonus_values_ammo",
@@ -359,6 +365,9 @@ function HextechRune:CreateUltimateCreature(playerIndex, rune)
     if TrimPlayerUnitPoolToCap ~= nil then
         TrimPlayerUnitPoolToCap(playerIndex, nil, 0)
     end
+    -- 攻速扣减记账从这一张符文开始重新算，基准数对齐到刚补进来的那只种子单位。
+    self:ResetSeedAttackSpeedPenalty(playerIndex, "ultimate_creature")
+    self:EnsureSeedAttackSpeedPenaltyScheduler()
 end
 
 -- 六个预设守护神的判定统一在 BasicVar（g_IsPresetGuardianUnitId）。
@@ -426,10 +435,16 @@ function HextechRune:ApplyUltimateCreatureToUnit(unit, state, playerIndex)
     -- T1 数量 → 血量/伤害，T2 数量 → 攻速/射程。射程必须与索敌视野同倍率，
     -- 否则单位会在射程边缘停下却看不见目标。
     local rangeBonus = 1 + tierCounts[2] * self.UltimateCreatureT2RangePercent / 100
+    -- 种子单位被回收扣掉的份数只作用在攻速上（见本文件末尾的 SeedAttackSpeedPenalty 段）：
+    local rateOfFireCount = tierCounts[2]
+        - self:GetSeedAttackSpeedPenalty(playerIndex, "ultimate_creature")
+    if rateOfFireCount < 0 then
+        rateOfFireCount = 0
+    end
     local modifier = exAttributeModifierCreate({
         HEALTH_MULT = 1 + tierCounts[1] * self.UltimateCreatureT1HealthPercent / 100,
         DAMAGE_MULT = 1 + tierCounts[1] * self.UltimateCreatureT1DamagePercent / 100,
-        RATE_OF_FIRE = 1 + tierCounts[2] * self.UltimateCreatureT2RateOfFirePercent / 100,
+        RATE_OF_FIRE = 1 + rateOfFireCount * self.UltimateCreatureT2RateOfFirePercent / 100,
         RANGE = rangeBonus,
         VISION = rangeBonus,
     }, 1)
@@ -534,6 +549,7 @@ end
 -- 一回合的两趟出兵扫描各持一份，第二趟会再给一只，所以改走跨扫描的回合名额表。
 function HextechRune:ApplyUltimateCreatures(assignments)
     self:CleanupUltimateCreatureRegistrations()
+    self:EnsureSeedAttackSpeedPenaltyScheduler()
 
     for i = 1, getn(assignments), 1 do
         local assignment = assignments[i]
@@ -707,3 +723,113 @@ end
 
 -- 载入就挂上兜底扫描（没人持有这张符文时只是一次空转；继承来的符文也靠它兜住）。
 HextechRune:EnsureBattleFortressScheduler()
+
+HextechRune.SeedAttackSpeedPenalty = HextechRune.SeedAttackSpeedPenalty or {}
+HextechRune.SeedPoolTracker = HextechRune.SeedPoolTracker or {}
+HextechRune.SeedPenaltyScanIntervalFrames = 30
+
+function HextechRune:GetSeedAttackSpeedPenalty(playerIndex, effect)
+    local byEffect = self.SeedAttackSpeedPenalty[playerIndex]
+    if byEffect == nil then
+        return 0
+    end
+    return byEffect[effect] or 0
+end
+
+function HextechRune:AddSeedAttackSpeedPenalty(playerIndex, effect, count)
+    if count == nil or count <= 0 then
+        return
+    end
+    if self.SeedAttackSpeedPenalty[playerIndex] == nil then
+        self.SeedAttackSpeedPenalty[playerIndex] = {}
+    end
+    local byEffect = self.SeedAttackSpeedPenalty[playerIndex]
+    byEffect[effect] = (byEffect[effect] or 0) + count
+end
+
+-- 这只符文指定的单位此刻在玩家 unitlist（卡池）里还有几个；没持有该符文时返回 nil。
+-- 走回收表口径（GetRecycleUnitCount），超级要塞那类用 CountType 独立计数槽的单位也对得上。
+function HextechRune:GetRuneSeedPooledUnitCount(playerIndex, effect)
+    if playerIndex == nil or UNITCOUNT == nil or UNITCOUNT[playerIndex] == nil then
+        return nil
+    end
+    if effect == "ultimate_creature" then
+        local state = self.UltimateCreatureStates[playerIndex]
+        if state == nil or state.UnitType == nil then
+            return nil
+        end
+        local unitInfo = self:FindAscensionUnitInfo(playerIndex, state.UnitType)
+        if unitInfo ~= nil then
+            return tonumber(GetRecycleUnitCount(playerIndex, unitInfo)) or 0
+        end
+        if state.UnitIndex == nil then
+            return 0
+        end
+        return tonumber(UNITCOUNT[playerIndex][state.UnitIndex]) or 0
+    end
+    local rune = self:GetAscensionRune(playerIndex)
+    if rune == nil or rune.TargetUnitType == nil then
+        return nil
+    end
+    return self:GetAscensionPooledCount(playerIndex, rune)
+end
+
+-- 给「系统自己搬走单位」的路径用（登神把多余种子转层数、种子因为别的原因被删），
+-- 这些减少不是玩家回收，不该扣攻速。
+function HextechRune:RefreshSeedPoolBaseline(playerIndex, effect)
+    local count = self:GetRuneSeedPooledUnitCount(playerIndex, effect)
+    if count == nil then
+        return
+    end
+    if self.SeedPoolTracker[playerIndex] == nil then
+        self.SeedPoolTracker[playerIndex] = {}
+    end
+    self.SeedPoolTracker[playerIndex][effect] = count
+end
+
+-- 刚拿到符文时把扣减清零，并把基准数对齐到当下的池内数量。
+function HextechRune:ResetSeedAttackSpeedPenalty(playerIndex, effect)
+    if self.SeedAttackSpeedPenalty[playerIndex] ~= nil then
+        self.SeedAttackSpeedPenalty[playerIndex][effect] = nil
+    end
+    self:RefreshSeedPoolBaseline(playerIndex, effect)
+end
+
+function HextechRune:ScanPlayerSeedAttackSpeedPenalty(playerIndex, effect)
+    local count = self:GetRuneSeedPooledUnitCount(playerIndex, effect)
+    if count == nil then
+        return
+    end
+    if self.SeedPoolTracker[playerIndex] == nil then
+        self.SeedPoolTracker[playerIndex] = {}
+    end
+    local tracker = self.SeedPoolTracker[playerIndex]
+    local last = tracker[effect]
+    if last ~= nil and count < last then
+        self:AddSeedAttackSpeedPenalty(playerIndex, effect, last - count)
+    end
+    -- 增加不返还扣减（扣到 0% 为止），但基准数要跟着涨，否则下一次减少会被多算。
+    tracker[effect] = count
+end
+
+function HextechRune:ScanSeedAttackSpeedPenalty()
+    for playerIndex = 1, 8, 1 do
+        self:ScanPlayerSeedAttackSpeedPenalty(playerIndex, "ascension")
+        self:ScanPlayerSeedAttackSpeedPenalty(playerIndex, "ultimate_creature")
+    end
+end
+
+function HextechRune:EnsureSeedAttackSpeedPenaltyScheduler()
+    if self.SeedPenaltyScanStarted then
+        return
+    end
+    if SchedulerModule == nil or SchedulerModule.call_every_x_frame == nil then
+        return
+    end
+    self.SeedPenaltyScanStarted = true
+    SchedulerModule.call_every_x_frame(function()
+        HextechRune:ScanSeedAttackSpeedPenalty()
+    end, self.SeedPenaltyScanIntervalFrames, nil)
+end
+
+HextechRune:EnsureSeedAttackSpeedPenaltyScheduler()

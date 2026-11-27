@@ -180,9 +180,9 @@ function BtnChoiceDialogEventFunc_ShowBanModeDialog(playerName)
     ButtonChoiceDialogManager:ShowDialog(dialogData)
 end
 
--- === 单位上限模式（无数量限制 / 每人 100 / 200 / 300）===
+-- === 单位上限模式（无数量限制 / 每人 50 / 100 / 150 / 200 / 300）===
 UNIT_CAP_MODE_DIALOG_ID = 206
-g_UnitCapModeOptions = { 0, 100, 200, 300 }
+g_UnitCapModeOptions = { 0, 50, 100, 150, 200, 300 }
 g_UnitCapMode = g_UnitCapMode or 0
 
 function UnitCapModeNameOf(value)
@@ -200,7 +200,7 @@ function UnitCapModeGetSummarySuffix()
     return Localization.get("unit_cap.suffix", mode)
 end
 
--- 单位上限子页：四个选项（默认无数量限制）+ 返回上一页。
+-- 单位上限子页：六个档位（默认无数量限制）+ 返回上一页。
 function BtnChoiceDialogEventFunc_ShowUnitCapModeDialog(playerName)
     local dialogData = {
         DialogId = UNIT_CAP_MODE_DIALOG_ID,

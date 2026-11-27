@@ -1128,6 +1128,16 @@ function HextechRune:GetIllusoryPairs(playerIndex)
                 ChassisName = rune.IllusoryChassisName,
                 TurretName = rune.IllusoryTurretName,
             })
+        elseif rune.Effect == "one_equals_two" and rune.TargetUnitType ~= nil then
+            -- 以一当二：底座和「炮台」是同一个单位类型
+            tinsert(result, {
+                Key = self:GetRuneEffectInstanceId(rune),
+                ChassisType = rune.TargetUnitType,
+                TurretType = rune.TargetUnitType,
+                ChassisName = rune.TargetUnitName,
+                TurretName = rune.TargetUnitName,
+                SelfPair = true,
+            })
         end
     end
     return result
@@ -1446,7 +1456,10 @@ function HextechRune:RefreshIllusoryPair(playerIndex, pair)
         if unit ~= nil and ObjectIsAlive(unit) then
             scanned = scanned + 1
             local objectId = ObjectGetId(unit)
-            if not self:IsIllusoryPairBound(objectId, pair.Key) then
+            -- 以一当二的底座和炮台是同一种单位，所以必须把已经融合上去的隐形炮台排掉：
+            -- 否则每只炮台又会被当成一只新底座再补一只，指数级套娃。
+            if not self:IsIllusoryTurretObject(objectId)
+                and not self:IsIllusoryPairBound(objectId, pair.Key) then
                 local assignment = self.BattleUnitAssignments[
                     objectId]
                 if assignment ~= nil

@@ -246,7 +246,6 @@ g_AirCraftJapan = {
     {Type = "JapanSakuraAttackRocket", Image = "Portrait_JapanInterceptorAircraft_air",
         Name = Localization.recycle('unit.JapanSakuraAttackRocket'), Money = 850},
     -- 超级要塞走兵表计数（UNITLIST 第 135 格），形态由 SpawnGigaFortress 专用生成。
-    -- 和普通单位一样进出部队总数 ANYUNITCOUNT（记分板读它），但用 ExcludedFromBonusPool
     -- 单独挡住买二送一 / 登神候选（见附录 D.20）。
     {Type = "JapanGigaFortressShipEgg", ExcludedFromBonusPool = true,
         Image = "Button_JapanGigaFortressShip", Name = Localization.recycle('unit.JapanFortressShip'), Money = 6300},

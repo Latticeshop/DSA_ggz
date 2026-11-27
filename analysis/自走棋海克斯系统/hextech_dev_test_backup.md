@@ -1,34 +1,35 @@
 # 海克斯符文：开局测试三选一（开发用，发版前删除）
 
-> **当前状态（2026-11-20，测试态——这段代码已经贴回源码，正在用）**：
-> 本轮测试内容是「银·榴弹凌波 / 银·战斗要塞 / 彩·火箭飞行兵」：
-> `testRuneIds = { "silver_dragon_breathe", "silver_battle_fortress", "prismatic_sit_tight" }`、
-> `testUnitTypeByIndex` 留空（三张卡都不需要兵种）、`OpeningTestRounds = 1`。
+> **当前状态（2026-11 本轮三，测试态——这段代码已经贴回源码，正在用）**：
+> 本轮测三张**协议授予符文**（同一套「地图外钥匙基地 + 授予协议技能」链路）：
+> `testRuneIds = { "silver_emperors_rage", "silver_balloon_bomb", "gold_frost_zone" }`，
+> `testUnitTypeByIndex` 仍留着（三张都不带 `NeedsUnitType`，会被自动清成 nil），
+> `testTargetOverrides` 空着（没有随机指向单位的卡），`OpeningTestRounds = 1`。
 >
-> - **榴弹凌波**（原「龙息凌波」改名）：选后卡池里全部凌波护卫战车
->   `CelestialAntiInfantryVehicle_B` 换成凌波火力支援战车 `CelestialWaveriderIFV_Mortar`，下回合出兵应
->   直接出火力支援战车（图标为 `Button_CelestialWaveriderIFV_Mortar`）。
-> - **战斗要塞**：新白银符文，卡池里每 4 辆守护者坦克 `AlliedAntiVehicleVehicleTech1` 合成 1 座
->   特洛伊突击要塞 `AlliedBattleFortress`，余数保留；测试时先攒几辆坦克再选牌，应当**当场**把已有的
->   4 的倍数换成要塞（**静默合成，不播报**，看卡池数量变化即可）。
-> - **火箭飞行兵**（原「樱落」改名）：棱彩卡，回合开始把敌方 25/50/75/100％ 的空军换成火箭天使
->   JapanAntiVehicleInfantryTech3（图标改为火箭天使的按钮图，见 A.72）。三格都是「选完当回合就能
->   看出变化」的卡，不再留 MCV 对照。
+> - **银·天皇之怒**（日本「天皇协议2级」）：`PlayerTech_Japan_EmperorsRage_Rank2` +
+>   `SpecialPowerJapanEmperorsResolve_L2`。注意科技名 Rage、技能名 Resolve，不是同一个词。
+> - **银·崩崩炸弹**（日本「气球炸弹3级」）：`PlayerTech_Japan_BalloonAttack_Rank3` +
+>   `SpecialPowerJapanBalloonAttack_L3`。
+> - **金·霜冻地带**（盟军「冷冻卫星2级」）：`PlayerTech_Allied_CryoSatellite_Rank2` +
+>   `SpecialPowerCryoSatelliteLvl2`。就是原来注释掉没上线的「冷冻卫星」，降为 2 级后改名上线。
 >
-> 实现位置与判定口径见《地图注释说明文档》附录 **A.71**（榴弹凌波 / 战斗要塞）与 **A.72**（火箭飞行兵）；
-> §3 的四段代码这次都在源码里
-> （`FindRuneById` 在 `01_rune_pool.lua`，其余三段在 `02_event.lua`）。
+> 三张的验收点一致：①地图外多出/复用一把该阵营的钥匙基地（`HextechProtocolYard_<阵营>_<玩家名>`，
+> 落在 `3324.27, 8979.87`，53 帧后被 HELD 禁用、造不出兵）；②技能按钮出现且**不是置灰**；
+> ③退出继承（落墨 / 继承槽位）后技能仍在。三张都是**阵营互斥**的——非日本座席才有日本那两张，
+> 非盟军座席才有霜冻地带；日本/盟军自己拿到时不会给钥匙基地（自己基地就够解锁）。
+> 查名字的两张源表：`日冕地图lua例子/日冕协议表.txt`（选项名）与
+> `日冕地图lua例子/【rrrl】巨人城废墟-登神_project/lua/ProtocolEnum.lua`（技能名）。
 >
-> 以下为历史记录（上一轮的 `testRuneIds`）：`testRuneIds` =
-> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`，
-> `OpeningTestRounds = 1`。那一轮验的是白银符文「MCV」（落点已从不动的出生点改成**自家半场那两座
-> 前哨站点位**附近随机，见《地图注释说明文档》附录 A.51：四座前哨站现在由 `PureDraw/06_init_mcv.lua`
-> 开局按 waypoint `outpost71/72/81/82` 生成、归玩家、挂无敌，落点直接读点位坐标）与「工厂维护」
-> （K 键：立刻拿钱 + 锁住全部建造栏 90 秒，到点解锁并重新弹出 K 键提示）。第一格留着上一轮的虚幻武器。
-> 更早一轮（A.63）的 `testRuneIds` 是
-> `{ "prismatic_illusory_weapon", "gold_ascension", "prismatic_ultimate_creature" }`，
-> `testUnitTypeByIndex` 留空 —— 登神/究极生物的目标单位由 `PickBuyTwoGetOneTarget` /
-> `PickUltimateCreatureTarget` 自己抽，不需要指派。
+> 实现位置与口径见《地图注释说明文档》附录 **A.29**（协议授予链路原设计）、
+> **A.81**（本次三张符文 + 「协议符文不必再登记进 04_buff 排除表」的收敛）。
+> §3 的四段代码这次都在源码里（`FindRuneById` 在 `01_rune_pool.lua`，其余三段在 `02_event.lua`）。
+>
+> 以下为历史记录（上一轮）：测「金·登神 / 彩·最后的轻语（载具版）/ 彩·以一当二」，
+> `testRuneIds = { "gold_ascension", "prismatic_last_whisper", "prismatic_one_equals_two" }`，
+> 对应附录 A.75 / A.78 / A.79 / A.80。再往前是「金·登神 / 彩·全频段阻塞干扰（载具版）/ 彩·潘多拉魔盒」
+> （附录 A.74 / A.77）；再往前「银·榴弹凌波 / 银·战斗要塞 / 彩·火箭飞行兵」（A.71 / A.72）；
+> `{ "silver_mcv", "prismatic_illusory_weapon", "silver_factory_maintenance" }`（A.51 的 MCV 落点 +
+> 工厂维护 K 键）、`{ "prismatic_illusory_weapon", "gold_ascension", "prismatic_ultimate_creature" }`（A.63）。
 >
 > **2026-11 另有一处实测修复**：箱子被扔进中央战场的惩罚落点曾报 `table index is nil` ——
 > Lua 4.0 里 `表[nil]` 会直接抛错，而这条路径是**不带参数**调用落点函数的（`sideName` 为 nil），

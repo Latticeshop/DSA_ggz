@@ -315,10 +315,60 @@ function HextechRune:GetArmorShockModifier(armor)
     return modifier
 end
 
--- 把「登记玩家 × 该单位所属兵种」的护甲换算成 ARMOR 挂到单位上；拿了装甲冲击的兵种
--- 顺带把同一份护甲 1:1 折成伤害（DAMAGE_MULT）一起挂。
+-- ===== 最后的轻语（棱彩 · 兵种）：敌方该兵种护甲值 -35 =====
+-- 护甲值变负时那一支的分母取 100 − 护甲值，结果就是易伤：
+-- 不能另外挂一个 ARMOR 修改器（ARMOR 之间乘算，见那边的注释）。
+HextechRune.LastWhisperRuneEffect = "last_whisper"
+HextechRune.LastWhisperArmorPoints = 35
+
+-- 某个持有者在该兵种上持有几份最后的轻语（份数=可重复获取的叠加层数）。
+function HextechRune:CountLastWhisperCopies(holderIndex, unitType)
+    if holderIndex == nil or unitType == nil then
+        return 0
+    end
+    self:EnsurePlayerRuneState(holderIndex)
+    local owned = self.PlayerOwnedRunes[holderIndex]
+    local count = 0
+    for i = 1, getn(owned), 1 do
+        local rune = owned[i]
+        if rune.Effect == self.LastWhisperRuneEffect and rune.UnitType == unitType then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- 被削甲的一方（playerIndex）这个兵种一共被敌方削掉多少护甲值：返回 <= 0 的数，0 表示没被削。
+-- 「敌方」按座席表口径（GetPlayerSideIndex，7 = 恶魔 / 8 = 天使）：同侧队友的轻语不削自己人。
+function HextechRune:GetEnemyLastWhisperArmorPoints(playerIndex, unitType)
+    if playerIndex == nil or unitType == nil then
+        return 0
+    end
+    local mySide = nil
+    if self.GetPlayerSideIndex ~= nil then
+        mySide = self:GetPlayerSideIndex(playerIndex)
+    end
+    local copies = 0
+    for otherIndex = 1, 8, 1 do
+        if otherIndex ~= playerIndex then
+            local isEnemy
+            if mySide ~= nil and self.GetPlayerSideIndex ~= nil then
+                isEnemy = self:GetPlayerSideIndex(otherIndex) ~= mySide
+            else
+                isEnemy = otherIndex ~= playerIndex
+            end
+            if isEnemy then
+                copies = copies + self:CountLastWhisperCopies(otherIndex, unitType)
+            end
+        end
+    end
+    if copies <= 0 then
+        return 0
+    end
+    return -copies * self.LastWhisperArmorPoints
+end
+
 -- 同一只单位只挂一次（assignment.ArmorApplied）：护甲值是加算后再一次性换算的，
--- 绝不能按符文份数各挂一次，否则 25+25 会变成 0.8×0.8=0.64（36% 减伤）而不是正确的 33.3%。
 function HextechRune:ApplyArmorToAssignment(assignment, typeLookup)
     if assignment == nil or assignment.ArmorApplied then
         return false
@@ -334,6 +384,7 @@ function HextechRune:ApplyArmorToAssignment(assignment, typeLookup)
         local lookup = typeLookup[unitType]
         if lookup ~= nil and lookup[objectId] == true then
             local armor = self:GetPlayerUnitTypeArmor(assignment.PlayerIndex, unitType)
+            armor = armor + self:GetEnemyLastWhisperArmorPoints(assignment.PlayerIndex, unitType)
             local applied = false
             local modifier = self:GetArmorModifier(armor)
             if modifier ~= nil then
@@ -500,6 +551,10 @@ function HextechRune:IsPerUnitAssignmentSkipped(effect)
         return true
     end
     if self.UnitReplacementEffects[effect] then
+        return true
+    end
+    -- 协议授予类符文（16_cryo_satellite.lua 的 ProtocolGrants）：只发科技 + 技能（+ 地图外钥匙基地），不逐单位挂载。
+    if self.ProtocolGrants ~= nil and self.ProtocolGrants[effect] ~= nil then
         return true
     end
     return self.SkipPerUnitAssignmentEffects ~= nil

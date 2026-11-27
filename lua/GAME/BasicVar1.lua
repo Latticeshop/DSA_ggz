@@ -808,6 +808,52 @@ g_SellShipFilter = g_SellShipFilter or CreateObjectFilter({
     Include = "SHIP",
 })
 
+-- === 多形态单位白名单===
+g_TargetGroupNames.SellShipExtraName = {
+    -- 帝国 海翼 / 天翼：潜艇 ↔ 飞机双形态共用 JapanAntiAirShip* 模板，
+    -- 升空后带 AIRBORNE_TARGET，老口径会把它当成「天上的飞机」跳过。
+    "JapanAntiAirShip",
+    -- 盟军 ACV：船厂产的水陆两栖形态是 AlliedAntiInfantryVehicle_Transport
+    -- （引擎大类是载具，Include=SHIP 抓不到；陆地形态 _Ground 进不了水区）。
+    "AlliedAntiInfantryVehicle",
+    -- 帝国海啸坦克水上形态 JapanAntiVehicleVehicleTech1_Naval（两栖坦克，落水后算海军）。
+    "JapanAntiVehicleVehicleTech1_Naval",
+    -- 苏联磁爆快艇（T1 海军）：_Enhanced / _AirAssault 两个形态一并覆盖。
+    "SovietAntiNavyShipTech1",
+    -- 盟军突袭驱逐舰（水陆两栖）。
+    "AlliedAntiNavyShipTech1",
+    -- 苏联牛蛙战车：水面形态 SovietAntiAirShip，陆地形态 _Ground。
+    "SovietAntiAirShip",
+    -- 神州磁弩防空系统 ↔ 磁弩高射炮（近防形态），同族两个形态一起覆盖。
+    "CelestialShipNearDefense",
+    -- 神州凌波系列（凌波护卫战车水陆形态 / 火力支援 / 龙息炮 / 青锋两栖导弹战车
+    -- CelestialWaveriderIFV_ATGM），实测都带两栖形态。
+    "CelestialWaveriderIFV",
+}
+
+function g_IsSellShipExtraName(unitType)
+    if unitType == nil then
+        return false
+    end
+    local names = g_TargetGroupNames.SellShipExtraName
+    if names == nil then
+        return false
+    end
+    for i = 1, getn(names), 1 do
+        local name = names[i]
+        if unitType == name or strfind(unitType, name) == 1 then
+            return true
+        end
+    end
+    return false
+end
+
+-- 第二趟扫描用：白名单里那些模板的引擎大类可能是载具（海啸 _Naval / 凌波 / ACV 水上形态）而不是船。
+g_SellShipExtraScanFilter = g_SellShipExtraScanFilter or CreateObjectFilter({
+    Rule = "ANY",
+    Include = "VEHICLE HUGE_VEHICLE AIRCRAFT",
+})
+
 function g_SellShipDisableWBScripts()
     if g_SellShipDisabledWBScripts == 1 then
         return
@@ -818,17 +864,12 @@ function g_SellShipDisableWBScripts()
     exDisableWBScript("GETSHIP__8")
 end
 
--- 返回本轮卖掉的船数。
-function g_SellShipSweep()
-    g_SellShipDisableWBScripts()
-
-    local frame = GetFrame()
-    if frame < g_SellShipNextScanFrame then
+-- onlyExtra == 1 表示这一趟只处理白名单里的多形态单位（其余对象直接跳过）。
+function g_SellShipProcessList(filter, onlyExtra)
+    if filter == nil then
         return 0
     end
-    g_SellShipNextScanFrame = frame + g_SellShipScanIntervalFrames
-
-    local ships, count = ObjectFindObjects(nil, nil, g_SellShipFilter)
+    local ships, count = ObjectFindObjects(nil, nil, filter)
     if ships == nil then
         return 0
     end
@@ -836,9 +877,17 @@ function g_SellShipSweep()
         count = getn(ships)
     end
 
-    local soldTotal = 0
+    local sold = 0
     for i = 1, count, 1 do
         local ship = ships[i]
+        local isExtra = false
+        if ship ~= nil then
+            -- 白名单判定放在最前面：第二趟扫的是全图载具，先按模板名筛掉绝大多数再谈别的。
+            isExtra = g_IsSellShipExtraName(ObjectTemplateName(ship))
+            if onlyExtra == 1 and not isExtra then
+                ship = nil
+            end
+        end
         if ship ~= nil and ObjectIsAlive(ship) then
             local ownerName = ObjectPlayerScriptName(ship)
             local zone = nil
@@ -848,12 +897,14 @@ function g_SellShipSweep()
                     break
                 end
             end
+            -- 排除 AIRBORNE_TARGET —— 飞行形态的模板是船，但在天上不该被卖；
             if zone ~= nil
-                and not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", ship, "AIRBORNE_TARGET")
+                and (isExtra
+                    or not EvaluateCondition("UNIT_HAS_OBJECT_STATUS", ship, "AIRBORNE_TARGET"))
                 and EvaluateCondition("NAMED_INSIDE_AREA", ship, zone.Area) then
                 -- 与原实现一样走「击杀」：死亡事件、掉落、播报口径都不变。
                 ExecuteAction("NAMED_KILL", ship)
-                soldTotal = soldTotal + 1
+                sold = sold + 1
                 -- 每卖一艘结算一次；座席表按阵营号取（4v4 与 3v3 各自的座席表都自动对得上）。
                 local seats = nil
                 if g_SideSeatsOf ~= nil then
@@ -867,7 +918,21 @@ function g_SellShipSweep()
             end
         end
     end
-    return soldTotal
+    return sold
+end
+
+-- 返回本轮卖掉的船数。
+function g_SellShipSweep()
+    g_SellShipDisableWBScripts()
+
+    local frame = GetFrame()
+    if frame < g_SellShipNextScanFrame then
+        return 0
+    end
+    g_SellShipNextScanFrame = frame + g_SellShipScanIntervalFrames
+
+    return g_SellShipProcessList(g_SellShipFilter, 0)
+        + g_SellShipProcessList(g_SellShipExtraScanFilter, 1)
 end
 
 -- mainloop 每帧调用；只注册一次周期扫描（不在加载期注册，理由同 g_BuildingNoCollisionsTick）。

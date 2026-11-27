@@ -130,6 +130,16 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.divine_might.name",
         DescKey = "hextech.rune.divine_might.desc", Effect = "grant_chrono_rift",
         Icon = "Button_PlayerPower_ChronoRift2" },
+    -- 协议授予·银·天皇之怒：日本「天皇协议2级」。非日本玩家才抽得到
+    { Id = "silver_emperors_rage", Rarity = 3,
+        NameKey = "hextech.rune.emperors_rage.name",
+        DescKey = "hextech.rune.emperors_rage.desc", Effect = "grant_emperors_rage",
+        Icon = "Button_PlayerPower_EmperorRage2" },
+    -- 协议授予·银·崩崩炸弹：日本「气球炸弹3级」。
+    { Id = "silver_balloon_bomb", Rarity = 3,
+        NameKey = "hextech.rune.balloon_bomb.name",
+        DescKey = "hextech.rune.balloon_bomb.desc", Effect = "grant_balloon_bomb",
+        Icon = "Button_PlayerPower_BalloonAttack3" },
     { Id = "silver_chicken_soup", Rarity = 2,
         NameKey = "hextech.rune.chicken_soup.name",
         DescKey = "hextech.rune.chicken_soup.desc", Effect = "irradiate_enemy_vehicle",
@@ -235,13 +245,11 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.big_sakura_well.name",
         DescKey = "hextech.rune.big_sakura_well.desc", Effect = "grant_sakura_well",
         Icon = "Button_JapanKamikazeCommandTower" },
-    -- 协议授予·金·冷冻卫星：地图外钥匙基地 + HELD 禁用的机制已实测跑通，但本轮仍不上线。
-    -- 恢复时取消这条注释，并同步取消 04_buff.lua 的派发分支与本表排除名单里对应行的注释。
-    -- 同门的「银·神威」已按白银档上线（见上方白银段末尾）。
-    -- { Id = "gold_cryo_satellite", Rarity = 2,
-    --     NameKey = "hextech.rune.cryo_satellite.name",
-    --     DescKey = "hextech.rune.cryo_satellite.desc", Effect = "grant_cryo_satellite",
-    --     Icon = "Button_PlayerPower_CryoSatellite3" },
+    -- 协议授予·金·霜冻地带：盟军「冷冻卫星2级」。
+    { Id = "gold_frost_zone", Rarity = 2,
+        NameKey = "hextech.rune.frost_zone.name",
+        DescKey = "hextech.rune.frost_zone.desc", Effect = "grant_cryo_satellite",
+        Icon = "Button_PlayerPower_CryoSatellite2" },
     { Id = "gold_fortified", Rarity = 2, NameKey = "hextech.rune.fortified.name",
         DescKey = "hextech.rune.fortified.desc", Effect = "fortified",
         Icon = "Button_CelestialAntiVehicleInfantry_Skill" },
@@ -313,6 +321,17 @@ HextechRune.RunePool = {
         NameKey = "hextech.rune.illusory_weapon.name",
         DescKey = "hextech.rune.illusory_weapon.desc", Effect = "illusory_weapon",
         Icon = "SUA_Tank_LeechBeam" },
+    -- 以一当二：与登神/究极生物同一族「随机指向一只可生产单位」的符文（TargetUnitType 见
+    { Id = "prismatic_one_equals_two", Rarity = 1,
+        NameKey = "hextech.rune.one_equals_two.name",
+        DescKey = "hextech.rune.one_equals_two.desc",
+        Effect = "one_equals_two", Icon = "AUA_Pacifier_Artillery" },
+    -- 最后的轻语：同族「敌方兵种」的削甲符文，可重复获取。削的是敌方该兵种的**护甲值**
+    { Id = "prismatic_last_whisper", Rarity = 1,
+        NameKey = "hextech.rune.last_whisper.name",
+        DescKey = "hextech.rune.last_whisper.desc",
+        Effect = "last_whisper", NeedsUnitType = true,
+        Icon = "CelestialShipAAMissile" },
     { Id = "prismatic_infinite_ammo", Rarity = 1, NameKey = "hextech.rune.infinite_ammo.name",
         DescKey = "hextech.rune.infinite_ammo.desc", Effect = "infinite_ammo", NeedsUnitType = true,
         UnitTypes = { "aircraft" },
@@ -335,7 +354,15 @@ HextechRune.RunePool = {
     { Id = "prismatic_broadband_jamming", Rarity = 1,
         NameKey = "hextech.rune.broadband_jamming.name",
         DescKey = "hextech.rune.broadband_jamming.desc", Effect = "broadband_jamming",
+        NeedsUnitType = true,
         Icon = "Upgrade_AlliedAircraftCarrierDrone" },
+    -- 潘多拉魔盒：把**当前槽位**的符文全部替换成随机棱彩符文。
+    { Id = "prismatic_pandora_box", Rarity = 1,
+        NameKey = "hextech.rune.pandora_box.name",
+        DescKey = "hextech.rune.pandora_box.desc", Effect = "pandora_box",
+        ExcludeOnFirstFormalSelection = true,
+        ExcludeFromFormalSelectionCount = 3,
+        Icon = "CelestialMinerUnpack" },
     { Id = "prismatic_divine_intervention", Rarity = 1,
         NameKey = "hextech.rune.divine_intervention.name",
         DescKey = "hextech.rune.divine_intervention.desc", Effect = "divine_intervention",
@@ -520,7 +547,7 @@ HextechRune.NonRepeatableRuneIds = {
     -- 破烂王
     silver_recycler = true,
     silver_divine_might = true,
-    prismatic_broadband_jamming = true,
+    -- 全频段阻塞干扰已改成四兵种版本，可重复获取（同一兵种重复拿则叠加削程），故不列入排除。
     prismatic_divine_intervention = true,
     prismatic_infinite_ammo = true,
     gold_combustion_interest = true,
@@ -553,6 +580,8 @@ HextechRune.NonRepeatableRuneIds = {
     gold_at_field = true,
     -- 一言九鼎：+9 协议点、开 5 层协议，多份等于把协议树直接买空，故唯一。
     prismatic_nine_words = true,
+    -- 潘多拉魔盒：整槽符文一次性换成随机棱彩，第二份再换一次等于白送整池，故唯一。
+    prismatic_pandora_box = true,
     -- prismatic_tesla_air_assault = true, -- 磁暴突袭符文：暂不启用
 }
 
@@ -958,7 +987,8 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType,
         candidate.UnitType2 = types[debuffIndex]
     end
     if candidate.Effect == "buy_two_get_one" or candidate.Effect == "ascension"
-        or candidate.Effect == "ultimate_creature" then
+        or candidate.Effect == "ultimate_creature"
+        or candidate.Effect == "one_equals_two" then
         -- 替换型符文的双向排除：未持有的升级形态造不出来，持有的原形态不再入池。
         local excluded, ownedReplacement = self:GetReplacementTargetFilter(playerIndex)
         -- “买二送一”可重复选择，但同一个玩家的两个买二送一不能圈同一个单位；
@@ -969,13 +999,15 @@ function HextechRune:CreateRuneCandidateForPlayer(playerIndex, rune, unitType,
                 excluded[targetType] = true
             end
         end
-        -- 登神与究极生物额外剔掉策划裁决不圈的单位（买二送一不受影响）。
-        if candidate.Effect == "ascension" or candidate.Effect == "ultimate_creature" then
+        -- 登神 / 究极生物 / 以一当二额外剔掉策划裁决不圈的单位（买二送一不受影响）。
+        if candidate.Effect == "ascension" or candidate.Effect == "ultimate_creature"
+            or candidate.Effect == "one_equals_two" then
             for unitType, banned in self.RuneTargetExcludedTypes do
                 excluded[unitType] = true
             end
         end
-        -- 究极生物的目标不走阵营回收表，改用策划表 T3/T4 的独立名单，且不分阵营
+        -- 究极生物的目标不走阵营回收表，改用策划表 T3/T4 的独立名单，且不分阵营；
+        -- 以一当二与买二送一同口径：走本阵营的回收表（= 玩家可生产的单位）。
         local target
         if candidate.Effect == "ultimate_creature" then
             target = self:PickUltimateCreatureTarget(excluded)
@@ -1168,7 +1200,8 @@ function HextechRune:GetRuneDescriptionBase(rune, playerIndex)
                 self:FormatWarEfficiencyPercent(self:GetWarEfficiencyBonusPerDeath() * 100))
         end
         return Localization.get(rune.DescKey, label)
-    elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension" then
+    elseif rune.Effect == "buy_two_get_one" or rune.Effect == "ascension"
+        or rune.Effect == "one_equals_two" then
         local targetName = rune.TargetUnitName or rune.TargetUnitType or "?"
         if rune.Effect == "ascension" then
             -- 登神每回收一只只随机命中一维，各档数值相同，按目标单位阶级显示。
@@ -1343,6 +1376,13 @@ function HextechRune:GetRuneCompactTitle(rune)
         return rune.UnitDisplayName or ""
     end
     local name = Localization.get(rune.NameKey)
+    if rune.Effect == "broadband_jamming" then
+        local title = Localization.get("hextech.rune.broadband_jamming.title")
+        if rune.UnitType ~= nil then
+            return title .. "\n" .. self:GetRuneUnitTypeLabel(rune)
+        end
+        return title
+    end
     if rune.UnitType ~= nil then
         if rune.UnitType2 ~= nil then
             -- 等价交换：「兵种1/」占一行、受损兵种另起一行，别合回一行
@@ -1351,9 +1391,6 @@ function HextechRune:GetRuneCompactTitle(rune)
                 .. self:GetRuneUnitTypeLabel2(rune)
         end
         return name .. "\n" .. self:GetRuneUnitTypeLabel(rune)
-    end
-    if rune.Effect == "broadband_jamming" then
-        return Localization.get("hextech.rune.broadband_jamming.title")
     end
     -- 艾卡西亚的惊喜：七字太长，按「四字标题」排版拆成 艾卡西亚 / 的惊喜 两行。
     if rune.Effect == "grant_time_bomb" then
@@ -1410,6 +1447,12 @@ function HextechRune:RandomIndex(count)
     return index
 end
 
+-- 本槽位已经收到过几次正式符文选择（0 起算）。潘多拉魔盒这类「只在前几次出现」的符文用它筛池。
+function HextechRune:GetGrantSlotFormalSelectionCount(playerIndex)
+    local slotIndex = self.CurrentGrantSlot[playerIndex] or playerIndex
+    return self.SlotFormalSelectionCount[slotIndex] or 0
+end
+
 function HextechRune:BuildFilteredPool(playerIndex, rarity)
     self:EnsurePlayerRuneState(playerIndex)
     local filtered = {}
@@ -1436,6 +1479,10 @@ function HextechRune:BuildFilteredPool(playerIndex, rarity)
             -- 玩家的第一次正式选择里，这类「前期过强 / 依赖已有单位池」的符文不发（与回合数无关）。
             and (not rune.ExcludeOnFirstFormalSelection
                 or not self:IsFirstFormalSelection(playerIndex))
+            -- 「只在前面几次正式选择出现」的符文（潘多拉魔盒只给第 2、3 次，避免开局换掉整池）。
+            and (rune.ExcludeFromFormalSelectionCount == nil
+                or self:GetGrantSlotFormalSelectionCount(playerIndex)
+                    < rune.ExcludeFromFormalSelectionCount)
             -- 与已持有的符文互斥时同样不发（顺手的事 × 赌怪，避免单人整局超过 5 张）。
             and not self:IsRuneExclusiveBlocked(playerIndex, rune) then
             if rune.NeedsUnitTypePair then
@@ -1561,6 +1608,18 @@ function HextechRune:AddOwnedRune(playerIndex, rune, slotIndex)
     -- 之后由入池回调继续累计（实现见 05_ultimate_creature.lua 末尾）。
     if rune.Effect == "battle_fortress_merge" and self.OnBattleFortressChosen ~= nil then
         self:OnBattleFortressChosen(playerIndex)
+    end
+    if rune.Effect == "pandora_box" and self.ApplyPandoraBox ~= nil then
+        self:ApplyPandoraBox(playerIndex, rune, slotIndex)
+    end
+    -- 这张符文没有选卡步骤，所以拿到就装钩子并立刻补一次，实现见 17_death_triggers.lua。
+    if rune.Effect == "one_equals_two" then
+        if self.EnsureIllusoryRoundHook ~= nil then
+            self:EnsureIllusoryRoundHook()
+        end
+        if self.RefreshIllusoryBindings ~= nil then
+            self:RefreshIllusoryBindings()
+        end
     end
     return true
 end

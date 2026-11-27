@@ -119,8 +119,11 @@ TARGETS = [  # fmt: skip
      ['LethalTempoModifierName', 'ApplyAllLethalTempoBuffs']),
     ('lua/GAME/HextechRune/15_drain.lua',
      ['CollectDrainSourceEntries', 'ApplyDrainToPlayer']),
+    # needle 别用协议名/档位名这类会随平衡改动的字符串：2026-11 把盟军冷冻卫星从 3 级降到 2 级时，
+    # 原来的 ['PlayerTech_Allied_CryoSatellite_Rank3', 'SpecialPowerCryoSatelliteLvl3'] 两条同时失效，
+    # JSON 里那份旧 payload 再也匹配不上，同步直接报 found 0。改用不会动的函数名/表名。
     ('lua/GAME/HextechRune/16_cryo_satellite.lua',
-     ['PlayerTech_Allied_CryoSatellite_Rank3', 'SpecialPowerCryoSatelliteLvl3']),
+     ['HextechRune.ProtocolGrants = {', 'function HextechRune:GrantProtocolToPlayer']),
     ('lua/GAME/HextechRune/17_death_triggers.lua',
      ['HuntRhythmHealRate', 'OnDeathRewardUnitDie']),
     # 第 6 组技能（九头蛇万岁 + 冰天雪地）的溢出节点，CenterTopBtnFunc.lua 已无预算。

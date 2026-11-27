@@ -6,9 +6,10 @@ HextechRune = HextechRune or {}
 -- 新增一张协议符文：这里加一行 + 01_rune_pool.lua 加条目 + 03_text.lua 加文案，派发无需改动。
 -- 表里的 Faction 同时是抽卡过滤依据（不给本阵营协议），讲解见文档 8.1。
 HextechRune.ProtocolGrants = {
+    -- 金·霜冻地带：盟军「冷冻卫星2级」。（冷冻卫星1/2/3 级 ↔ Lvl1/Lvl2/Lvl3）。
     grant_cryo_satellite = {
-        PlayerTech = "PlayerTech_Allied_CryoSatellite_Rank3",
-        SpecialPower = "SpecialPowerCryoSatelliteLvl3",
+        PlayerTech = "PlayerTech_Allied_CryoSatellite_Rank2",
+        SpecialPower = "SpecialPowerCryoSatelliteLvl2",
         Faction = 1, YardType = "AlliedConstructionYard" },
     -- 银·神威：2026-10-14 由「时空裂缝3级」降为「时空裂缝2级」（原 gold_divine_might）；
     -- 科技名取地编选项去掉 Purchase_ 前缀，技能名按 ProtocolEnum 的 Lvl2 档对齐。
@@ -35,6 +36,16 @@ HextechRune.ProtocolGrants = {
         PlayerTech = "PlayerTech_Allied_TimeBomb_Rank3",
         SpecialPower = "SpecialPowerTimeBombLvl3",
         Faction = 1, YardType = "AlliedConstructionYard" },
+    -- 银·天皇之怒：日本「天皇协议2级」。
+    grant_emperors_rage = {
+        PlayerTech = "PlayerTech_Japan_EmperorsRage_Rank2",
+        SpecialPower = "SpecialPowerJapanEmperorsResolve_L2",
+        Faction = 3, YardType = "JapanConstructionYard" },
+    -- 银·崩崩炸弹：日本「气球炸弹3级」（ProtocolEnum 的 RANK5 段）。
+    grant_balloon_bomb = {
+        PlayerTech = "PlayerTech_Japan_BalloonAttack_Rank3",
+        SpecialPower = "SpecialPowerJapanBalloonAttack_L3",
+        Faction = 3, YardType = "JapanConstructionYard" },
 }
 
 -- 钥匙基地的停泊点，实测确认在地图外。

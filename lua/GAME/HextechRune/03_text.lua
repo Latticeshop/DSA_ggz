@@ -119,6 +119,17 @@ g_LocalizationExtraText = {
     ["hextech.rune.cash_reward.desc"] = { zh = "获得现金奖励协议。", en = "Gain the Cash Bounty protocol." },
     ["hextech.rune.cryo_satellite.name"] = { zh = "冷冻卫星", en = "Cryo Satellite" },
     ["hextech.rune.cryo_satellite.desc"] = { zh = "获得冷冻卫星协议。", en = "Gain the Cryo Satellite protocol." },
+    -- 霜冻地带 = 冷冻卫星协议的黄金档（2 级），沿用上面「冷冻卫星」那套协议授予链路。
+    ["hextech.rune.frost_zone.name"] = { zh = "霜冻地带", en = "Frost Zone" },
+    ["hextech.rune.frost_zone.desc"] =
+        { zh = "获得二级冷冻卫星协议。", en = "Gain the Rank-2 Cryo Satellite protocol." },
+    -- 日本的两条协议符文。科技名是 EmperorsRage / BalloonAttack，技能名见 16_cryo_satellite.lua。
+    ["hextech.rune.emperors_rage.name"] = { zh = "天皇之怒", en = "Emperor's Rage" },
+    ["hextech.rune.emperors_rage.desc"] =
+        { zh = "获得二级天皇之怒协议。", en = "Gain the Rank-2 Emperor's Rage protocol." },
+    ["hextech.rune.balloon_bomb.name"] = { zh = "崩崩炸弹", en = "Balloon Bomb" },
+    ["hextech.rune.balloon_bomb.desc"] =
+        { zh = "获得三级气球炸弹协议。", en = "Gain the Rank-3 Balloon Attack protocol." },
     ["hextech.rune.chicken_soup.name"] = { zh = "鸡汤来咯", en = "Here Comes the Chicken Soup" },
     ["hextech.rune.chicken_soup.desc"] = { zh = "回合开始时，敌方随机 %d 个载具或海军获得毒质腐蚀。", en = "At the start of each round, %d random enemy vehicles or naval units gain Toxic Corrosion." },
     ["hextech.rune.divine_might.name"] = { zh = "神威", en = "Divine Might" },
@@ -146,8 +157,11 @@ g_LocalizationExtraText = {
     ["hextech.rune.infinite_ammo.name"] = { zh = "无限火力", en = "Infinite Ammo" },
     ["hextech.rune.infinite_ammo.desc"] = { zh = "你的 %s 单位获得无限弹药。", en = "Your %s units gain unlimited ammunition." },
     ["hextech.rune.broadband_jamming.name"] = { zh = "全频段阻塞干扰", en = "Broadband Jamming" },
-    ["hextech.rune.broadband_jamming.desc"] = { zh = "敌方全体单位射程降低 25％。", en = "All enemy units lose 25％ range." },
+    ["hextech.rune.broadband_jamming.desc"] = { zh = "敌方 %s 单位射程降低 35％。", en = "Enemy %s units lose 35％ range." },
     ["hextech.rune.broadband_jamming.title"] = { zh = "全频段阻塞\n干扰", en = "Broadband\nJamming" },
+    ["hextech.rune.pandora_box.name"] = { zh = "潘多拉魔盒", en = "Pandora's Box" },
+    ["hextech.rune.pandora_box.desc"] = { zh = "将你当前符文全部替换随机棱彩符文。", en = "Replace all of your current runes with random prismatic runes." },
+    ["hextech.rune.pandora_box.broadcast"] = { zh = "$p%dName打开了潘多拉魔盒：当前符文被替换为 %d 个随机棱彩符文", en = "$p%dName opened Pandora's Box：current runes were replaced by %d random prismatic runes" },
     ["hextech.rune.icathia_surprise.title"] = { zh = "艾卡西亚\n的惊喜", en = "Icathia's\nSurprise" },
     ["hextech.rune.divine_intervention.name"] = { zh = "神圣干预", en = "Divine Intervention" },
     ["hextech.rune.divine_intervention.desc"] = { zh = "己方全体单位和建筑每 30 秒获得 %s 秒铁幕。", en = "All allied units and structures gain Iron Curtain for %s seconds every 30 seconds." },
@@ -269,6 +283,12 @@ g_LocalizationExtraText = {
         en = "Illusory Weapon：chassis %s, turret %s" },
     ["hextech.illusory.error.no_units"] = { zh = "当前没有可选的单位，虚幻武器未生效。",
         en = "No eligible unit is available, Illusory Weapon did not take effect." },
+    -- 以一当二（棱彩 · 可重复获取）：随机指向一只可生产单位，效果复用虚幻武器的执行链路
+    -- （`GetIllusoryPairs` 在 17_death_triggers.lua 里把「底座 = 炮台 = 该单位」配成一对）。
+    ["hextech.rune.one_equals_two.name"] = { zh = "以一当二", en = "One as Two" },
+    ["hextech.rune.one_equals_two.desc"] =
+        { zh = "你的 %s 单位的武器翻倍。",
+            en = "Your %s units gain a second copy of their weapon." },
     ["hextech.rune.tulip_mortar.name"] = { zh = "花来！", en = "Bring Flowers!" },
     ["hextech.rune.tulip_mortar.desc"] =
         { zh = "你的V4导弹发射车会升级为郁金香自行迫击炮。",
@@ -321,6 +341,11 @@ g_LocalizationExtraText = {
     ["hextech.rune.armor_shock.desc"] =
         { zh = "你单位的护甲还会提供等比例的伤害加成。\n你的 %s 单位获得 25 点护甲。",
             en = "Your units' armor also grants an equal share of bonus damage.\nYour %s units gain 25 armor." },
+    -- 最后的轻语（棱彩 · 可重复获取）：敌方的护甲值 -35，换算与负数易伤见 18_basics_exchange.lua。
+    ["hextech.rune.last_whisper.name"] = { zh = "最后的轻语", en = "Last Whisper" },
+    ["hextech.rune.last_whisper.desc"] =
+        { zh = "敌方 %s 单位减少 35 护甲。",
+            en = "Enemy %s units lose 35 armor." },
     -- 泰坦的坚决：全兵种护甲（不带兵种，所以文案里没有 %s），见 18_basics_exchange.lua。
     ["hextech.rune.titan_resolve.name"] = { zh = "泰坦的坚决", en = "Titan's Resolve" },
     ["hextech.rune.titan_resolve.desc"] =
